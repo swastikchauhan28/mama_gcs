@@ -1,0 +1,12 @@
+# Android/Gradle build products
+.gradle/
+**/build/
+
+# Local Android SDK path and IDE state
+local.properties
+.idea/
+*.iml
+
+# Signing material and machine-specific configuration
+*.jks
+*.keystore
