@@ -1,6 +1,8 @@
 package com.mamadrones.gcs.di
 
 import com.mamadrones.gcs.data.repository.VehicleRepositoryImpl
+import com.mamadrones.gcs.data.transport.DefaultUdpTransportFactory
+import com.mamadrones.gcs.data.transport.UdpTransportFactory
 import com.mamadrones.gcs.domain.repository.VehicleRepository
 import com.mamadrones.gcs.domain.repository.SettingsRepository
 import com.mamadrones.gcs.data.local.datastore.LocalSettingsRepository
@@ -17,4 +19,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindVehicleRepository(implementation: VehicleRepositoryImpl): VehicleRepository
+
+    @Binds
+    abstract fun bindUdpTransportFactory(implementation: DefaultUdpTransportFactory): UdpTransportFactory
 }
