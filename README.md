@@ -2,17 +2,18 @@
 
 Native Android ground-control-station foundation for a Mama agricultural UGV: ArduPilot Rover, VESC motors, spray equipment and hydraulics. Kotlin · Compose · Material 3 · Hilt · offline-first.
 
-## Current delivery: revised Phase 1 only
+## Current delivery: Phase 2 transport foundation
 
-The expanded agricultural specification starts a new phased acceptance sequence. This delivery reconciles the existing project with that specification; it does **not** enable vehicle operation or automatically proceed to Phase 2.
+The expanded agricultural specification uses incremental acceptance. Phase 2 adds a manually configured UDP socket lifecycle; it does not enable MAVLink decoding in the app, vehicle control, or automatic connection/reconnection.
 
 - Responsive dark field-console design, light/daylight and system themes, original local icons, shared typography, spacing, cards and status treatments.
 - Dashboard, Map, Control, Mission, Health, Motors, Spray, Hydraulic, Diagnostics, Admin and Settings. Phones use bottom navigation; wide windows use a side rail. Secondary screens are reached through More or dashboard shortcuts.
 - Nullable/UNKNOWN subsystem models and read-only integration contracts. No invented telemetry, safe actuator state, healthy state, vehicle marker or controller/nozzle inventory.
 - Disabled, explicitly unavailable emergency stop and hardware actions. Navigation and persistent local theme settings work; vehicle selection explains that pairing is unavailable.
 - Basic role/session policy and app-storage/manifest protections, **not** implemented authentication or production command security.
+- A saved UDP peer endpoint, socket open/close controls, fixed-peer packet acceptance and observable packet statistics. The socket closes when the app moves to the background and never auto-connects.
 
-The real UDP implementation and limited MAVLink HEARTBEAT parser/session from earlier work are preserved, along with their tests. They are inactive: the app does not construct a transport/session, connect to an endpoint or send commands. Their previous phase labels are historical, not acceptance of the revised Phase 2/3 requirements.
+Opening a configured UDP socket accepts raw datagrams only from the configured peer. It does not authenticate a vehicle, decode MAVLink in the active app flow, establish heartbeat health, or send commands. The preserved MAVLink HEARTBEAT parser/session is still inactive; the app never constructs a MAVLink session from the UDP screen.
 
 **Do not use this build to operate machinery.** The emergency-stop button cannot command or confirm a physical stop. Use the independent physical safety system.
 
@@ -23,8 +24,8 @@ presentation/    stateless Compose screens/components, navigation, design system
                 lifecycle-aware Dashboard/Settings ViewModels
 domain/          immutable models, repository contracts, use cases
 core/            command outcomes/errors, pure authorization policy
-data/            theme DataStore and vehicle repository
-                preserved inactive transport/MAVLink prototypes
+data/            theme/UDP endpoint DataStore, vehicle repository,
+                foreground-owned UDP transport and inactive MAVLink prototype
 di/              Hilt bindings
 ```
 
@@ -54,13 +55,13 @@ Added runtime dependency: AndroidX Preferences DataStore 1.1.1. Added test-only 
 
 ## Boundaries and next phases
 
-There is no live map/offline tile provider, telemetry simulator, real actuator control, login/user store, audit persistence, hardware-health evaluation, mission protocol, background communication service or operational connection-settings flow. The neutral map grid is decorative and labeled unavailable. Logs/export and connection statistics remain unavailable rather than displaying made-up zeros.
+There is no live map/offline tile provider, telemetry simulator, real actuator control, login/user store, audit persistence, hardware-health evaluation, mission protocol or background communication service. The neutral map grid is decorative and labeled unavailable. Raw UDP packet counts are available only while an explicitly configured socket is open; they are not vehicle telemetry or link health.
 
 See [Phase 1 report](docs/phase-1-report.md) for exact implementation, file inventory and validation; [security boundaries](docs/security.md) and [hardware integration gates](docs/hardware-integration.md) before enabling integrations.
 
-1. **Foundation — this delivery, stop here.**
-2. Transport — audit/reconcile retained UDP, lifecycle/reconnect/error states; Bluetooth/serial contracts and tests, no hardware assumptions.
-3. MAVLink — validated decoding/session/peer handling and command-outcome design.
+1. Foundation — delivered.
+2. **Transport — delivered.** Explicit UDP profile, foreground socket ownership, lifecycle/error states, Bluetooth/serial extension contracts and tests.
+3. MAVLink — next: validated decoding/session/peer handling and command-outcome design.
 4. Telemetry — available measurements, units, source freshness and invalid-value handling.
 5. Health — hardware-defined thresholds and readiness assessment.
 6. Map — offline-capable map, position, heading and tracks.

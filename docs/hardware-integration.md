@@ -1,6 +1,6 @@
 # Hardware integration gates
 
-No hardware transport or control was added or enabled by the revised Phase 1. The app starts without an endpoint, vehicle selection, session, or assumed controller inventory.
+Phase 2 adds an optional, manually configured fixed-peer UDP socket. The app starts without an endpoint, vehicle selection, MAVLink session, or assumed controller inventory. Opening this socket only receives raw bytes; it cannot operate the UGV.
 
 ## Facts needed before adapters or commands
 

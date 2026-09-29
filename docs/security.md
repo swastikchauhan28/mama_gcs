@@ -8,6 +8,7 @@
 - Theme only in a single application-scoped Preferences DataStore; the repository does I/O asynchronously. Unknown preference values fall back to dark. Read/write errors are shown; cancellation is not swallowed.
 - Backups disabled; explicit cloud-backup and device-transfer exclusions for the app storage categories used by this project. No secret-bearing database or device-protected storage is introduced.
 - Cleartext HTTP disabled, no new runtime permissions, only the necessary exported launcher activity. The existing `INTERNET` permission remains for the preserved UDP prototype.
+- A Phase 2 UDP socket is opened only after the operator saves a host and ports then taps Open. Android's connected `DatagramSocket` accepts incoming datagrams only from that configured peer. The socket is closed when the app moves to the background; there is no automatic reconnect or background service.
 - Machine-specific signing files, keys and environment configuration are ignored by Git. Release signing credentials are not provided.
 
 ## Not implemented / not a security claim
@@ -16,7 +17,7 @@ The policy function only evaluates roles and expiration. A caller-created `UserS
 
 Secure local login, credential derivation/verification, lockout, protected credential storage, logout/session revocation, key rotation, persisted audit logs, user provisioning, and vehicle pairing belong to later phases. Do not store plaintext passwords or place credentials in the display DataStore. Design Android Keystore-backed key storage when there is an actual secret to protect; no custom encryption has been improvised here.
 
-`usesCleartextTraffic=false` does **not** encrypt or authenticate UDP or MAVLink. MAVLink CRC is corruption detection, not sender authentication. The retained HEARTBEAT parser is a limited, inactive prototype, not a production-trusted receiver or MAVLink-signing implementation. Review signing, replay handling, packet validation, peer identity, timeout/reconnect concurrency and resource ownership before enabling it.
+`usesCleartextTraffic=false` does **not** encrypt or authenticate UDP or MAVLink. Fixed-peer UDP filtering reduces accidental/unsolicited input but does not establish peer identity against network spoofing. MAVLink CRC is corruption detection, not sender authentication. The retained HEARTBEAT parser is a limited, inactive prototype, not a production-trusted receiver or MAVLink-signing implementation. Review signing, replay handling, packet validation, peer identity, timeout/reconnect concurrency and resource ownership before enabling it.
 
 The launcher activity contains no privileged deep-link or intent-command handler. The app currently exposes unavailable monitoring screens without login because they contain no actual vehicle data; revisiting read-access policy is required when real data is enabled. Release hardening, obfuscation, dependency/security review and adversarial testing are not complete. This is not production-qualified firmware-control software.
 
