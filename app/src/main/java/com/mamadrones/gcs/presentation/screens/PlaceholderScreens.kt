@@ -1,24 +1,88 @@
 package com.mamadrones.gcs.presentation.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.Card
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.mamadrones.gcs.domain.model.VehicleState
+import com.mamadrones.gcs.presentation.components.*
+import com.mamadrones.gcs.presentation.dashboard.ConsolePanels
+import com.mamadrones.gcs.presentation.dashboard.forDisplay
 
 @Composable
-private fun PlaceholderScreen(title: String, message: String, modifier: Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        ScreenHeader(title, "Mama GCS")
-        Card { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { Text("Phase 1 foundation", fontWeight = FontWeight.Bold); Text(message) } }
-    }
+fun MapScreen(modifier: Modifier = Modifier) = ScreenBody(modifier) {
+    ScreenHeader("Map", "Position, route and offline field maps")
+    MapWorkspace(Modifier.fillMaxWidth().heightIn(min = 340.dp))
+    UnavailableActions("Center vehicle", "Follow vehicle", "Offline regions")
 }
 
-@Composable fun MapScreen(modifier: Modifier = Modifier) = PlaceholderScreen("Map", "Map rendering and offline tiles are intentionally not configured yet. Vehicle position is UNKNOWN.", modifier)
-@Composable fun MissionScreen(modifier: Modifier = Modifier) = PlaceholderScreen("Mission", "Mission planning and MAVLink mission protocol are scheduled for a later phase.", modifier)
-@Composable fun HealthScreen(modifier: Modifier = Modifier) = PlaceholderScreen("Vehicle Health", "No telemetry is connected. Health is UNKNOWN by design.", modifier)
-@Composable fun ControlScreen(modifier: Modifier = Modifier) = PlaceholderScreen("Control", "Vehicle commands are unavailable until MAVLink command acknowledgement and transport safety controls are implemented.", modifier)
-@Composable fun AdminScreen(modifier: Modifier = Modifier) = PlaceholderScreen("Admin", "Local user roles, vehicle pairing, and configuration arrive in a later phase.", modifier)
+@Composable
+fun ControlScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
+    ScreenHeader("Drive control", "Forward / reverse · ArduPilot Rover")
+    EmergencyStopButton(Modifier.fillMaxWidth())
+    Notice("CONTROL NOT IMPLEMENTED", "Commands are unavailable. Vehicle movement and stop state cannot be confirmed. Use the vehicle's physical safety system.")
+    SubsystemCard(ConsolePanels.vehicle(state))
+    UnavailableActions("Forward", "Reverse", "Stop", "Arm", "Disarm", "Set mode", "Set speed")
+}
+
+@Composable
+fun MissionScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
+    ScreenHeader("Mission", "Waypoint planning and execution")
+    Notice("NOT IMPLEMENTED", "No mission has been downloaded. Onboard mission state is unknown.")
+    SubsystemCard(PanelSpec("Mission", state.forDisplay().mission.status.name, listOf("Waypoints" to "UNKNOWN", "Current waypoint" to "UNKNOWN", "Progress" to "UNKNOWN")))
+    UnavailableActions("New mission", "Upload", "Download", "Start mission", "Pause")
+}
+
+@Composable
+fun HealthScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
+    ScreenHeader("Vehicle health", "Availability and subsystem condition")
+    CardGrid(listOf(ConsolePanels.health(state), ConsolePanels.gps(state), ConsolePanels.battery(state)))
+    Notice("EVALUATION NOT IMPLEMENTED", "Missing telemetry is unknown. Hardware-specific thresholds must be configured before health can be assessed.")
+}
+
+@Composable
+fun MotorScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
+    ScreenHeader("Motors", "VESC drive system")
+    Notice("HARDWARE INTEGRATION REQUIRED", "Controller models, motor count, CAN/UART wiring and telemetry route must be confirmed. Direct VESC communication is not configured.")
+    val motors = state.forDisplay().motors
+    CardGrid(if (motors.isEmpty()) listOf(ConsolePanels.motors(state)) else motors.map { ConsolePanels.motor(it) })
+}
+
+@Composable
+fun SprayScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
+    ScreenHeader("Spray", "Pump, nozzles and application flow")
+    SubsystemCard(ConsolePanels.spray(state))
+    Notice("HARDWARE INTEGRATION REQUIRED", "Pump output mapping, nozzle addressing, pressure/flow sensors and safety interlocks are unconfirmed. Spray controls are unavailable.")
+    UnavailableActions("Start spray", "Stop spray", "Nozzle control")
+}
+
+@Composable
+fun HydraulicScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
+    ScreenHeader("Hydraulic", "Pump, valves and pressure")
+    SubsystemCard(ConsolePanels.hydraulic(state))
+    Notice("HARDWARE INTEGRATION REQUIRED", "Controller interface, valve mapping, sensors and mechanical interlocks are unconfirmed. Hydraulic controls are unavailable.")
+    UnavailableActions("Enable hydraulic", "Disable hydraulic", "Valve control")
+}
+
+@Composable
+fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
+    ScreenHeader("Diagnostics", "Vehicle and communication inspection")
+    CardGrid(listOf(
+        PanelSpec("Communication", "NOT CONFIGURED", listOf("RX packets" to "UNKNOWN", "TX packets" to "UNKNOWN", "Parser errors" to "UNKNOWN", "Transport" to "UNSELECTED")),
+        ConsolePanels.vehicle(state), ConsolePanels.gps(state)
+    ))
+    Notice("LOGGING NOT IMPLEMENTED", "There are no diagnostic logs to display or export. Live communication is inactive in this foundation.")
+    UnavailableActions("Export logs")
+}
+
+@Composable
+fun AdminScreen(modifier: Modifier = Modifier) = ScreenBody(modifier) {
+    ScreenHeader("Admin", "Local users, pairing and configuration")
+    Notice("AUTHENTICATION NOT IMPLEMENTED", "No authenticated user session exists. Administration and vehicle configuration are unavailable.")
+    CardGrid(listOf(
+        PanelSpec("Access", "SIGNED OUT", listOf("Role" to "NONE", "Configuration access" to "DENIED")),
+        PanelSpec("Vehicle pairing", "NO VEHICLES", listOf("Application identity" to "UNASSIGNED", "Transport profile" to "NOT CONFIGURED"))
+    ))
+    UnavailableActions("Manage users", "Pair vehicle", "Parameters", "Maximum speed")
+}

@@ -1,72 +1,118 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.mamadrones.gcs.presentation.navigation
 
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
-import com.mamadrones.gcs.presentation.screens.AdminScreen
-import com.mamadrones.gcs.presentation.screens.ControlScreen
-import com.mamadrones.gcs.presentation.screens.DashboardScreen
-import com.mamadrones.gcs.presentation.screens.HealthScreen
-import com.mamadrones.gcs.presentation.screens.MapScreen
-import com.mamadrones.gcs.presentation.screens.MissionScreen
-import com.mamadrones.gcs.presentation.screens.SettingsScreen
+import androidx.navigation.compose.*
+import com.mamadrones.gcs.domain.model.ThemeMode
+import com.mamadrones.gcs.domain.model.VehicleConnectionState
+import com.mamadrones.gcs.domain.model.VehicleState
+import com.mamadrones.gcs.presentation.components.*
+import com.mamadrones.gcs.presentation.screens.*
+import com.mamadrones.gcs.presentation.settings.SettingsUiState
 
-enum class AppDestination(val label: String, val symbol: String) {
-    DASHBOARD("Home", "⌂"), MAP("Map", "⌖"), MISSION("Mission", "◎"), MORE("More", "⋯")
+enum class AppDestination(val route: String, val label: String, val icon: ConsoleIcon) {
+    DASHBOARD("dashboard", "Home", ConsoleIcon.DASHBOARD), MAP("map", "Map", ConsoleIcon.MAP),
+    CONTROL("control", "Control", ConsoleIcon.CONTROL), MISSION("mission", "Mission", ConsoleIcon.MISSION),
+    MORE("more", "More", ConsoleIcon.MORE)
 }
 
 @Composable
-fun MamaGcsApp() {
-    var destinationName by rememberSaveable { mutableStateOf(AppDestination.DASHBOARD.name) }
-    var morePage by rememberSaveable { mutableStateOf("more") }
-    val destination = AppDestination.valueOf(destinationName)
-
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                AppDestination.entries.forEach { item ->
-                    NavigationBarItem(
-                        selected = item == destination,
-                        onClick = { destinationName = item.name; if (item != AppDestination.MORE) morePage = "more" },
-                        icon = { Text(item.symbol) }, label = { Text(item.label) }
-                    )
+fun MamaGcsApp(vehicle: VehicleState, settings: SettingsUiState, onThemeSelected: (ThemeMode) -> Unit) {
+    val navController = rememberNavController()
+    var showVehicles by remember { mutableStateOf(false) }
+    val entry by navController.currentBackStackEntryAsState()
+    val route = entry?.destination?.route ?: AppDestination.DASHBOARD.route
+    val selected = AppDestination.entries.find { it.route == route } ?: AppDestination.MORE
+    val navigate: (String) -> Unit = { destination ->
+        navController.navigate(destination) { launchSingleTop = true }
+    }
+    val navigatePrimary: (AppDestination) -> Unit = { destination ->
+        navController.navigate(destination.route) {
+            popUpTo(AppDestination.DASHBOARD.route) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val wide = maxWidth >= 840.dp
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            topBar = {
+                Surface(color = MaterialTheme.colorScheme.surface) {
+                    FlowRow(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("MAMA GCS", style = MaterialTheme.typography.titleLarge)
+                        StatusBadge(connectionLabel(vehicle.connectionStatus), vehicle.connectionStatus in setOf(VehicleConnectionState.ERROR, VehicleConnectionState.DEGRADED))
+                        OutlinedButton(onClick = { showVehicles = true }, modifier = Modifier.heightIn(min = 48.dp)) {
+                            Text(vehicle.displayName ?: "Select vehicle · none paired")
+                        }
+                    }
+                }
+            },
+            bottomBar = {
+                if (!wide) NavigationBar {
+                    AppDestination.entries.forEach { item ->
+                        NavigationBarItem(selected = selected == item, onClick = { navigatePrimary(item) },
+                            icon = { MamaIcon(item.icon) }, label = { Text(item.label) })
+                    }
+                }
+            }
+        ) { padding ->
+            Row(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+                if (wide) Surface(Modifier.width(194.dp).fillMaxHeight()) {
+                    Column(Modifier.padding(12.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("AGRICULTURAL UGV", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(12.dp))
+                        AppDestination.entries.forEach { item ->
+                            NavigationDrawerItem(label = { Text(item.label) }, icon = { MamaIcon(item.icon) }, selected = selected == item, onClick = { navigatePrimary(item) })
+                        }
+                        HorizontalDivider()
+                        Text("LOCAL OPERATIONS", style = MaterialTheme.typography.labelSmall)
+                        Text("Vehicle control unavailable", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Column(Modifier.weight(1f)) {
+                    if (route !in AppDestination.entries.map { it.route }) {
+                        TextButton(onClick = { navController.popBackStack() }, modifier = Modifier.heightIn(min = 48.dp)) { Text("‹ Back") }
+                    }
+                    NavHost(navController, startDestination = AppDestination.DASHBOARD.route, modifier = Modifier.weight(1f)) {
+                        composable("dashboard") { DashboardScreen(vehicle, navigate) }
+                        composable("map") { MapScreen() }
+                        composable("control") { ControlScreen(vehicle) }
+                        composable("mission") { MissionScreen(vehicle) }
+                        composable("more") { MoreScreen(onNavigate = navigate) }
+                        composable("health") { HealthScreen(vehicle) }
+                        composable("motors") { MotorScreen(vehicle) }
+                        composable("spray") { SprayScreen(vehicle) }
+                        composable("hydraulic") { HydraulicScreen(vehicle) }
+                        composable("diagnostics") { DiagnosticsScreen(vehicle) }
+                        composable("admin") { AdminScreen() }
+                        composable("settings") { SettingsScreen(settings, onThemeSelected) }
+                    }
                 }
             }
         }
-    ) { padding ->
-        MamaGcsDestination(destination, morePage, { morePage = it }, padding)
+    }
+    if (showVehicles) {
+        AlertDialog(
+            onDismissRequest = { showVehicles = false }, title = { Text("Vehicle selection") },
+            text = { Text("No vehicles are paired. Pairing is not implemented yet. A vehicle identity and connection profile must be provisioned before operation.") },
+            confirmButton = { TextButton(onClick = { showVehicles = false }) { Text("Close") } }
+        )
     }
 }
 
-@Composable
-private fun MamaGcsDestination(
-    destination: AppDestination,
-    morePage: String,
-    onMorePageChange: (String) -> Unit,
-    padding: PaddingValues
-) {
-    val modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)
-    when (destination) {
-        AppDestination.DASHBOARD -> DashboardScreen(modifier)
-        AppDestination.MAP -> MapScreen(modifier)
-        AppDestination.MISSION -> MissionScreen(modifier)
-        AppDestination.MORE -> when (morePage) {
-            "health" -> HealthScreen(modifier)
-            "control" -> ControlScreen(modifier)
-            "admin" -> AdminScreen(modifier)
-            "settings" -> SettingsScreen(modifier)
-            else -> MoreScreen(modifier, onMorePageChange)
-        }
-    }
+private fun connectionLabel(state: VehicleConnectionState): String = when (state) {
+    VehicleConnectionState.DISCONNECTED -> "NOT CONNECTED"
+    VehicleConnectionState.CONNECTING -> "CONNECTING"
+    VehicleConnectionState.CONNECTED -> "CONNECTED"
+    VehicleConnectionState.DEGRADED -> "HEARTBEAT LOST"
+    VehicleConnectionState.ERROR -> "CONNECTION ERROR"
 }
