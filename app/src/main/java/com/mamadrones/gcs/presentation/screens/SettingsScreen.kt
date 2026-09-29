@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.mamadrones.gcs.presentation.screens
 
 import androidx.compose.foundation.layout.*
@@ -8,13 +10,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.mamadrones.gcs.domain.model.ThemeMode
+import com.mamadrones.gcs.domain.model.TransportStatus
 import com.mamadrones.gcs.presentation.components.*
+import com.mamadrones.gcs.presentation.settings.ConnectionUiState
 import com.mamadrones.gcs.presentation.settings.SettingsUiState
 
 @Composable
-fun SettingsScreen(state: SettingsUiState, onThemeSelected: (ThemeMode) -> Unit, modifier: Modifier = Modifier) = ScreenBody(modifier) {
+fun SettingsScreen(
+    state: SettingsUiState,
+    connection: ConnectionUiState = ConnectionUiState(),
+    onThemeSelected: (ThemeMode) -> Unit,
+    onRemoteHostChanged: (String) -> Unit = {},
+    onRemotePortChanged: (String) -> Unit = {},
+    onLocalPortChanged: (String) -> Unit = {},
+    onSaveEndpoint: () -> Unit = {},
+    onOpenSocket: () -> Unit = {},
+    onCloseSocket: () -> Unit = {},
+    onClearEndpoint: () -> Unit = {},
+    modifier: Modifier = Modifier
+) = ScreenBody(modifier) {
     ScreenHeader("Settings", "Preferences stored on this device")
     if (state.loading) { LinearProgressIndicator(Modifier.fillMaxWidth()); Text("Loading preferences…") }
     state.error?.let { Notice("PREFERENCES ERROR", it) }
@@ -37,6 +56,82 @@ fun SettingsScreen(state: SettingsUiState, onThemeSelected: (ThemeMode) -> Unit,
         }
     }
     SubsystemCard(PanelSpec("Units", "METRIC", listOf("Speed" to "m/s", "Distance" to "m / km", "Temperature" to "°C", "Pressure" to "bar")))
-    Notice("CONNECTION SETUP NOT IMPLEMENTED", "No UDP, Bluetooth or serial connection is started by this application. Connection profiles will be configured in a later phase.")
+    Text("UDP TRANSPORT", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+    SubsystemCard(
+        PanelSpec(
+            title = "UDP socket",
+            status = transportLabel(connection.session.connection.status),
+            rows = listOf(
+                "Endpoint" to (connection.savedEndpoint?.displayName ?: "NOT CONFIGURED"),
+                "Local port" to (connection.savedEndpoint?.localPort?.toString() ?: "UNKNOWN"),
+                "Received packets" to connection.session.connection.packetStatistics.receivedPackets.toString(),
+                "Transmitted packets" to connection.session.connection.packetStatistics.transmittedPackets.toString()
+            ),
+            note = connection.session.connection.detail
+        )
+    )
+    Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("UDP endpoint", style = MaterialTheme.typography.titleMedium)
+            Text("Configure a known peer. The app will not open a socket until you explicitly choose Open UDP socket.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedTextField(
+                value = connection.remoteHostDraft,
+                onValueChange = onRemoteHostChanged,
+                label = { Text("Remote host") },
+                singleLine = true,
+                enabled = !connection.saving,
+                modifier = Modifier.fillMaxWidth().testTag("udp-remote-host")
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = connection.remotePortDraft,
+                    onValueChange = onRemotePortChanged,
+                    label = { Text("Remote port") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    enabled = !connection.saving,
+                    modifier = Modifier.weight(1f).testTag("udp-remote-port")
+                )
+                OutlinedTextField(
+                    value = connection.localPortDraft,
+                    onValueChange = onLocalPortChanged,
+                    label = { Text("Local port") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    enabled = !connection.saving,
+                    modifier = Modifier.weight(1f).testTag("udp-local-port")
+                )
+            }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onSaveEndpoint,
+                    enabled = !connection.saving,
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("udp-save-endpoint")
+                ) { Text("Save endpoint") }
+                OutlinedButton(
+                    onClick = onOpenSocket,
+                    enabled = connection.savedEndpoint != null &&
+                        connection.session.connection.status == TransportStatus.DISCONNECTED,
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("udp-open-socket")
+                ) { Text("Open UDP socket") }
+                OutlinedButton(
+                    onClick = onCloseSocket,
+                    enabled = connection.session.connection.status != TransportStatus.DISCONNECTED,
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("udp-close-socket")
+                ) { Text("Close socket") }
+                TextButton(onClick = onClearEndpoint, enabled = connection.savedEndpoint != null && !connection.saving, modifier = Modifier.heightIn(min = 48.dp)) { Text("Clear endpoint") }
+            }
+        }
+    }
+    connection.error?.let { Notice("UDP ENDPOINT ERROR", it) }
+    Notice("TRANSPORT LIMIT", "An open UDP socket only accepts bytes from the configured peer. It does not authenticate a vehicle, decode MAVLink, prove link health, or permit vehicle commands.")
+    Notice("BLUETOOTH AND SERIAL", "Bluetooth Classic and serial remain defined transport extension points. No pairing, device discovery, permissions, or sockets have been added because hardware details are not yet known.")
     Notice("LOCAL DISPLAY PREFERENCES", "Theme is saved offline. Passwords, credentials and machine commands are not stored in display preferences.")
+}
+
+private fun transportLabel(status: TransportStatus): String = when (status) {
+    TransportStatus.DISCONNECTED -> "CLOSED"
+    TransportStatus.CONNECTING -> "OPENING"
+    TransportStatus.OPEN -> "OPEN · AWAITING MAVLINK"
+    TransportStatus.ERROR -> "SOCKET ERROR"
 }

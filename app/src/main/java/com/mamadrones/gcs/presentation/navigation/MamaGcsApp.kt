@@ -17,6 +17,7 @@ import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.presentation.components.*
 import com.mamadrones.gcs.presentation.screens.*
 import com.mamadrones.gcs.presentation.settings.SettingsUiState
+import com.mamadrones.gcs.presentation.settings.ConnectionUiState
 
 enum class AppDestination(val route: String, val label: String, val icon: ConsoleIcon) {
     DASHBOARD("dashboard", "Home", ConsoleIcon.DASHBOARD), MAP("map", "Map", ConsoleIcon.MAP),
@@ -25,7 +26,19 @@ enum class AppDestination(val route: String, val label: String, val icon: Consol
 }
 
 @Composable
-fun MamaGcsApp(vehicle: VehicleState, settings: SettingsUiState, onThemeSelected: (ThemeMode) -> Unit) {
+fun MamaGcsApp(
+    vehicle: VehicleState,
+    settings: SettingsUiState,
+    onThemeSelected: (ThemeMode) -> Unit,
+    connection: ConnectionUiState = ConnectionUiState(),
+    onRemoteHostChanged: (String) -> Unit = {},
+    onRemotePortChanged: (String) -> Unit = {},
+    onLocalPortChanged: (String) -> Unit = {},
+    onSaveEndpoint: () -> Unit = {},
+    onOpenSocket: () -> Unit = {},
+    onCloseSocket: () -> Unit = {},
+    onClearEndpoint: () -> Unit = {}
+) {
     val navController = rememberNavController()
     var showVehicles by remember { mutableStateOf(false) }
     val entry by navController.currentBackStackEntryAsState()
@@ -94,7 +107,20 @@ fun MamaGcsApp(vehicle: VehicleState, settings: SettingsUiState, onThemeSelected
                         composable("hydraulic") { HydraulicScreen(vehicle) }
                         composable("diagnostics") { DiagnosticsScreen(vehicle) }
                         composable("admin") { AdminScreen() }
-                        composable("settings") { SettingsScreen(settings, onThemeSelected) }
+                        composable("settings") {
+                            SettingsScreen(
+                                state = settings,
+                                connection = connection,
+                                onThemeSelected = onThemeSelected,
+                                onRemoteHostChanged = onRemoteHostChanged,
+                                onRemotePortChanged = onRemotePortChanged,
+                                onLocalPortChanged = onLocalPortChanged,
+                                onSaveEndpoint = onSaveEndpoint,
+                                onOpenSocket = onOpenSocket,
+                                onCloseSocket = onCloseSocket,
+                                onClearEndpoint = onClearEndpoint
+                            )
+                        }
                     }
                 }
             }

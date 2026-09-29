@@ -19,6 +19,7 @@ class SettingsPersistenceTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val repository = LocalSettingsRepository(context)
         val previous = runBlocking { repository.preferences.first().theme }
+        val previousEndpoint = runBlocking { repository.preferences.first().udpEndpoint }
         val requested = if (previous == ThemeMode.LIGHT) ThemeMode.DARK else ThemeMode.LIGHT
         val label = if (requested == ThemeMode.LIGHT) "Light" else "Dark"
         try {
@@ -36,6 +37,8 @@ class SettingsPersistenceTest {
             compose.onNodeWithText(label).assertIsSelected()
         } finally {
             runBlocking { repository.setTheme(previous) }
+            runBlocking { repository.setUdpEndpoint(previousEndpoint) }
         }
     }
+
 }

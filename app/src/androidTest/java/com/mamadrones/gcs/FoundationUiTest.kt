@@ -66,4 +66,12 @@ class FoundationUiTest {
         compose.onNodeWithText("Mission").performClick()
         compose.onNodeWithText("Start mission").performScrollTo().assertIsNotEnabled()
     }
+    @Test fun transportSettingsDoNotOpenWithoutASavedEndpoint() {
+        launch()
+        compose.onNodeWithText("More").performClick()
+        compose.onNodeWithText("Settings").performScrollTo().performClick()
+        compose.onNodeWithText("UDP SOCKET").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Open UDP socket").assertIsNotEnabled()
+        compose.onNodeWithText("TRANSPORT LIMIT").performScrollTo().assertIsDisplayed()
+    }
 }
