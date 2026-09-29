@@ -3,7 +3,7 @@ package com.mamadrones.gcs.data.transport.udp
 import com.mamadrones.gcs.data.transport.TransportException
 import com.mamadrones.gcs.data.transport.VehicleTransport
 import com.mamadrones.gcs.domain.model.ConnectionState
-import com.mamadrones.gcs.domain.model.VehicleConnectionState
+import com.mamadrones.gcs.domain.model.TransportStatus
 import java.io.IOException
 import java.net.DatagramPacket
 import java.net.DatagramSocket
@@ -22,20 +22,20 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
- * DatagramSocket-backed MAVLink-agnostic transport. It releases its receiver job and
- * socket on disconnect. Socket state is not vehicle health; heartbeat comes in Phase 3.
+ * A fixed-peer UDP socket for raw vehicle-link bytes. Opening the socket only proves that
+ * Android created a local socket; it does not prove a vehicle is reachable or authenticated.
  */
 class UdpTransport(
     private val config: UdpTransportConfig,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : VehicleTransport, AutoCloseable {
-
     private val lifecycleMutex = Mutex()
     private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
     private val _connectionState = MutableStateFlow(ConnectionState())
@@ -43,30 +43,36 @@ class UdpTransport(
 
     private var socket: DatagramSocket? = null
     private var receiverJob: Job? = null
+    private var generation = 0L
+    @Volatile private var closed = false
 
     override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
     override suspend fun connect() {
         lifecycleMutex.withLock {
+            if (closed) throw TransportException.Closed()
             if (socket != null) return
-            _connectionState.value = ConnectionState(status = VehicleConnectionState.CONNECTING)
+            _connectionState.value = ConnectionState(status = TransportStatus.CONNECTING)
             try {
                 val newSocket = withContext(ioDispatcher) {
                     DatagramSocket(null).apply {
                         reuseAddress = true
                         soTimeout = config.socketReadTimeoutMillis
                         bind(InetSocketAddress(config.localPort))
+                        // A connected DatagramSocket directs sends and rejects other peers' datagrams.
+                        connect(InetSocketAddress(config.remoteHost, config.remotePort))
                     }
                 }
+                val activeGeneration = ++generation
                 socket = newSocket
                 _connectionState.value = ConnectionState(
-                    status = VehicleConnectionState.CONNECTED,
+                    status = TransportStatus.OPEN,
                     connectedAtEpochMillis = System.currentTimeMillis()
                 )
-                receiverJob = scope.launch { receiveLoop(newSocket) }
+                receiverJob = scope.launch { receiveLoop(newSocket, activeGeneration) }
             } catch (cause: Exception) {
                 _connectionState.value = ConnectionState(
-                    status = VehicleConnectionState.ERROR,
+                    status = TransportStatus.ERROR,
                     detail = cause.message ?: "Unable to open UDP socket"
                 )
                 throw TransportException.ConnectionFailed(cause)
@@ -75,32 +81,32 @@ class UdpTransport(
     }
 
     override suspend fun disconnect() {
-        val activeSocket: DatagramSocket?
-        val activeReceiver: Job?
-        lifecycleMutex.withLock {
-            activeSocket = socket
-            activeReceiver = receiverJob
+        val active = lifecycleMutex.withLock {
+            generation++
+            val current = ActiveSocket(socket, receiverJob)
             socket = null
             receiverJob = null
-            _connectionState.value = ConnectionState(status = VehicleConnectionState.DISCONNECTED)
+            _connectionState.value = ConnectionState(status = TransportStatus.DISCONNECTED)
+            current
         }
-        activeSocket?.close()
-        activeReceiver?.cancel()
+        active.socket?.close()
+        active.receiver?.cancel()
     }
 
     override suspend fun send(data: ByteArray) {
         require(data.isNotEmpty()) { "UDP packet must not be empty" }
-        val activeSocket = lifecycleMutex.withLock { socket } ?: throw TransportException.NotConnected()
+        if (data.size > UdpTransportConfig.MAX_UDP_PAYLOAD_BYTES) throw TransportException.PacketTooLarge(data.size)
+        val activeSocket = lifecycleMutex.withLock {
+            if (closed) throw TransportException.Closed()
+            socket
+        } ?: throw TransportException.NotConnected()
         try {
-            withContext(ioDispatcher) {
-                activeSocket.send(DatagramPacket(data, data.size, InetSocketAddress(config.remoteHost, config.remotePort)))
+            withContext(ioDispatcher) { activeSocket.send(DatagramPacket(data, data.size)) }
+            _connectionState.update { state ->
+                if (state.status == TransportStatus.OPEN) state.withTransmittedPacket(System.currentTimeMillis()) else state
             }
-            _connectionState.value = _connectionState.value.withTransmittedPacket(System.currentTimeMillis())
         } catch (cause: IOException) {
-            _connectionState.value = _connectionState.value.copy(
-                status = VehicleConnectionState.ERROR,
-                detail = cause.message ?: "UDP send failed"
-            )
+            markFailure(activeSocket, null, cause.message ?: "UDP send failed")
             throw TransportException.ConnectionFailed(cause)
         }
     }
@@ -108,14 +114,19 @@ class UdpTransport(
     override fun receive(): Flow<ByteArray> = incomingPackets.asSharedFlow()
 
     override fun close() {
-        scope.cancel()
-        socket?.close()
+        if (closed) return
+        closed = true
+        generation++
+        val activeSocket = socket
         socket = null
+        receiverJob?.cancel()
         receiverJob = null
-        _connectionState.value = ConnectionState(status = VehicleConnectionState.DISCONNECTED)
+        activeSocket?.close()
+        scope.cancel()
+        _connectionState.value = ConnectionState(status = TransportStatus.DISCONNECTED)
     }
 
-    private suspend fun receiveLoop(activeSocket: DatagramSocket) {
+    private suspend fun receiveLoop(activeSocket: DatagramSocket, activeGeneration: Long) {
         val buffer = ByteArray(config.receiveBufferBytes)
         while (!activeSocket.isClosed) {
             try {
@@ -123,21 +134,31 @@ class UdpTransport(
                     DatagramPacket(buffer, buffer.size).also(activeSocket::receive)
                 }
                 incomingPackets.emit(packet.data.copyOfRange(packet.offset, packet.offset + packet.length))
-                _connectionState.value = _connectionState.value.withReceivedPacket(System.currentTimeMillis())
+                updateReceived(activeSocket, activeGeneration)
             } catch (_: SocketTimeoutException) {
-                // Expected; MAVLink heartbeat evaluation is deliberately deferred.
+                // A quiet link is transport-idle. MAVLink heartbeat evaluation is handled separately.
             } catch (_: SocketException) {
-                if (!activeSocket.isClosed) markReceiveFailure("UDP socket closed unexpectedly")
+                if (!activeSocket.isClosed) markFailure(activeSocket, activeGeneration, "UDP socket closed unexpectedly")
                 break
             } catch (cause: IOException) {
-                markReceiveFailure(cause.message ?: "UDP receive failed")
+                markFailure(activeSocket, activeGeneration, cause.message ?: "UDP receive failed")
                 break
             }
         }
     }
 
-    private fun markReceiveFailure(detail: String) {
-        _connectionState.value = _connectionState.value.copy(status = VehicleConnectionState.ERROR, detail = detail)
+    private suspend fun updateReceived(activeSocket: DatagramSocket, activeGeneration: Long) {
+        lifecycleMutex.withLock {
+            if (socket !== activeSocket || generation != activeGeneration) return
+            _connectionState.update { state -> state.withReceivedPacket(System.currentTimeMillis()) }
+        }
+    }
+
+    private suspend fun markFailure(activeSocket: DatagramSocket, expectedGeneration: Long?, detail: String) {
+        lifecycleMutex.withLock {
+            if (socket !== activeSocket || (expectedGeneration != null && generation != expectedGeneration)) return
+            _connectionState.update { state -> state.copy(status = TransportStatus.ERROR, detail = detail) }
+        }
     }
 
     private fun ConnectionState.withReceivedPacket(now: Long): ConnectionState = copy(
@@ -154,5 +175,6 @@ class UdpTransport(
         )
     )
 
+    private data class ActiveSocket(val socket: DatagramSocket?, val receiver: Job?)
     private companion object { const val INCOMING_BUFFER_CAPACITY = 64 }
 }

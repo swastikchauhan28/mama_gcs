@@ -1,10 +1,15 @@
 package com.mamadrones.gcs.data.transport.udp
 
 import com.mamadrones.gcs.data.transport.TransportException
-import com.mamadrones.gcs.domain.model.VehicleConnectionState
+import com.mamadrones.gcs.domain.model.TransportStatus
 import java.net.DatagramPacket
 import java.net.DatagramSocket
+import java.net.InetSocketAddress
+import kotlinx.coroutines.async
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -60,9 +65,45 @@ class UdpTransportTest {
         try {
             transport.connect()
             transport.disconnect()
-            assertEquals(VehicleConnectionState.DISCONNECTED, transport.connectionState.value.status)
+            assertEquals(TransportStatus.DISCONNECTED, transport.connectionState.value.status)
         } finally {
             transport.close()
+        }
+    }
+
+    @Test
+    fun `receives a complete datagram from the configured peer`() = runBlocking {
+        DatagramSocket(0).use { peer ->
+            val localPort = DatagramSocket(0).use { it.localPort }
+            val transport = UdpTransport(
+                UdpTransportConfig(
+                    remoteHost = "127.0.0.1",
+                    remotePort = peer.localPort,
+                    localPort = localPort
+                )
+            )
+            try {
+                transport.connect()
+                val expected = ByteArray(4_096) { index -> (index % 127).toByte() }
+                val received = async(start = CoroutineStart.UNDISPATCHED) { withTimeout(2_000) { transport.receive().first() } }
+                peer.send(DatagramPacket(expected, expected.size, InetSocketAddress("127.0.0.1", localPort)))
+                assertArrayEquals(expected, received.await())
+                assertEquals(1, transport.connectionState.value.packetStatistics.receivedPackets)
+            } finally {
+                transport.close()
+            }
+        }
+    }
+
+    @Test
+    fun `closed transport cannot reopen or send`() = runBlocking {
+        val transport = UdpTransport(UdpTransportConfig(remoteHost = "127.0.0.1", localPort = 0))
+        transport.close()
+        try {
+            transport.connect()
+            throw AssertionError("Expected a closed transport exception")
+        } catch (_: TransportException.Closed) {
+            // Expected terminal state.
         }
     }
 }

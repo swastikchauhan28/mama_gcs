@@ -1,15 +1,17 @@
 package com.mamadrones.gcs.domain.model
 
 /**
- * Transport-level state. MAVLink heartbeat health is deliberately not inferred here;
- * it is introduced with the MAVLink layer in Phase 3.
+ * UDP socket lifecycle only. It does not establish MAVLink liveness, vehicle identity,
+ * or permission to control a vehicle.
  */
 data class ConnectionState(
-    val status: VehicleConnectionState = VehicleConnectionState.DISCONNECTED,
+    val status: TransportStatus = TransportStatus.DISCONNECTED,
     val detail: String? = null,
     val connectedAtEpochMillis: Long? = null,
     val packetStatistics: PacketStatistics = PacketStatistics()
 )
+
+enum class TransportStatus { DISCONNECTED, CONNECTING, OPEN, ERROR }
 
 data class PacketStatistics(
     val receivedPackets: Long = 0,
