@@ -1,5 +1,6 @@
 # Android/Gradle build products
 .gradle/
+.kotlin/
 **/build/
 
 # Local Android SDK path and IDE state
@@ -10,3 +11,8 @@ local.properties
 # Signing material and machine-specific configuration
 *.jks
 *.keystore
+key.properties
+signing.properties
+.env
+.env.*
+!.env.example

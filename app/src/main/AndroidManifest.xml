@@ -4,7 +4,11 @@
 
     <application
         android:name=".MamaGcsApplication"
-        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:usesCleartextTraffic="false"
         android:label="Mama GCS"
         android:supportsRtl="true"
         android:theme="@style/Theme.MamaGcs">
