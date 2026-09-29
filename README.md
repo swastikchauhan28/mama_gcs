@@ -1,35 +1,75 @@
 # Mama GCS
 
-Mama GCS is a native Android Ground Control Station foundation for Mama UGV vehicles running ArduPilot Rover. Its core operation is designed to remain local and offline-first; it does not require cloud services or Internet access for vehicle communication.
+Native Android ground-control-station foundation for a Mama agricultural UGV: ArduPilot Rover, VESC motors, spray equipment and hydraulics. Kotlin · Compose · Material 3 · Hilt · offline-first.
 
-## Phase 1
+## Current delivery: revised Phase 1 only
 
-This initial delivery establishes a Kotlin, Jetpack Compose, Material 3, and Hilt application under `com.mamadrones.gcs`. It provides field-oriented navigation and intentionally telemetry-safe Dashboard, Map, Mission, Health, Control, Admin, and Settings screens. Without a verified MAVLink source, the UI shows **NOT CONNECTED** and **UNKNOWN** rather than fabricated data.
+The expanded agricultural specification starts a new phased acceptance sequence. This delivery reconciles the existing project with that specification; it does **not** enable vehicle operation or automatically proceed to Phase 2.
 
-## Phase 2
+- Responsive dark field-console design, light/daylight and system themes, original local icons, shared typography, spacing, cards and status treatments.
+- Dashboard, Map, Control, Mission, Health, Motors, Spray, Hydraulic, Diagnostics, Admin and Settings. Phones use bottom navigation; wide windows use a side rail. Secondary screens are reached through More or dashboard shortcuts.
+- Nullable/UNKNOWN subsystem models and read-only integration contracts. No invented telemetry, safe actuator state, healthy state, vehicle marker or controller/nozzle inventory.
+- Disabled, explicitly unavailable emergency stop and hardware actions. Navigation and persistent local theme settings work; vehicle selection explains that pairing is unavailable.
+- Basic role/session policy and app-storage/manifest protections, **not** implemented authentication or production command security.
 
-Phase 2 adds a MAVLink-agnostic `VehicleTransport` contract, transport-level connection state and packet statistics, and a lifecycle-safe UDP implementation. UDP is configured with a remote host/port and a local bind port; its default port is 14550. The app declares only the `INTERNET` permission required for this local UDP capability. Bluetooth Classic and serial are deliberately non-operational extension points: no Bluetooth permissions, pairing, or sockets are introduced yet.
+The real UDP implementation and limited MAVLink HEARTBEAT parser/session from earlier work are preserved, along with their tests. They are inactive: the app does not construct a transport/session, connect to an endpoint or send commands. Their previous phase labels are historical, not acceptance of the revised Phase 2/3 requirements.
+
+**Do not use this build to operate machinery.** The emergency-stop button cannot command or confirm a physical stop. Use the independent physical safety system.
 
 ## Architecture
 
-The source tree has clean `presentation`, `domain`, and `data/transport` boundaries. Future phases will add `data/mavlink`, repositories, use cases, and local storage. Compose UI does not access transport or MAVLink APIs.
+```text
+presentation/    stateless Compose screens/components, navigation, design system
+                lifecycle-aware Dashboard/Settings ViewModels
+domain/          immutable models, repository contracts, use cases
+core/            command outcomes/errors, pure authorization policy
+data/            theme DataStore and vehicle repository
+                preserved inactive transport/MAVLink prototypes
+di/              Hilt bindings
+```
 
-Planned communication path:
-
-`Vehicle transport (UDP/Bluetooth) → MAVLink parser → repository → StateFlow → ViewModel → Compose UI`
+Active flow: `repository → Flow/StateFlow → use case/ViewModel → Compose`.
+Theme updates use `UI → ViewModel → use case → SettingsRepository → DataStore`.
+UI code does not import transport, MAVLink, sockets or storage APIs. The domain layer has no Android/Compose dependencies. Subsystem contracts remain separate from their future adapters; a VESC transport is not assumed to be MAVLink. Application vehicle identity is separate from MAVLink system/component IDs. The current repository has one active vehicle state; multi-vehicle selection/session management is deferred.
 
 ## Build and run
 
-1. Open this folder in Android Studio.
-2. Allow Gradle to sync and select an Android 26+ emulator or device.
-3. Run the `app` configuration.
+Keep the existing toolchain: AGP 8.13.2, Gradle 8.13, Kotlin 2.1.0, compile/target SDK 36, min SDK 26, JVM target 17. Use Android Studio's bundled JDK or a compatible installed JDK and an installed Android SDK 36. Set your own `sdk.dir` in ignored `local.properties` if needed.
 
-From a terminal: `./gradlew.bat :app:assembleDebug` and `./gradlew.bat :app:testDebugUnitTest`.
+```powershell
+.\gradlew.bat :app:assembleDebug
+.\gradlew.bat :app:testDebugUnitTest :app:lintDebug
+.\gradlew.bat :app:assembleDebugAndroidTest
+# Requires a running Android 26+ emulator or device:
+.\gradlew.bat :app:connectedDebugAndroidTest
+```
 
-## Current limitations
+Open the project in Android Studio, sync, select a device and run `app`. No network, vehicle, login or cloud account is required to use the foundation. More → Settings selects Dark, Light or System; the choice survives process restart. Units are currently metric only.
 
-The application intentionally contains no MAVLink parser, heartbeat health logic, Bluetooth socket implementation, map provider, telemetry simulation, control commands, Room/DataStore, or background service. Hilt is configured as the dependency-injection foundation, but has no feature bindings yet. No controls can command a vehicle.
+Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
+Unit test report: `app/build/reports/tests/testDebugUnitTest/index.html`.
+Lint report: `app/build/reports/lint-results-debug.html`.
 
-## Roadmap
+Added runtime dependency: AndroidX Preferences DataStore 1.1.1. Added test-only Compose UI testing libraries at the existing Compose 1.9.0 version. Existing dependencies were not blindly upgraded. Room, map SDKs, crypto libraries and new protocol libraries are deliberately not added for unimplemented features.
 
-Next is Phase 3: MAVLink 2 framing, heartbeat support, system/component identity, armed state, vehicle mode, and heartbeat timeout. ArduPilot Rover SITL is the intended integration target once MAVLink is introduced.
+## Boundaries and next phases
+
+There is no live map/offline tile provider, telemetry simulator, real actuator control, login/user store, audit persistence, hardware-health evaluation, mission protocol, background communication service or operational connection-settings flow. The neutral map grid is decorative and labeled unavailable. Logs/export and connection statistics remain unavailable rather than displaying made-up zeros.
+
+See [Phase 1 report](docs/phase-1-report.md) for exact implementation, file inventory and validation; [security boundaries](docs/security.md) and [hardware integration gates](docs/hardware-integration.md) before enabling integrations.
+
+1. **Foundation — this delivery, stop here.**
+2. Transport — audit/reconcile retained UDP, lifecycle/reconnect/error states; Bluetooth/serial contracts and tests, no hardware assumptions.
+3. MAVLink — validated decoding/session/peer handling and command-outcome design.
+4. Telemetry — available measurements, units, source freshness and invalid-value handling.
+5. Health — hardware-defined thresholds and readiness assessment.
+6. Map — offline-capable map, position, heading and tracks.
+7. Drive — authorization, deadman/failsafes, safe commands and confirmed outcomes.
+8. VESC — only after controller models and physical telemetry path are confirmed.
+9. Spray — verified hardware mapping and interlocks.
+10. Hydraulic — verified hardware mapping and interlocks.
+11. Missions — planning, transfer and controlled execution.
+12. Admin — trusted local authentication, users, sessions, configuration and auditing.
+13. Production hardening — reliability/security/device and field validation.
+
+Dependencies between phases matter: secure identity, authorization and required safety gates must exist **before** enabling any control, even if full admin UX is scheduled later.
