@@ -58,7 +58,7 @@ Added runtime dependency: AndroidX Preferences DataStore 1.1.1. Added test-only 
 
 There is no live map/offline tile provider, telemetry simulator, real actuator control, login/user store, audit persistence, hardware-health evaluation, mission protocol or background communication service. The neutral map grid is decorative and labeled unavailable. Raw UDP packet counts are available only while an explicitly configured socket is open; they are not vehicle telemetry or link health.
 
-See [Phase 1 report](docs/phase-1-report.md), [Phase 2 report](docs/phase-2-report.md), [Phase 3 report](docs/phase-3-report.md), and [Phase 4 report](docs/phase-4-report.md) for implementation scope and validation; review [security boundaries](docs/security.md) and [hardware integration gates](docs/hardware-integration.md) before enabling integrations.
+See [Phase 1 report](docs/phase-1-report.md), [Phase 2 report](docs/phase-2-report.md), [Phase 3 report](docs/phase-3-report.md), and [Phase 4 report](docs/phase-4-report.md) for implementation scope and validation. For a repeatable physical-phone test with ArduPilot Rover SITL under WSL2, use the [SITL phone telemetry guide](docs/sitl-phone-telemetry.md). Review [security boundaries](docs/security.md) and [hardware integration gates](docs/hardware-integration.md) before enabling integrations.
 
 1. Foundation — delivered.
 2. **Transport — delivered.** Explicit UDP profile, foreground socket ownership, lifecycle/error states, Bluetooth/serial extension contracts and tests.
