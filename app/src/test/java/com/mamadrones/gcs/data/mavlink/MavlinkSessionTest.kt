@@ -70,6 +70,30 @@ class MavlinkSessionTest {
     }
 
     @Test
+    fun `only selected autopilot telemetry is routed after its heartbeat`() = runBlocking {
+        val transport = FakeTransport()
+        val repository = VehicleRepositoryImpl()
+        val session = newSession(transport, repository)
+        try {
+            session.start()
+            val positionBeforeHeartbeat = globalPositionFrame(systemId = 42, latitudeE7 = 451_000_000)
+            transport.emit(positionBeforeHeartbeat)
+            assertNull(repository.vehicleState.value.position.latitude)
+
+            transport.emit(heartbeat(systemId = 42, componentId = 1, autopilot = 3))
+            waitUntil { repository.vehicleState.value.connectionStatus == VehicleConnectionState.CONNECTED }
+            transport.emit(globalPositionFrame(systemId = 99, latitudeE7 = 123_000_000))
+            transport.emit(globalPositionFrame(systemId = 42, latitudeE7 = 451_000_000))
+
+            waitUntil { repository.vehicleState.value.position.latitude != null }
+            assertEquals(45.1, repository.vehicleState.value.position.latitude!!, 0.000001)
+        } finally {
+            session.stop()
+            session.close()
+        }
+    }
+
+    @Test
     fun `missing heartbeat degrades vehicle while socket remains open`() = runBlocking {
         val transport = FakeTransport()
         val repository = VehicleRepositoryImpl()
@@ -114,16 +138,14 @@ class MavlinkSessionTest {
         autopilot: Int,
         customMode: Long = 0,
         baseMode: Int = 0
-    ): ByteArray {
-        val payload = byteArrayOf(
-            customMode.toByte(), (customMode shr 8).toByte(), (customMode shr 16).toByte(), (customMode shr 24).toByte(),
-            10, autopilot.toByte(), baseMode.toByte(), 4, 3
-        )
-        val headerAndPayload = byteArrayOf(
-            0xFD.toByte(), 9, 0, 0, 1, systemId.toByte(), componentId.toByte(), 0, 0, 0
-        ) + payload
-        val crc = MavlinkChecksum.calculate(headerAndPayload.copyOfRange(1, headerAndPayload.size), 50)
-        return headerAndPayload + byteArrayOf(crc.toByte(), (crc shr 8).toByte())
+    ): ByteArray = heartbeatFrame(customMode, baseMode, systemId, componentId, autopilot)
+
+    private fun globalPositionFrame(systemId: Int, latitudeE7: Int): ByteArray {
+        val payload = ByteArray(28)
+        payload.putInt32(4, latitudeE7)
+        payload.putInt32(8, 1_512_000_000)
+        payload.putInt16(20, 50)
+        return mavlinkTestFrame(33, payload, 104, systemId = systemId, componentId = 1)
     }
 
     private class FakeTransport : VehicleTransport {

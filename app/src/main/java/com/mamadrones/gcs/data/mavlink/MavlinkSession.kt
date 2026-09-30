@@ -44,6 +44,7 @@ class MavlinkSession(
         lifecycleMutex.withLock {
             if (receiverJob != null) return
             parser.reset()
+            router.reset()
             selectedAutopilot = null
             lastSessionHeartbeatAtEpochMillis = null
             vehicleRepository.onSessionStarting()
@@ -111,20 +112,30 @@ class MavlinkSession(
     }
 
     private fun routeSelectedAutopilot(result: MavlinkParseResult, receivedAtEpochMillis: Long) {
-        val heartbeat = (result as? MavlinkParseResult.Message)?.message as? MavlinkMessage.Heartbeat
-            ?: return
-        // MAV_AUTOPILOT_INVALID identifies non-autopilot components (e.g. a camera or GCS).
-        if (heartbeat.autopilotType == MavlinkMessage.MAV_AUTOPILOT_INVALID) return
-        if (heartbeat.systemId == 0 || heartbeat.componentId == 0) return
-
+        val message = (result as? MavlinkParseResult.Message)?.message ?: return
+        val source = message.sourceIdentity() ?: return
         val currentSelection = selectedAutopilot
         if (currentSelection == null) {
+            val heartbeat = message as? MavlinkMessage.Heartbeat ?: return
+            // MAV_AUTOPILOT_INVALID identifies non-autopilot components (e.g. a camera or GCS).
+            if (heartbeat.autopilotType == MavlinkMessage.MAV_AUTOPILOT_INVALID) return
+            if (source.first == 0 || source.second == 0) return
             selectedAutopilot = heartbeat.systemId to heartbeat.componentId
-        } else if (currentSelection != (heartbeat.systemId to heartbeat.componentId)) {
+        } else if (currentSelection != source) {
             return
         }
-        lastSessionHeartbeatAtEpochMillis = receivedAtEpochMillis
+        if (message is MavlinkMessage.Heartbeat) lastSessionHeartbeatAtEpochMillis = receivedAtEpochMillis
         router.route(result, receivedAtEpochMillis)
+    }
+
+    private fun MavlinkMessage.sourceIdentity(): Pair<Int, Int>? = when (this) {
+        is MavlinkMessage.Heartbeat -> systemId to componentId
+        is MavlinkMessage.GpsRawInt -> systemId to componentId
+        is MavlinkMessage.GlobalPositionInt -> systemId to componentId
+        is MavlinkMessage.Attitude -> systemId to componentId
+        is MavlinkMessage.SystemStatus -> systemId to componentId
+        is MavlinkMessage.BatteryStatus -> systemId to componentId
+        is MavlinkMessage.StatusText -> systemId to componentId
     }
 
     private fun VehicleTransport.closeIfPossible() {

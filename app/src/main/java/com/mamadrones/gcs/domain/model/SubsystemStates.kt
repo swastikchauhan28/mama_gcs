@@ -13,14 +13,52 @@ data class GpsState(
     val hdop: Double? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
-    val altitudeMeters: Double? = null
+    val altitudeMeters: Double? = null,
+    val lastUpdatedAtEpochMillis: Long? = null
 )
 
 data class BatteryState(
     val percentage: Int? = null,
     val voltage: Double? = null,
     val currentAmps: Double? = null,
-    val temperatureCelsius: Double? = null
+    val temperatureCelsius: Double? = null,
+    val chargeState: Int? = null,
+    val batteryId: Int? = null,
+    val lastUpdatedAtEpochMillis: Long? = null
+)
+
+data class GlobalPositionState(
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val altitudeMetersMsl: Double? = null,
+    val lastUpdatedAtEpochMillis: Long? = null
+)
+
+/** Attitude and angular rates use the MAVLink-native radian units. */
+data class AttitudeState(
+    val rollRadians: Double? = null,
+    val pitchRadians: Double? = null,
+    val yawRadians: Double? = null,
+    val rollRateRadiansPerSecond: Double? = null,
+    val pitchRateRadiansPerSecond: Double? = null,
+    val yawRateRadiansPerSecond: Double? = null,
+    val lastUpdatedAtEpochMillis: Long? = null
+)
+
+data class AutopilotSystemStatus(
+    val sensorsPresent: Long? = null,
+    val sensorsEnabled: Long? = null,
+    val sensorsHealthy: Long? = null,
+    val cpuLoadPercent: Double? = null,
+    val communicationDropPercent: Double? = null,
+    val communicationErrors: Int? = null,
+    val lastUpdatedAtEpochMillis: Long? = null
+)
+
+data class VehicleStatusText(
+    val severity: Int,
+    val text: String,
+    val receivedAtEpochMillis: Long
 )
 
 /** RPM and electrical RPM are deliberately distinct; conversion requires motor pole count. */
