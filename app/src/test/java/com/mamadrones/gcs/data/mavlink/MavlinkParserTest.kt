@@ -75,19 +75,117 @@ class MavlinkParserTest {
         assertFalse(parser.feed(heartbeat).isEmpty())
     }
 
-    internal fun heartbeatFrame(
-        customMode: Long,
-        baseMode: Int,
-        systemId: Int = 1,
-        componentId: Int = 1,
-        autopilot: Int = 3
-    ): ByteArray {
-        val payload = byteArrayOf(
-            customMode.toByte(), (customMode shr 8).toByte(), (customMode shr 16).toByte(), (customMode shr 24).toByte(),
-            10, autopilot.toByte(), baseMode.toByte(), 4, 3
-        )
-        val frameWithoutChecksum = byteArrayOf(0xFD.toByte(), 9, 0, 0, 7, systemId.toByte(), componentId.toByte(), 0, 0, 0) + payload
-        val checksum = MavlinkChecksum.calculate(frameWithoutChecksum.copyOfRange(1, frameWithoutChecksum.size), 50)
-        return frameWithoutChecksum + byteArrayOf(checksum.toByte(), (checksum shr 8).toByte())
+    @Test
+    fun `decodes GPS raw fields and source identity`() {
+        val payload = ByteArray(30)
+        payload.putInt32(8, 451_234_567)
+        payload.putInt32(12, -734_567_890)
+        payload.putInt32(16, 123_456)
+        payload.putUInt16(20, 125)
+        payload.putUInt16(22, 65_535)
+        payload[28] = 3
+        payload[29] = 12
+
+        val result = MavlinkParser().feed(mavlinkTestFrame(24, payload, 24, systemId = 42, componentId = 1)).single()
+        val gps = (result as MavlinkParseResult.Message).message as MavlinkMessage.GpsRawInt
+
+        assertEquals(42, gps.systemId)
+        assertEquals(3, gps.fixType)
+        assertEquals(12, gps.satellitesVisible)
+        assertEquals(125, gps.eph)
+    }
+
+    @Test
+    fun `decodes global position signed velocity and unknown heading`() {
+        val payload = ByteArray(28)
+        payload.putInt32(4, -338_654_321)
+        payload.putInt32(8, 1_512_345_678)
+        payload.putInt32(12, 12_345)
+        payload.putInt16(20, -125)
+        payload.putInt16(22, 250)
+        payload.putUInt16(26, 65_535)
+
+        val result = MavlinkParser().feed(mavlinkTestFrame(33, payload, 104)).single()
+        val position = (result as MavlinkParseResult.Message).message as MavlinkMessage.GlobalPositionInt
+
+        assertEquals(-338_654_321, position.latitudeE7)
+        assertEquals(-125, position.vxCentimetersPerSecond)
+        assertEquals(250, position.vyCentimetersPerSecond)
+        assertEquals(65_535, position.headingCentidegrees)
+    }
+
+    @Test
+    fun `decodes attitude float fields`() {
+        val payload = ByteArray(28)
+        payload.putFloat32(4, 0.5f)
+        payload.putFloat32(8, -0.25f)
+        payload.putFloat32(12, 1.0f)
+
+        val message = (MavlinkParser().feed(mavlinkTestFrame(30, payload, 39)).single() as MavlinkParseResult.Message).message
+            as MavlinkMessage.Attitude
+
+        assertEquals(0.5f, message.rollRadians)
+        assertEquals(-0.25f, message.pitchRadians)
+        assertEquals(1.0f, message.yawRadians)
+    }
+
+    @Test
+    fun `decodes system status sentinel battery fields`() {
+        val payload = ByteArray(31)
+        payload.putUInt32(0, 0xFFFF_FFFFL)
+        payload.putUInt32(4, 0x0000_0001L)
+        payload.putUInt32(8, 0x0000_0001L)
+        payload.putUInt16(12, 675)
+        payload.putUInt16(14, 24_600)
+        payload.putInt16(16, -1)
+        payload.putUInt16(18, 125)
+        payload.putUInt16(20, 4)
+        payload[30] = 76
+
+        val message = (MavlinkParser().feed(mavlinkTestFrame(1, payload, 124)).single() as MavlinkParseResult.Message).message
+            as MavlinkMessage.SystemStatus
+
+        assertEquals(0xFFFF_FFFFL, message.sensorsPresent)
+        assertEquals(675, message.loadDecipercent)
+        assertEquals(24_600, message.voltageMillivolts)
+        assertEquals(-1, message.currentCentiamps)
+        assertEquals(76, message.batteryRemainingPercent)
+    }
+
+    @Test
+    fun `decodes multi-cell battery status and statustext`() {
+        val batteryPayload = ByteArray(54)
+        batteryPayload.putInt16(8, 2_500)
+        batteryPayload.putUInt16(10, 12_000)
+        batteryPayload.putUInt16(12, 12_100)
+        for (offset in 14..28 step 2) batteryPayload.putUInt16(offset, 65_535)
+        batteryPayload.putInt16(30, 325)
+        batteryPayload[32] = 2
+        batteryPayload[35] = 81
+        batteryPayload[40] = 7
+        for (offset in 41..47 step 2) batteryPayload.putUInt16(offset, 0)
+
+        val battery = (MavlinkParser().feed(mavlinkTestFrame(147, batteryPayload, 154)).single() as MavlinkParseResult.Message).message
+            as MavlinkMessage.BatteryStatus
+        assertEquals(2, battery.batteryId)
+        assertEquals(2_500, battery.temperatureCentidegreesCelsius)
+        assertEquals(12_100, battery.cellVoltagesMillivolts[1])
+        assertEquals(81, battery.remainingPercent)
+        assertEquals(7, battery.chargeState)
+
+        val textPayload = ByteArray(51)
+        textPayload[0] = 4
+        "LOW BATTERY".encodeToByteArray().copyInto(textPayload, 1)
+        val text = (MavlinkParser().feed(mavlinkTestFrame(253, textPayload, 83)).single() as MavlinkParseResult.Message).message
+            as MavlinkMessage.StatusText
+        assertEquals(4, text.severity)
+        assertEquals("LOW BATTERY", text.textChunk.copyOfRange(0, 11).decodeToString())
+        assertEquals(0, text.id)
+    }
+
+    @Test
+    fun `rejects known message payload shorter than MAVLink base length`() {
+        val result = MavlinkParser().feed(mavlinkTestFrame(33, ByteArray(27), 104)).single()
+        assertEquals(MavlinkParseResult.MalformedMessage(33), result)
     }
 }
