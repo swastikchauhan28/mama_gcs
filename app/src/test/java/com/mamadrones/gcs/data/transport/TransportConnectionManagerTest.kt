@@ -3,6 +3,8 @@ package com.mamadrones.gcs.data.transport
 import com.mamadrones.gcs.domain.model.ConnectionState
 import com.mamadrones.gcs.domain.model.TransportStatus
 import com.mamadrones.gcs.domain.model.UdpEndpoint
+import com.mamadrones.gcs.data.mavlink.MavlinkSessionFactory
+import com.mamadrones.gcs.data.mavlink.VehicleMavlinkSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,7 +20,7 @@ class TransportConnectionManagerTest {
     @Test
     fun `manager forwards an explicit endpoint state and closes the owned transport`() = runBlocking {
         val fake = FakeTransport()
-        val manager = TransportConnectionManager(UdpTransportFactory { fake }, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
+        val manager = managerFor(fake)
         val endpoint = UdpEndpoint("127.0.0.1", remotePort = 14550, localPort = 0)
 
         manager.connect(endpoint)
@@ -33,7 +35,7 @@ class TransportConnectionManagerTest {
 
     @Test
     fun `manager rejects a second endpoint while a transport is active`() = runBlocking {
-        val manager = TransportConnectionManager(UdpTransportFactory { FakeTransport() }, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
+        val manager = managerFor(FakeTransport())
         manager.connect(UdpEndpoint("127.0.0.1", 14550, 0))
         try {
             manager.connect(UdpEndpoint("127.0.0.2", 14550, 0))
@@ -48,7 +50,7 @@ class TransportConnectionManagerTest {
     @Test
     fun `failed opening is reported and releases the attempted transport`() = runBlocking {
         val failed = FailingTransport()
-        val manager = TransportConnectionManager(UdpTransportFactory { failed }, CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
+        val manager = managerFor(failed)
         try {
             manager.connect(UdpEndpoint("127.0.0.1", 14550, 0))
             throw AssertionError("Expected connection failure")
@@ -72,6 +74,18 @@ class TransportConnectionManagerTest {
         override fun receive(): Flow<ByteArray> = emptyFlow()
         override fun close() { closed = true }
     }
+
+    private fun managerFor(transport: VehicleTransport): TransportConnectionManager = TransportConnectionManager(
+        factory = UdpTransportFactory { transport },
+        sessionFactory = MavlinkSessionFactory { sessionTransport, _ ->
+            object : VehicleMavlinkSession {
+                override suspend fun start() = sessionTransport.connect()
+                override suspend fun stop() = sessionTransport.disconnect()
+                override fun close() { (sessionTransport as? AutoCloseable)?.close() }
+            }
+        },
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+    )
 
     private class FailingTransport : VehicleTransport, AutoCloseable {
         override val connectionState = MutableStateFlow(ConnectionState())

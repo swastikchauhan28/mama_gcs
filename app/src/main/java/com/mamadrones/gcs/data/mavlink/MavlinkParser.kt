@@ -1,56 +1,104 @@
 package com.mamadrones.gcs.data.mavlink
 
 /**
- * Incremental MAVLink 2 parser for the Phase 3 HEARTBEAT subset. It accepts arbitrary
- * byte chunks, validates known-message CRC extras, and discards malformed frames safely.
+ * Incremental MAVLink 2 parser for the Phase 3 HEARTBEAT subset. Unsigned frames are
+ * accepted after CRC validation. Signed frames are rejected because this application
+ * does not yet provision or verify MAVLink signing keys.
  */
 class MavlinkParser {
-    private val bufferedBytes = ArrayList<Byte>()
+    private var pending = ByteArray(0)
 
     fun feed(bytes: ByteArray): List<MavlinkParseResult> {
-        bufferedBytes.addAll(bytes.toList())
+        if (bytes.isEmpty()) return emptyList()
+        val input = pending + bytes
         val results = mutableListOf<MavlinkParseResult>()
-        while (true) {
-            val magicIndex = bufferedBytes.indexOfFirst { (it.toInt() and 0xFF) == MAVLINK_V2_MAGIC }
+        var cursor = 0
+
+        while (cursor < input.size) {
+            val magicIndex = findMagic(input, cursor)
             if (magicIndex < 0) {
-                bufferedBytes.clear()
-                return results
+                cursor = input.size
+                break
             }
-            if (magicIndex > 0) bufferedBytes.subList(0, magicIndex).clear()
-            if (bufferedBytes.size < HEADER_SIZE) return results
+            cursor = magicIndex
+            if (input.size - cursor < HEADER_SIZE) break
 
-            val payloadLength = unsigned(1)
-            val incompatibilityFlags = unsigned(2)
-            val signatureLength = if (incompatibilityFlags and SIGNED_FLAG != 0) SIGNATURE_SIZE else 0
-            val frameSize = HEADER_SIZE + payloadLength + CHECKSUM_SIZE + signatureLength
-            if (bufferedBytes.size < frameSize) return results
+            val payloadLength = input[cursor + 1].unsigned()
+            val incompatibilityFlags = input[cursor + 2].unsigned()
+            val signed = incompatibilityFlags and SIGNED_FLAG != 0
+            val frameSize = HEADER_SIZE + payloadLength + CHECKSUM_SIZE + if (signed) SIGNATURE_SIZE else 0
+            if (input.size - cursor < frameSize) break
 
-            val rawFrame = ByteArray(frameSize) { bufferedBytes[it] }
-            bufferedBytes.subList(0, frameSize).clear()
-            parseFrame(rawFrame)?.let(results::add)
+            val unsupportedFlags = incompatibilityFlags and
+                SUPPORTED_INCOMPATIBILITY_FLAGS.inv() and SIGNED_FLAG.inv()
+            if (unsupportedFlags != 0) {
+                results += MavlinkParseResult.UnsupportedIncompatibilityFlags(unsupportedFlags)
+                cursor += frameSize
+                continue
+            }
+            if (signed) {
+                results += MavlinkParseResult.SignedPacketRejected
+                cursor += frameSize
+                continue
+            }
+
+            val rawFrame = input.copyOfRange(cursor, cursor + frameSize)
+            when (val result = parseFrame(rawFrame)) {
+                is MavlinkParseResult.InvalidChecksum -> {
+                    results += result
+                    // Rescan from the next byte so a corrupt length cannot consume a later frame.
+                    cursor++
+                }
+                else -> {
+                    results += result
+                    cursor += frameSize
+                }
+            }
         }
+
+        pending = input.copyOfRange(cursor, input.size)
+        // The pending suffix is at most one incomplete MAVLink 2 frame (280 bytes).
+        check(pending.size <= MAX_FRAME_SIZE)
+        return results
     }
 
-    private fun parseFrame(rawFrame: ByteArray): MavlinkParseResult? {
+    fun reset() {
+        pending = ByteArray(0)
+    }
+
+    private fun parseFrame(rawFrame: ByteArray): MavlinkParseResult {
         val payloadLength = rawFrame[1].unsigned()
-        val messageId = rawFrame[7].unsigned() or (rawFrame[8].unsigned() shl 8) or (rawFrame[9].unsigned() shl 16)
-        val crcExtra = crcExtraFor(messageId) ?: return MavlinkParseResult.UnsupportedMessage(messageId)
+        val messageId = rawFrame[7].unsigned() or
+            (rawFrame[8].unsigned() shl 8) or
+            (rawFrame[9].unsigned() shl 16)
+        val crcExtra = crcExtraFor(messageId)
+            ?: return MavlinkParseResult.UnsupportedMessage(messageId)
         val checksumOffset = HEADER_SIZE + payloadLength
-        val expectedChecksum = rawFrame[checksumOffset].unsigned() or (rawFrame[checksumOffset + 1].unsigned() shl 8)
-        val calculatedChecksum = MavlinkChecksum.calculate(rawFrame.copyOfRange(1, checksumOffset), crcExtra)
-        if (calculatedChecksum != expectedChecksum) return MavlinkParseResult.InvalidChecksum(messageId)
+        val expectedChecksum = rawFrame[checksumOffset].unsigned() or
+            (rawFrame[checksumOffset + 1].unsigned() shl 8)
+        val calculatedChecksum = MavlinkChecksum.calculate(
+            rawFrame.copyOfRange(1, checksumOffset),
+            crcExtra
+        )
+        if (calculatedChecksum != expectedChecksum) {
+            return MavlinkParseResult.InvalidChecksum(messageId)
+        }
 
         val frame = MavlinkFrame(
-            sequence = rawFrame[4].unsigned(), systemId = rawFrame[5].unsigned(), componentId = rawFrame[6].unsigned(),
-            messageId = messageId, payload = rawFrame.copyOfRange(HEADER_SIZE, checksumOffset)
+            sequence = rawFrame[4].unsigned(),
+            systemId = rawFrame[5].unsigned(),
+            componentId = rawFrame[6].unsigned(),
+            messageId = messageId,
+            payload = rawFrame.copyOfRange(HEADER_SIZE, checksumOffset)
         )
         return decode(frame)
     }
 
-    private fun decode(frame: MavlinkFrame): MavlinkParseResult {
-        return when (frame.messageId) {
-            MavlinkMessage.HEARTBEAT_MESSAGE_ID -> {
-                if (frame.payload.size != HEARTBEAT_PAYLOAD_SIZE) return MavlinkParseResult.MalformedMessage(frame.messageId)
+    private fun decode(frame: MavlinkFrame): MavlinkParseResult = when (frame.messageId) {
+        MavlinkMessage.HEARTBEAT_MESSAGE_ID -> {
+            if (frame.payload.size != HEARTBEAT_PAYLOAD_SIZE) {
+                MavlinkParseResult.MalformedMessage(frame.messageId)
+            } else {
                 MavlinkParseResult.Message(
                     MavlinkMessage.Heartbeat(
                         systemId = frame.systemId,
@@ -64,8 +112,8 @@ class MavlinkParser {
                     )
                 )
             }
-            else -> MavlinkParseResult.UnsupportedMessage(frame.messageId)
         }
+        else -> MavlinkParseResult.UnsupportedMessage(frame.messageId)
     }
 
     private fun crcExtraFor(messageId: Int): Int? = when (messageId) {
@@ -73,11 +121,20 @@ class MavlinkParser {
         else -> null
     }
 
-    private fun unsigned(index: Int): Int = bufferedBytes[index].toInt() and 0xFF
+    private fun findMagic(bytes: ByteArray, start: Int): Int {
+        for (index in start until bytes.size) {
+            if (bytes[index].unsigned() == MAVLINK_V2_MAGIC) return index
+        }
+        return -1
+    }
+
     private fun Byte.unsigned(): Int = toInt() and 0xFF
+
     private fun littleEndianUInt32(bytes: ByteArray, offset: Int): Long =
-        (bytes[offset].unsigned().toLong()) or (bytes[offset + 1].unsigned().toLong() shl 8) or
-            (bytes[offset + 2].unsigned().toLong() shl 16) or (bytes[offset + 3].unsigned().toLong() shl 24)
+        bytes[offset].unsigned().toLong() or
+            (bytes[offset + 1].unsigned().toLong() shl 8) or
+            (bytes[offset + 2].unsigned().toLong() shl 16) or
+            (bytes[offset + 3].unsigned().toLong() shl 24)
 
     private companion object {
         const val MAVLINK_V2_MAGIC = 0xFD
@@ -85,8 +142,10 @@ class MavlinkParser {
         const val CHECKSUM_SIZE = 2
         const val SIGNATURE_SIZE = 13
         const val SIGNED_FLAG = 0x01
+        const val SUPPORTED_INCOMPATIBILITY_FLAGS = 0
         const val HEARTBEAT_PAYLOAD_SIZE = 9
         const val HEARTBEAT_CRC_EXTRA = 50
+        const val MAX_FRAME_SIZE = HEADER_SIZE + 255 + CHECKSUM_SIZE + SIGNATURE_SIZE
     }
 }
 
@@ -94,5 +153,7 @@ sealed interface MavlinkParseResult {
     data class Message(val message: MavlinkMessage) : MavlinkParseResult
     data class InvalidChecksum(val messageId: Int) : MavlinkParseResult
     data class UnsupportedMessage(val messageId: Int) : MavlinkParseResult
+    data class UnsupportedIncompatibilityFlags(val flags: Int) : MavlinkParseResult
+    data object SignedPacketRejected : MavlinkParseResult
     data class MalformedMessage(val messageId: Int) : MavlinkParseResult
 }

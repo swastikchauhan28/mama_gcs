@@ -3,6 +3,8 @@ package com.mamadrones.gcs.data.transport
 import com.mamadrones.gcs.domain.model.ConnectionState
 import com.mamadrones.gcs.domain.model.TransportStatus
 import com.mamadrones.gcs.domain.model.UdpEndpoint
+import com.mamadrones.gcs.data.mavlink.MavlinkSessionFactory
+import com.mamadrones.gcs.data.mavlink.VehicleMavlinkSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,17 +21,18 @@ data class TransportSessionState(
 )
 
 /**
- * Owns at most one manually opened UDP transport for one UI session. It never starts a
- * MAVLink session, transmits vehicle commands, reconnects in the background, or changes
- * the authoritative vehicle state.
+ * Owns at most one manually opened UDP transport and its receive-only MAVLink session
+ * for one UI session. It never transmits vehicle commands or reconnects in the background.
  */
 class TransportConnectionManager(
     private val factory: UdpTransportFactory,
+    private val sessionFactory: MavlinkSessionFactory,
     private val scope: CoroutineScope
 ) : AutoCloseable {
     private val lifecycleMutex = Mutex()
     private val mutableState = MutableStateFlow(TransportSessionState())
     private var activeTransport: VehicleTransport? = null
+    private var activeMavlinkSession: VehicleMavlinkSession? = null
     private var activeEndpoint: UdpEndpoint? = null
     private var observer: Job? = null
     private var closed = false
@@ -44,11 +47,13 @@ class TransportConnectionManager(
                 throw TransportException.AlreadyConnected()
             }
             val transport = factory.create(endpoint)
+            val mavlinkSession = sessionFactory.create(transport, scope)
             activeTransport = transport
+            activeMavlinkSession = mavlinkSession
             activeEndpoint = endpoint
             mutableState.value = TransportSessionState(endpoint, ConnectionState(status = TransportStatus.CONNECTING))
             try {
-                transport.connect()
+                mavlinkSession.start()
                 mutableState.value = TransportSessionState(endpoint, transport.connectionState.value)
                 observer = scope.launch {
                     transport.connectionState.collectLatest { connection ->
@@ -57,9 +62,11 @@ class TransportConnectionManager(
                 }
             } catch (error: Throwable) {
                 activeTransport = null
+                activeMavlinkSession = null
                 activeEndpoint = null
                 observer?.cancel()
                 observer = null
+                runCatching { mavlinkSession.close() }
                 closeTransport(transport)
                 mutableState.value = TransportSessionState(
                     endpoint = endpoint,
@@ -73,32 +80,39 @@ class TransportConnectionManager(
     suspend fun disconnect() {
         val active = lifecycleMutex.withLock {
             val transport = activeTransport
+            val mavlinkSession = activeMavlinkSession
             activeTransport = null
+            activeMavlinkSession = null
             activeEndpoint = null
             observer?.cancel()
             observer = null
             mutableState.value = TransportSessionState()
-            transport
+            transport to mavlinkSession
         }
-        active?.let {
+        val (transport, mavlinkSession) = active
+        mavlinkSession?.let {
             try {
-                it.disconnect()
+                it.stop()
             } finally {
-                closeTransport(it)
+                it.close()
             }
         }
+        if (mavlinkSession == null) closeTransport(transport)
     }
 
     override fun close() {
         if (closed) return
         closed = true
         val transport = activeTransport
+        val mavlinkSession = activeMavlinkSession
         activeTransport = null
+        activeMavlinkSession = null
         activeEndpoint = null
         observer?.cancel()
         observer = null
         mutableState.value = TransportSessionState()
-        closeTransport(transport)
+        runCatching { mavlinkSession?.close() }
+        if (mavlinkSession == null) closeTransport(transport)
     }
 
     private fun closeTransport(transport: VehicleTransport?) {

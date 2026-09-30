@@ -2,10 +2,12 @@ package com.mamadrones.gcs.data.mavlink
 
 import com.mamadrones.gcs.data.repository.VehicleRepositoryImpl
 import com.mamadrones.gcs.data.transport.VehicleTransport
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.isActive
@@ -23,46 +25,68 @@ class MavlinkSession(
     private val parser: MavlinkParser,
     private val router: MavlinkMessageRouter,
     private val vehicleRepository: VehicleRepositoryImpl,
-    private val heartbeatTimeoutMillis: Long = DEFAULT_HEARTBEAT_TIMEOUT_MILLIS
-) {
+    private val heartbeatTimeoutMillis: Long = DEFAULT_HEARTBEAT_TIMEOUT_MILLIS,
+    private val heartbeatCheckIntervalMillis: Long = HEARTBEAT_CHECK_INTERVAL_MILLIS,
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+) : VehicleMavlinkSession {
     private val lifecycleMutex = Mutex()
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var receiverJob: Job? = null
     private var timeoutJob: Job? = null
+    @Volatile private var lastSessionHeartbeatAtEpochMillis: Long? = null
+    private var selectedAutopilot: Pair<Int, Int>? = null
 
     init {
         require(heartbeatTimeoutMillis > 0) { "Heartbeat timeout must be positive" }
+        require(heartbeatCheckIntervalMillis > 0) { "Heartbeat check interval must be positive" }
     }
 
-    suspend fun start() {
+    override suspend fun start() {
         lifecycleMutex.withLock {
             if (receiverJob != null) return
+            parser.reset()
+            selectedAutopilot = null
+            lastSessionHeartbeatAtEpochMillis = null
             vehicleRepository.onSessionStarting()
+            val sessionStartedAt = System.currentTimeMillis()
             try {
-                transport.connect()
-                receiverJob = scope.launch {
+                // Subscribe first so the first datagram received during socket startup is retained.
+                receiverJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
                     transport.receive().collect { bytes ->
-                        parser.feed(bytes).forEach { router.route(it, System.currentTimeMillis()) }
+                        val receivedAt = System.currentTimeMillis()
+                        parser.feed(bytes).forEach { result -> routeSelectedAutopilot(result, receivedAt) }
                     }
                 }
-                val sessionStartedAt = System.currentTimeMillis()
+                transport.connect()
                 timeoutJob = scope.launch {
                     while (isActive) {
-                        delay(HEARTBEAT_CHECK_INTERVAL_MILLIS)
-                        val lastHeartbeat = vehicleRepository.vehicleState.value.lastHeartbeatAtEpochMillis ?: sessionStartedAt
+                        delay(heartbeatCheckIntervalMillis)
+                        val lastHeartbeat = lastSessionHeartbeatAtEpochMillis ?: sessionStartedAt
                         if (System.currentTimeMillis() - lastHeartbeat > heartbeatTimeoutMillis) {
                             vehicleRepository.onHeartbeatTimeout()
                         }
                     }
                 }
+            } catch (cancelled: CancellationException) {
+                receiverJob?.cancel()
+                receiverJob = null
+                timeoutJob?.cancel()
+                timeoutJob = null
+                transport.disconnect()
+                vehicleRepository.onSessionStopped()
+                throw cancelled
             } catch (exception: Exception) {
+                receiverJob?.cancel()
+                receiverJob = null
+                timeoutJob?.cancel()
+                timeoutJob = null
+                transport.disconnect()
                 vehicleRepository.onSessionStopped()
                 throw exception
             }
         }
     }
 
-    suspend fun stop() {
+    override suspend fun stop() {
         val activeReceiver: Job?
         val activeTimeout: Job?
         lifecycleMutex.withLock {
@@ -75,6 +99,36 @@ class MavlinkSession(
         activeTimeout?.cancel()
         transport.disconnect()
         vehicleRepository.onSessionStopped()
+    }
+
+    override fun close() {
+        receiverJob?.cancel()
+        timeoutJob?.cancel()
+        receiverJob = null
+        timeoutJob = null
+        transport.closeIfPossible()
+        vehicleRepository.onSessionStopped()
+    }
+
+    private fun routeSelectedAutopilot(result: MavlinkParseResult, receivedAtEpochMillis: Long) {
+        val heartbeat = (result as? MavlinkParseResult.Message)?.message as? MavlinkMessage.Heartbeat
+            ?: return
+        // MAV_AUTOPILOT_INVALID identifies non-autopilot components (e.g. a camera or GCS).
+        if (heartbeat.autopilotType == MavlinkMessage.MAV_AUTOPILOT_INVALID) return
+        if (heartbeat.systemId == 0 || heartbeat.componentId == 0) return
+
+        val currentSelection = selectedAutopilot
+        if (currentSelection == null) {
+            selectedAutopilot = heartbeat.systemId to heartbeat.componentId
+        } else if (currentSelection != (heartbeat.systemId to heartbeat.componentId)) {
+            return
+        }
+        lastSessionHeartbeatAtEpochMillis = receivedAtEpochMillis
+        router.route(result, receivedAtEpochMillis)
+    }
+
+    private fun VehicleTransport.closeIfPossible() {
+        (this as? AutoCloseable)?.close()
     }
 
     private companion object {

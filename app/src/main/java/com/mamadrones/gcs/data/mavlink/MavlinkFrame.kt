@@ -25,5 +25,6 @@ sealed interface MavlinkMessage {
     companion object {
         const val HEARTBEAT_MESSAGE_ID = 0
         const val MAV_MODE_FLAG_SAFETY_ARMED = 128
+        const val MAV_AUTOPILOT_INVALID = 8
     }
 }
