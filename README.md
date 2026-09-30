@@ -2,18 +2,19 @@
 
 Native Android ground-control-station foundation for a Mama agricultural UGV: ArduPilot Rover, VESC motors, spray equipment and hydraulics. Kotlin · Compose · Material 3 · Hilt · offline-first.
 
-## Current delivery: Phase 2 transport foundation
+## Current delivery: Phase 3 MAVLink HEARTBEAT receive foundation
 
-The expanded agricultural specification uses incremental acceptance. Phase 2 adds a manually configured UDP socket lifecycle; it does not enable MAVLink decoding in the app, vehicle control, or automatic connection/reconnection.
+The expanded agricultural specification uses incremental acceptance. Phase 3 connects an explicit UDP session to a bounded MAVLink 2 HEARTBEAT parser and vehicle-liveness state. It does not add general telemetry, vehicle control, or automatic connection/reconnection.
 
 - Responsive dark field-console design, light/daylight and system themes, original local icons, shared typography, spacing, cards and status treatments.
 - Dashboard, Map, Control, Mission, Health, Motors, Spray, Hydraulic, Diagnostics, Admin and Settings. Phones use bottom navigation; wide windows use a side rail. Secondary screens are reached through More or dashboard shortcuts.
 - Nullable/UNKNOWN subsystem models and read-only integration contracts. No invented telemetry, safe actuator state, healthy state, vehicle marker or controller/nozzle inventory.
 - Disabled, explicitly unavailable emergency stop and hardware actions. Navigation and persistent local theme settings work; vehicle selection explains that pairing is unavailable.
 - Basic role/session policy and app-storage/manifest protections, **not** implemented authentication or production command security.
-- A saved UDP peer endpoint, socket open/close controls, fixed-peer packet acceptance and observable packet statistics. The socket closes when the app moves to the background and never auto-connects.
+- A saved UDP peer endpoint, explicit open/close controls, fixed-peer packet acceptance and observable packet statistics. The session listens before opening the socket, selects the first valid autopilot HEARTBEAT system/component pair, ignores competing identities, and marks vehicle state degraded after heartbeat timeout. It closes when the app moves to the background and never auto-connects.
+- Incremental MAVLink 2 framing and HEARTBEAT CRC/payload validation. Unsigned HEARTBEAT packets can establish liveness; signed frames are rejected because no signing-key verifier is provisioned. CRC and fixed-peer filtering are not authentication.
 
-Opening a configured UDP socket accepts raw datagrams only from the configured peer. It does not authenticate a vehicle, decode MAVLink in the active app flow, establish heartbeat health, or send commands. The preserved MAVLink HEARTBEAT parser/session is still inactive; the app never constructs a MAVLink session from the UDP screen.
+Opening a configured UDP socket starts the receive session and accepts datagrams only from the configured peer. Only CRC-valid unsigned MAVLink 2 HEARTBEATs from an autopilot component establish vehicle liveness; this does not authenticate the sender. No MAVLink commands or other telemetry are decoded or sent.
 
 **Do not use this build to operate machinery.** The emergency-stop button cannot command or confirm a physical stop. Use the independent physical safety system.
 
@@ -25,7 +26,7 @@ presentation/    stateless Compose screens/components, navigation, design system
 domain/          immutable models, repository contracts, use cases
 core/            command outcomes/errors, pure authorization policy
 data/            theme/UDP endpoint DataStore, vehicle repository,
-                foreground-owned UDP transport and inactive MAVLink prototype
+                foreground-owned UDP transport and HEARTBEAT-only MAVLink session
 di/              Hilt bindings
 ```
 
@@ -61,7 +62,7 @@ See [Phase 1 report](docs/phase-1-report.md) for exact implementation, file inve
 
 1. Foundation — delivered.
 2. **Transport — delivered.** Explicit UDP profile, foreground socket ownership, lifecycle/error states, Bluetooth/serial extension contracts and tests.
-3. MAVLink — next: validated decoding/session/peer handling and command-outcome design.
+3. **MAVLink HEARTBEAT — delivered.** MAVLink 2 framing/CRC, explicit session lifecycle, autopilot identity pinning, heartbeat timeout, and conservative unsigned/signing policy. General telemetry and commands remain out of scope.
 4. Telemetry — available measurements, units, source freshness and invalid-value handling.
 5. Health — hardware-defined thresholds and readiness assessment.
 6. Map — offline-capable map, position, heading and tracks.

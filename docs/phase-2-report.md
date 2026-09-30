@@ -1,4 +1,4 @@
-# Phase 2 transport report
+# Phase 2 transport report (historical)
 
 Date: 2026-09-29. Scope: transport foundation only. No vehicle command, active MAVLink session, telemetry decoder, background link, Bluetooth socket, serial socket or hardware deployment was added.
 
@@ -37,4 +37,4 @@ New unit coverage includes endpoint validation, UDP send/receive/close behavior,
 
 The actual UDP peer address and ports remain operator-provided configuration, not a default Mama UGV assumption. No Bluetooth or serial module, VESC path, ArduPilot endpoint, MAVLink signing key, radio topology or source port mapping has been assumed.
 
-Next is Phase 3, MAVLink lifecycle and decoding: define how a selected transport supplies a trusted MAVLink session; validate framing/version/signing policy; map valid heartbeat state without equating socket open to vehicle health. Do not enable controls in Phase 3 without the later authorization and hardware safety gates.
+At this report's delivery, Phase 3 was the next step. It is now documented in [the Phase 3 report](phase-3-report.md). A selected transport supplies a HEARTBEAT-only MAVLink session; this is not a trusted/authenticated vehicle connection. Do not enable controls without later authorization and hardware-safety gates.

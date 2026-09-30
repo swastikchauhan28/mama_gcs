@@ -56,10 +56,10 @@ fun SettingsScreen(
         }
     }
     SubsystemCard(PanelSpec("Units", "METRIC", listOf("Speed" to "m/s", "Distance" to "m / km", "Temperature" to "°C", "Pressure" to "bar")))
-    Text("UDP TRANSPORT", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+    Text("UDP · MAVLINK RECEIVE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
     SubsystemCard(
         PanelSpec(
-            title = "UDP socket",
+            title = "UDP + MAVLink session",
             status = transportLabel(connection.session.connection.status),
             rows = listOf(
                 "Endpoint" to (connection.savedEndpoint?.displayName ?: "NOT CONFIGURED"),
@@ -73,7 +73,7 @@ fun SettingsScreen(
     Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("UDP endpoint", style = MaterialTheme.typography.titleMedium)
-            Text("Configure a known peer. The app will not open a socket until you explicitly choose Open UDP socket.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Configure a known peer. Tapping Open UDP socket starts the receive session; vehicle liveness appears only after a valid autopilot HEARTBEAT.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(
                 value = connection.remoteHostDraft,
                 onValueChange = onRemoteHostChanged,
@@ -124,7 +124,7 @@ fun SettingsScreen(
         }
     }
     connection.error?.let { Notice("UDP ENDPOINT ERROR", it) }
-    Notice("TRANSPORT LIMIT", "An open UDP socket only accepts bytes from the configured peer. It does not authenticate a vehicle, decode MAVLink, prove link health, or permit vehicle commands.")
+    Notice("MAVLINK SECURITY", "Only the configured UDP peer is accepted. A CRC-valid unsigned HEARTBEAT reports protocol liveness, not authenticated vehicle identity. Signed frames are rejected until signing-key verification is provisioned. This session sends no vehicle commands.")
     Notice("BLUETOOTH AND SERIAL", "Bluetooth Classic and serial remain defined transport extension points. No pairing, device discovery, permissions, or sockets have been added because hardware details are not yet known.")
     Notice("LOCAL DISPLAY PREFERENCES", "Theme is saved offline. Passwords, credentials and machine commands are not stored in display preferences.")
 }
