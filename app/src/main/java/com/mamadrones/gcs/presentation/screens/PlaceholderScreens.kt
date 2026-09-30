@@ -70,9 +70,11 @@ fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier) = Scre
     ScreenHeader("Diagnostics", "Vehicle and communication inspection")
     CardGrid(listOf(
         PanelSpec("Communication", "NOT CONFIGURED", listOf("RX packets" to "UNKNOWN", "TX packets" to "UNKNOWN", "Parser errors" to "UNKNOWN", "Transport" to "UNSELECTED")),
-        ConsolePanels.vehicle(state), ConsolePanels.gps(state)
+        ConsolePanels.vehicle(state), ConsolePanels.gps(state), ConsolePanels.position(state),
+        ConsolePanels.battery(state), ConsolePanels.attitude(state), ConsolePanels.systemStatus(state),
+        ConsolePanels.statusTexts(state)
     ))
-    Notice("LOGGING NOT IMPLEMENTED", "There are no diagnostic logs to display or export. Live communication is inactive in this foundation.")
+    Notice("PERSISTENT LOGGING NOT IMPLEMENTED", "The latest in-memory STATUSTEXT messages and telemetry receive ages are shown above. They are not saved or exported, and do not constitute a health assessment.")
     UnavailableActions("Export logs")
 }
 

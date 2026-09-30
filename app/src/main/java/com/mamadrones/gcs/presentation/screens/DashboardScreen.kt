@@ -42,7 +42,11 @@ fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier:
             }
         }
         Text("SUBSYSTEMS", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.semantics { heading() })
-        CardGrid(listOf(ConsolePanels.health(state), ConsolePanels.gps(state), ConsolePanels.battery(state), ConsolePanels.motors(state), ConsolePanels.spray(state), ConsolePanels.hydraulic(state)))
+        CardGrid(listOf(
+            ConsolePanels.health(state), ConsolePanels.gps(state), ConsolePanels.position(state),
+            ConsolePanels.battery(state), ConsolePanels.attitude(state), ConsolePanels.motors(state),
+            ConsolePanels.spray(state), ConsolePanels.hydraulic(state)
+        ))
     }
 }
 
@@ -64,7 +68,7 @@ fun MapWorkspace(modifier: Modifier = Modifier) {
                 Spacer(Modifier.height(12.dp))
                 MamaIcon(ConsoleIcon.MAP, Modifier.align(Alignment.CenterHorizontally).size(40.dp))
                 Text("Position unknown", style = MaterialTheme.typography.titleLarge)
-                Text("Offline map integration is not implemented. No vehicle position or route is available.", color = colors.onSurfaceVariant)
+                Text("Map rendering, vehicle marker and route are not implemented yet. Telemetry coordinates appear in the position panel.", color = colors.onSurfaceVariant)
                 StatusBadge("MAP UNAVAILABLE")
             }
         }

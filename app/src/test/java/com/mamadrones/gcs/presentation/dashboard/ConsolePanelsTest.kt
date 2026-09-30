@@ -23,4 +23,10 @@ class ConsolePanelsTest {
         assertEquals("UNKNOWN", (null as Double?).reading("V"))
         assertEquals("0.0 V", 0.0.reading("V"))
     }
+
+    @Test fun `telemetry panels show source receive age`() {
+        assertEquals("Received 3s ago", sampleAge(1_000L, nowEpochMillis = 4_900L))
+        assertEquals("No sample received", sampleAge(null, nowEpochMillis = 4_900L))
+        assertEquals("Received 0s ago", sampleAge(5_000L, nowEpochMillis = 4_000L))
+    }
 }
