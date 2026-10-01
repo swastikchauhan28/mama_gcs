@@ -36,9 +36,9 @@ fun MissionScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBo
 
 @Composable
 fun HealthScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
-    ScreenHeader("Vehicle health", "Availability and subsystem condition")
-    CardGrid(listOf(ConsolePanels.health(state), ConsolePanels.gps(state), ConsolePanels.battery(state)))
-    Notice("EVALUATION NOT IMPLEMENTED", "Missing telemetry is unknown. Hardware-specific thresholds must be configured before health can be assessed.")
+    ScreenHeader("Vehicle health", "Telemetry evidence and readiness gate")
+    CardGrid(listOf(ConsolePanels.health(state), ConsolePanels.healthBlockers(state), ConsolePanels.gps(state), ConsolePanels.battery(state), ConsolePanels.systemStatus(state)))
+    Notice("READINESS NOT ASSESSED", "Received MAVLink data is shown as evidence only. Hardware-specific limits, expected telemetry rates, and validated subsystem routes are required before health or safety readiness can be assessed.")
 }
 
 @Composable

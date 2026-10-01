@@ -2,9 +2,9 @@
 
 Native Android ground-control-station foundation for a Mama agricultural UGV: ArduPilot Rover, VESC motors, spray equipment and hydraulics. Kotlin · Compose · Material 3 · Hilt · offline-first.
 
-## Current delivery: Phase 4 MAVLink telemetry receive foundation
+## Current delivery: Phase 5 health-evidence and readiness gate
 
-The expanded agricultural specification uses incremental acceptance. Phase 4 extends the explicit UDP receive session to a bounded MAVLink 2 telemetry subset. It remains receive-only: no vehicle control, automatic connection/reconnection, or hardware-specific subsystem inference.
+The expanded agricultural specification uses incremental acceptance. Phase 5 adds a transparent health-evidence projection over the bounded MAVLink 2 telemetry subset. It remains receive-only: no vehicle control, automatic connection/reconnection, or hardware-specific subsystem inference.
 
 - Responsive dark field-console design, light/daylight and system themes, original local icons, shared typography, spacing, cards and status treatments.
 - Dashboard, Map, Control, Mission, Health, Motors, Spray, Hydraulic, Diagnostics, Admin and Settings. Phones use bottom navigation; wide windows use a side rail. Secondary screens are reached through More or dashboard shortcuts.
@@ -13,6 +13,7 @@ The expanded agricultural specification uses incremental acceptance. Phase 4 ext
 - Basic role/session policy and app-storage/manifest protections, **not** implemented authentication or production command security.
 - A saved UDP peer endpoint, explicit open/close controls, fixed-peer packet acceptance and observable packet statistics. The session listens before opening the socket, selects the first valid autopilot HEARTBEAT system/component pair, ignores competing identities, and marks vehicle state degraded after heartbeat timeout. It closes when the app moves to the background and never auto-connects.
 - Incremental MAVLink 2 framing and CRC/payload validation for HEARTBEAT, GPS_RAW_INT, GLOBAL_POSITION_INT, ATTITUDE, SYS_STATUS, BATTERY_STATUS, and STATUSTEXT. Unsigned packets update source-specific state and receive times; signed frames are rejected because no signing-key verifier is provisioned. CRC and fixed-peer filtering are not authentication.
+- Read-only health evidence labels MAVLink link, GPS, battery, and autopilot sensor data as not received, reported, or protocol-reported issue. Operational readiness remains **NOT ASSESSED** until a vehicle-specific health profile, hardware limits, expected telemetry rates, and validated subsystem routes are provisioned.
 
 Opening a configured UDP socket starts the receive session and accepts datagrams only from the configured peer. A CRC-valid unsigned HEARTBEAT from an autopilot component establishes liveness; the pinned system/component source gates telemetry updates. Receive timestamps are displayed with measurements; protocol liveness and CRC do not authenticate the sender. No MAVLink commands are sent.
 
@@ -56,15 +57,15 @@ Added runtime dependency: AndroidX Preferences DataStore 1.1.1. Added test-only 
 
 ## Boundaries and next phases
 
-There is no live map/offline tile provider, telemetry simulator, real actuator control, login/user store, audit persistence, hardware-health evaluation, mission protocol or background communication service. The neutral map grid is decorative and labeled unavailable. Raw UDP packet counts are available only while an explicitly configured socket is open; they are not vehicle telemetry or link health.
+There is no live map/offline tile provider, telemetry simulator, real actuator control, login/user store, audit persistence, configured hardware-health evaluation, mission protocol or background communication service. The neutral map grid is decorative and labeled unavailable. Raw UDP packet counts are available only while an explicitly configured socket is open; they are not vehicle telemetry or link health.
 
-See [Phase 1 report](docs/phase-1-report.md), [Phase 2 report](docs/phase-2-report.md), [Phase 3 report](docs/phase-3-report.md), and [Phase 4 report](docs/phase-4-report.md) for implementation scope and validation. For a repeatable physical-phone test with ArduPilot Rover SITL under WSL2, use the [SITL phone telemetry guide](docs/sitl-phone-telemetry.md). Review [security boundaries](docs/security.md) and [hardware integration gates](docs/hardware-integration.md) before enabling integrations.
+See [Phase 1 report](docs/phase-1-report.md), [Phase 2 report](docs/phase-2-report.md), [Phase 3 report](docs/phase-3-report.md), [Phase 4 report](docs/phase-4-report.md), and [Phase 5 report](docs/phase-5-report.md) for implementation scope and validation. For a repeatable physical-phone test with ArduPilot Rover SITL under WSL2, use the [SITL phone telemetry guide](docs/sitl-phone-telemetry.md). Review [security boundaries](docs/security.md) and [hardware integration gates](docs/hardware-integration.md) before enabling integrations.
 
 1. Foundation — delivered.
 2. **Transport — delivered.** Explicit UDP profile, foreground socket ownership, lifecycle/error states, Bluetooth/serial extension contracts and tests.
 3. **MAVLink HEARTBEAT — delivered.** MAVLink 2 framing/CRC, explicit session lifecycle, autopilot identity pinning, heartbeat timeout, and conservative unsigned/signing policy.
 4. **Telemetry — delivered.** GPS raw fix, global position/kinematics, attitude, system status, per-pack and aggregate battery readings, and bounded STATUSTEXT display with source receive ages and invalid-value handling. No health verdicts or controls.
-5. Health — hardware-defined thresholds and readiness assessment.
+5. **Health evidence and readiness gate — delivered.** Protocol-reported evidence is visible, while readiness is explicitly not assessed without a signed-off vehicle profile and hardware integration data.
 6. Map — offline-capable map, position, heading and tracks.
 7. Drive — authorization, deadman/failsafes, safe commands and confirmed outcomes.
 8. VESC — only after controller models and physical telemetry path are confirmed.

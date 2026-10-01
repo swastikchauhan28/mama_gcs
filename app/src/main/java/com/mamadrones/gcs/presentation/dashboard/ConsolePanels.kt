@@ -1,5 +1,6 @@
 package com.mamadrones.gcs.presentation.dashboard
 
+import com.mamadrones.gcs.core.health.HealthAssessmentEvaluator
 import com.mamadrones.gcs.domain.model.*
 import com.mamadrones.gcs.presentation.components.PanelSpec
 import java.util.Locale
@@ -99,10 +100,24 @@ object ConsolePanels {
         "Enabled" to s.enabled.name, "Pump" to s.pump.name, "Valve" to s.valve.name,
         "Pressure" to s.pressureBar.reading("bar"), "Temperature" to s.temperatureCelsius.reading("°C")
     )) }
-    fun health(state: VehicleState) = state.forDisplay().health.let { s -> PanelSpec("Vehicle health", s.overall.name, listOf(
-        "Communication" to s.communication.name, "GPS" to s.gps.name, "Battery" to s.battery.name,
-        "Motors" to s.motors.name, "Spray" to s.spray.name, "Hydraulic" to s.hydraulic.name
-    ), "Health evaluation is not yet available.") }
+    fun health(state: VehicleState): PanelSpec {
+        val displayed = state.forDisplay()
+        val assessment = HealthAssessmentEvaluator.evaluate(displayed)
+        return PanelSpec("Operational readiness", assessment.readiness.name.replace('_', ' '), listOf(
+            "Health profile" to assessment.healthProfile.name.replace('_', ' '),
+            "MAVLink heartbeat" to assessment.communication.name.replace('_', ' '),
+            "GPS telemetry" to assessment.gps.name.replace('_', ' '),
+            "Battery telemetry" to assessment.battery.name.replace('_', ' '),
+            "Autopilot sensors" to assessment.autopilotSensors.name.replace('_', ' ')
+        ), "Telemetry evidence is not a health or machine-safety verdict.")
+    }
+
+    fun healthBlockers(state: VehicleState): PanelSpec {
+        val blockers = HealthAssessmentEvaluator.evaluate(state.forDisplay()).blockers
+        return PanelSpec("Readiness gate", "BLOCKED", blockers.mapIndexed { index, blocker ->
+            "Requirement ${index + 1}" to blocker
+        }, "Configure and validate these inputs before implementing a health verdict.")
+    }
 }
 
 fun sampleAge(timestamp: Long?, nowEpochMillis: Long = System.currentTimeMillis()): String {
