@@ -2,19 +2,21 @@
 
 package com.mamadrones.gcs.presentation.screens
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.presentation.components.*
 import com.mamadrones.gcs.presentation.dashboard.ConsolePanels
+import com.mamadrones.gcs.presentation.dashboard.forDisplay
+import com.mamadrones.gcs.presentation.dashboard.sampleAge
+import com.mamadrones.gcs.presentation.map.VehicleMap
+import java.util.Locale
 
 @Composable
 fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier: Modifier = Modifier) {
@@ -26,12 +28,12 @@ fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier:
         BoxWithConstraints {
             if (maxWidth >= 860.dp) {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    MapWorkspace(Modifier.weight(1.5f).heightIn(min = 300.dp))
+                    MapWorkspace(state, Modifier.weight(1.5f).heightIn(min = 300.dp))
                     SubsystemCard(ConsolePanels.vehicle(state), Modifier.weight(1f))
                 }
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    MapWorkspace(Modifier.fillMaxWidth().heightIn(min = 260.dp))
+                    MapWorkspace(state, Modifier.fillMaxWidth().heightIn(min = 260.dp))
                     SubsystemCard(ConsolePanels.vehicle(state))
                 }
             }
@@ -50,26 +52,69 @@ fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier:
     }
 }
 
-/** Decorative planning grid. No coordinates, vehicle marker, or follow-state claim. */
+/** MapTiler vector basemap with live MapLibre GeoJSON overlays from validated telemetry. */
 @Composable
-fun MapWorkspace(modifier: Modifier = Modifier) {
+fun MapWorkspace(state: VehicleState, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
-    Surface(modifier, color = colors.surface, shape = MaterialTheme.shapes.medium, border = BorderStroke(1.dp, colors.outlineVariant)) {
+    val displayed = state.forDisplay()
+    val position = displayed.position
+    val track = displayed.positionTrack
+    val hasPosition = position.latitude != null && position.longitude != null
+
+    Surface(
+        modifier = modifier,
+        color = colors.surface,
+        shape = MaterialTheme.shapes.medium,
+        border = BorderStroke(1.dp, colors.outlineVariant),
+    ) {
         Box {
-            Canvas(Modifier.matchParentSize()) {
-                val step = 32.dp.toPx()
-                var x = 0f
-                while (x < size.width) { drawLine(colors.outlineVariant.copy(alpha = 0.25f), Offset(x, 0f), Offset(x, size.height)); x += step }
-                var y = 0f
-                while (y < size.height) { drawLine(colors.outlineVariant.copy(alpha = 0.25f), Offset(0f, y), Offset(size.width, y)); y += step }
-            }
-            Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("MAP WORKSPACE", style = MaterialTheme.typography.labelLarge, color = colors.primary)
-                Spacer(Modifier.height(12.dp))
-                MamaIcon(ConsoleIcon.MAP, Modifier.align(Alignment.CenterHorizontally).size(40.dp))
-                Text("Position unknown", style = MaterialTheme.typography.titleLarge)
-                Text("Map rendering, vehicle marker and route are not implemented yet. Telemetry coordinates appear in the position panel.", color = colors.onSurfaceVariant)
-                StatusBadge("MAP UNAVAILABLE")
+            VehicleMap(
+                state = displayed,
+                modifier = Modifier.matchParentSize(),
+            )
+
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(12.dp),
+                color = colors.surface.copy(alpha = 0.94f),
+                shape = MaterialTheme.shapes.small,
+                tonalElevation = 4.dp,
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(
+                        "MAPTILER VECTOR MAP · NORTH UP",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = colors.primary,
+                    )
+                    StatusBadge(if (hasPosition) "POSITION RECEIVED" else "POSITION UNKNOWN")
+                    if (hasPosition) {
+                        Text(
+                            String.format(
+                                Locale.US,
+                                "%.7f, %.7f",
+                                position.latitude,
+                                position.longitude,
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            "Heading ${displayed.headingDegrees?.let { String.format(Locale.US, "%.1f°", it) } ?: "UNKNOWN"}" +
+                                " · Track ${track.size} points · ${sampleAge(position.lastUpdatedAtEpochMillis)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                        )
+                    } else {
+                        Text(
+                            "Waiting for a fresh GLOBAL_POSITION_INT sample",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
     }

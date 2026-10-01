@@ -11,10 +11,12 @@ import com.mamadrones.gcs.presentation.dashboard.ConsolePanels
 import com.mamadrones.gcs.presentation.dashboard.forDisplay
 
 @Composable
-fun MapScreen(modifier: Modifier = Modifier) = ScreenBody(modifier) {
+fun MapScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
     ScreenHeader("Map", "Position, route and offline field maps")
-    MapWorkspace(Modifier.fillMaxWidth().heightIn(min = 340.dp))
-    UnavailableActions("Center vehicle", "Follow vehicle", "Offline regions")
+    MapWorkspace(state, Modifier.fillMaxWidth().heightIn(min = 340.dp))
+    SubsystemCard(ConsolePanels.position(state))
+    SubsystemCard(ConsolePanels.vehicle(state))
+    UnavailableActions("Offline regions")
 }
 
 @Composable

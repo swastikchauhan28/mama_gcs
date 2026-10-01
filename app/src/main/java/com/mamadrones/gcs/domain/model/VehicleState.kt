@@ -18,6 +18,7 @@ data class VehicleState(
     val headingDegrees: Double? = null,
     val kinematicsLastUpdatedAtEpochMillis: Long? = null,
     val position: GlobalPositionState = GlobalPositionState(),
+    val positionTrack: List<GeoTrackPoint> = emptyList(),
     val attitude: AttitudeState = AttitudeState(),
     val systemStatus: AutopilotSystemStatus = AutopilotSystemStatus(),
     val gps: GpsState = GpsState(),

@@ -102,4 +102,4 @@ Stop the test by closing the UDP socket in Mama GCS, pressing `Ctrl+C` in the re
 
 On 2026-09-30, Rover SITL on WSL2 was connected to Mama GCS on a physical Android phone with this arrangement. The app showed `CONNECTED` and fresh telemetry receive ages. It decoded an `RTK FIXED` GPS sample with 10 satellites and HDOP 1.2; latitude `-35.3632621`; longitude `149.1652374`; filtered global position near the same coordinates at 584.1 m MSL; battery pack 0 at 12.6 V and 100%; and attitude near roll -0.1°, pitch -0.1°, yaw -7.8°.
 
-The map page continued to state `MAP UNAVAILABLE`, as expected: map rendering and vehicle markers are a later phase. The Control page also remained unavailable and sent no commands.
+The Map screen shows the SITL coordinate, heading, and bounded track over the configured online MapTiler vector basemap. Center and Follow are display-only camera controls. Offline regions remain unavailable, and the Control page sends no commands.

@@ -97,7 +97,7 @@ fun MamaGcsApp(
                     }
                     NavHost(navController, startDestination = AppDestination.DASHBOARD.route, modifier = Modifier.weight(1f)) {
                         composable("dashboard") { DashboardScreen(vehicle, navigate) }
-                        composable("map") { MapScreen() }
+                        composable("map") { MapScreen(vehicle) }
                         composable("control") { ControlScreen(vehicle) }
                         composable("mission") { MissionScreen(vehicle) }
                         composable("more") { MoreScreen(onNavigate = navigate) }

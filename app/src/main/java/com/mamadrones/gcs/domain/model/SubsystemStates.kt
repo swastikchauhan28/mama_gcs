@@ -34,6 +34,13 @@ data class GlobalPositionState(
     val lastUpdatedAtEpochMillis: Long? = null
 )
 
+/** Geographic point retained for the current telemetry session's displayed trail. */
+data class GeoTrackPoint(
+    val latitude: Double,
+    val longitude: Double,
+    val recordedAtEpochMillis: Long
+)
+
 /** Attitude and angular rates use the MAVLink-native radian units. */
 data class AttitudeState(
     val rollRadians: Double? = null,

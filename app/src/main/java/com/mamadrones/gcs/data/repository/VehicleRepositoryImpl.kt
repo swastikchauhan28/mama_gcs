@@ -52,6 +52,14 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
             message.vxCentimetersPerSecond.toDouble(),
             message.vyCentimetersPerSecond.toDouble()
         ) / CENTIMETERS_PER_METER
+        val track = _vehicleState.value.positionTrack
+        val nextTrack = if (validCoordinates) {
+            val point = GeoTrackPoint(latitude, longitude, receivedAtEpochMillis)
+            val last = track.lastOrNull()
+            if (last == null || distanceMeters(last.latitude, last.longitude, latitude, longitude) >= MIN_TRACK_STEP_METERS) {
+                (track + point).takeLast(MAX_TRACK_POINTS)
+            } else track
+        } else track
         _vehicleState.value = _vehicleState.value.copy(
             position = GlobalPositionState(
                 latitude = latitude.takeIf { validCoordinates },
@@ -59,6 +67,7 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
                 altitudeMetersMsl = message.altitudeMillimetersMsl / MILLIMETERS_PER_METER,
                 lastUpdatedAtEpochMillis = receivedAtEpochMillis
             ),
+            positionTrack = nextTrack,
             speedMetersPerSecond = speed.takeIf(Double::isFinite),
             headingDegrees = message.headingCentidegrees
                 .takeUnless { it == UINT16_UNKNOWN || it > MAX_HEADING_CENTIDEGREES }
@@ -161,6 +170,13 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
     }
 }
 
+private fun distanceMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+    val meanLatitude = Math.toRadians((lat1 + lat2) / 2.0)
+    val northMeters = (lat2 - lat1) * METERS_PER_DEGREE_LATITUDE
+    val eastMeters = (lon2 - lon1) * METERS_PER_DEGREE_LATITUDE * kotlin.math.cos(meanLatitude)
+    return kotlin.math.hypot(northMeters, eastMeters)
+}
+
 /** ArduPilot Rover custom-mode values. Unknown values are never presented as a guessed mode. */
 private object ArduRoverMode {
     private val names = mapOf(
@@ -209,6 +225,9 @@ private const val MAX_LOAD_DECIPERCENT = 1_000
 private const val MAX_DROP_CENTIPERCENT = 10_000
 private const val MAX_BATTERY_INSTANCES = 16
 private const val MAX_STATUS_TEXTS = 50
+private const val MAX_TRACK_POINTS = 2_000
+private const val MIN_TRACK_STEP_METERS = 0.5
+private const val METERS_PER_DEGREE_LATITUDE = 111_320.0
 private const val DEGREES_E7 = 10_000_000.0
 private const val MILLIMETERS_PER_METER = 1_000.0
 private const val CENTIMETERS_PER_METER = 100.0
