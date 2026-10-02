@@ -2,12 +2,12 @@
 
 Native Android ground-control-station foundation for a Mama agricultural UGV: ArduPilot Rover, VESC motors, spray equipment and hydraulics. Kotlin · Compose · Material 3 · Hilt · offline-first.
 
-## Current delivery: Phase 6 live MapLibre vehicle map
+## Current delivery: Phase 7 Drive safety gate foundation
 
-The expanded agricultural specification uses incremental acceptance. Phase 6 now combines the live coordinate, heading, and recent track with a MapLibre Native geographic map using the MapTiler Streets vector style. Track samples stay in memory for the current session. Licensed offline regions remain deferred, and vehicle control remains unavailable.
+The expanded agricultural specification uses incremental acceptance. Phase 7 adds a deny-by-default drive-safety admission policy and a Control-screen preflight. Phase 6 provides the live coordinate, heading, and recent track over a MapLibre Native basemap using the MapTiler Streets vector style. Drive commands remain disabled until trusted identity, vehicle-specific safety evidence, and a validated command route exist.
 
 - Responsive dark field-console design, light/daylight and system themes, original local icons, shared typography, spacing, cards and status treatments.
-- Dashboard, Map, Control, Mission, Health, Motors, Spray, Hydraulic, Diagnostics, Admin and Settings. Phones use bottom navigation; wide windows use a side rail. Secondary screens are reached through More or dashboard shortcuts.
+- Map-first Operate, Map, Drive, Plan and Systems workspaces. Phones use bottom navigation; wide windows use a side rail and instrument dock. Connection access and emergency-stop unavailability remain visible on every screen. Detailed telemetry and equipment are reached through Systems or operating shortcuts. See the [operator design and requirements matrix](docs/operator-ui-design.md) for coverage and remaining capabilities.
 - Nullable/UNKNOWN subsystem models and read-only integration contracts. No invented telemetry, safe actuator state, health verdict, or controller/nozzle inventory.
 - Disabled, explicitly unavailable emergency stop and hardware actions. Navigation and persistent local theme settings work; vehicle selection explains that pairing is unavailable.
 - Basic role/session policy and app-storage/manifest protections, **not** implemented authentication or production command security.
@@ -15,6 +15,7 @@ The expanded agricultural specification uses incremental acceptance. Phase 6 now
 - Incremental MAVLink 2 framing and CRC/payload validation for HEARTBEAT, GPS_RAW_INT, GLOBAL_POSITION_INT, ATTITUDE, SYS_STATUS, BATTERY_STATUS, and STATUSTEXT. Unsigned packets update source-specific state and receive times; signed frames are rejected because no signing-key verifier is provisioned. CRC and fixed-peer filtering are not authentication.
 - Read-only health evidence labels MAVLink link, GPS, battery, and autopilot sensor data as not received, reported, or protocol-reported issue. Operational readiness remains **NOT ASSESSED** until a vehicle-specific health profile, hardware limits, expected telemetry rates, and validated subsystem routes are provisioned.
 - Map and dashboard draw the current GLOBAL_POSITION_INT coordinate, heading marker, and a bounded track over a MapTiler vector basemap after at least 0.5 m of reported movement. Center and follow controls are functional; a user pan disables following. Track data is cleared at a new telemetry session and is not persisted.
+- Drive admission now has a pure fail-closed checklist for operator authentication/permission, provisioned and authenticated vehicle identity, fresh heartbeat/telemetry, approved vehicle safety profile, validated command path, physical emergency stop, tested link-loss failsafe, allowed mode/arming conditions, and active deadman lease. No UI can mark those conditions verified, and no command sender exists yet.
 
 Opening a configured UDP socket starts the receive session and accepts datagrams only from the configured peer. A CRC-valid unsigned HEARTBEAT from an autopilot component establishes liveness; the pinned system/component source gates telemetry updates. Receive timestamps are displayed with measurements; protocol liveness and CRC do not authenticate the sender. No MAVLink commands are sent.
 
@@ -48,7 +49,7 @@ Keep the existing toolchain: AGP 8.13.2, Gradle 8.13, Kotlin 2.1.0, compile/targ
 .\gradlew.bat :app:connectedDebugAndroidTest
 ```
 
-Open the project in Android Studio, sync, select a device and run `app`. The online map requires a MapTiler key in ignored `local.properties`; see [MapLibre and MapTiler setup](docs/maplibre-maptiler.md). The remaining foundation can open without a vehicle or login. More → Settings selects Dark, Light or System; the choice survives process restart. Units are currently metric only.
+Open the project in Android Studio, sync, select a device and run `app`. The online map requires a MapTiler key in ignored `local.properties`; see [MapLibre and MapTiler setup](docs/maplibre-maptiler.md). The remaining foundation can open without a vehicle or login. Systems → Settings selects Dark, Light or System; the choice survives process restart. The top connection shortcut opens the same settings screen. Units are currently metric only.
 
 Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
 Unit test report: `app/build/reports/tests/testDebugUnitTest/index.html`.
@@ -58,9 +59,9 @@ Runtime dependencies include AndroidX Preferences DataStore 1.1.1, MapLibre Nati
 
 ## Boundaries and next phases
 
-There is no licensed offline-region implementation, bundled telemetry simulator, real actuator control, login/user store, audit persistence, configured hardware-health evaluation, mission protocol or background communication service. The online map requires MapTiler network access and an operator-provided client key. Raw UDP packet counts are available only while an explicitly configured socket is open; they are not vehicle telemetry or link health.
+There is no licensed offline-region implementation, bundled telemetry simulator, real actuator control, login/user store, audit persistence, configured hardware-health evaluation, mission protocol or background communication service. The Drive safety evaluator is groundwork only; its evidence is not connected to trusted providers and all drive commands remain disabled. The online map requires MapTiler network access and an operator-provided client key. Raw UDP packet counts are available only while an explicitly configured socket is open; they are not vehicle telemetry or link health.
 
-See [Phase 1 report](docs/phase-1-report.md), [Phase 2 report](docs/phase-2-report.md), [Phase 3 report](docs/phase-3-report.md), [Phase 4 report](docs/phase-4-report.md), [Phase 5 report](docs/phase-5-report.md), and [Phase 6 report](docs/phase-6-report.md) for implementation scope and validation. For a repeatable physical-phone test with ArduPilot Rover SITL under WSL2, use the [SITL phone telemetry guide](docs/sitl-phone-telemetry.md). Review [security boundaries](docs/security.md) and [hardware integration gates](docs/hardware-integration.md) before enabling integrations.
+See [Phase 1 report](docs/phase-1-report.md), [Phase 2 report](docs/phase-2-report.md), [Phase 3 report](docs/phase-3-report.md), [Phase 4 report](docs/phase-4-report.md), [Phase 5 report](docs/phase-5-report.md), [Phase 6 report](docs/phase-6-report.md), and [Phase 7 report](docs/phase-7-report.md) for implementation scope and validation. For a repeatable physical-phone test with ArduPilot Rover SITL under WSL2, use the [SITL phone telemetry guide](docs/sitl-phone-telemetry.md). Review [security boundaries](docs/security.md) and [hardware integration gates](docs/hardware-integration.md) before enabling integrations.
 
 1. Foundation — delivered.
 2. **Transport — delivered.** Explicit UDP profile, foreground socket ownership, lifecycle/error states, Bluetooth/serial extension contracts and tests.
@@ -68,7 +69,7 @@ See [Phase 1 report](docs/phase-1-report.md), [Phase 2 report](docs/phase-2-repo
 4. **Telemetry — delivered.** GPS raw fix, global position/kinematics, attitude, system status, per-pack and aggregate battery readings, and bounded STATUSTEXT display with source receive ages and invalid-value handling. No health verdicts or controls.
 5. **Health evidence and readiness gate — delivered.** Protocol-reported evidence is visible, while readiness is explicitly not assessed without a signed-off vehicle profile and hardware integration data.
 6. **Map telemetry and online basemap — delivered.** MapLibre Native, MapTiler Streets vector tiles, live coordinate/heading, bounded current-session track, and center/follow controls. Licensed offline regions remain deferred.
-7. Drive — authorization, deadman/failsafes, safe commands and confirmed outcomes.
+7. **Drive safety gate foundation — delivered.** Deny-by-default admission checklist and visible Control preflight. Trusted identity, signed vehicle identity, approved safety profile, command transport, deadman implementation, command outcomes, and all vehicle movement commands remain unimplemented.
 8. VESC — only after controller models and physical telemetry path are confirmed.
 9. Spray — verified hardware mapping and interlocks.
 10. Hydraulic — verified hardware mapping and interlocks.

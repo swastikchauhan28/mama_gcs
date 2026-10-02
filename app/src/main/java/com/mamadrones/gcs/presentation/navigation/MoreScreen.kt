@@ -11,13 +11,14 @@ import com.mamadrones.gcs.presentation.components.*
 fun MoreScreen(modifier: Modifier = Modifier, onNavigate: (String) -> Unit) = ScreenBody(modifier) {
     ScreenHeader("Systems", "Subsystems, inspection and local setup")
     listOf(
+        Triple("telemetry", "Telemetry", "All measurements and receive ages"),
         Triple("health", "Health", "Vehicle condition and telemetry availability"),
         Triple("motors", "Motors", "VESC temperature, RPM, current and faults"),
         Triple("spray", "Spray", "Pump, nozzles, pressure and flow"),
         Triple("hydraulic", "Hydraulic", "Pump, valves and sensor status"),
         Triple("diagnostics", "Diagnostics", "Communication and vehicle inspection"),
         Triple("admin", "Admin", "Local access, pairing and configuration"),
-        Triple("settings", "Settings", "Appearance and device preferences")
+        Triple("settings", "Settings", "UDP connection and display appearance")
     ).forEach { (route, label, detail) ->
         OutlinedCard(onClick = { onNavigate(route) }, modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp)) {
             Column(Modifier.padding(16.dp)) {

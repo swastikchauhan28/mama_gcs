@@ -1,121 +1,169 @@
-@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-
 package com.mamadrones.gcs.presentation.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.*
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.presentation.components.*
 import com.mamadrones.gcs.presentation.dashboard.ConsolePanels
 import com.mamadrones.gcs.presentation.dashboard.forDisplay
+import com.mamadrones.gcs.presentation.dashboard.reading
 import com.mamadrones.gcs.presentation.dashboard.sampleAge
 import com.mamadrones.gcs.presentation.map.VehicleMap
 import java.util.Locale
 
+/** Bounded operation workspace: the map never lives inside a scrolling telemetry list. */
 @Composable
 fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier: Modifier = Modifier) {
-    ScreenBody(modifier) {
-        ScreenHeader("Field overview", "AGRICULTURAL UGV  /  OPERATIONS")
-        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            EmergencyStopButton()
-        }
-        BoxWithConstraints {
-            if (maxWidth >= 860.dp) {
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    MapWorkspace(state, Modifier.weight(1.5f).heightIn(min = 300.dp))
-                    SubsystemCard(ConsolePanels.vehicle(state), Modifier.weight(1f))
-                }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    MapWorkspace(state, Modifier.fillMaxWidth().heightIn(min = 260.dp))
-                    SubsystemCard(ConsolePanels.vehicle(state))
-                }
+    val displayed = state.forDisplay()
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val twoMetricRows = maxHeight >= 480.dp
+        if (maxWidth >= 680.dp) {
+            Row(Modifier.fillMaxSize().padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                MapWorkspace(state, Modifier.weight(1f).fillMaxHeight())
+                TelemetryDock(displayed, true, onNavigate, Modifier.width(224.dp).fillMaxHeight())
+            }
+        } else {
+            Column(Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                MapWorkspace(state, Modifier.fillMaxWidth().weight(1f))
+                TelemetryDock(displayed, false, onNavigate, Modifier.fillMaxWidth(), twoMetricRows = twoMetricRows)
             }
         }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Control" to "control", "Mission" to "mission", "Diagnostics" to "diagnostics", "Admin" to "admin").forEach { (label, route) ->
-                OutlinedButton(onClick = { onNavigate(route) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(label) }
-            }
-        }
-        Text("SUBSYSTEMS", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.semantics { heading() })
-        CardGrid(listOf(
-            ConsolePanels.health(state), ConsolePanels.gps(state), ConsolePanels.position(state),
-            ConsolePanels.battery(state), ConsolePanels.attitude(state), ConsolePanels.motors(state),
-            ConsolePanels.spray(state), ConsolePanels.hydraulic(state)
-        ))
     }
 }
 
-/** MapTiler vector basemap with live MapLibre GeoJSON overlays from validated telemetry. */
 @Composable
-fun MapWorkspace(state: VehicleState, modifier: Modifier = Modifier) {
-    val colors = MaterialTheme.colorScheme
-    val displayed = state.forDisplay()
-    val position = displayed.position
-    val track = displayed.positionTrack
-    val hasPosition = position.latitude != null && position.longitude != null
-
-    Surface(
-        modifier = modifier,
-        color = colors.surface,
-        shape = MaterialTheme.shapes.medium,
-        border = BorderStroke(1.dp, colors.outlineVariant),
-    ) {
-        Box {
-            VehicleMap(
-                state = displayed,
-                modifier = Modifier.matchParentSize(),
-            )
-
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(12.dp),
-                color = colors.surface.copy(alpha = 0.94f),
-                shape = MaterialTheme.shapes.small,
-                tonalElevation = 4.dp,
-            ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
-                ) {
-                    Text(
-                        "MAPTILER VECTOR MAP · NORTH UP",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = colors.primary,
-                    )
-                    StatusBadge(if (hasPosition) "POSITION RECEIVED" else "POSITION UNKNOWN")
-                    if (hasPosition) {
-                        Text(
-                            String.format(
-                                Locale.US,
-                                "%.7f, %.7f",
-                                position.latitude,
-                                position.longitude,
-                            ),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Text(
-                            "Heading ${displayed.headingDegrees?.let { String.format(Locale.US, "%.1f°", it) } ?: "UNKNOWN"}" +
-                                " · Track ${track.size} points · ${sampleAge(position.lastUpdatedAtEpochMillis)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
-                        )
-                    } else {
-                        Text(
-                            "Waiting for a fresh GLOBAL_POSITION_INT sample",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
-                        )
+private fun TelemetryDock(
+    state: VehicleState,
+    expanded: Boolean,
+    onNavigate: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    twoMetricRows: Boolean = false,
+) {
+    val packs = state.batteries.ifEmpty { listOf(state.battery) }
+    val batteryValue = if (packs.size > 1) "${packs.size} packs" else
+        packs.single().percentage?.let { "$it %" } ?: "UNKNOWN"
+    val metrics = listOf(
+        "SPEED" to state.speedMetersPerSecond.reading("m/s"),
+        "HEADING" to state.headingDegrees.reading("°"),
+        "BATTERY" to batteryValue,
+        "GPS" to state.gps.fix.name.replace('_', ' '),
+    )
+    Surface(modifier, shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
+        Column(
+            if (expanded) Modifier.verticalScroll(rememberScrollState()).padding(8.dp)
+            else Modifier.padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (expanded) {
+                Text("VEHICLE INSTRUMENTS", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                metrics.chunked(2).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        row.forEach { (label, value) -> Instrument(label, value, Modifier.weight(1f)) }
+                    }
+                }
+                TelemetryRow("Mode", state.mode ?: "UNKNOWN")
+                TelemetryRow("Arming", state.armed?.let { if (it) "ARMED" else "DISARMED" } ?: "UNKNOWN")
+                TelemetryRow("Direction", state.direction.name)
+                TelemetryRow("Satellites", state.gps.satellites?.toString() ?: "UNKNOWN")
+                TelemetryRow("HDOP", state.gps.hdop.reading(""))
+                Text(sampleAge(state.position.lastUpdatedAtEpochMillis), style = MaterialTheme.typography.bodySmall)
+                HorizontalDivider()
+                Text("FIELD EQUIPMENT", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                EquipmentLink("Spray", state.spray.spraying.name) { onNavigate("spray") }
+                EquipmentLink("Hydraulics", state.hydraulic.enabled.name) { onNavigate("hydraulic") }
+                EquipmentLink("Motors", if (state.motors.isEmpty()) "NO DATA" else "${state.motors.size} reported") { onNavigate("motors") }
+                EquipmentLink("Health", "NOT ASSESSED") { onNavigate("health") }
+                OutlinedButton(onClick = { onNavigate("telemetry") }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("All telemetry") }
+                TextButton(onClick = { onNavigate("diagnostics") }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Messages & diagnostics") }
+            } else {
+                if (twoMetricRows) {
+                    metrics.chunked(2).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            row.forEach { (label, value) -> Instrument(label, value, Modifier.weight(1f)) }
+                        }
+                    }
+                } else {
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        metrics.forEach { (label, value) -> Instrument(label, value, Modifier.widthIn(min = 112.dp)) }
+                    }
+                }
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("All telemetry" to "telemetry", "Spray" to "spray", "Hydraulics" to "hydraulic", "Motors" to "motors", "Health" to "health").forEach { (label, route) ->
+                        OutlinedButton(onClick = { onNavigate(route) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(label) }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+fun Instrument(label: String, value: String, modifier: Modifier = Modifier) {
+    Surface(modifier.semantics(mergeDescendants = true) {}, color = MaterialTheme.colorScheme.surfaceContainerHigh, shape = MaterialTheme.shapes.small) {
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace)
+        }
+    }
+}
+
+@Composable
+private fun EquipmentLink(label: String, value: String, onClick: () -> Unit) {
+    OutlinedCard(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+        Row(Modifier.fillMaxWidth().padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(label, style = MaterialTheme.typography.bodyMedium)
+            Text("$value ›", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+fun MapWorkspace(state: VehicleState, modifier: Modifier = Modifier) {
+    val displayed = state.forDisplay()
+    val position = displayed.position
+    Surface(modifier.testTag("operation-map"), shape = MaterialTheme.shapes.medium, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Box {
+            VehicleMap(displayed, Modifier.fillMaxSize())
+            // Reserve the right edge for map controls; provider attribution stays at the bottom.
+            Surface(
+                modifier = Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 8.dp, end = 84.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Column(Modifier.padding(8.dp)) {
+                    Text(
+                        if (position.latitude != null && position.longitude != null)
+                            String.format(Locale.US, "%.7f, %.7f", position.latitude, position.longitude)
+                        else "Vehicle position unavailable",
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                    Text(
+                        "${displayed.mode ?: "MODE UNKNOWN"} · ${displayed.armed?.let { if (it) "ARMED" else "DISARMED" } ?: "ARMING UNKNOWN"}",
+                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TelemetryScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
+    ScreenHeader("Telemetry", "Vehicle measurements and receive ages")
+    CardGrid(listOf(
+        ConsolePanels.vehicle(state), ConsolePanels.gps(state), ConsolePanels.position(state),
+        ConsolePanels.battery(state), ConsolePanels.attitude(state), ConsolePanels.systemStatus(state),
+        ConsolePanels.spray(state), ConsolePanels.hydraulic(state), ConsolePanels.motors(state),
+    ))
 }

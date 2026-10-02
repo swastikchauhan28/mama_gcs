@@ -4,24 +4,31 @@ import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -81,6 +88,8 @@ fun VehicleMap(
     var style by remember(mapView) { mutableStateOf<Style?>(null) }
     var cameraInitialized by remember(mapView) { mutableStateOf(false) }
     var followVehicle by remember(mapView) { mutableStateOf(true) }
+    var loadFailed by remember(mapView) { mutableStateOf(false) }
+    var loadAttempt by remember(mapView) { mutableIntStateOf(0) }
 
     val moveListener = remember(mapView) {
         object : MapLibreMap.OnMoveListener {
@@ -94,9 +103,13 @@ fun VehicleMap(
         }
     }
 
-    DisposableEffect(mapView, styleUrl, moveListener) {
+    DisposableEffect(mapView, styleUrl, moveListener, loadAttempt) {
         var disposed = false
         var attachedMap: MapLibreMap? = null
+        loadFailed = false
+        // Never display the raw SDK error: it may contain a style URL and client key.
+        val failureListener = MapView.OnDidFailLoadingMapListener { if (!disposed) loadFailed = true }
+        mapView.addOnDidFailLoadingMapListener(failureListener)
 
         if (styleUrl != null) {
             mapView.getMapAsync { loadedMap ->
@@ -118,6 +131,7 @@ fun VehicleMap(
                     if (!disposed) {
                         installVehicleLayers(loadedStyle)
                         style = loadedStyle
+                        loadFailed = false
                     }
                 }
             }
@@ -126,6 +140,7 @@ fun VehicleMap(
         onDispose {
             disposed = true
             attachedMap?.removeOnMoveListener(moveListener)
+            mapView.removeOnDidFailLoadingMapListener(failureListener)
             style = null
             map = null
         }
@@ -189,6 +204,13 @@ fun VehicleMap(
     }
 
     Box(modifier = modifier) {
+        // Opaque controls remain legible over both bright and dark map tiles.
+        val mapButtonColors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.primary,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+        )
         AndroidView(
             factory = { mapView },
             modifier = Modifier.fillMaxSize(),
@@ -196,9 +218,16 @@ fun VehicleMap(
 
         when {
             styleUrl == null -> MapMessage(
-                title = "MAP KEY REQUIRED",
-                detail = "Add MAPTILER_API_KEY to the ignored local.properties file.",
+                title = "MAP SOURCE NOT CONFIGURED",
+                detail = "Configure a map provider before field use. Telemetry can still be inspected.",
                 modifier = Modifier.align(Alignment.Center),
+            )
+
+            loadFailed -> MapMessage(
+                title = "MAP LOAD FAILED",
+                detail = "Check network access and map-provider configuration.",
+                modifier = Modifier.align(Alignment.Center),
+                onRetry = { loadAttempt++ },
             )
 
             style == null -> MapMessage(
@@ -211,25 +240,35 @@ fun VehicleMap(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(start = 8.dp, end = 8.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.End,
         ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                FilledTonalButton(onClick = { map?.animateCamera(CameraUpdateFactory.zoomIn()) }, enabled = style != null, colors = mapButtonColors,
+                    modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Zoom in" }) { Text("+") }
+                FilledTonalButton(onClick = { map?.animateCamera(CameraUpdateFactory.zoomOut()) }, enabled = style != null, colors = mapButtonColors,
+                    modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Zoom out" }) { Text("−") }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             FilledTonalButton(
                 onClick = { centerOnVehicle(enableFollow = false) },
-                enabled = vehicleTarget != null && map != null,
-                modifier = Modifier.heightIn(min = 48.dp),
+                colors = mapButtonColors,
+                enabled = vehicleTarget != null && style != null,
+                modifier = Modifier.heightIn(min = 48.dp).testTag("map-center"),
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
             ) {
                 Text("Center")
             }
             FilledTonalButton(
                 onClick = { centerOnVehicle(enableFollow = true) },
-                enabled = vehicleTarget != null && map != null,
-                modifier = Modifier.heightIn(min = 48.dp),
+                colors = mapButtonColors,
+                enabled = vehicleTarget != null && style != null,
+                modifier = Modifier.heightIn(min = 48.dp).testTag("map-follow"),
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
             ) {
-                Text(if (followVehicle) "Following" else "Follow")
+                Text(if (followVehicle && vehicleTarget != null && style != null) "Following" else "Follow")
+            }
             }
         }
     }
@@ -240,6 +279,7 @@ private fun MapMessage(
     title: String,
     detail: String,
     modifier: Modifier = Modifier,
+    onRetry: (() -> Unit)? = null,
 ) {
     Surface(
         modifier = modifier.padding(24.dp),
@@ -257,6 +297,7 @@ private fun MapMessage(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            onRetry?.let { TextButton(onClick = it, modifier = Modifier.heightIn(min = 48.dp)) { Text("Retry map") } }
         }
     }
 }

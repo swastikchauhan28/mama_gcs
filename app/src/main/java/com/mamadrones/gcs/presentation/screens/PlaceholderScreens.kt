@@ -1,39 +1,58 @@
 package com.mamadrones.gcs.presentation.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.mamadrones.gcs.core.security.DriveSafetyGate
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.presentation.components.*
 import com.mamadrones.gcs.presentation.dashboard.ConsolePanels
 import com.mamadrones.gcs.presentation.dashboard.forDisplay
+import com.mamadrones.gcs.presentation.dashboard.sampleAge
+import com.mamadrones.gcs.presentation.settings.ConnectionUiState
 
 @Composable
-fun MapScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
-    ScreenHeader("Map", "Position, route and offline field maps")
-    MapWorkspace(state, Modifier.fillMaxWidth().heightIn(min = 340.dp))
-    SubsystemCard(ConsolePanels.position(state))
-    SubsystemCard(ConsolePanels.vehicle(state))
-    UnavailableActions("Offline regions")
+fun MapScreen(state: VehicleState, modifier: Modifier = Modifier) = Column(
+    modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)
+) {
+    MapWorkspace(state, Modifier.fillMaxWidth().weight(1f))
+    Text("MapTiler · Live position & session track. Offline region downloads are not implemented.",
+        style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(8.dp))
 }
 
 @Composable
 fun ControlScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
     ScreenHeader("Drive control", "Forward / reverse · ArduPilot Rover")
-    EmergencyStopButton(Modifier.fillMaxWidth())
-    Notice("CONTROL NOT IMPLEMENTED", "Commands are unavailable. Vehicle movement and stop state cannot be confirmed. Use the vehicle's physical safety system.")
-    SubsystemCard(ConsolePanels.vehicle(state))
+    val assessment = DriveSafetyGate.assess()
+    var showChecks by rememberSaveable { mutableStateOf(false) }
+    Notice(
+        "DRIVE LOCKED · MONITORING ONLY",
+        "Command transmission and deadman control are not implemented. The app cannot stop the vehicle. Use its independent physical safety system.",
+    )
     UnavailableActions("Forward", "Reverse", "Stop", "Arm", "Disarm", "Set mode", "Set speed")
+    TextButton(onClick = { showChecks = !showChecks }, modifier = Modifier.heightIn(min = 48.dp).testTag("drive-safety-details")) {
+        Text(if (showChecks) "Hide safety requirements" else "Why locked? · ${assessment.blockers.size} unverified requirements")
+    }
+    if (showChecks) SubsystemCard(PanelSpec(
+        title = "Drive safety gate", status = "LOCKED",
+        rows = assessment.checks.map { it.requirement.description to if (it.satisfied) "VERIFIED" else "REQUIRED" },
+        note = "These are evidence checks, not user-overridable switches. No command route or verified safety evidence is connected.",
+    ))
+    SubsystemCard(ConsolePanels.vehicle(state))
 }
 
 @Composable
 fun MissionScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
-    ScreenHeader("Mission", "Waypoint planning and execution")
+    ScreenHeader("Plan", "Waypoint planning and execution")
     Notice("NOT IMPLEMENTED", "No mission has been downloaded. Onboard mission state is unknown.")
+    MapWorkspace(state, Modifier.fillMaxWidth().height(300.dp))
+    Text("Reference map only · Tap-to-add waypoints, field boundaries, geofences and offline regions are not implemented.", style = MaterialTheme.typography.bodySmall)
     SubsystemCard(PanelSpec("Mission", state.forDisplay().mission.status.name, listOf("Waypoints" to "UNKNOWN", "Current waypoint" to "UNKNOWN", "Progress" to "UNKNOWN")))
-    UnavailableActions("New mission", "Upload", "Download", "Start mission", "Pause")
+    UnavailableActions("New mission", "Upload", "Download", "Start mission", "Pause", "Resume")
 }
 
 @Composable
@@ -68,10 +87,17 @@ fun HydraulicScreen(state: VehicleState, modifier: Modifier = Modifier) = Screen
 }
 
 @Composable
-fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
+fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connection: ConnectionUiState = ConnectionUiState()) = ScreenBody(modifier) {
     ScreenHeader("Diagnostics", "Vehicle and communication inspection")
+    val link = connection.session.connection
     CardGrid(listOf(
-        PanelSpec("Communication", "NOT CONFIGURED", listOf("RX packets" to "UNKNOWN", "TX packets" to "UNKNOWN", "Parser errors" to "UNKNOWN", "Transport" to "UNSELECTED")),
+        PanelSpec("Communication", link.status.name, listOf(
+            "RX packets" to link.packetStatistics.receivedPackets.toString(),
+            "TX packets" to link.packetStatistics.transmittedPackets.toString(),
+            "Last packet" to sampleAge(link.packetStatistics.lastReceivedAtEpochMillis),
+            "Parser errors" to "NOT MEASURED",
+            "Transport" to if (connection.savedEndpoint != null) "UDP" else "UNCONFIGURED",
+        ), note = "Socket state and packet counts do not prove vehicle liveness or command capability."),
         ConsolePanels.vehicle(state), ConsolePanels.gps(state), ConsolePanels.position(state),
         ConsolePanels.battery(state), ConsolePanels.attitude(state), ConsolePanels.systemStatus(state),
         ConsolePanels.statusTexts(state)

@@ -1,14 +1,15 @@
-@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-
 package com.mamadrones.gcs.presentation.navigation
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.*
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.*
 import com.mamadrones.gcs.domain.model.ThemeMode
@@ -20,9 +21,9 @@ import com.mamadrones.gcs.presentation.settings.SettingsUiState
 import com.mamadrones.gcs.presentation.settings.ConnectionUiState
 
 enum class AppDestination(val route: String, val label: String, val icon: ConsoleIcon) {
-    DASHBOARD("dashboard", "Home", ConsoleIcon.DASHBOARD), MAP("map", "Map", ConsoleIcon.MAP),
-    CONTROL("control", "Control", ConsoleIcon.CONTROL), MISSION("mission", "Mission", ConsoleIcon.MISSION),
-    MORE("more", "More", ConsoleIcon.MORE)
+    DASHBOARD("dashboard", "Operate", ConsoleIcon.DASHBOARD), MAP("map", "Map", ConsoleIcon.MAP),
+    CONTROL("control", "Drive", ConsoleIcon.CONTROL), MISSION("mission", "Plan", ConsoleIcon.MISSION),
+    MORE("more", "Systems", ConsoleIcon.MORE)
 }
 
 @Composable
@@ -49,48 +50,85 @@ fun MamaGcsApp(
     }
     val navigatePrimary: (AppDestination) -> Unit = { destination ->
         navController.navigate(destination.route) {
-            popUpTo(AppDestination.DASHBOARD.route) { saveState = true }
+            // These are flat destinations, not nested navigation graphs. Restoring the popped
+            // stack can reopen Settings when the operator explicitly chooses Operate.
+            popUpTo(AppDestination.DASHBOARD.route)
             launchSingleTop = true
-            restoreState = true
         }
     }
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val wide = maxWidth >= 840.dp
+    // Fill the display, but keep touch targets clear of camera cutouts and the software keyboard.
+    BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).displayCutoutPadding().imePadding()) {
+        val wide = maxWidth >= 720.dp
+        Row(Modifier.fillMaxSize()) {
+        if (wide) Surface(Modifier.width(72.dp).fillMaxHeight()) {
+            Column(Modifier.fillMaxHeight().verticalScroll(rememberScrollState()).padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                AppDestination.entries.forEach { item ->
+                    NavigationRailItem(selected = selected == item, onClick = { navigatePrimary(item) },
+                        modifier = Modifier.height(56.dp).testTag("nav-${item.route}"),
+                        icon = { MamaIcon(item.icon) }, label = { Text(item.label, style = MaterialTheme.typography.labelSmall) })
+                }
+            }
+        }
         Scaffold(
+            modifier = Modifier.weight(1f),
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 Surface(color = MaterialTheme.colorScheme.surface) {
-                    FlowRow(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("MAMA GCS", style = MaterialTheme.typography.titleLarge)
-                        StatusBadge(connectionLabel(vehicle.connectionStatus), vehicle.connectionStatus in setOf(VehicleConnectionState.ERROR, VehicleConnectionState.DEGRADED))
-                        OutlinedButton(onClick = { showVehicles = true }, modifier = Modifier.heightIn(min = 48.dp)) {
-                            Text(vehicle.displayName ?: "Select vehicle · none paired")
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TextButton(onClick = { showVehicles = true }, modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("vehicle-selector")) {
+                            Column(Modifier.fillMaxWidth()) {
+                                Text(
+                                    vehicle.displayName ?: if (vehicle.connected && vehicle.systemId != null) "Rover · SYS ${vehicle.systemId}" else "MAMA GCS · No vehicle",
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.titleSmall,
+                                )
+                                Text(
+                                    if (vehicle.vehicleId == null) "Vehicle pairing unavailable" else vehicle.vehicleId,
+                                    style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                        TextButton(onClick = { navigate("settings") }, modifier = Modifier.heightIn(min = 48.dp).testTag("connection-shortcut")) {
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(connectionLabel(vehicle.connectionStatus), style = MaterialTheme.typography.labelLarge,
+                                    color = if (vehicle.connectionStatus == VehicleConnectionState.DEGRADED || vehicle.connectionStatus == VehicleConnectionState.ERROR) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                                Text("Connection settings ›", style = MaterialTheme.typography.labelSmall)
+                            }
                         }
                     }
                 }
             },
             bottomBar = {
-                if (!wide) NavigationBar {
-                    AppDestination.entries.forEach { item ->
-                        NavigationBarItem(selected = selected == item, onClick = { navigatePrimary(item) },
-                            icon = { MamaIcon(item.icon) }, label = { Text(item.label) })
+                Column {
+                    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            EmergencyStopButton(if (wide) Modifier.width(360.dp) else Modifier.weight(1f))
+                            if (wide) {
+                                Text("MONITORING ONLY · Vehicle controls locked", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
+                                TextButton(onClick = { navigate("control") }) { Text("Drive status") }
+                            }
+                        }
+                    }
+                    if (!wide) NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
+                        AppDestination.entries.forEach { item ->
+                            NavigationBarItem(selected = selected == item, onClick = { navigatePrimary(item) },
+                                modifier = Modifier.testTag("nav-${item.route}"),
+                                icon = { MamaIcon(item.icon) }, label = { Text(item.label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis) })
+                        }
                     }
                 }
             }
         ) { padding ->
             Row(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-                if (wide) Surface(Modifier.width(194.dp).fillMaxHeight()) {
-                    Column(Modifier.padding(12.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("AGRICULTURAL UGV", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.height(12.dp))
-                        AppDestination.entries.forEach { item ->
-                            NavigationDrawerItem(label = { Text(item.label) }, icon = { MamaIcon(item.icon) }, selected = selected == item, onClick = { navigatePrimary(item) })
-                        }
-                        HorizontalDivider()
-                        Text("LOCAL OPERATIONS", style = MaterialTheme.typography.labelSmall)
-                        Text("Vehicle control unavailable", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
                 Column(Modifier.weight(1f)) {
                     if (route !in AppDestination.entries.map { it.route }) {
                         TextButton(onClick = { navController.popBackStack() }, modifier = Modifier.heightIn(min = 48.dp)) { Text("‹ Back") }
@@ -101,36 +139,41 @@ fun MamaGcsApp(
                         composable("control") { ControlScreen(vehicle) }
                         composable("mission") { MissionScreen(vehicle) }
                         composable("more") { MoreScreen(onNavigate = navigate) }
+                        composable("telemetry") { TelemetryScreen(vehicle) }
                         composable("health") { HealthScreen(vehicle) }
                         composable("motors") { MotorScreen(vehicle) }
                         composable("spray") { SprayScreen(vehicle) }
                         composable("hydraulic") { HydraulicScreen(vehicle) }
-                        composable("diagnostics") { DiagnosticsScreen(vehicle) }
+                        composable("diagnostics") { DiagnosticsScreen(vehicle, connection = connection) }
                         composable("admin") { AdminScreen() }
                         composable("settings") {
                             SettingsScreen(
-                                state = settings,
-                                connection = connection,
+                                state = settings, connection = connection,
                                 onThemeSelected = onThemeSelected,
-                                onRemoteHostChanged = onRemoteHostChanged,
-                                onRemotePortChanged = onRemotePortChanged,
-                                onLocalPortChanged = onLocalPortChanged,
-                                onSaveEndpoint = onSaveEndpoint,
-                                onOpenSocket = onOpenSocket,
-                                onCloseSocket = onCloseSocket,
-                                onClearEndpoint = onClearEndpoint
+                                onRemoteHostChanged = onRemoteHostChanged, onRemotePortChanged = onRemotePortChanged,
+                                onLocalPortChanged = onLocalPortChanged, onSaveEndpoint = onSaveEndpoint,
+                                onOpenSocket = onOpenSocket, onCloseSocket = onCloseSocket,
+                                onClearEndpoint = onClearEndpoint,
                             )
                         }
                     }
                 }
             }
         }
+        }
     }
     if (showVehicles) {
         AlertDialog(
             onDismissRequest = { showVehicles = false }, title = { Text("Vehicle selection") },
-            text = { Text("No vehicles are paired. Pairing is not implemented yet. A vehicle identity and connection profile must be provisioned before operation.") },
-            confirmButton = { TextButton(onClick = { showVehicles = false }) { Text("Close") } }
+            text = {
+                Text(
+                    if (vehicle.connected)
+                        "Receiving telemetry from system ${vehicle.systemId}, component ${vehicle.componentId}. This is an observed MAVLink identity. Secure vehicle pairing is not implemented yet."
+                    else "No live vehicle is connected. Configure the telemetry link in Connection settings. Secure vehicle pairing is not implemented yet."
+                )
+            },
+            confirmButton = { TextButton(onClick = { showVehicles = false; navigate("settings") }) { Text("Connection settings") } },
+            dismissButton = { TextButton(onClick = { showVehicles = false }) { Text("Close") } },
         )
     }
 }

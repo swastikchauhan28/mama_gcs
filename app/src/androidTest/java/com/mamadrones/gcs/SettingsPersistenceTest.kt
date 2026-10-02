@@ -23,7 +23,7 @@ class SettingsPersistenceTest {
         val requested = if (previous == ThemeMode.LIGHT) ThemeMode.DARK else ThemeMode.LIGHT
         val label = if (requested == ThemeMode.LIGHT) "Light" else "Dark"
         try {
-            compose.onNodeWithText("More").performClick()
+            compose.onNodeWithTag("nav-more").performClick()
             compose.onNodeWithText("Settings").performScrollTo().performClick()
             compose.waitUntil(10_000) {
                 compose.onAllNodesWithText("Loading preferences…").fetchSemanticsNodes().isEmpty()

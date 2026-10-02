@@ -24,3 +24,7 @@ Before any phase enables commands, require a trusted authenticated session, back
 Link health is not subsystem health. Every telemetry adapter will need per-source timestamps, units/range validation and freshness policies. The current screen projection hides all values when the selected vehicle connection is not `CONNECTED`; this conservative Phase 1 behavior is not a substitute for per-subsystem freshness later.
 
 The disabled emergency-stop UI cannot replace the independent physical safety system. No field operation is supported by this build.
+
+## Phase 7 drive gate foundation
+
+`DriveSafetyGate` now expresses the minimum evidence categories as a pure deny-by-default policy. Its default snapshot satisfies no checks, and the Control screen only renders the checklist. There is still no trusted identity provider, permission-bearing command use case, signed MAVLink verifier, approved vehicle profile, command route, deadman lease owner, or actuator/stop command sender. The checklist is not a readiness verdict, does not grant authority, and must not be populated from operator-editable UI state. Continue to keep all movement, arming, and stop controls unavailable until the facts above are verified for the actual installed UGV.

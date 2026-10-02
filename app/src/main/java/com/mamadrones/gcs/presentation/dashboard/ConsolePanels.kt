@@ -11,9 +11,10 @@ fun VehicleState.forDisplay(): VehicleState = if (connected) this else VehicleSt
 )
 
 fun Double?.reading(unit: String): String = if (this == null || !isFinite()) "UNKNOWN" else String.format(Locale.US, "%.1f %s", this, unit)
+fun Double?.coordinateReading(): String = if (this == null || !isFinite()) "UNKNOWN" else String.format(Locale.US, "%.7f °", this)
 
 object ConsolePanels {
-    fun vehicle(state: VehicleState) = state.forDisplay().let { s -> PanelSpec("Vehicle", s.displayName ?: "NO VEHICLE SELECTED", listOf(
+    fun vehicle(state: VehicleState) = state.forDisplay().let { s -> PanelSpec("Vehicle", s.displayName ?: s.systemId?.let { "OBSERVED SYSTEM $it · NOT PAIRED" } ?: "NO LIVE VEHICLE", listOf(
         "Speed" to s.speedMetersPerSecond.reading("m/s"), "Heading" to s.headingDegrees.reading("°"),
         "Direction" to s.direction.name, "Mode" to (s.mode ?: "UNKNOWN"),
         "Armed" to (s.armed?.let { if (it) "ARMED" else "DISARMED" } ?: "UNKNOWN")
@@ -23,7 +24,7 @@ object ConsolePanels {
         "Latitude" to (s.latitude?.toString() ?: "UNKNOWN"), "Longitude" to (s.longitude?.toString() ?: "UNKNOWN")
     ), sampleAge(s.lastUpdatedAtEpochMillis)) }
     fun position(state: VehicleState) = state.forDisplay().position.let { s -> PanelSpec("Global position", if (s.latitude != null && s.longitude != null) "RECEIVED" else "UNKNOWN", listOf(
-        "Latitude" to (s.latitude?.reading("°") ?: "UNKNOWN"), "Longitude" to (s.longitude?.reading("°") ?: "UNKNOWN"),
+        "Latitude" to s.latitude.coordinateReading(), "Longitude" to s.longitude.coordinateReading(),
         "Altitude MSL" to s.altitudeMetersMsl.reading("m")
     ), sampleAge(s.lastUpdatedAtEpochMillis)) }
     fun battery(state: VehicleState): PanelSpec {
@@ -89,16 +90,18 @@ object ConsolePanels {
         "Motor temperature" to motor.temperatureCelsius.reading("°C"), "Controller temperature" to motor.controllerTemperatureCelsius.reading("°C"),
         "RPM" to motor.rpm.reading("rpm"), "Electrical RPM" to motor.electricalRpm.reading("erpm"),
         "Motor current" to motor.motorCurrentAmps.reading("A"), "Input current" to motor.inputCurrentAmps.reading("A"),
-        "Voltage" to motor.voltage.reading("V"), "Fault" to (motor.faultCode ?: "UNKNOWN")
+        "Voltage" to motor.voltage.reading("V"), "Duty cycle" to motor.dutyCycle.reading(""), "Fault" to (motor.faultCode ?: "UNKNOWN")
     ))
     fun spray(state: VehicleState) = state.forDisplay().spray.let { s -> PanelSpec("Spray system", s.connection.name.replace('_', ' '), listOf(
         "Pump" to s.pump.power.name, "Spraying" to s.spraying.name,
         "Nozzle count" to (s.nozzles?.size?.toString() ?: "UNKNOWN"), "Pressure" to s.pressureBar.reading("bar"),
-        "Flow" to s.flowLitersPerMinute.reading("L/min")
-    )) }
+        "Flow" to s.flowLitersPerMinute.reading("L/min"),
+        "Pump fault" to (s.pump.fault ?: "UNKNOWN"), "System fault" to (s.fault ?: "UNKNOWN")
+    ) + s.nozzles.orEmpty().map { "Nozzle ${it.id}" to it.power.name }) }
     fun hydraulic(state: VehicleState) = state.forDisplay().hydraulic.let { s -> PanelSpec("Hydraulic system", s.connection.name.replace('_', ' '), listOf(
         "Enabled" to s.enabled.name, "Pump" to s.pump.name, "Valve" to s.valve.name,
-        "Pressure" to s.pressureBar.reading("bar"), "Temperature" to s.temperatureCelsius.reading("°C")
+        "Pressure" to s.pressureBar.reading("bar"), "Temperature" to s.temperatureCelsius.reading("°C"),
+        "Fault" to (s.fault ?: "UNKNOWN")
     )) }
     fun health(state: VehicleState): PanelSpec {
         val displayed = state.forDisplay()

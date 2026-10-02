@@ -66,7 +66,7 @@ Leave this PowerShell window running for the entire test. If Windows Firewall as
 
 ## Configure Mama GCS
 
-In Mama GCS, open **More → Settings** and set:
+In Mama GCS, tap the top **Connection settings** shortcut (or open **Systems → Settings**) and set:
 
 | Field | Example | Meaning |
 | --- | --- | --- |
