@@ -2,9 +2,9 @@
 
 Native Android ground-control-station foundation for a Mama agricultural UGV: ArduPilot Rover, VESC motors, spray equipment and hydraulics. Kotlin · Compose · Material 3 · Hilt · offline-first.
 
-## Current delivery: Local mission planning (Phase 11a)
+## Current delivery: Local mission planning and route library (Phase 11d)
 
-The expanded agricultural specification uses incremental acceptance. The current hardware-independent delivery is local mission planning with recovery of unsaved edits and GeoJSON file exchange. Phase 8 VESC telemetry groundwork remains pending verification of the Bluetooth module and telemetry path; spray and hydraulic adapters also await hardware details. Mission transfer/execution and vehicle commands remain disabled.
+The expanded agricultural specification uses incremental acceptance. The current hardware-independent delivery is local mission planning with recovery of unsaved edits, GeoJSON file exchange, and a separate on-device route library. Phase 8 VESC telemetry groundwork remains pending verification of the Bluetooth module and telemetry path; spray and hydraulic adapters also await hardware details. Mission transfer/execution and vehicle commands remain disabled.
 
 - Responsive dark field-console design, light/daylight and system themes, original local icons, shared typography, spacing, cards and status treatments.
 - Map-first Operate, Map, Drive, Plan and Systems workspaces. Phones use bottom navigation; wide windows use a side rail and instrument dock. Connection access and emergency-stop unavailability remain visible on every screen. Detailed telemetry and equipment are reached through Systems or operating shortcuts. See the [operator design and requirements matrix](docs/operator-ui-design.md) for coverage and remaining capabilities.
@@ -66,7 +66,7 @@ There is no licensed offline-region implementation, bundled telemetry simulator,
 
 See [Phase 1 report](docs/phase-1-report.md), [Phase 2 report](docs/phase-2-report.md), [Phase 3 report](docs/phase-3-report.md), [Phase 4 report](docs/phase-4-report.md), [Phase 5 report](docs/phase-5-report.md), [Phase 6 report](docs/phase-6-report.md), [Phase 7 report](docs/phase-7-report.md), and [Phase 8 groundwork report](docs/phase-8-report.md) for implementation scope and validation. For a repeatable physical-phone test with ArduPilot Rover SITL under WSL2, use the [SITL phone telemetry guide](docs/sitl-phone-telemetry.md). Review [security boundaries](docs/security.md) and [hardware integration gates](docs/hardware-integration.md) before enabling integrations.
 
-The [local mission planning report](docs/phase-11a-report.md), [recovery report](docs/phase-11b-report.md) and [GeoJSON exchange report](docs/phase-11c-report.md) describe the hardware-independent work advanced while Phases 8-10 await integration facts. In Plan, use **Add coordinates** or long-press a loaded map, confirm each waypoint, reorder as needed, and press **Save draft**. Unsaved edits are recovered after app process recreation; they remain marked unsaved until explicitly saved. **Import GeoJSON** previews a bounded route before replacing the working draft; **Export GeoJSON** writes the current working route through Android's document picker. **New draft** asks before clearing the editor; it replaces the stored draft only after Save.
+The [local mission planning report](docs/phase-11a-report.md), [recovery report](docs/phase-11b-report.md), [GeoJSON exchange report](docs/phase-11c-report.md) and [local mission library report](docs/phase-11d-report.md) describe the hardware-independent work advanced while Phases 8-10 await integration facts. In Plan, use **Add coordinates** or long-press a loaded map, confirm each waypoint, reorder as needed, and press **Save draft**. Unsaved edits are recovered after app process recreation; they remain marked unsaved until explicitly saved. **Import GeoJSON** previews a bounded route before replacing the working draft; **Export GeoJSON** writes the current working route through Android's document picker. **Save to library** stores a separately named copy (up to 25) on this device. Opening a library route asks for confirmation and loads it into the working editor; deleting asks for confirmation. Neither action uploads to a vehicle. **New draft** asks before clearing the editor; it replaces the stored draft only after Save.
 
 1. Foundation — delivered.
 2. **Transport — delivered.** Explicit UDP profile, foreground socket ownership, lifecycle/error states, Bluetooth/serial extension contracts and tests.
@@ -78,7 +78,7 @@ The [local mission planning report](docs/phase-11a-report.md), [recovery report]
 8. **VESC — groundwork only.** Read-only telemetry admission, identity and stale-data policy are implemented; actual controller protocol/transport integration remains blocked until controller models and the physical telemetry path are confirmed.
 9. Spray — verified hardware mapping and interlocks.
 10. Hydraulic — verified hardware mapping and interlocks.
-11. **Missions — local planning, recovery and GeoJSON exchange delivered (11a-11c).** One persistent device-local draft, coordinate editing, reordering, map preview, recovery for unsaved edits and local route file import/export. Mission library, geofences, vehicle transfer and controlled execution remain deferred.
+11. **Missions — local planning, recovery, GeoJSON exchange and route library delivered (11a-11d).** One persistent working draft plus up to 25 separately stored, uniquely named device-local route copies; coordinate editing, reordering, map preview, recovery for unsaved edits and local route file import/export. Geofences, vehicle transfer and controlled execution remain deferred.
 12. Admin — trusted local authentication, users, sessions, configuration and auditing.
 13. Production hardening — reliability/security/device and field validation.
 

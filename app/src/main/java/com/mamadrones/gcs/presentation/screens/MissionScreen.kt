@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
+import com.mamadrones.gcs.domain.model.MissionLibraryEntry
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.presentation.components.UnavailableActions
 import com.mamadrones.gcs.presentation.dashboard.forDisplay
@@ -79,6 +80,10 @@ fun MissionScreen(
     var initialLongitude by rememberSaveable { mutableStateOf("") }
     var showRename by rememberSaveable { mutableStateOf(false) }
     var showNewConfirmation by rememberSaveable { mutableStateOf(false) }
+    var showLibrary by rememberSaveable { mutableStateOf(false) }
+    var showSaveToLibrary by rememberSaveable { mutableStateOf(false) }
+    var libraryOpenId by rememberSaveable { mutableStateOf<String?>(null) }
+    var libraryDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
     val canAdd = plan.editable && plan.draft.waypoints.size < MissionDraft.MAX_WAYPOINTS
 
     fun openEditor(id: String?, latitude: Double?, longitude: Double?) {
@@ -120,6 +125,8 @@ fun MissionScreen(
                         Button(onClick = { onAction(MissionPlanAction.Save) }, enabled = plan.editable && plan.dirty,
                             modifier = Modifier.testTag("mission-save")) { Text("Save draft") }
                         TextButton(onClick = { showRename = true }, enabled = plan.editable) { Text("Rename") }
+                        TextButton(onClick = { showSaveToLibrary = true }, enabled = plan.editable) { Text("Save to library") }
+                        TextButton(onClick = { showLibrary = true }, enabled = plan.editable) { Text("Library · ${plan.library.size}") }
                         TextButton(onClick = { showNewConfirmation = true }, enabled = plan.editable) { Text("New draft") }
                         TextButton(onClick = { importLauncher.launch(arrayOf("application/geo+json", "application/json", "text/*")) },
                             enabled = plan.editable) { Text("Import GeoJSON") }
@@ -191,6 +198,82 @@ fun MissionScreen(
         confirmButton = { TextButton(onClick = { onAction(MissionPlanAction.New); showNewConfirmation = false }) { Text("New draft") } },
         dismissButton = { TextButton(onClick = { showNewConfirmation = false }) { Text("Cancel") } }
     )
+    if (showSaveToLibrary) {
+        var name by rememberSaveable { mutableStateOf(plan.draft.name) }
+        AlertDialog(
+            onDismissRequest = { showSaveToLibrary = false },
+            title = { Text("Save a library copy") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Stores a separate route on this device. It will not change the active draft or upload anything to the vehicle.")
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it.take(MissionDraft.MAX_NAME_LENGTH) },
+                        label = { Text("Unique route name") },
+                        singleLine = true
+                    )
+                    Text("${plan.library.size} / ${MissionLibraryEntry.MAX_ENTRIES} routes used")
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { onAction(MissionPlanAction.SaveToLibrary(name)); showSaveToLibrary = false },
+                    enabled = plan.editable && name.isNotBlank() && plan.library.size < MissionLibraryEntry.MAX_ENTRIES
+                ) { Text("Save copy") }
+            },
+            dismissButton = { TextButton(onClick = { showSaveToLibrary = false }) { Text("Cancel") } }
+        )
+    }
+    if (showLibrary) AlertDialog(
+        onDismissRequest = { showLibrary = false },
+        title = { Text("Local route library · ${plan.library.size}") },
+        text = {
+            Column(
+                modifier = Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                plan.libraryError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                if (plan.library.isEmpty()) Text("No saved route copies yet. Use Save to library to keep a route separate from the active draft.")
+                plan.library.forEach { entry ->
+                    Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.small) {
+                        Column(Modifier.fillMaxWidth().padding(10.dp)) {
+                            Text(entry.draft.name, style = MaterialTheme.typography.titleSmall)
+                            Text("${entry.draft.waypoints.size} waypoints · ${String.format(Locale.US, "%.0f", entry.draft.distanceMeters)} m · ${java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT).format(java.util.Date(entry.savedAtEpochMillis))}", style = MaterialTheme.typography.bodySmall)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(onClick = { libraryOpenId = entry.id; showLibrary = false }, enabled = plan.editable) { Text("Open") }
+                                TextButton(onClick = { libraryDeleteId = entry.id; showLibrary = false }, enabled = plan.editable) { Text("Delete") }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { showLibrary = false }) { Text("Close") } }
+    )
+    libraryOpenId?.let { id ->
+        val entry = plan.library.firstOrNull { it.id == id }
+        AlertDialog(
+            onDismissRequest = { libraryOpenId = null },
+            title = { Text("Open library route?") },
+            text = { Text("${entry?.draft?.name ?: "This route"} will replace the current working draft in the editor. The saved draft stays unchanged until you explicitly press Save draft. Any unsaved edits will be replaced.") },
+            confirmButton = {
+                TextButton(onClick = { onAction(MissionPlanAction.OpenLibraryEntry(id)); libraryOpenId = null }, enabled = entry != null && plan.editable) { Text("Open as draft") }
+            },
+            dismissButton = { TextButton(onClick = { libraryOpenId = null }) { Text("Cancel") } }
+        )
+    }
+    libraryDeleteId?.let { id ->
+        val entry = plan.library.firstOrNull { it.id == id }
+        AlertDialog(
+            onDismissRequest = { libraryDeleteId = null },
+            title = { Text("Delete library route?") },
+            text = { Text("${entry?.draft?.name ?: "This route"} will be removed from this device's local library. This does not affect the active draft or any vehicle.") },
+            confirmButton = {
+                TextButton(onClick = { onAction(MissionPlanAction.DeleteLibraryEntry(id)); libraryDeleteId = null }, enabled = entry != null && plan.editable) { Text("Delete route") }
+            },
+            dismissButton = { TextButton(onClick = { libraryDeleteId = null }) { Text("Cancel") } }
+        )
+    }
     plan.pendingImport?.let { imported ->
         AlertDialog(
             onDismissRequest = { onAction(MissionPlanAction.CancelImport) },
@@ -205,7 +288,6 @@ fun MissionScreen(
 }
 
 private const val MAX_ROUTE_FILE_CHARS = 256_000
-
 private fun java.io.Reader.readBounded(maxChars: Int): String {
     val result = StringBuilder()
     val buffer = CharArray(4096)

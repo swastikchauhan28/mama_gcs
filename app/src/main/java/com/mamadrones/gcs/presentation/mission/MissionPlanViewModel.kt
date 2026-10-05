@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
+import com.mamadrones.gcs.domain.model.MissionLibraryEntry
 import com.mamadrones.gcs.domain.repository.MissionDraftFileCodec
 import com.mamadrones.gcs.domain.repository.MissionDraftRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,6 +30,8 @@ data class MissionPlanUiState(
     val pendingImport: MissionDraft? = null,
     val exportContent: String? = null,
     val exportFileName: String? = null,
+    val library: List<MissionLibraryEntry> = emptyList(),
+    val libraryError: String? = null,
     val error: String? = null
 ) {
     val editable: Boolean get() = !loading && !saving && !loadFailed
@@ -42,6 +45,9 @@ sealed interface MissionPlanAction {
     data class Rename(val name: String) : MissionPlanAction
     data object New : MissionPlanAction
     data object Save : MissionPlanAction
+    data class SaveToLibrary(val name: String) : MissionPlanAction
+    data class OpenLibraryEntry(val id: String) : MissionPlanAction
+    data class DeleteLibraryEntry(val id: String) : MissionPlanAction
     data object Export : MissionPlanAction
     data class ExportFinished(val error: String? = null) : MissionPlanAction
     data class ImportContent(val content: String) : MissionPlanAction
@@ -93,6 +99,29 @@ class MissionPlanViewModel @Inject constructor(
         if (!current.editable) return
         if (action == MissionPlanAction.Save) {
             save()
+            return
+        }
+        if (action is MissionPlanAction.SaveToLibrary) {
+            saveToLibrary(action.name)
+            return
+        }
+        if (action is MissionPlanAction.OpenLibraryEntry) {
+            val entry = current.library.firstOrNull { it.id == action.id } ?: return
+            val opened = entry.draft
+            recoveryJob?.cancel()
+            mutableState.value = current.copy(
+                draft = opened,
+                dirty = opened != savedDraft,
+                recovered = false,
+                recoverySaved = false,
+                pendingImport = null,
+                error = null
+            )
+            if (opened != savedDraft) scheduleRecovery(opened)
+            return
+        }
+        if (action is MissionPlanAction.DeleteLibraryEntry) {
+            deleteLibraryEntry(action.id)
             return
         }
         if (action == MissionPlanAction.ConfirmImport) {
@@ -171,25 +200,36 @@ class MissionPlanViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 savedDraft = repository.load()
+                var libraryError: String? = null
+                val library = try {
+                    repository.loadLibrary().sortedByDescending { it.savedAtEpochMillis }
+                } catch (_: Exception) {
+                    libraryError = "The local route library could not be read. The saved draft is still available."
+                    emptyList()
+                }
                 val recovery = try {
                     repository.loadRecovery()
                 } catch (_: Exception) {
                     mutableState.value = MissionPlanUiState(
                         draft = savedDraft,
                         loading = false,
+                        library = library,
+                        libraryError = libraryError,
                         error = "The recovery copy could not be read. The last saved draft is loaded; save any new edits explicitly."
                     )
                     return@launch
                 }
                 if (recovery == null || recovery == savedDraft) {
-                    mutableState.value = MissionPlanUiState(draft = savedDraft, loading = false)
+                    mutableState.value = MissionPlanUiState(draft = savedDraft, loading = false, library = library, libraryError = libraryError)
                 } else {
                     mutableState.value = MissionPlanUiState(
                         draft = recovery,
                         loading = false,
                         dirty = true,
                         recovered = true,
-                        recoverySaved = true
+                        recoverySaved = true,
+                        library = library,
+                        libraryError = libraryError
                     )
                 }
             } catch (cancelled: CancellationException) {
@@ -217,6 +257,62 @@ class MissionPlanViewModel @Inject constructor(
                 mutableState.value = state.value.copy(saving = false,
                     error = "Draft could not be saved. Keep this screen open and try Save draft again.")
                 scheduleRecovery(snapshot)
+            }
+        }
+    }
+
+    private fun saveToLibrary(name: String) {
+        val current = state.value
+        val safeName = name.trim().take(MissionDraft.MAX_NAME_LENGTH)
+        if (safeName.isBlank()) {
+            mutableState.value = current.copy(error = "Enter a route name before saving to the library.")
+            return
+        }
+        val snapshot = try {
+            current.draft.copy(name = safeName)
+        } catch (_: IllegalArgumentException) {
+            mutableState.value = current.copy(error = "The route name is invalid.")
+            return
+        }
+        mutableState.value = current.copy(saving = true, error = null, libraryError = null)
+        viewModelScope.launch {
+            try {
+                val entry = persistenceMutex.withLock { repository.saveToLibrary(snapshot) }
+                mutableState.value = state.value.copy(
+                    saving = false,
+                    library = (state.value.library + entry).sortedByDescending { it.savedAtEpochMillis },
+                    libraryError = null,
+                    error = null
+                )
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                mutableState.value = state.value.copy(
+                    saving = false,
+                    error = failure.message?.take(180) ?: "Route could not be saved to the library."
+                )
+            }
+        }
+    }
+
+    private fun deleteLibraryEntry(id: String) {
+        val current = state.value
+        mutableState.value = current.copy(saving = true, error = null, libraryError = null)
+        viewModelScope.launch {
+            try {
+                persistenceMutex.withLock { repository.deleteFromLibrary(id) }
+                mutableState.value = state.value.copy(
+                    saving = false,
+                    library = state.value.library.filterNot { it.id == id },
+                    libraryError = null
+                )
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                mutableState.value = state.value.copy(
+                    saving = false,
+                    libraryError = "That library route could not be deleted. It has been kept on this device."
+                )
             }
         }
     }

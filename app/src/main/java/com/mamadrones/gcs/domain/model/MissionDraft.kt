@@ -55,3 +55,18 @@ data class MissionDraft(
         const val MAX_NAME_LENGTH = 80
     }
 }
+
+data class MissionLibraryEntry(
+    val id: String,
+    val draft: MissionDraft,
+    val savedAtEpochMillis: Long
+) {
+    init {
+        require(id.isNotBlank() && id.length <= 80)
+        require(savedAtEpochMillis >= 0)
+    }
+
+    companion object {
+        const val MAX_ENTRIES = 25
+    }
+}
