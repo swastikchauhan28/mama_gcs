@@ -51,4 +51,13 @@ class ConsolePanelsTest {
         assertEquals("No sample received", sampleAge(null, nowEpochMillis = 4_900L))
         assertEquals("Received 0s ago", sampleAge(5_000L, nowEpochMillis = 4_000L))
     }
+
+    @Test fun `stale motor panel never displays retained measurements or a no fault claim`() {
+        val motor = MotorState("left", SubsystemConnection.STALE, voltage = 48.0,
+            faultCode = "NONE", lastUpdatedAtEpochMillis = 1_000)
+        val panel = ConsolePanels.motor(motor)
+        assertEquals("STALE", panel.status)
+        assertTrue(panel.rows.contains("Input voltage" to "UNKNOWN"))
+        assertTrue(panel.rows.contains("Fault" to "UNKNOWN"))
+    }
 }

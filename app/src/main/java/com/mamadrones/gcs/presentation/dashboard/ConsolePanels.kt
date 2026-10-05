@@ -83,15 +83,20 @@ object ConsolePanels {
         },
         "STATUSTEXT is informational; severity is shown as reported and does not drive a health verdict."
     ) }
-    fun motors(state: VehicleState) = state.forDisplay().motors.let { motors -> PanelSpec("VESC motors", if (motors.isEmpty()) "TELEMETRY UNAVAILABLE" else "${motors.size} CONTROLLERS", listOf(
+    fun motors(state: VehicleState) = PanelSpec("VESC motors", if (state.motors.isEmpty()) "TELEMETRY UNAVAILABLE" else "${state.motors.size} PROVISIONED", listOf(
         "Motor temperature" to "UNKNOWN", "Controller temperature" to "UNKNOWN", "Fault state" to "UNKNOWN"
-    ), "Controller count and telemetry route are not configured.") }
-    fun motor(motor: MotorState) = PanelSpec("Motor ${motor.id}", motor.connection.name.replace('_', ' '), listOf(
-        "Motor temperature" to motor.temperatureCelsius.reading("°C"), "Controller temperature" to motor.controllerTemperatureCelsius.reading("°C"),
-        "RPM" to motor.rpm.reading("rpm"), "Electrical RPM" to motor.electricalRpm.reading("erpm"),
-        "Motor current" to motor.motorCurrentAmps.reading("A"), "Input current" to motor.inputCurrentAmps.reading("A"),
-        "Voltage" to motor.voltage.reading("V"), "Duty cycle" to motor.dutyCycle.reading(""), "Fault" to (motor.faultCode ?: "UNKNOWN")
-    ))
+    ), "Controller inventory and a validated telemetry route are not configured in this build.")
+    fun motor(motor: MotorState): PanelSpec {
+        val live = motor.connection == SubsystemConnection.CONNECTED && motor.lastUpdatedAtEpochMillis != null
+        val sample = if (live) motor else MotorState(motor.id)
+        val status = if (!live && motor.connection == SubsystemConnection.CONNECTED) "UNKNOWN" else motor.connection.name.replace('_', ' ')
+        return PanelSpec("Motor ${motor.id}", status, listOf(
+            "Motor temperature" to sample.temperatureCelsius.reading("°C"), "Controller temperature" to sample.controllerTemperatureCelsius.reading("°C"),
+            "Mechanical RPM" to sample.rpm.reading("rpm"), "Electrical RPM" to sample.electricalRpm.reading("erpm"),
+            "Motor current" to sample.motorCurrentAmps.reading("A"), "Input current" to sample.inputCurrentAmps.reading("A"),
+            "Input voltage" to sample.voltage.reading("V"), "Duty ratio" to sample.dutyCycle.reading(""), "Fault" to (sample.faultCode ?: "UNKNOWN")
+        ), if (live) sampleAge(motor.lastUpdatedAtEpochMillis) else "No current VESC measurement · ${sampleAge(motor.lastUpdatedAtEpochMillis)}")
+    }
     fun spray(state: VehicleState) = state.forDisplay().spray.let { s -> PanelSpec("Spray system", s.connection.name.replace('_', ' '), listOf(
         "Pump" to s.pump.power.name, "Spraying" to s.spraying.name,
         "Nozzle count" to (s.nozzles?.size?.toString() ?: "UNKNOWN"), "Pressure" to s.pressureBar.reading("bar"),

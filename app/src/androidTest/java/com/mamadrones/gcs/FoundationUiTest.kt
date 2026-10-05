@@ -107,6 +107,7 @@ class FoundationUiTest {
         compose.onNodeWithTag("drive-safety-details").performScrollTo().performClick()
         compose.onNodeWithText("DRIVE SAFETY GATE").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("nav-mission").performClick()
+        compose.onNodeWithTag("mission-editor").performScrollToNode(hasText("Start mission"))
         compose.onNodeWithText("Start mission").performScrollTo().assertIsNotEnabled()
     }
     @Test fun transportSettingsDoNotOpenWithoutASavedEndpoint() {

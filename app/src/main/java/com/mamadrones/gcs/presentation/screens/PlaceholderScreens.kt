@@ -46,16 +46,6 @@ fun ControlScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBo
 }
 
 @Composable
-fun MissionScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
-    ScreenHeader("Plan", "Waypoint planning and execution")
-    Notice("NOT IMPLEMENTED", "No mission has been downloaded. Onboard mission state is unknown.")
-    MapWorkspace(state, Modifier.fillMaxWidth().height(300.dp))
-    Text("Reference map only · Tap-to-add waypoints, field boundaries, geofences and offline regions are not implemented.", style = MaterialTheme.typography.bodySmall)
-    SubsystemCard(PanelSpec("Mission", state.forDisplay().mission.status.name, listOf("Waypoints" to "UNKNOWN", "Current waypoint" to "UNKNOWN", "Progress" to "UNKNOWN")))
-    UnavailableActions("New mission", "Upload", "Download", "Start mission", "Pause", "Resume")
-}
-
-@Composable
 fun HealthScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
     ScreenHeader("Vehicle health", "Telemetry evidence and readiness gate")
     CardGrid(listOf(ConsolePanels.health(state), ConsolePanels.healthBlockers(state), ConsolePanels.gps(state), ConsolePanels.battery(state), ConsolePanels.systemStatus(state)))
@@ -65,8 +55,9 @@ fun HealthScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBod
 @Composable
 fun MotorScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
     ScreenHeader("Motors", "VESC drive system")
-    Notice("HARDWARE INTEGRATION REQUIRED", "Controller models, motor count, CAN/UART wiring and telemetry route must be confirmed. Direct VESC communication is not configured.")
-    val motors = state.forDisplay().motors
+    Notice("HARDWARE INTEGRATION REQUIRED", "A read-only VESC telemetry reducer is ready, but controller models, identities, wiring, protocol and trusted telemetry route must be confirmed. No VESC input or motor commands are connected.")
+    // VESC may use an independent route; MAVLink heartbeat loss must not rewrite its status.
+    val motors = state.motors
     CardGrid(if (motors.isEmpty()) listOf(ConsolePanels.motors(state)) else motors.map { ConsolePanels.motor(it) })
 }
 

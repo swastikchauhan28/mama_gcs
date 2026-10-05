@@ -80,7 +80,8 @@ data class MotorState(
     val inputCurrentAmps: Double? = null,
     val voltage: Double? = null,
     val dutyCycle: Double? = null,
-    val faultCode: String? = null
+    val faultCode: String? = null,
+    val lastUpdatedAtEpochMillis: Long? = null
 )
 
 data class SprayPumpState(val power: SwitchState = SwitchState.UNKNOWN, val fault: String? = null)

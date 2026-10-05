@@ -2,9 +2,9 @@
 
 Native Android ground-control-station foundation for a Mama agricultural UGV: ArduPilot Rover, VESC motors, spray equipment and hydraulics. Kotlin · Compose · Material 3 · Hilt · offline-first.
 
-## Current delivery: Phase 7 Drive safety gate foundation
+## Current delivery: Local mission planning (Phase 11a)
 
-The expanded agricultural specification uses incremental acceptance. Phase 7 adds a deny-by-default drive-safety admission policy and a Control-screen preflight. Phase 6 provides the live coordinate, heading, and recent track over a MapLibre Native basemap using the MapTiler Streets vector style. Drive commands remain disabled until trusted identity, vehicle-specific safety evidence, and a validated command route exist.
+The expanded agricultural specification uses incremental acceptance. The current hardware-independent delivery is local mission planning with recovery of unsaved edits and GeoJSON file exchange. Phase 8 VESC telemetry groundwork remains pending verification of the Bluetooth module and telemetry path; spray and hydraulic adapters also await hardware details. Mission transfer/execution and vehicle commands remain disabled.
 
 - Responsive dark field-console design, light/daylight and system themes, original local icons, shared typography, spacing, cards and status treatments.
 - Map-first Operate, Map, Drive, Plan and Systems workspaces. Phones use bottom navigation; wide windows use a side rail and instrument dock. Connection access and emergency-stop unavailability remain visible on every screen. Detailed telemetry and equipment are reached through Systems or operating shortcuts. See the [operator design and requirements matrix](docs/operator-ui-design.md) for coverage and remaining capabilities.
@@ -16,6 +16,8 @@ The expanded agricultural specification uses incremental acceptance. Phase 7 add
 - Read-only health evidence labels MAVLink link, GPS, battery, and autopilot sensor data as not received, reported, or protocol-reported issue. Operational readiness remains **NOT ASSESSED** until a vehicle-specific health profile, hardware limits, expected telemetry rates, and validated subsystem routes are provisioned.
 - Map and dashboard draw the current GLOBAL_POSITION_INT coordinate, heading marker, and a bounded track over a MapTiler vector basemap after at least 0.5 m of reported movement. Center and follow controls are functional; a user pan disables following. Track data is cleared at a new telemetry session and is not persisted.
 - Drive admission now has a pure fail-closed checklist for operator authentication/permission, provisioned and authenticated vehicle identity, fresh heartbeat/telemetry, approved vehicle safety profile, validated command path, physical emergency stop, tested link-loss failsafe, allowed mode/arming conditions, and active deadman lease. No UI can mark those conditions verified, and no command sender exists yet.
+- A pure VESC telemetry reducer accepts decoded measurements only for a provisioned controller inventory, keeps mechanical RPM distinct from electrical RPM, rejects non-finite/out-of-order readings, and removes stale measurements after a profile-defined timeout. It is not connected to a socket, CAN bus, UART, MAVLink stream, or the live vehicle state yet.
+- Plan supports a named local draft of up to 250 coordinate waypoints, map long-press with confirmation, manual coordinate entry, edit/reorder/remove, route preview, fit-to-draft, explicit save and bounded GeoJSON import/export. Imported routes are previewed before replacing the working draft. A separate recovery copy is saved after edits and restored after process recreation; Save draft commits the route and clears recovery atomically. Orange draft markers/line are separate from live vehicle telemetry; the displayed distance is a surface straight-line estimate, not route feasibility or terrain validation. Draft editing and storage work without a vehicle or internet; the basemap still requires network access.
 
 Opening a configured UDP socket starts the receive session and accepts datagrams only from the configured peer. A CRC-valid unsigned HEARTBEAT from an autopilot component establishes liveness; the pinned system/component source gates telemetry updates. Receive timestamps are displayed with measurements; protocol liveness and CRC do not authenticate the sender. No MAVLink commands are sent.
 
@@ -29,7 +31,8 @@ presentation/    stateless Compose screens/components, navigation, design system
 domain/          immutable models, repository contracts, use cases
 core/            command outcomes/errors, pure authorization policy
 data/            theme/UDP endpoint DataStore, vehicle repository,
-                foreground-owned UDP transport and allowlisted MAVLink telemetry session
+                local mission draft DataStore, foreground-owned UDP transport,
+                allowlisted MAVLink telemetry session
 di/              Hilt bindings
 ```
 
@@ -59,9 +62,11 @@ Runtime dependencies include AndroidX Preferences DataStore 1.1.1, MapLibre Nati
 
 ## Boundaries and next phases
 
-There is no licensed offline-region implementation, bundled telemetry simulator, real actuator control, login/user store, audit persistence, configured hardware-health evaluation, mission protocol or background communication service. The Drive safety evaluator is groundwork only; its evidence is not connected to trusted providers and all drive commands remain disabled. The online map requires MapTiler network access and an operator-provided client key. Raw UDP packet counts are available only while an explicitly configured socket is open; they are not vehicle telemetry or link health.
+There is no licensed offline-region implementation, bundled telemetry simulator, real actuator control, login/user store, audit persistence, configured hardware-health evaluation, mission protocol or background communication service. The VESC reducer is not a live integration; the Drive safety evaluator is groundwork only, its evidence is not connected to trusted providers, and all drive commands remain disabled. The online map requires MapTiler network access and an operator-provided client key. Raw UDP packet counts are available only while an explicitly configured socket is open; they are not vehicle telemetry or link health.
 
-See [Phase 1 report](docs/phase-1-report.md), [Phase 2 report](docs/phase-2-report.md), [Phase 3 report](docs/phase-3-report.md), [Phase 4 report](docs/phase-4-report.md), [Phase 5 report](docs/phase-5-report.md), [Phase 6 report](docs/phase-6-report.md), and [Phase 7 report](docs/phase-7-report.md) for implementation scope and validation. For a repeatable physical-phone test with ArduPilot Rover SITL under WSL2, use the [SITL phone telemetry guide](docs/sitl-phone-telemetry.md). Review [security boundaries](docs/security.md) and [hardware integration gates](docs/hardware-integration.md) before enabling integrations.
+See [Phase 1 report](docs/phase-1-report.md), [Phase 2 report](docs/phase-2-report.md), [Phase 3 report](docs/phase-3-report.md), [Phase 4 report](docs/phase-4-report.md), [Phase 5 report](docs/phase-5-report.md), [Phase 6 report](docs/phase-6-report.md), [Phase 7 report](docs/phase-7-report.md), and [Phase 8 groundwork report](docs/phase-8-report.md) for implementation scope and validation. For a repeatable physical-phone test with ArduPilot Rover SITL under WSL2, use the [SITL phone telemetry guide](docs/sitl-phone-telemetry.md). Review [security boundaries](docs/security.md) and [hardware integration gates](docs/hardware-integration.md) before enabling integrations.
+
+The [local mission planning report](docs/phase-11a-report.md), [recovery report](docs/phase-11b-report.md) and [GeoJSON exchange report](docs/phase-11c-report.md) describe the hardware-independent work advanced while Phases 8-10 await integration facts. In Plan, use **Add coordinates** or long-press a loaded map, confirm each waypoint, reorder as needed, and press **Save draft**. Unsaved edits are recovered after app process recreation; they remain marked unsaved until explicitly saved. **Import GeoJSON** previews a bounded route before replacing the working draft; **Export GeoJSON** writes the current working route through Android's document picker. **New draft** asks before clearing the editor; it replaces the stored draft only after Save.
 
 1. Foundation — delivered.
 2. **Transport — delivered.** Explicit UDP profile, foreground socket ownership, lifecycle/error states, Bluetooth/serial extension contracts and tests.
@@ -70,10 +75,10 @@ See [Phase 1 report](docs/phase-1-report.md), [Phase 2 report](docs/phase-2-repo
 5. **Health evidence and readiness gate — delivered.** Protocol-reported evidence is visible, while readiness is explicitly not assessed without a signed-off vehicle profile and hardware integration data.
 6. **Map telemetry and online basemap — delivered.** MapLibre Native, MapTiler Streets vector tiles, live coordinate/heading, bounded current-session track, and center/follow controls. Licensed offline regions remain deferred.
 7. **Drive safety gate foundation — delivered.** Deny-by-default admission checklist and visible Control preflight. Trusted identity, signed vehicle identity, approved safety profile, command transport, deadman implementation, command outcomes, and all vehicle movement commands remain unimplemented.
-8. VESC — only after controller models and physical telemetry path are confirmed.
+8. **VESC — groundwork only.** Read-only telemetry admission, identity and stale-data policy are implemented; actual controller protocol/transport integration remains blocked until controller models and the physical telemetry path are confirmed.
 9. Spray — verified hardware mapping and interlocks.
 10. Hydraulic — verified hardware mapping and interlocks.
-11. Missions — planning, transfer and controlled execution.
+11. **Missions — local planning, recovery and GeoJSON exchange delivered (11a-11c).** One persistent device-local draft, coordinate editing, reordering, map preview, recovery for unsaved edits and local route file import/export. Mission library, geofences, vehicle transfer and controlled execution remain deferred.
 12. Admin — trusted local authentication, users, sessions, configuration and auditing.
 13. Production hardening — reliability/security/device and field validation.
 

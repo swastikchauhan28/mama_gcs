@@ -19,6 +19,8 @@ import com.mamadrones.gcs.presentation.components.*
 import com.mamadrones.gcs.presentation.screens.*
 import com.mamadrones.gcs.presentation.settings.SettingsUiState
 import com.mamadrones.gcs.presentation.settings.ConnectionUiState
+import com.mamadrones.gcs.presentation.mission.MissionPlanUiState
+import com.mamadrones.gcs.presentation.mission.MissionPlanAction
 
 enum class AppDestination(val route: String, val label: String, val icon: ConsoleIcon) {
     DASHBOARD("dashboard", "Operate", ConsoleIcon.DASHBOARD), MAP("map", "Map", ConsoleIcon.MAP),
@@ -38,7 +40,9 @@ fun MamaGcsApp(
     onSaveEndpoint: () -> Unit = {},
     onOpenSocket: () -> Unit = {},
     onCloseSocket: () -> Unit = {},
-    onClearEndpoint: () -> Unit = {}
+    onClearEndpoint: () -> Unit = {},
+    missionPlan: MissionPlanUiState = MissionPlanUiState(),
+    onMissionAction: (MissionPlanAction) -> Unit = {}
 ) {
     val navController = rememberNavController()
     var showVehicles by remember { mutableStateOf(false) }
@@ -137,7 +141,7 @@ fun MamaGcsApp(
                         composable("dashboard") { DashboardScreen(vehicle, navigate) }
                         composable("map") { MapScreen(vehicle) }
                         composable("control") { ControlScreen(vehicle) }
-                        composable("mission") { MissionScreen(vehicle) }
+                        composable("mission") { MissionScreen(vehicle, missionPlan, onMissionAction) }
                         composable("more") { MoreScreen(onNavigate = navigate) }
                         composable("telemetry") { TelemetryScreen(vehicle) }
                         composable("health") { HealthScreen(vehicle) }

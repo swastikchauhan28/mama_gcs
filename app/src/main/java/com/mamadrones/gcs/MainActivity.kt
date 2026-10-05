@@ -15,6 +15,7 @@ import com.mamadrones.gcs.presentation.dashboard.DashboardViewModel
 import com.mamadrones.gcs.presentation.settings.SettingsViewModel
 import com.mamadrones.gcs.presentation.settings.ConnectionViewModel
 import com.mamadrones.gcs.presentation.navigation.MamaGcsApp
+import com.mamadrones.gcs.presentation.mission.MissionPlanViewModel
 import com.mamadrones.gcs.presentation.theme.MamaGcsTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -23,6 +24,7 @@ class MainActivity : ComponentActivity() {
     private val vehicleViewModel: DashboardViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
     private val connectionViewModel: ConnectionViewModel by viewModels()
+    private val missionPlanViewModel: MissionPlanViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,6 +41,7 @@ class MainActivity : ComponentActivity() {
             val vehicle = vehicleViewModel.vehicleState.collectAsStateWithLifecycle().value
             val settings = settingsViewModel.state.collectAsStateWithLifecycle().value
             val connection = connectionViewModel.state.collectAsStateWithLifecycle().value
+            val missionPlan = missionPlanViewModel.state.collectAsStateWithLifecycle().value
             MamaGcsTheme(settings.preferences.theme) {
                 MamaGcsApp(
                     vehicle = vehicle,
@@ -51,7 +54,9 @@ class MainActivity : ComponentActivity() {
                     onSaveEndpoint = connectionViewModel::saveEndpoint,
                     onOpenSocket = connectionViewModel::openSocket,
                     onCloseSocket = connectionViewModel::closeSocket,
-                    onClearEndpoint = connectionViewModel::clearEndpoint
+                    onClearEndpoint = connectionViewModel::clearEndpoint,
+                    missionPlan = missionPlan,
+                    onMissionAction = missionPlanViewModel::dispatch
                 )
             }
         }

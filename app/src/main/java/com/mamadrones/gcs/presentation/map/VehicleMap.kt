@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,16 +36,25 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.mamadrones.gcs.domain.model.GeoTrackPoint
+import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.VehicleState
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.gestures.MoveGestureDetector
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.SymbolLayer
+import org.maplibre.android.style.expressions.Expression.get
+import org.maplibre.android.style.layers.PropertyFactory.textField
+import org.maplibre.android.style.layers.PropertyFactory.textColor
+import org.maplibre.android.style.layers.PropertyFactory.textSize
+import org.maplibre.android.style.layers.PropertyFactory.textAllowOverlap
+import org.maplibre.android.style.layers.PropertyFactory.textIgnorePlacement
 import org.maplibre.android.style.layers.PropertyFactory.circleColor
 import org.maplibre.android.style.layers.PropertyFactory.circleRadius
 import org.maplibre.android.style.layers.PropertyFactory.circleStrokeColor
@@ -63,6 +73,8 @@ import kotlin.math.sin
 private const val VEHICLE_SOURCE_ID = "mama-vehicle-source"
 private const val TRACK_SOURCE_ID = "mama-track-source"
 private const val HEADING_SOURCE_ID = "mama-heading-source"
+private const val DRAFT_POINTS_SOURCE_ID = "mama-draft-points"
+private const val DRAFT_LINE_SOURCE_ID = "mama-draft-line"
 
 private const val VEHICLE_LAYER_ID = "mama-vehicle-layer"
 private const val TRACK_LAYER_ID = "mama-track-layer"
@@ -80,6 +92,9 @@ private const val HEADING_LINE_LENGTH_METERS = 10.0
 fun VehicleMap(
     state: VehicleState,
     modifier: Modifier = Modifier,
+    draftWaypoints: List<DraftWaypoint> = emptyList(),
+    planningMode: Boolean = false,
+    onWaypointRequested: ((Double, Double) -> Unit)? = null,
 ) {
     val mapView = rememberMapViewWithLifecycle()
     val styleUrl = MapStyleConfig.mapTilerStyleUrlOrNull
@@ -87,9 +102,21 @@ fun VehicleMap(
     var map by remember(mapView) { mutableStateOf<MapLibreMap?>(null) }
     var style by remember(mapView) { mutableStateOf<Style?>(null) }
     var cameraInitialized by remember(mapView) { mutableStateOf(false) }
-    var followVehicle by remember(mapView) { mutableStateOf(true) }
+    var followVehicle by remember(mapView) { mutableStateOf(!planningMode) }
     var loadFailed by remember(mapView) { mutableStateOf(false) }
     var loadAttempt by remember(mapView) { mutableIntStateOf(0) }
+    val currentWaypointRequest by rememberUpdatedState(onWaypointRequested)
+    val longClickListener = remember(mapView) {
+        MapLibreMap.OnMapLongClickListener { point ->
+            val callback = currentWaypointRequest
+            if (callback != null && style != null) {
+                // Map gestures can report a wrapped longitude after panning across the date line.
+                val longitude = ((point.longitude + 180.0) % 360.0 + 360.0) % 360.0 - 180.0
+                callback(point.latitude, longitude)
+                true
+            } else false
+        }
+    }
 
     val moveListener = remember(mapView) {
         object : MapLibreMap.OnMoveListener {
@@ -103,7 +130,7 @@ fun VehicleMap(
         }
     }
 
-    DisposableEffect(mapView, styleUrl, moveListener, loadAttempt) {
+    DisposableEffect(mapView, styleUrl, moveListener, loadAttempt, planningMode) {
         var disposed = false
         var attachedMap: MapLibreMap? = null
         loadFailed = false
@@ -127,9 +154,11 @@ fun VehicleMap(
                     isTiltGesturesEnabled = true
                 }
                 loadedMap.addOnMoveListener(moveListener)
+                loadedMap.addOnMapLongClickListener(longClickListener)
                 loadedMap.setStyle(styleUrl) { loadedStyle ->
                     if (!disposed) {
                         installVehicleLayers(loadedStyle)
+                        if (planningMode) installDraftLayers(loadedStyle)
                         style = loadedStyle
                         loadFailed = false
                     }
@@ -140,6 +169,7 @@ fun VehicleMap(
         onDispose {
             disposed = true
             attachedMap?.removeOnMoveListener(moveListener)
+            attachedMap?.removeOnMapLongClickListener(longClickListener)
             mapView.removeOnDidFailLoadingMapListener(failureListener)
             style = null
             map = null
@@ -176,6 +206,8 @@ fun VehicleMap(
             track = state.positionTrack,
         )
 
+        if (planningMode && draftWaypoints.isNotEmpty() && !followVehicle) return@LaunchedEffect
+
         val loadedMap = map ?: return@LaunchedEffect
         if (!cameraInitialized) {
             loadedMap.cameraPosition = CameraPosition.Builder()
@@ -191,6 +223,38 @@ fun VehicleMap(
                 CAMERA_ANIMATION_MILLIS,
             )
         }
+    }
+
+    LaunchedEffect(style, draftWaypoints) {
+        val loadedStyle = style ?: return@LaunchedEffect
+        if (!planningMode) return@LaunchedEffect
+        val points = draftWaypoints.map { Point.fromLngLat(it.longitude, it.latitude) }
+        loadedStyle.getSourceAs<GeoJsonSource>(DRAFT_POINTS_SOURCE_ID)?.setGeoJson(
+            FeatureCollection.fromFeatures(points.mapIndexed { index, point ->
+                Feature.fromGeometry(point).apply { addStringProperty("label", (index + 1).toString()) }
+            })
+        )
+        loadedStyle.getSourceAs<GeoJsonSource>(DRAFT_LINE_SOURCE_ID)?.setGeoJson(
+            if (points.size >= 2) FeatureCollection.fromFeatures(arrayOf(Feature.fromGeometry(LineString.fromLngLats(points))))
+            else emptyFeatureCollection()
+        )
+        if (!cameraInitialized && draftWaypoints.isNotEmpty()) {
+            val first = draftWaypoints.first()
+            map?.cameraPosition = CameraPosition.Builder().target(LatLng(first.latitude, first.longitude))
+                .zoom(DEFAULT_MAP_ZOOM).build()
+            cameraInitialized = true
+        }
+    }
+
+    fun fitDraft() {
+        val loadedMap = map ?: return
+        val targets = draftWaypoints.map { LatLng(it.latitude, it.longitude) }.distinct()
+        if (targets.isEmpty()) return
+        followVehicle = false
+        val update = if (targets.size == 1) CameraUpdateFactory.newLatLngZoom(targets.first(), DEFAULT_MAP_ZOOM)
+            else CameraUpdateFactory.newLatLngBounds(LatLngBounds.Builder().includes(targets).build(),
+                (48 * mapView.resources.displayMetrics.density).toInt())
+        loadedMap.animateCamera(update, CAMERA_ANIMATION_MILLIS)
     }
 
     fun centerOnVehicle(enableFollow: Boolean) {
@@ -244,6 +308,9 @@ fun VehicleMap(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.End,
         ) {
+            if (planningMode) FilledTonalButton(onClick = ::fitDraft,
+                enabled = draftWaypoints.isNotEmpty() && style != null, colors = mapButtonColors,
+                modifier = Modifier.heightIn(min = 48.dp).testTag("mission-fit")) { Text("Fit draft") }
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 FilledTonalButton(onClick = { map?.animateCamera(CameraUpdateFactory.zoomIn()) }, enabled = style != null, colors = mapButtonColors,
                     modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Zoom in" }) { Text("+") }
@@ -416,6 +483,19 @@ private fun installVehicleLayers(style: Style) {
             ),
         )
     }
+}
+
+private fun installDraftLayers(style: Style) {
+    style.addSource(GeoJsonSource(DRAFT_LINE_SOURCE_ID, emptyFeatureCollection()))
+    style.addSource(GeoJsonSource(DRAFT_POINTS_SOURCE_ID, emptyFeatureCollection()))
+    style.addLayer(LineLayer("mama-draft-route", DRAFT_LINE_SOURCE_ID).withProperties(
+        lineColor(AndroidColor.rgb(255, 159, 67)), lineWidth(3f), lineOpacity(0.9f)))
+    style.addLayer(CircleLayer("mama-draft-waypoints", DRAFT_POINTS_SOURCE_ID).withProperties(
+        circleColor(AndroidColor.rgb(255, 159, 67)), circleRadius(12f),
+        circleStrokeColor(AndroidColor.BLACK), circleStrokeWidth(2f)))
+    style.addLayer(SymbolLayer("mama-draft-labels", DRAFT_POINTS_SOURCE_ID).withProperties(
+        textField(get("label")), textColor(AndroidColor.BLACK), textSize(12f),
+        textAllowOverlap(true), textIgnorePlacement(true)))
 }
 
 private fun updateVehicleSources(
