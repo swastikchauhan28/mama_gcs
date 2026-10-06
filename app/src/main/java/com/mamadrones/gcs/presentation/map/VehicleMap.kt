@@ -47,6 +47,7 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.expressions.Expression.get
@@ -62,11 +63,15 @@ import org.maplibre.android.style.layers.PropertyFactory.circleStrokeWidth
 import org.maplibre.android.style.layers.PropertyFactory.lineColor
 import org.maplibre.android.style.layers.PropertyFactory.lineOpacity
 import org.maplibre.android.style.layers.PropertyFactory.lineWidth
+import org.maplibre.android.style.layers.PropertyFactory.fillColor
+import org.maplibre.android.style.layers.PropertyFactory.fillOpacity
+import org.maplibre.android.style.layers.PropertyFactory.fillOutlineColor
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
+import org.maplibre.geojson.Polygon
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -75,6 +80,7 @@ private const val TRACK_SOURCE_ID = "mama-track-source"
 private const val HEADING_SOURCE_ID = "mama-heading-source"
 private const val DRAFT_POINTS_SOURCE_ID = "mama-draft-points"
 private const val DRAFT_LINE_SOURCE_ID = "mama-draft-line"
+private const val DRAFT_FENCE_SOURCE_ID = "mama-draft-fence"
 
 private const val VEHICLE_LAYER_ID = "mama-vehicle-layer"
 private const val TRACK_LAYER_ID = "mama-track-layer"
@@ -93,6 +99,7 @@ fun VehicleMap(
     state: VehicleState,
     modifier: Modifier = Modifier,
     draftWaypoints: List<DraftWaypoint> = emptyList(),
+    draftFence: List<DraftWaypoint> = emptyList(),
     planningMode: Boolean = false,
     onWaypointRequested: ((Double, Double) -> Unit)? = null,
 ) {
@@ -225,7 +232,7 @@ fun VehicleMap(
         }
     }
 
-    LaunchedEffect(style, draftWaypoints) {
+    LaunchedEffect(style, draftWaypoints, draftFence) {
         val loadedStyle = style ?: return@LaunchedEffect
         if (!planningMode) return@LaunchedEffect
         val points = draftWaypoints.map { Point.fromLngLat(it.longitude, it.latitude) }
@@ -238,8 +245,15 @@ fun VehicleMap(
             if (points.size >= 2) FeatureCollection.fromFeatures(arrayOf(Feature.fromGeometry(LineString.fromLngLats(points))))
             else emptyFeatureCollection()
         )
-        if (!cameraInitialized && draftWaypoints.isNotEmpty()) {
-            val first = draftWaypoints.first()
+        val fenceFeature = if (draftFence.size >= 3) {
+            val ring = draftFence.map { Point.fromLngLat(it.longitude, it.latitude) } +
+                Point.fromLngLat(draftFence.first().longitude, draftFence.first().latitude)
+            FeatureCollection.fromFeatures(arrayOf(Feature.fromGeometry(Polygon.fromLngLats(listOf(ring)))))
+        } else emptyFeatureCollection()
+        loadedStyle.getSourceAs<GeoJsonSource>(DRAFT_FENCE_SOURCE_ID)?.setGeoJson(fenceFeature)
+        val draftLocations = draftWaypoints.ifEmpty { draftFence }
+        if (!cameraInitialized && draftLocations.isNotEmpty()) {
+            val first = draftLocations.first()
             map?.cameraPosition = CameraPosition.Builder().target(LatLng(first.latitude, first.longitude))
                 .zoom(DEFAULT_MAP_ZOOM).build()
             cameraInitialized = true
@@ -248,7 +262,7 @@ fun VehicleMap(
 
     fun fitDraft() {
         val loadedMap = map ?: return
-        val targets = draftWaypoints.map { LatLng(it.latitude, it.longitude) }.distinct()
+        val targets = (draftWaypoints + draftFence).map { LatLng(it.latitude, it.longitude) }.distinct()
         if (targets.isEmpty()) return
         followVehicle = false
         val update = if (targets.size == 1) CameraUpdateFactory.newLatLngZoom(targets.first(), DEFAULT_MAP_ZOOM)
@@ -309,7 +323,7 @@ fun VehicleMap(
             horizontalAlignment = Alignment.End,
         ) {
             if (planningMode) FilledTonalButton(onClick = ::fitDraft,
-                enabled = draftWaypoints.isNotEmpty() && style != null, colors = mapButtonColors,
+                enabled = (draftWaypoints.isNotEmpty() || draftFence.size >= 3) && style != null, colors = mapButtonColors,
                 modifier = Modifier.heightIn(min = 48.dp).testTag("mission-fit")) { Text("Fit draft") }
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 FilledTonalButton(onClick = { map?.animateCamera(CameraUpdateFactory.zoomIn()) }, enabled = style != null, colors = mapButtonColors,
@@ -487,7 +501,11 @@ private fun installVehicleLayers(style: Style) {
 
 private fun installDraftLayers(style: Style) {
     style.addSource(GeoJsonSource(DRAFT_LINE_SOURCE_ID, emptyFeatureCollection()))
+    style.addSource(GeoJsonSource(DRAFT_FENCE_SOURCE_ID, emptyFeatureCollection()))
     style.addSource(GeoJsonSource(DRAFT_POINTS_SOURCE_ID, emptyFeatureCollection()))
+    style.addLayer(FillLayer("mama-draft-fence-fill", DRAFT_FENCE_SOURCE_ID).withProperties(
+        fillColor("#FFB547"), fillOpacity(0.16f), fillOutlineColor("#FFB547"),
+    ))
     style.addLayer(LineLayer("mama-draft-route", DRAFT_LINE_SOURCE_ID).withProperties(
         lineColor(AndroidColor.rgb(255, 159, 67)), lineWidth(3f), lineOpacity(0.9f)))
     style.addLayer(CircleLayer("mama-draft-waypoints", DRAFT_POINTS_SOURCE_ID).withProperties(

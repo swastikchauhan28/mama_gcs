@@ -81,18 +81,26 @@ fun MamaGcsApp(
             topBar = {
                 Surface(color = MaterialTheme.colorScheme.surface) {
                     Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                        Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
+                        Column(Modifier.widthIn(min = 72.dp, max = 104.dp).padding(start = 4.dp)) {
+                            Text("MAMA GCS", style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Clip)
+                            Text("ROVER STATION", style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        }
                         TextButton(onClick = { showVehicles = true }, modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("vehicle-selector")) {
                             Column(Modifier.fillMaxWidth()) {
                                 Text(
-                                    vehicle.displayName ?: if (vehicle.connected && vehicle.systemId != null) "Rover · SYS ${vehicle.systemId}" else "MAMA GCS · No vehicle",
+                                    vehicle.displayName ?: if (vehicle.connected && vehicle.systemId != null) "Rover · SYS ${vehicle.systemId}" else "No rover selected",
                                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                                     style = MaterialTheme.typography.titleSmall,
                                 )
                                 Text(
-                                    if (vehicle.vehicleId == null) "Vehicle pairing unavailable" else vehicle.vehicleId,
+                                    vehicle.vehicleId ?: if (vehicle.connected && vehicle.systemId != null)
+                                        "Observed MAVLink system · not paired" else "Vehicle pairing unavailable",
                                     style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 )
                             }
@@ -100,8 +108,12 @@ fun MamaGcsApp(
                         TextButton(onClick = { navigate("settings") }, modifier = Modifier.heightIn(min = 48.dp).testTag("connection-shortcut")) {
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(connectionLabel(vehicle.connectionStatus), style = MaterialTheme.typography.labelLarge,
-                                    color = if (vehicle.connectionStatus == VehicleConnectionState.DEGRADED || vehicle.connectionStatus == VehicleConnectionState.ERROR) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
-                                Text("Connection settings ›", style = MaterialTheme.typography.labelSmall)
+                                    color = when (vehicle.connectionStatus) {
+                                        VehicleConnectionState.CONNECTED -> MaterialTheme.colorScheme.secondary
+                                        VehicleConnectionState.DEGRADED, VehicleConnectionState.ERROR -> MaterialTheme.colorScheme.error
+                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    })
+                                Text("LINK SETUP ›", style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
@@ -139,10 +151,10 @@ fun MamaGcsApp(
                     }
                     NavHost(navController, startDestination = AppDestination.DASHBOARD.route, modifier = Modifier.weight(1f)) {
                         composable("dashboard") { DashboardScreen(vehicle, navigate) }
-                        composable("map") { MapScreen(vehicle) }
+                        composable("map") { MapScreen(vehicle, navigate) }
                         composable("control") { ControlScreen(vehicle) }
                         composable("mission") { MissionScreen(vehicle, missionPlan, onMissionAction) }
-                        composable("more") { MoreScreen(onNavigate = navigate) }
+                        composable("more") { MoreScreen(vehicle, onNavigate = navigate) }
                         composable("telemetry") { TelemetryScreen(vehicle) }
                         composable("health") { HealthScreen(vehicle) }
                         composable("motors") { MotorScreen(vehicle) }

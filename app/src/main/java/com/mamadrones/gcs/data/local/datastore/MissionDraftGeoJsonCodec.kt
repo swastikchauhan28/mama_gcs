@@ -20,6 +20,18 @@ class MissionDraftGeoJsonCodec @Inject constructor() : MissionDraftFileCodec {
                     .put("type", "Point")
                     .put("coordinates", JSONArray().put(point.longitude).put(point.latitude))))
         }
+        if (draft.keepInFence.size >= MIN_FENCE_VERTICES) {
+            val ring = JSONArray()
+            (draft.keepInFence + draft.keepInFence.first()).forEach { vertex ->
+                ring.put(JSONArray().put(vertex.longitude).put(vertex.latitude))
+            }
+            features.put(JSONObject()
+                .put("type", "Feature")
+                .put("properties", JSONObject().put("role", KEEP_IN_FENCE_ROLE))
+                .put("geometry", JSONObject()
+                    .put("type", "Polygon")
+                    .put("coordinates", JSONArray().put(ring))))
+        }
         return JSONObject()
             .put("type", "FeatureCollection")
             .put("name", draft.name)
@@ -35,33 +47,60 @@ class MissionDraftGeoJsonCodec @Inject constructor() : MissionDraftFileCodec {
         require(root.optString("type") == "FeatureCollection") { "Expected a GeoJSON FeatureCollection" }
         val properties = root.optJSONObject("properties")
         if (properties?.has("format") == true) {
-            require(properties.optString("format") == FORMAT && properties.optInt("version", -1) == VERSION) {
+            require(properties.optString("format") == FORMAT && properties.optInt("version", -1) in 1..VERSION) {
                 "Unsupported Mama GCS route file version"
             }
         }
         val features = root.optJSONArray("features") ?: error("FeatureCollection has no features array")
-        require(features.length() in 0..MissionDraft.MAX_WAYPOINTS) { "Route has too many waypoints" }
-        val points = buildList {
-            for (index in 0 until features.length()) {
-                val feature = features.optJSONObject(index) ?: error("Invalid feature at position ${index + 1}")
-                require(feature.optString("type") == "Feature") { "Invalid feature at position ${index + 1}" }
-                val geometry = feature.optJSONObject("geometry") ?: error("Waypoint geometry is missing")
-                require(geometry.optString("type") == "Point") { "Only Point waypoints are supported" }
-                val coordinates = geometry.optJSONArray("coordinates") ?: error("Waypoint coordinates are missing")
-                require(coordinates.length() >= 2) { "Waypoint needs longitude and latitude" }
-                val longitude = coordinates.getDouble(0)
-                val latitude = coordinates.getDouble(1)
-                add(DraftWaypoint(UUID.randomUUID().toString(), latitude, longitude))
+        require(features.length() in 0..MissionDraft.MAX_WAYPOINTS + 1) { "Route has too many features" }
+        val points = mutableListOf<DraftWaypoint>()
+        var fence = emptyList<DraftWaypoint>()
+        for (index in 0 until features.length()) {
+            val feature = features.optJSONObject(index) ?: error("Invalid feature at position ${index + 1}")
+            require(feature.optString("type") == "Feature") { "Invalid feature at position ${index + 1}" }
+            val geometry = feature.optJSONObject("geometry") ?: error("Feature geometry is missing")
+            when (geometry.optString("type")) {
+                "Point" -> {
+                    require(points.size < MissionDraft.MAX_WAYPOINTS) { "Route has too many waypoints" }
+                    val coordinates = geometry.optJSONArray("coordinates") ?: error("Waypoint coordinates are missing")
+                    require(coordinates.length() >= 2) { "Waypoint needs longitude and latitude" }
+                    points += DraftWaypoint(UUID.randomUUID().toString(), coordinates.getDouble(1), coordinates.getDouble(0))
+                }
+                "Polygon" -> {
+                    require(feature.optJSONObject("properties")?.optString("role") == KEEP_IN_FENCE_ROLE) {
+                        "Only Mama GCS keep-in polygons are supported"
+                    }
+                    require(fence.isEmpty()) { "Only one keep-in outline is supported" }
+                    val rings = geometry.optJSONArray("coordinates") ?: error("Keep-in polygon coordinates are missing")
+                    require(rings.length() == 1) { "Keep-in polygon holes are not supported" }
+                    val ring = rings.optJSONArray(0) ?: error("Keep-in polygon ring is invalid")
+                    require(ring.length() in (MIN_FENCE_VERTICES + 1)..(MissionDraft.MAX_FENCE_VERTICES + 1)) {
+                        "Keep-in outline must have 3 to ${MissionDraft.MAX_FENCE_VERTICES} vertices"
+                    }
+                    val coordinates = (0 until ring.length()).map { coordinateIndex ->
+                        val coordinate = ring.optJSONArray(coordinateIndex) ?: error("Invalid keep-in coordinate")
+                        require(coordinate.length() >= 2) { "Keep-in coordinate needs longitude and latitude" }
+                        coordinate.getDouble(0) to coordinate.getDouble(1)
+                    }
+                    require(coordinates.first() == coordinates.last()) { "Keep-in polygon ring must be closed" }
+                    val vertices = coordinates.dropLast(1)
+                    fence = vertices.map { (longitude, latitude) ->
+                        DraftWaypoint(UUID.randomUUID().toString(), latitude, longitude)
+                    }
+                }
+                else -> error("Only Point waypoints and Mama GCS keep-in polygons are supported")
             }
         }
         val name = root.optString("name", "Imported route").trim().ifBlank { "Imported route" }
             .take(MissionDraft.MAX_NAME_LENGTH)
-        return MissionDraft(name, points)
+        return MissionDraft(name, points, fence)
     }
 
     private companion object {
         const val FORMAT = "mama-gcs-route"
-        const val VERSION = 1
+        const val VERSION = 2
+        const val KEEP_IN_FENCE_ROLE = "keep-in-fence"
+        const val MIN_FENCE_VERTICES = 3
         const val MAX_FILE_CHARS = 256_000
     }
 }

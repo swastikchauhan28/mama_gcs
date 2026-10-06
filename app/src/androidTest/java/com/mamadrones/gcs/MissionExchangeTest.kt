@@ -16,6 +16,9 @@ class MissionExchangeTest {
         val source = MissionDraft("North field", listOf(
             DraftWaypoint("first", -35.3632621, 149.1652374),
             DraftWaypoint("second", -35.364, 149.166)
+        ), listOf(
+            DraftWaypoint("f1", -35.36, 149.16), DraftWaypoint("f2", -35.37, 149.16),
+            DraftWaypoint("f3", -35.37, 149.17), DraftWaypoint("f4", -35.36, 149.17),
         ))
         val file = MissionDraftGeoJsonCodec().encode(source)
         val restored = MissionDraftGeoJsonCodec().decode(file)
@@ -28,12 +31,18 @@ class MissionExchangeTest {
             assertEquals(expected.latitude, actual.latitude, 0.00000001)
             assertEquals(expected.longitude, actual.longitude, 0.00000001)
         }
+        assertEquals(source.keepInFence.size, restored.keepInFence.size)
+        source.keepInFence.zip(restored.keepInFence).forEach { (expected, actual) ->
+            assertEquals(expected.latitude, actual.latitude, 0.00000001)
+            assertEquals(expected.longitude, actual.longitude, 0.00000001)
+        }
     }
 
     @Test fun geoJsonRejectsUnsupportedVersionAndInvalidCoordinates() {
         val codec = MissionDraftGeoJsonCodec()
+        assertTrue(codec.decode("""{"type":"FeatureCollection","properties":{"format":"mama-gcs-route","version":1},"features":[]}""").keepInFence.isEmpty())
         assertRejected(codec) {
-            """{"type":"FeatureCollection","properties":{"format":"mama-gcs-route","version":2},"features":[]}"""
+            """{"type":"FeatureCollection","properties":{"format":"mama-gcs-route","version":3},"features":[]}"""
         }
         assertRejected(codec) {
             """{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[181,0]}}]}"""

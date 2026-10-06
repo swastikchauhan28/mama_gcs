@@ -26,6 +26,9 @@ class MissionDraftTest {
             MissionDraft(waypoints = List(MissionDraft.MAX_WAYPOINTS + 1) { a.copy(id = "$it") })
         }
         assertThrows(IllegalArgumentException::class.java) { MissionDraft(name = " ") }
+        assertThrows(IllegalArgumentException::class.java) {
+            MissionDraft(keepInFence = List(MissionDraft.MAX_FENCE_VERTICES + 1) { DraftWaypoint("f$it", 0.0, it / 100.0) })
+        }
     }
 
     @Test fun `distance handles identical points and date line crossings`() {

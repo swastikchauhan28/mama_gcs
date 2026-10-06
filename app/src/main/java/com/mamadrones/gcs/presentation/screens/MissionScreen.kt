@@ -19,7 +19,10 @@ import androidx.compose.ui.unit.dp
 import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
 import com.mamadrones.gcs.domain.model.MissionLibraryEntry
+import com.mamadrones.gcs.domain.model.MissionDraftReview
 import com.mamadrones.gcs.domain.model.VehicleState
+import com.mamadrones.gcs.presentation.components.PanelSpec
+import com.mamadrones.gcs.presentation.components.SubsystemCard
 import com.mamadrones.gcs.presentation.components.UnavailableActions
 import com.mamadrones.gcs.presentation.dashboard.forDisplay
 import com.mamadrones.gcs.presentation.map.VehicleMap
@@ -75,6 +78,7 @@ fun MissionScreen(
         if (plan.exportContent != null) exportLauncher.launch(plan.exportFileName ?: "route.geojson")
     }
     var showEditor by rememberSaveable { mutableStateOf(false) }
+    var showFenceEditor by rememberSaveable { mutableStateOf(false) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
     var initialLatitude by rememberSaveable { mutableStateOf("") }
     var initialLongitude by rememberSaveable { mutableStateOf("") }
@@ -85,6 +89,7 @@ fun MissionScreen(
     var libraryOpenId by rememberSaveable { mutableStateOf<String?>(null) }
     var libraryDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
     val canAdd = plan.editable && plan.draft.waypoints.size < MissionDraft.MAX_WAYPOINTS
+    val canAddFenceVertex = plan.editable && plan.draft.keepInFence.size < MissionDraft.MAX_FENCE_VERTICES
 
     fun openEditor(id: String?, latitude: Double?, longitude: Double?) {
         editingId = id
@@ -92,11 +97,16 @@ fun MissionScreen(
         initialLongitude = longitude?.let { String.format(Locale.US, "%.7f", it) }.orEmpty()
         showEditor = true
     }
+    fun openFenceEditor() {
+        initialLatitude = ""
+        initialLongitude = ""
+        showFenceEditor = true
+    }
 
     val mapContent: @Composable (Modifier) -> Unit = { mapModifier ->
         VehicleMap(
             state = state.forDisplay(), modifier = mapModifier.testTag("mission-map"),
-            draftWaypoints = plan.draft.waypoints, planningMode = true,
+            draftWaypoints = plan.draft.waypoints, draftFence = plan.draft.keepInFence, planningMode = true,
             onWaypointRequested = if (canAdd) { lat, lon -> openEditor(null, lat, lon) } else null
         )
     }
@@ -144,6 +154,62 @@ fun MissionScreen(
                     OutlinedButton(onClick = { openEditor(null, null, null) }, enabled = canAdd,
                         modifier = Modifier.testTag("mission-add")) { Text("Add coordinates") }
                 }
+                item {
+                    val review = MissionDraftReview.inspect(plan.draft)
+                    SubsystemCard(PanelSpec(
+                        title = "Local route review",
+                        status = if (review.hasRouteGeometry) "ROUTE SHAPE DEFINED · REVIEW REQUIRED" else "INCOMPLETE · ADD WAYPOINTS",
+                        rows = listOf(
+                            "Route geometry" to if (review.hasRouteGeometry) "${plan.draft.waypoints.size} POINTS" else "AT LEAST 2 POINTS NEEDED",
+                            "Zero-length legs" to if (review.zeroLengthLegs.isEmpty()) "NONE FOUND" else review.zeroLengthLegs.joinToString { "${it}→${it + 1}" },
+                            "Keep-in outline" to when {
+                                plan.draft.keepInFence.isEmpty() -> "NOT CONFIGURED"
+                                review.keepInOutlineIssue != null -> review.keepInOutlineIssue
+                                else -> "${plan.draft.keepInFence.size} VERTICES · LOCAL ONLY"
+                            },
+                            "Route points outside outline" to when {
+                                !review.hasUsableKeepInOutline -> "NOT CHECKED"
+                                review.waypointsOutsideKeepIn.isEmpty() -> "NONE FOUND"
+                                else -> review.waypointsOutsideKeepIn.joinToString { "WP $it" }
+                            },
+                            "Straight legs outside outline" to when {
+                                !review.hasUsableKeepInOutline -> "NOT CHECKED"
+                                review.legsOutsideKeepIn.isEmpty() -> "NONE FOUND"
+                                else -> review.legsOutsideKeepIn.joinToString { "LEG $it" }
+                            },
+                        ),
+                        note = if (review.zeroLengthLegs.isEmpty()) {
+                            "A compact local-plane check flags straight legs crossing the outline. It does not model rover turns, terrain, obstacles, vehicle limits or drive safety. Verify the outline; this is not mission approval."
+                        } else {
+                            "Identical consecutive coordinates create a zero-length leg. Edit or remove a point. Outline checks use straight coordinate legs only, not the rover's actual trajectory or safety."
+                        },
+                    ), Modifier.testTag("mission-route-review"))
+                }
+                item {
+                    Text("Local keep-in outline · ${plan.draft.keepInFence.size}/${MissionDraft.MAX_FENCE_VERTICES} vertices",
+                        style = MaterialTheme.typography.titleSmall)
+                    Text("Enter at least 3 distinct coordinates to draw a planning reference on the map. It stays on this device and is never sent to the rover.",
+                        style = MaterialTheme.typography.bodySmall)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        OutlinedButton(onClick = ::openFenceEditor, enabled = canAddFenceVertex,
+                            modifier = Modifier.testTag("mission-add-fence-vertex")) { Text("Add outline coordinate") }
+                        TextButton(onClick = { onAction(MissionPlanAction.ClearFence) },
+                            enabled = plan.editable && plan.draft.keepInFence.isNotEmpty(),
+                            modifier = Modifier.testTag("mission-clear-fence")) { Text("Clear outline") }
+                    }
+                }
+                itemsIndexed(plan.draft.keepInFence, key = { _, point -> "fence-${point.id}" }) { index, point ->
+                    Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.small) {
+                        Row(Modifier.fillMaxWidth().padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Column {
+                                Text("Outline vertex ${index + 1}", style = MaterialTheme.typography.titleSmall)
+                                Text(String.format(Locale.US, "%.7f, %.7f", point.latitude, point.longitude), style = MaterialTheme.typography.bodySmall)
+                            }
+                            TextButton(onClick = { onAction(MissionPlanAction.RemoveFenceVertex(point.id)) },
+                                enabled = plan.editable, modifier = Modifier.testTag("mission-remove-fence-$index")) { Text("Remove") }
+                        }
+                    }
+                }
                 if (plan.draft.waypoints.isEmpty()) item {
                     Text("No waypoints yet. This draft can be prepared without a vehicle connection.")
                 }
@@ -183,6 +249,14 @@ fun MissionScreen(
                 else MissionPlanAction.Edit(DraftWaypoint(id, latitude, longitude)))
             showEditor = false
         }
+    )
+    if (showFenceEditor) WaypointDialog(
+        initialLatitude, initialLongitude, editing = false,
+        onDismiss = { showFenceEditor = false },
+        onConfirm = { latitude, longitude ->
+            onAction(MissionPlanAction.AddFenceVertex(latitude, longitude))
+            showFenceEditor = false
+        },
     )
     if (showRename) {
         var name by rememberSaveable { mutableStateOf(plan.draft.name) }

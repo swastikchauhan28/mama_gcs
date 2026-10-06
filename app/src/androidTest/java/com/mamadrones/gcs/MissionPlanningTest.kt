@@ -29,8 +29,18 @@ class MissionPlanningTest {
                 compose.onNodeWithTag("nav-mission").performClick()
                 compose.waitUntil(10_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
                 addPoint("91", "149.1652374", invalid = true)
+                scrollToTag("mission-route-review").assertIsDisplayed()
+                compose.onNodeWithText("INCOMPLETE · ADD WAYPOINTS").assertIsDisplayed()
                 addPoint("-35.3632621", "149.1652374")
                 addPoint("-35.3635000", "149.1660000")
+                scrollToTag("mission-route-review").assertIsDisplayed()
+                compose.onNodeWithText("ROUTE SHAPE DEFINED · REVIEW REQUIRED").assertIsDisplayed()
+                addFenceVertex("-35.3700000", "149.1500000")
+                addFenceVertex("-35.3700000", "149.1800000")
+                addFenceVertex("-35.3500000", "149.1650000")
+                scrollToTag("mission-route-review").assertIsDisplayed()
+                compose.onNodeWithText("3 VERTICES · LOCAL ONLY").assertIsDisplayed()
+                compose.onAllNodesWithText("NONE FOUND").assertCountEquals(3)
                 scrollToTag("mission-up-1").performClick()
                 scrollToTag("mission-edit-0").performClick()
                 compose.onNodeWithTag("mission-latitude").performTextReplacement("-35.3640000")
@@ -40,6 +50,7 @@ class MissionPlanningTest {
                 val saved = runBlocking { repository.load() }
                 assertEquals(-35.364, saved.waypoints.first().latitude, 0.0000001)
                 assertEquals(-35.3632621, saved.waypoints.last().latitude, 0.0000001)
+                assertEquals(3, saved.keepInFence.size)
                 capture("mission-portrait")
                 scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
                 compose.waitUntil(10_000) {
@@ -73,6 +84,13 @@ class MissionPlanningTest {
             compose.onNodeWithTag("mission-confirm-waypoint").assertIsNotEnabled()
             compose.onNodeWithText("Cancel").performClick()
         } else compose.onNodeWithTag("mission-confirm-waypoint").performClick()
+    }
+
+    private fun addFenceVertex(latitude: String, longitude: String) {
+        scrollToTag("mission-add-fence-vertex").performClick()
+        compose.onNodeWithTag("mission-latitude").performTextReplacement(latitude)
+        compose.onNodeWithTag("mission-longitude").performTextReplacement(longitude)
+        compose.onNodeWithTag("mission-confirm-waypoint").performClick()
     }
 
     private fun scrollToTag(tag: String): SemanticsNodeInteraction {

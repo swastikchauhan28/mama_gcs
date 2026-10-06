@@ -16,12 +16,16 @@ data class DraftWaypoint(val id: String, val latitude: Double, val longitude: Do
 
 data class MissionDraft(
     val name: String = "Untitled route",
-    val waypoints: List<DraftWaypoint> = emptyList()
+    val waypoints: List<DraftWaypoint> = emptyList(),
+    /** Optional device-local keep-in reference polygon; not uploaded or enforced by a vehicle. */
+    val keepInFence: List<DraftWaypoint> = emptyList(),
 ) {
     init {
         require(name.isNotBlank() && name.length <= MAX_NAME_LENGTH)
         require(waypoints.size <= MAX_WAYPOINTS)
         require(waypoints.map { it.id }.distinct().size == waypoints.size)
+        require(keepInFence.size <= MAX_FENCE_VERTICES)
+        require(keepInFence.map { it.id }.distinct().size == keepInFence.size)
     }
 
     fun add(waypoint: DraftWaypoint) = copy(waypoints = waypoints + waypoint)
@@ -52,6 +56,7 @@ data class MissionDraft(
 
     companion object {
         const val MAX_WAYPOINTS = 250 // Local editor/storage bound, not an autopilot capability.
+        const val MAX_FENCE_VERTICES = 64
         const val MAX_NAME_LENGTH = 80
     }
 }

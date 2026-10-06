@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import com.mamadrones.gcs.domain.model.VehicleConnectionState
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.presentation.components.*
 import com.mamadrones.gcs.presentation.dashboard.ConsolePanels
@@ -30,12 +31,12 @@ fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier:
         val twoMetricRows = maxHeight >= 480.dp
         if (maxWidth >= 680.dp) {
             Row(Modifier.fillMaxSize().padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                MapWorkspace(state, Modifier.weight(1f).fillMaxHeight())
+                MapWorkspace(state, Modifier.weight(1f).fillMaxHeight(), onNavigate, showOperatorTools = true)
                 TelemetryDock(displayed, true, onNavigate, Modifier.width(224.dp).fillMaxHeight())
             }
         } else {
             Column(Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                MapWorkspace(state, Modifier.fillMaxWidth().weight(1f))
+                MapWorkspace(state, Modifier.fillMaxWidth().weight(1f), onNavigate)
                 TelemetryDock(displayed, false, onNavigate, Modifier.fillMaxWidth(), twoMetricRows = twoMetricRows)
             }
         }
@@ -54,10 +55,10 @@ private fun TelemetryDock(
     val batteryValue = if (packs.size > 1) "${packs.size} packs" else
         packs.single().percentage?.let { "$it %" } ?: "UNKNOWN"
     val metrics = listOf(
-        "SPEED" to state.speedMetersPerSecond.reading("m/s"),
+        "GROUND SPEED" to state.speedMetersPerSecond.reading("m/s"),
         "HEADING" to state.headingDegrees.reading("°"),
         "BATTERY" to batteryValue,
-        "GPS" to state.gps.fix.name.replace('_', ' '),
+        "GPS FIX" to state.gps.fix.name.replace('_', ' '),
     )
     Surface(modifier, shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
         Column(
@@ -66,7 +67,7 @@ private fun TelemetryDock(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (expanded) {
-                Text("VEHICLE INSTRUMENTS", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Text("ROVER INSTRUMENTS", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 metrics.chunked(2).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         row.forEach { (label, value) -> Instrument(label, value, Modifier.weight(1f)) }
@@ -129,7 +130,12 @@ private fun EquipmentLink(label: String, value: String, onClick: () -> Unit) {
 }
 
 @Composable
-fun MapWorkspace(state: VehicleState, modifier: Modifier = Modifier) {
+fun MapWorkspace(
+    state: VehicleState,
+    modifier: Modifier = Modifier,
+    onNavigate: (String) -> Unit = {},
+    showOperatorTools: Boolean = false,
+) {
     val displayed = state.forDisplay()
     val position = displayed.position
     Surface(modifier.testTag("operation-map"), shape = MaterialTheme.shapes.medium, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
@@ -143,18 +149,54 @@ fun MapWorkspace(state: VehicleState, modifier: Modifier = Modifier) {
             ) {
                 Column(Modifier.padding(8.dp)) {
                     Text(
+                        when (displayed.connectionStatus) {
+                            VehicleConnectionState.CONNECTED -> "ROVER · LIVE TELEMETRY"
+                            VehicleConnectionState.CONNECTING -> "ROVER · CONNECTING"
+                            VehicleConnectionState.DEGRADED -> "ROVER · LINK DEGRADED"
+                            VehicleConnectionState.ERROR -> "ROVER · LINK ERROR"
+                            VehicleConnectionState.DISCONNECTED -> "ROVER · WAITING FOR LINK"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
                         if (position.latitude != null && position.longitude != null)
                             String.format(Locale.US, "%.7f, %.7f", position.latitude, position.longitude)
-                        else "Vehicle position unavailable",
+                        else "Position unavailable",
                         style = MaterialTheme.typography.labelMedium,
                     )
                     Text(
-                        "${displayed.mode ?: "MODE UNKNOWN"} · ${displayed.armed?.let { if (it) "ARMED" else "DISARMED" } ?: "ARMING UNKNOWN"}",
+                        "${displayed.mode ?: "MODE UNKNOWN"} · ${displayed.armed?.let { if (it) "ARMED" else "DISARMED" } ?: "ARM STATE UNKNOWN"}",
                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
+            if (showOperatorTools) {
+                Surface(
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(start = 8.dp, end = 64.dp, bottom = 8.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
+                    shape = MaterialTheme.shapes.medium,
+                    tonalElevation = 4.dp,
+                ) {
+                    Row(
+                        Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        WorkspaceAction("ROUTE PLAN", "mission", onNavigate)
+                        WorkspaceAction("MESSAGES", "diagnostics", onNavigate)
+                        WorkspaceAction("SAFETY GATE", "control", onNavigate)
+                        WorkspaceAction("SETUP", "settings", onNavigate)
+                    }
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun WorkspaceAction(label: String, destination: String, onNavigate: (String) -> Unit) {
+    TextButton(onClick = { onNavigate(destination) }, modifier = Modifier.heightIn(min = 48.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
     }
 }
 

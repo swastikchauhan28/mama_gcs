@@ -39,6 +39,9 @@ data class MissionPlanUiState(
 
 sealed interface MissionPlanAction {
     data class Add(val latitude: Double, val longitude: Double) : MissionPlanAction
+    data class AddFenceVertex(val latitude: Double, val longitude: Double) : MissionPlanAction
+    data class RemoveFenceVertex(val id: String) : MissionPlanAction
+    data object ClearFence : MissionPlanAction
     data class Edit(val waypoint: DraftWaypoint) : MissionPlanAction
     data class Remove(val id: String) : MissionPlanAction
     data class Move(val id: String, val offset: Int) : MissionPlanAction
@@ -140,6 +143,13 @@ class MissionPlanViewModel @Inject constructor(
         try {
             val next = when (action) {
                 is MissionPlanAction.Add -> current.draft.add(DraftWaypoint(UUID.randomUUID().toString(), action.latitude, action.longitude))
+                is MissionPlanAction.AddFenceVertex -> current.draft.copy(
+                    keepInFence = current.draft.keepInFence + DraftWaypoint(UUID.randomUUID().toString(), action.latitude, action.longitude)
+                )
+                is MissionPlanAction.RemoveFenceVertex -> current.draft.copy(
+                    keepInFence = current.draft.keepInFence.filterNot { it.id == action.id }
+                )
+                MissionPlanAction.ClearFence -> current.draft.copy(keepInFence = emptyList())
                 is MissionPlanAction.Edit -> current.draft.edit(action.waypoint)
                 is MissionPlanAction.Remove -> current.draft.remove(action.id)
                 is MissionPlanAction.Move -> current.draft.move(action.id, action.offset)
