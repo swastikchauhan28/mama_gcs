@@ -16,6 +16,7 @@ import com.mamadrones.gcs.presentation.settings.SettingsViewModel
 import com.mamadrones.gcs.presentation.settings.ConnectionViewModel
 import com.mamadrones.gcs.presentation.navigation.MamaGcsApp
 import com.mamadrones.gcs.presentation.mission.MissionPlanViewModel
+import com.mamadrones.gcs.presentation.screens.VescBluetoothDiscoveryViewModel
 import com.mamadrones.gcs.presentation.theme.MamaGcsTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -25,6 +26,7 @@ class MainActivity : ComponentActivity() {
     private val settingsViewModel: SettingsViewModel by viewModels()
     private val connectionViewModel: ConnectionViewModel by viewModels()
     private val missionPlanViewModel: MissionPlanViewModel by viewModels()
+    private val vescBluetoothDiscoveryViewModel: VescBluetoothDiscoveryViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +44,7 @@ class MainActivity : ComponentActivity() {
             val settings = settingsViewModel.state.collectAsStateWithLifecycle().value
             val connection = connectionViewModel.state.collectAsStateWithLifecycle().value
             val missionPlan = missionPlanViewModel.state.collectAsStateWithLifecycle().value
+            val vescDiscovery = vescBluetoothDiscoveryViewModel.state.collectAsStateWithLifecycle().value
             MamaGcsTheme(settings.preferences.theme) {
                 MamaGcsApp(
                     vehicle = vehicle,
@@ -56,7 +59,11 @@ class MainActivity : ComponentActivity() {
                     onCloseSocket = connectionViewModel::closeSocket,
                     onClearEndpoint = connectionViewModel::clearEndpoint,
                     missionPlan = missionPlan,
-                    onMissionAction = missionPlanViewModel::dispatch
+                    onMissionAction = missionPlanViewModel::dispatch,
+                    vescDiscovery = vescDiscovery,
+                    onVescScan = vescBluetoothDiscoveryViewModel::startScan,
+                    onVescStopScan = vescBluetoothDiscoveryViewModel::stopScan,
+                    onVescPermissionDenied = vescBluetoothDiscoveryViewModel::permissionDenied,
                 )
             }
         }

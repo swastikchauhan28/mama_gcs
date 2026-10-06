@@ -21,6 +21,7 @@ import com.mamadrones.gcs.domain.model.MissionDraft
 import com.mamadrones.gcs.domain.model.MissionLibraryEntry
 import com.mamadrones.gcs.domain.model.MissionDraftReview
 import com.mamadrones.gcs.domain.model.VehicleState
+import com.mamadrones.gcs.domain.repository.MissionDraftFileFormat
 import com.mamadrones.gcs.presentation.components.PanelSpec
 import com.mamadrones.gcs.presentation.components.SubsystemCard
 import com.mamadrones.gcs.presentation.components.UnavailableActions
@@ -55,9 +56,7 @@ fun MissionScreen(
             }
         }
     }
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/geo+json")
-    ) { uri ->
+    val finishExport: (android.net.Uri?) -> Unit = { uri ->
         val content = plan.exportContent
         if (uri == null || content == null) {
             onAction(MissionPlanAction.ExportFinished())
@@ -74,8 +73,19 @@ fun MissionScreen(
             onAction(MissionPlanAction.ExportFinished(error))
         }
     }
-    LaunchedEffect(plan.exportContent, plan.exportFileName) {
-        if (plan.exportContent != null) exportLauncher.launch(plan.exportFileName ?: "route.geojson")
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/geo+json"), onResult = finishExport
+    )
+    val gpxExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/gpx+xml"), onResult = finishExport
+    )
+    LaunchedEffect(plan.exportContent, plan.exportFileName, plan.exportFormat) {
+        val fileName = plan.exportFileName ?: "route.${plan.exportFormat?.extension ?: "geojson"}"
+        when (plan.exportFormat) {
+            MissionDraftFileFormat.GEOJSON -> exportLauncher.launch(fileName)
+            MissionDraftFileFormat.GPX -> gpxExportLauncher.launch(fileName)
+            null -> Unit
+        }
     }
     var showEditor by rememberSaveable { mutableStateOf(false) }
     var showFenceEditor by rememberSaveable { mutableStateOf(false) }
@@ -138,10 +148,12 @@ fun MissionScreen(
                         TextButton(onClick = { showSaveToLibrary = true }, enabled = plan.editable) { Text("Save to library") }
                         TextButton(onClick = { showLibrary = true }, enabled = plan.editable) { Text("Library · ${plan.library.size}") }
                         TextButton(onClick = { showNewConfirmation = true }, enabled = plan.editable) { Text("New draft") }
-                        TextButton(onClick = { importLauncher.launch(arrayOf("application/geo+json", "application/json", "text/*")) },
-                            enabled = plan.editable) { Text("Import GeoJSON") }
-                        TextButton(onClick = { onAction(MissionPlanAction.Export) }, enabled = plan.editable) { Text("Export GeoJSON") }
+                        TextButton(onClick = { importLauncher.launch(arrayOf("application/geo+json", "application/json", "application/gpx+xml", "application/xml", "text/xml", "*/*")) },
+                            enabled = plan.editable) { Text("Import route file") }
+                        TextButton(onClick = { onAction(MissionPlanAction.Export(MissionDraftFileFormat.GEOJSON)) }, enabled = plan.editable) { Text("Export GeoJSON") }
+                        TextButton(onClick = { onAction(MissionPlanAction.Export(MissionDraftFileFormat.GPX)) }, enabled = plan.editable) { Text("Export GPX") }
                     }
+                    Text("GPX carries route waypoints only. Use GeoJSON to preserve the local outline.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     plan.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     if (plan.loadFailed) TextButton(onClick = { onAction(MissionPlanAction.RetryLoad) }) { Text("Retry loading") }
                 }

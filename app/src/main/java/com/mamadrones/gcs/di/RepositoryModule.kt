@@ -7,7 +7,7 @@ import com.mamadrones.gcs.domain.repository.VehicleRepository
 import com.mamadrones.gcs.domain.repository.SettingsRepository
 import com.mamadrones.gcs.data.local.datastore.LocalSettingsRepository
 import com.mamadrones.gcs.data.local.datastore.LocalMissionDraftRepository
-import com.mamadrones.gcs.data.local.datastore.MissionDraftGeoJsonCodec
+import com.mamadrones.gcs.data.local.datastore.MissionDraftRouteCodec
 import com.mamadrones.gcs.domain.repository.MissionDraftRepository
 import com.mamadrones.gcs.domain.repository.MissionDraftFileCodec
 import dagger.Binds
@@ -25,7 +25,7 @@ abstract class RepositoryModule {
     abstract fun bindMissionDraftRepository(implementation: LocalMissionDraftRepository): MissionDraftRepository
 
     @Binds
-    abstract fun bindMissionDraftFileCodec(implementation: MissionDraftGeoJsonCodec): MissionDraftFileCodec
+    abstract fun bindMissionDraftFileCodec(implementation: MissionDraftRouteCodec): MissionDraftFileCodec
 
     @Binds
     abstract fun bindVehicleRepository(implementation: VehicleRepositoryImpl): VehicleRepository

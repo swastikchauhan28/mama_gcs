@@ -6,6 +6,7 @@ import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
 import com.mamadrones.gcs.domain.model.MissionLibraryEntry
 import com.mamadrones.gcs.domain.repository.MissionDraftFileCodec
+import com.mamadrones.gcs.domain.repository.MissionDraftFileFormat
 import com.mamadrones.gcs.domain.repository.MissionDraftRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
@@ -30,6 +31,7 @@ data class MissionPlanUiState(
     val pendingImport: MissionDraft? = null,
     val exportContent: String? = null,
     val exportFileName: String? = null,
+    val exportFormat: MissionDraftFileFormat? = null,
     val library: List<MissionLibraryEntry> = emptyList(),
     val libraryError: String? = null,
     val error: String? = null
@@ -51,7 +53,7 @@ sealed interface MissionPlanAction {
     data class SaveToLibrary(val name: String) : MissionPlanAction
     data class OpenLibraryEntry(val id: String) : MissionPlanAction
     data class DeleteLibraryEntry(val id: String) : MissionPlanAction
-    data object Export : MissionPlanAction
+    data class Export(val format: MissionDraftFileFormat = MissionDraftFileFormat.GEOJSON) : MissionPlanAction
     data class ExportFinished(val error: String? = null) : MissionPlanAction
     data class ImportContent(val content: String) : MissionPlanAction
     data object ConfirmImport : MissionPlanAction
@@ -74,12 +76,12 @@ class MissionPlanViewModel @Inject constructor(
     init { load() }
 
     fun dispatch(action: MissionPlanAction) {
-        if (action == MissionPlanAction.Export) {
-            exportDraft()
+        if (action is MissionPlanAction.Export) {
+            exportDraft(action.format)
             return
         }
         if (action is MissionPlanAction.ExportFinished) {
-            mutableState.value = state.value.copy(exportContent = null, exportFileName = null, error = action.error)
+            mutableState.value = state.value.copy(exportContent = null, exportFileName = null, exportFormat = null, error = action.error)
             return
         }
         if (action is MissionPlanAction.ImportContent) {
@@ -170,11 +172,11 @@ class MissionPlanViewModel @Inject constructor(
         }
     }
 
-    private fun exportDraft() {
+    private fun exportDraft(format: MissionDraftFileFormat) {
         val current = state.value
         if (!current.editable) return
         try {
-            val content = fileCodec.encode(current.draft)
+            val content = fileCodec.encode(current.draft, format)
             val safeName = current.draft.name
                 .replace(Regex("[^A-Za-z0-9_-]+"), "_")
                 .trim('_')
@@ -182,7 +184,8 @@ class MissionPlanViewModel @Inject constructor(
                 .ifBlank { "route" }
             mutableState.value = current.copy(
                 exportContent = content,
-                exportFileName = "$safeName.geojson",
+                exportFileName = "$safeName.${format.extension}",
+                exportFormat = format,
                 error = null
             )
         } catch (_: Exception) {

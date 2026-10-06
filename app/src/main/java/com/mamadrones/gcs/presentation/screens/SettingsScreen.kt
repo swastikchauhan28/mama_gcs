@@ -125,7 +125,7 @@ fun SettingsScreen(
     }
     connection.error?.let { Notice("UDP ENDPOINT ERROR", it) }
     Notice("MAVLINK SECURITY", "Only the configured UDP peer is accepted. A CRC-valid unsigned HEARTBEAT reports protocol liveness, not authenticated vehicle identity. Signed frames are rejected until signing-key verification is provisioned. This session sends no vehicle commands.")
-    Notice("BLUETOOTH AND SERIAL", "Bluetooth Classic and serial remain defined transport extension points. No pairing, device discovery, permissions, or sockets have been added because hardware details are not yet known.")
+    Notice("BLUETOOTH AND SERIAL", "Systems → VESC Bluetooth can scan nearby BLE advertisements only. It does not pair, connect, read telemetry, or send commands. Bluetooth Classic / SPP, serial, and live VESC telemetry remain unavailable pending hardware identification.")
     Notice("LOCAL DISPLAY PREFERENCES", "Theme is saved offline. Passwords, credentials and machine commands are not stored in display preferences.")
 }
 

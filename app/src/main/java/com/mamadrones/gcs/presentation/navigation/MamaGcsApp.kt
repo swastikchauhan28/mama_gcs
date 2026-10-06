@@ -21,6 +21,7 @@ import com.mamadrones.gcs.presentation.settings.SettingsUiState
 import com.mamadrones.gcs.presentation.settings.ConnectionUiState
 import com.mamadrones.gcs.presentation.mission.MissionPlanUiState
 import com.mamadrones.gcs.presentation.mission.MissionPlanAction
+import com.mamadrones.gcs.presentation.screens.VescDiscoveryUiState
 
 enum class AppDestination(val route: String, val label: String, val icon: ConsoleIcon) {
     DASHBOARD("dashboard", "Operate", ConsoleIcon.DASHBOARD), MAP("map", "Map", ConsoleIcon.MAP),
@@ -42,7 +43,11 @@ fun MamaGcsApp(
     onCloseSocket: () -> Unit = {},
     onClearEndpoint: () -> Unit = {},
     missionPlan: MissionPlanUiState = MissionPlanUiState(),
-    onMissionAction: (MissionPlanAction) -> Unit = {}
+    onMissionAction: (MissionPlanAction) -> Unit = {},
+    vescDiscovery: VescDiscoveryUiState = VescDiscoveryUiState(),
+    onVescScan: () -> Unit = {},
+    onVescStopScan: () -> Unit = {},
+    onVescPermissionDenied: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     var showVehicles by remember { mutableStateOf(false) }
@@ -158,6 +163,9 @@ fun MamaGcsApp(
                         composable("telemetry") { TelemetryScreen(vehicle) }
                         composable("health") { HealthScreen(vehicle) }
                         composable("motors") { MotorScreen(vehicle) }
+                        composable("vesc-discovery") {
+                            VescBluetoothDiscoveryScreen(vescDiscovery, onVescScan, onVescStopScan, onVescPermissionDenied)
+                        }
                         composable("spray") { SprayScreen(vehicle) }
                         composable("hydraulic") { HydraulicScreen(vehicle) }
                         composable("diagnostics") { DiagnosticsScreen(vehicle, connection = connection) }

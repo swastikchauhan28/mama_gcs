@@ -3,8 +3,11 @@ package com.mamadrones.gcs
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mamadrones.gcs.data.local.datastore.LocalMissionDraftRepository
 import com.mamadrones.gcs.data.local.datastore.MissionDraftGeoJsonCodec
+import com.mamadrones.gcs.data.local.datastore.MissionDraftGpxCodec
+import com.mamadrones.gcs.data.local.datastore.MissionDraftRouteCodec
 import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
+import com.mamadrones.gcs.domain.repository.MissionDraftFileFormat
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -12,6 +15,36 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MissionExchangeTest {
+    @Test fun gpxRoundTripsOrderedRoutePointsAndEscapedName() {
+        val codec = MissionDraftRouteCodec(MissionDraftGeoJsonCodec(), MissionDraftGpxCodec())
+        val source = MissionDraft("North & south <field>", listOf(
+            DraftWaypoint("first", -35.3632621, 149.1652374),
+            DraftWaypoint("second", -35.364, 149.166),
+        ), listOf(
+            DraftWaypoint("f1", -35.36, 149.16), DraftWaypoint("f2", -35.37, 149.16),
+            DraftWaypoint("f3", -35.37, 149.17),
+        ))
+
+        val file = codec.encode(source, MissionDraftFileFormat.GPX)
+        val restored = codec.decode(file)
+
+        assertTrue(file.contains("<rtept"))
+        assertTrue(file.contains("North &amp; south &lt;field&gt;"))
+        assertEquals(source.name, restored.name)
+        assertEquals(source.waypoints.size, restored.waypoints.size)
+        source.waypoints.zip(restored.waypoints).forEach { (expected, actual) ->
+            assertEquals(expected.latitude, actual.latitude, 0.00000001)
+            assertEquals(expected.longitude, actual.longitude, 0.00000001)
+        }
+        assertTrue("GPX does not carry the local outline", restored.keepInFence.isEmpty())
+    }
+
+    @Test fun gpxRejectsDocumentTypesAndFilesWithoutRoutes() {
+        val codec = MissionDraftGpxCodec()
+        assertRejected { codec.decode("""<!DOCTYPE gpx [<!ENTITY x "bad">]><gpx/>""") }
+        assertRejected { codec.decode("""<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1"><wpt lat="0" lon="0"/></gpx>""") }
+    }
+
     @Test fun geoJsonRoundTripsNameAndOrderedWgs84Coordinates() {
         val source = MissionDraft("North field", listOf(
             DraftWaypoint("first", -35.3632621, 149.1652374),
@@ -79,5 +112,11 @@ class MissionExchangeTest {
             rejected = true
         }
         assertTrue("Expected invalid GeoJSON to be rejected", rejected)
+    }
+
+    private fun assertRejected(content: () -> Unit) {
+        var rejected = false
+        try { content() } catch (_: Exception) { rejected = true }
+        assertTrue("Expected invalid GPX to be rejected", rejected)
     }
 }

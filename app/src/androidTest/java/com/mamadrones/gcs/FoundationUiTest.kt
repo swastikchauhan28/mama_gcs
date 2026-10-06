@@ -86,6 +86,16 @@ class FoundationUiTest {
             compose.onNodeWithText(heading).assertIsDisplayed()
             compose.onNodeWithText("‹ Back").performClick()
         }
+        compose.onNodeWithTag("nav-more").performClick()
+        compose.onNodeWithText("VESC Bluetooth").performScrollTo().performClick()
+        compose.onNodeWithText("VESC Bluetooth discovery").assertIsDisplayed()
+        compose.onNodeWithText("DISCOVERY ONLY · NO CONTROLLER CONNECTION").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Scan for BLE devices").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("‹ Back").performClick()
+        compose.onNodeWithTag("nav-mission").performClick()
+        compose.onNodeWithText("Import route file").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Export GPX").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("nav-more").performClick()
         compose.onNodeWithText("Settings").performScrollTo().performClick()
         compose.onNodeWithText("Light").performScrollTo().performClick()
         compose.waitUntil(10_000) { compose.onAllNodes(hasText("Light") and isSelected()).fetchSemanticsNodes().isNotEmpty() }

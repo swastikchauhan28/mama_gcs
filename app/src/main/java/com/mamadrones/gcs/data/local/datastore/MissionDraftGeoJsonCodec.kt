@@ -3,6 +3,7 @@ package com.mamadrones.gcs.data.local.datastore
 import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
 import com.mamadrones.gcs.domain.repository.MissionDraftFileCodec
+import com.mamadrones.gcs.domain.repository.MissionDraftFileFormat
 import java.util.UUID
 import javax.inject.Inject
 import org.json.JSONArray
@@ -10,7 +11,8 @@ import org.json.JSONObject
 
 /** Bounded GeoJSON FeatureCollection containing an ordered list of waypoint Point features. */
 class MissionDraftGeoJsonCodec @Inject constructor() : MissionDraftFileCodec {
-    override fun encode(draft: MissionDraft): String {
+    override fun encode(draft: MissionDraft, format: MissionDraftFileFormat): String {
+        require(format == MissionDraftFileFormat.GEOJSON)
         val features = JSONArray()
         draft.waypoints.forEachIndexed { index, point ->
             features.put(JSONObject()
