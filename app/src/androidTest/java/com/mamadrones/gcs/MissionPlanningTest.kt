@@ -22,6 +22,7 @@ class MissionPlanningTest {
     @Test fun editReorderAndSaveDraftSurvivesNewViewModel() {
         val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         val previous = runBlocking { repository.load() }
+        val previousRecovery = runBlocking { repository.loadRecovery() }
         try {
             runBlocking { repository.save(MissionDraft()) }
             val scenario = androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java)
@@ -73,7 +74,12 @@ class MissionPlanningTest {
                     assertTrue(runBlocking { repository.load().waypoints.first().id == saved.waypoints.first().id })
                 } finally { relaunched.close() }
             } finally { scenario.close() }
-        } finally { runBlocking { repository.save(previous) } }
+        } finally {
+            runBlocking {
+                repository.save(previous)
+                previousRecovery?.let { repository.saveRecovery(it) }
+            }
+        }
     }
 
     private fun addPoint(latitude: String, longitude: String, invalid: Boolean = false) {
