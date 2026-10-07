@@ -9,12 +9,17 @@ import androidx.lifecycle.viewModelScope
 import com.mamadrones.gcs.data.mavlink.MavlinkSessionFactory
 import com.mamadrones.gcs.data.mavlink.VehicleMavlinkSession
 import com.mamadrones.gcs.data.transport.bluetooth.BleDeviceScanner
+import com.mamadrones.gcs.data.transport.TelemetryLinkGate
 import com.mamadrones.gcs.data.transport.bluetooth.BleMavlinkTransport
 import com.mamadrones.gcs.data.transport.bluetooth.BleNotifyCharacteristic
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -36,6 +41,11 @@ data class VescDiscoveryUiState(
     val selectedDeviceName: String? = null,
     val gattConnecting: Boolean = false,
     val gattConnected: Boolean = false,
+    val subscribing: Boolean = false,
+    val closing: Boolean = false,
+    val receivedNotifications: Long = 0,
+    val receivedBytes: Long = 0,
+    val lastReceivedAtEpochMillis: Long? = null,
     val notifyCharacteristics: List<BleNotifyCharacteristic> = emptyList(),
     val receivingFrom: BleNotifyCharacteristic? = null,
     val gattError: String? = null,
@@ -45,10 +55,15 @@ data class VescDiscoveryUiState(
 class VescBluetoothDiscoveryViewModel @Inject constructor(
     @ApplicationContext context: Context,
     private val mavlinkSessionFactory: MavlinkSessionFactory,
+    private val linkGate: TelemetryLinkGate,
 ) : ViewModel() {
     private val scanner = BleDeviceScanner(context)
     private val transport = BleMavlinkTransport(context)
     private var mavlinkSession: VehicleMavlinkSession? = null
+    private var operation: Job? = null
+    private var lease: TelemetryLinkGate.Lease? = null
+    private val operationError = MutableStateFlow<String?>(null)
+    private val closing = MutableStateFlow(false)
 
     private val lifecycleObserver = object : DefaultLifecycleObserver {
         override fun onStop(owner: LifecycleOwner) {
@@ -57,9 +72,18 @@ class VescBluetoothDiscoveryViewModel @Inject constructor(
         }
     }
 
-    init { ProcessLifecycleOwner.get().lifecycle.addObserver(lifecycleObserver) }
+    init {
+        ProcessLifecycleOwner.get().lifecycle.addObserver(lifecycleObserver)
+        viewModelScope.launch {
+            transport.state.collect { link ->
+                if (!link.connected && !link.connecting && lease != null && operation?.isActive != true) {
+                    disconnectGatt()
+                }
+            }
+        }
+    }
 
-    val state: StateFlow<VescDiscoveryUiState> = combine(scanner.state, transport.state) { scan, link ->
+    val state: StateFlow<VescDiscoveryUiState> = combine(scanner.state, transport.state, operationError, closing) { scan, link, error, isClosing ->
             VescDiscoveryUiState(
                 bleSupported = scanner.supportsBle(),
                 scanning = scan.scanning,
@@ -71,9 +95,14 @@ class VescBluetoothDiscoveryViewModel @Inject constructor(
                 selectedDeviceName = link.deviceName,
                 gattConnecting = link.connecting,
                 gattConnected = link.connected,
+                subscribing = link.subscribing,
+                closing = isClosing,
+                receivedNotifications = link.receivedNotifications,
+                receivedBytes = link.receivedBytes,
+                lastReceivedAtEpochMillis = link.lastReceivedAtEpochMillis,
                 notifyCharacteristics = link.characteristics,
                 receivingFrom = link.receivingFrom,
-                gattError = link.error,
+                gattError = error ?: link.error,
             )
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, VescDiscoveryUiState(bleSupported = scanner.supportsBle()))
@@ -83,38 +112,78 @@ class VescBluetoothDiscoveryViewModel @Inject constructor(
     fun permissionDenied() = scanner.permissionDenied()
 
     fun connectGatt(deviceKey: String, name: String) {
+        if (lease != null || operation?.isActive == true || closing.value) return
         scanner.stop()
         val device = scanner.deviceForKey(deviceKey) ?: run {
+            operationError.value = "This scan result expired. Scan again before connecting."
             return
         }
-        viewModelScope.launch { runCatching { transport.connect(device, name) } }
+        operationError.value = null
+        try {
+            lease = linkGate.acquire("BLE")
+        } catch (error: IllegalStateException) {
+            operationError.value = error.message
+            return
+        }
+        operation = viewModelScope.launch {
+            try {
+                transport.connect(device, name)
+            } catch (cancelled: CancellationException) {
+                closeSession()
+                throw cancelled
+            } catch (error: Exception) {
+                operationError.value = error.message ?: "BLE connection failed."
+                closeSession()
+            }
+        }
     }
 
     fun startMavlinkReceive(characteristic: BleNotifyCharacteristic) {
-        viewModelScope.launch {
-            if (mavlinkSession != null) return@launch
-            runCatching {
+        if (lease == null || operation?.isActive == true || closing.value ||
+            !transport.state.value.connected || mavlinkSession != null) return
+        operationError.value = null
+        operation = viewModelScope.launch {
+            try {
+                // Attach the stream collector before enabling remote notifications.
+                mavlinkSession = mavlinkSessionFactory.create(transport, viewModelScope)
+                mavlinkSession?.start()
                 transport.subscribe(characteristic)
-                mavlinkSession = mavlinkSessionFactory.create(transport, viewModelScope).also { it.start() }
-            }.onFailure {
-                // The transport publishes BLE/GATT errors into its state for the screen.
+            } catch (cancelled: CancellationException) {
+                closeSession()
+                throw cancelled
+            } catch (error: Exception) {
+                operationError.value = error.message ?: "BLE receive could not start. Reconnect to retry."
+                closeSession()
             }
         }
     }
 
     fun disconnectGatt() {
+        if (closing.value) return
+        closing.value = true
+        val pending = operation
         viewModelScope.launch {
-            val active = mavlinkSession
-            mavlinkSession = null
-            if (active == null) transport.disconnect()
-            else runCatching { active.stop() }.also { active.close() }
+            try {
+                pending?.cancelAndJoin()
+                closeSession()
+            } finally {
+                closing.value = false
+            }
         }
+    }
+
+    private fun closeSession() {
+        mavlinkSession?.close()
+        mavlinkSession = null
+        transport.close()
+        lease?.let(linkGate::release)
+        lease = null
     }
 
     override fun onCleared() {
         ProcessLifecycleOwner.get().lifecycle.removeObserver(lifecycleObserver)
         scanner.stop()
-        mavlinkSession?.close()
-        transport.close()
+        operation?.cancel()
+        closeSession()
     }
 }

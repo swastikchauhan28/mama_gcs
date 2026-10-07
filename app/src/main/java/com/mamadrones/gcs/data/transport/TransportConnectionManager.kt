@@ -27,7 +27,8 @@ data class TransportSessionState(
 class TransportConnectionManager(
     private val factory: UdpTransportFactory,
     private val sessionFactory: MavlinkSessionFactory,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val linkGate: TelemetryLinkGate = TelemetryLinkGate()
 ) : AutoCloseable {
     private val lifecycleMutex = Mutex()
     private val mutableState = MutableStateFlow(TransportSessionState())
@@ -36,6 +37,7 @@ class TransportConnectionManager(
     private var activeEndpoint: UdpEndpoint? = null
     private var observer: Job? = null
     private var closed = false
+    private var lease: TelemetryLinkGate.Lease? = null
 
     val state: StateFlow<TransportSessionState> = mutableState.asStateFlow()
 
@@ -46,8 +48,23 @@ class TransportConnectionManager(
                 if (activeEndpoint == endpoint) return
                 throw TransportException.AlreadyConnected()
             }
-            val transport = factory.create(endpoint)
-            val mavlinkSession = sessionFactory.create(transport, scope)
+            val acquired = linkGate.acquire("UDP")
+            lease = acquired
+            val transport: VehicleTransport
+            val mavlinkSession: VehicleMavlinkSession
+            try {
+                transport = factory.create(endpoint)
+                try {
+                    mavlinkSession = sessionFactory.create(transport, scope)
+                } catch (error: Throwable) {
+                    closeTransport(transport)
+                    throw error
+                }
+            } catch (error: Throwable) {
+                linkGate.release(acquired)
+                lease = null
+                throw error
+            }
             activeTransport = transport
             activeMavlinkSession = mavlinkSession
             activeEndpoint = endpoint
@@ -68,8 +85,10 @@ class TransportConnectionManager(
                 observer = null
                 runCatching { mavlinkSession.close() }
                 closeTransport(transport)
+                linkGate.release(acquired)
+                lease = null
                 mutableState.value = TransportSessionState(
-                    endpoint = endpoint,
+                    endpoint = null,
                     connection = ConnectionState(status = TransportStatus.ERROR, detail = error.message ?: "Unable to open transport")
                 )
                 throw error
@@ -78,7 +97,7 @@ class TransportConnectionManager(
     }
 
     suspend fun disconnect() {
-        val active = lifecycleMutex.withLock {
+        lifecycleMutex.withLock {
             val transport = activeTransport
             val mavlinkSession = activeMavlinkSession
             activeTransport = null
@@ -86,18 +105,18 @@ class TransportConnectionManager(
             activeEndpoint = null
             observer?.cancel()
             observer = null
-            mutableState.value = TransportSessionState()
-            transport to mavlinkSession
-        }
-        val (transport, mavlinkSession) = active
-        mavlinkSession?.let {
             try {
-                it.stop()
+                mavlinkSession?.stop()
             } finally {
-                it.close()
+                try {
+                    if (mavlinkSession != null) mavlinkSession.close() else closeTransport(transport)
+                } finally {
+                    lease?.let(linkGate::release)
+                    lease = null
+                    mutableState.value = TransportSessionState()
+                }
             }
         }
-        if (mavlinkSession == null) closeTransport(transport)
     }
 
     override fun close() {
@@ -113,6 +132,8 @@ class TransportConnectionManager(
         mutableState.value = TransportSessionState()
         runCatching { mavlinkSession?.close() }
         if (mavlinkSession == null) closeTransport(transport)
+        lease?.let(linkGate::release)
+        lease = null
     }
 
     private fun closeTransport(transport: VehicleTransport?) {

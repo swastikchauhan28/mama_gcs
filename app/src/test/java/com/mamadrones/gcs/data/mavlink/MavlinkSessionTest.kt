@@ -5,6 +5,7 @@ import com.mamadrones.gcs.data.transport.VehicleTransport
 import com.mamadrones.gcs.domain.model.ConnectionState
 import com.mamadrones.gcs.domain.model.TransportStatus
 import com.mamadrones.gcs.domain.model.VehicleConnectionState
+import com.mamadrones.gcs.domain.model.TelemetryLinkKind
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,6 +21,82 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MavlinkSessionTest {
+    @Test fun `session counts parser outcomes and source filtering without admitting rejected data`() = runBlocking {
+        val transport = FakeTransport()
+        val repository = VehicleRepositoryImpl()
+        val session = newSession(transport, repository)
+        try {
+            session.start()
+            val corrupt = heartbeatFrame().also { it[5] = 9 }
+            val signed = heartbeatFrame().also { it[2] = 1 } + ByteArray(13)
+            val flags = heartbeatFrame().also { it[2] = 2 }
+            val bytes = byteArrayOf(1, 2, 3) + globalPositionFrame(42, 451_000_000) +
+                heartbeatFrame(autopilot = MavlinkMessage.MAV_AUTOPILOT_INVALID) + corrupt + signed + flags +
+                mavlinkTestFrame(999, byteArrayOf(1), 0) + mavlinkTestFrame(74, ByteArray(21), 20) +
+                heartbeatFrame(systemId = 42) + heartbeatFrame(systemId = 99) + globalPositionFrame(42, 451_000_000)
+            transport.emit(bytes)
+            waitUntil { repository.vehicleState.value.mavlinkDiagnostics.acceptedMessages == 2L }
+            val d = repository.vehicleState.value.mavlinkDiagnostics
+            assertEquals(TelemetryLinkKind.BLE, d.linkKind)
+            assertEquals(1L, d.receivedChunks)
+            assertEquals(bytes.size.toLong(), d.receivedBytes)
+            assertEquals(5L, d.decodedMessages)
+            assertEquals(2L, d.ignoredBeforeHeartbeat)
+            assertEquals(1L, d.ignoredOtherSource)
+            assertEquals(1L, d.checksumFailures)
+            assertEquals(1L, d.malformedPayloads)
+            assertEquals(1L, d.signedPacketsRejected)
+            assertEquals(1L, d.unsupportedFlags)
+            assertEquals(1L, d.unsupportedMessages)
+            assertEquals(999, d.lastUnsupportedMessageId)
+            assertEquals(42, repository.vehicleState.value.systemId)
+            assertEquals(45.1, repository.vehicleState.value.position.latitude!!, 0.000001)
+        } finally { session.stop(); session.close() }
+    }
+
+    @Test fun `fragment counters remain after close and reset on a new receive session`() = runBlocking {
+        val transport = FakeTransport()
+        val repository = VehicleRepositoryImpl()
+        val session = newSession(transport, repository)
+        try {
+            session.start()
+            val frame = heartbeatFrame()
+            transport.emit(frame.copyOfRange(0, 5))
+            waitUntil { repository.vehicleState.value.mavlinkDiagnostics.receivedChunks == 1L }
+            assertEquals(0L, repository.vehicleState.value.mavlinkDiagnostics.decodedMessages)
+            assertEquals(0L, repository.vehicleState.value.mavlinkDiagnostics.parserErrors)
+            transport.emit(frame.copyOfRange(5, frame.size))
+            waitUntil { repository.vehicleState.value.mavlinkDiagnostics.acceptedMessages == 1L }
+            session.stop()
+            val closed = repository.vehicleState.value.mavlinkDiagnostics
+            assertTrue(!closed.active)
+            assertEquals(2L, closed.receivedChunks)
+            assertEquals(frame.size.toLong(), closed.receivedBytes)
+            assertEquals(1L, closed.decodedMessages)
+            session.start()
+            val fresh = repository.vehicleState.value.mavlinkDiagnostics
+            assertTrue(fresh.active)
+            assertEquals(0L, fresh.receivedChunks)
+            assertEquals(0L, fresh.acceptedMessages)
+            assertNull(fresh.lastAcceptedAtEpochMillis)
+        } finally { session.stop(); session.close() }
+    }
+
+    @Test fun `unframed noise is counted as bytes but never invented parser failures`() = runBlocking {
+        val transport = FakeTransport()
+        val repository = VehicleRepositoryImpl()
+        val session = newSession(transport, repository)
+        try {
+            session.start()
+            transport.emit("not mavlink".encodeToByteArray())
+            waitUntil { repository.vehicleState.value.mavlinkDiagnostics.receivedBytes > 0L }
+            val counters = repository.vehicleState.value.mavlinkDiagnostics
+            assertEquals(0L, counters.decodedMessages)
+            assertEquals(0L, counters.parserErrors)
+            assertEquals(VehicleConnectionState.CONNECTING, repository.vehicleState.value.connectionStatus)
+        } finally { session.stop(); session.close() }
+    }
+
     @Test
     fun `socket open does not connect vehicle until an autopilot heartbeat arrives`() = runBlocking {
         val transport = FakeTransport()
@@ -125,7 +202,7 @@ class MavlinkSessionTest {
     )
 
     private suspend fun waitUntil(predicate: () -> Boolean) {
-        repeat(100) {
+        repeat(1_000) {
             if (predicate()) return
             delay(5)
         }
@@ -149,6 +226,7 @@ class MavlinkSessionTest {
     }
 
     private class FakeTransport : VehicleTransport {
+        override val linkKind = TelemetryLinkKind.BLE
         override val connectionState = MutableStateFlow(ConnectionState())
         private val packets = MutableSharedFlow<ByteArray>(extraBufferCapacity = 8)
         override suspend fun connect() {

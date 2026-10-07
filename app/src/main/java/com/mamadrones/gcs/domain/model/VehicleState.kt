@@ -30,7 +30,8 @@ data class VehicleState(
     val spray: SprayState = SprayState(),
     val hydraulic: HydraulicState = HydraulicState(),
     val health: HealthState = HealthState(),
-    val mission: MissionState = MissionState()
+    val mission: MissionState = MissionState(),
+    val mavlinkDiagnostics: MavlinkDiagnostics = MavlinkDiagnostics(),
 ) {
     val connected: Boolean get() = connectionStatus == VehicleConnectionState.CONNECTED
 }

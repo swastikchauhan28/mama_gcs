@@ -137,16 +137,23 @@ fun HydraulicScreen(state: VehicleState, modifier: Modifier = Modifier) = Screen
 
 @Composable
 fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connection: ConnectionUiState = ConnectionUiState()) = ScreenBody(modifier) {
+    val now by produceState(System.currentTimeMillis()) {
+        while (true) {
+            kotlinx.coroutines.delay(1_000L)
+            value = System.currentTimeMillis()
+        }
+    }
     ScreenHeader("Diagnostics", "Vehicle and communication inspection")
     val link = connection.session.connection
+    SubsystemCard(ConsolePanels.mavlinkDiagnostics(state.mavlinkDiagnostics, now))
+    Notice("DECODER GUIDANCE", ConsolePanels.mavlinkDiagnosticHints(state.mavlinkDiagnostics))
     CardGrid(listOf(
-        PanelSpec("Communication", link.status.name, listOf(
+        PanelSpec("UDP socket counters", link.status.name, listOf(
             "RX packets" to link.packetStatistics.receivedPackets.toString(),
             "TX packets" to link.packetStatistics.transmittedPackets.toString(),
             "Last packet" to sampleAge(link.packetStatistics.lastReceivedAtEpochMillis),
-            "Parser errors" to "NOT MEASURED",
             "Transport" to if (connection.savedEndpoint != null) "UDP" else "UNCONFIGURED",
-        ), note = "Socket state and packet counts do not prove vehicle liveness or command capability."),
+        ), note = "UDP only; BLE raw counters are on the BLE MAVLink screen. Shared decoder counters are shown above. Socket counts do not prove vehicle liveness or command capability."),
         ConsolePanels.vehicle(state), ConsolePanels.gps(state), ConsolePanels.position(state),
         ConsolePanels.battery(state), ConsolePanels.attitude(state), ConsolePanels.systemStatus(state),
         ConsolePanels.statusTexts(state)

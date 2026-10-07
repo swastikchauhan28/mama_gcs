@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mamadrones.gcs.data.mavlink.MavlinkSessionFactory
 import com.mamadrones.gcs.data.transport.TransportConnectionManager
+import com.mamadrones.gcs.data.transport.TelemetryLinkGate
 import com.mamadrones.gcs.data.transport.TransportSessionState
 import com.mamadrones.gcs.data.transport.UdpTransportFactory
 import com.mamadrones.gcs.domain.model.UdpEndpoint
@@ -37,9 +38,10 @@ class ConnectionViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val updateUdpEndpoint: UpdateUdpEndpointUseCase,
     factory: UdpTransportFactory,
-    mavlinkSessionFactory: MavlinkSessionFactory
+    mavlinkSessionFactory: MavlinkSessionFactory,
+    linkGate: TelemetryLinkGate,
 ) : ViewModel(), DefaultLifecycleObserver {
-    private val manager = TransportConnectionManager(factory, mavlinkSessionFactory, viewModelScope)
+    private val manager = TransportConnectionManager(factory, mavlinkSessionFactory, viewModelScope, linkGate)
     private val mutableState = MutableStateFlow(ConnectionUiState())
     val state = mutableState.asStateFlow()
 

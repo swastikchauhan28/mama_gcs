@@ -54,6 +54,7 @@ class BleDeviceScanner(context: Context) {
 
         val callback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
+                if (activeCallback !== this) return
                 val record = result.scanRecord
                 val advertisedName = record?.deviceName
                     ?.filter { !it.isISOControl() }
@@ -67,15 +68,19 @@ class BleDeviceScanner(context: Context) {
                     rssiDbm = result.rssi,
                     serviceUuids = record?.serviceUuids.orEmpty().map(ParcelUuid::toString).distinct(),
                 )
-                synchronized(devicesByKey) { devicesByKey[entry.key] = result.device }
                 mutableState.value = mutableState.value.copy(
                     advertisements = (mutableState.value.advertisements.filterNot { it.key == entry.key } + entry)
                         .sortedByDescending(BleAdvertisement::rssiDbm)
                         .take(MAX_RESULTS),
                 )
+                synchronized(devicesByKey) {
+                    devicesByKey[entry.key] = result.device
+                    devicesByKey.keys.retainAll(mutableState.value.advertisements.map { it.key }.toSet())
+                }
             }
 
             override fun onScanFailed(errorCode: Int) {
+                if (activeCallback !== this) return
                 stop()
                 mutableState.value = mutableState.value.copy(
                     scanning = false,

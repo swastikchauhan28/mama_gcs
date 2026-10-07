@@ -36,6 +36,7 @@ class UdpTransport(
     private val config: UdpTransportConfig,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : VehicleTransport, AutoCloseable {
+    override val linkKind = com.mamadrones.gcs.domain.model.TelemetryLinkKind.UDP
     private val lifecycleMutex = Mutex()
     private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
     private val _connectionState = MutableStateFlow(ConnectionState())

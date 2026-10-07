@@ -8,6 +8,7 @@ import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 @Singleton
 class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
@@ -95,7 +96,7 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
             roverHud = RoverHudState(
                 groundSpeedMetersPerSecond = message.groundSpeedMetersPerSecond
                     .toDouble().takeIf { it.isFinite() && it >= 0.0 },
-                headingDegrees = message.headingDegrees.takeIf { it in 0..359 }?.toDouble(),
+                headingDegrees = message.headingDegrees.takeIf { it in 0..360 }?.let { (it % 360).toDouble() },
                 throttlePercent = message.throttlePercent.takeIf { it in 0..100 },
                 altitudeMetersMsl = message.altitudeMetersMsl.toDouble().takeIf(Double::isFinite),
                 climbRateMetersPerSecond = message.climbRateMetersPerSecond.toDouble().takeIf(Double::isFinite),
@@ -170,17 +171,23 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
         }
     }
 
-    fun onSessionStarting() {
+    fun onSessionStarting(diagnostics: MavlinkDiagnostics = MavlinkDiagnostics()) {
         val current = _vehicleState.value
         _vehicleState.value = VehicleState(
             vehicleId = current.vehicleId,
             displayName = current.displayName,
-            connectionStatus = VehicleConnectionState.CONNECTING
+            connectionStatus = VehicleConnectionState.CONNECTING,
+            mavlinkDiagnostics = diagnostics,
         )
     }
 
     fun onSessionStopped() {
-        _vehicleState.value = _vehicleState.value.copy(connectionStatus = VehicleConnectionState.DISCONNECTED)
+        _vehicleState.update { it.copy(connectionStatus = VehicleConnectionState.DISCONNECTED,
+            mavlinkDiagnostics = it.mavlinkDiagnostics.copy(active = false)) }
+    }
+
+    fun onMavlinkDiagnostics(diagnostics: MavlinkDiagnostics) {
+        _vehicleState.update { it.copy(mavlinkDiagnostics = diagnostics) }
     }
 }
 

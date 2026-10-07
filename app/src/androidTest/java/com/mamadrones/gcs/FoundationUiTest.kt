@@ -10,6 +10,9 @@ import com.mamadrones.gcs.presentation.navigation.MamaGcsApp
 import com.mamadrones.gcs.presentation.settings.SettingsUiState
 import com.mamadrones.gcs.presentation.settings.ConnectionUiState
 import com.mamadrones.gcs.data.transport.TransportSessionState
+import com.mamadrones.gcs.data.transport.bluetooth.BleNotifyCharacteristic
+import com.mamadrones.gcs.presentation.screens.VescDiscoveryUiState
+import com.mamadrones.gcs.presentation.screens.VescBluetoothDiscoveryScreen
 import com.mamadrones.gcs.presentation.theme.MamaGcsTheme
 import org.junit.Rule
 import org.junit.Test
@@ -17,6 +20,48 @@ import java.io.File
 
 class FoundationUiTest {
     @get:Rule val compose = createComposeRule()
+    private val bleCharacteristic = BleNotifyCharacteristic("service", "characteristic", false)
+
+    @Test fun connectedBleCanStartReceiveThroughAppNavigation() {
+        var selected: BleNotifyCharacteristic? = null
+        compose.setContent {
+            MamaGcsTheme(ThemeMode.DARK) {
+                MamaGcsApp(VehicleState(), SettingsUiState(), {},
+                    vescDiscovery = VescDiscoveryUiState(gattConnected = true,
+                        selectedDeviceName = "Test radio", notifyCharacteristics = listOf(bleCharacteristic)),
+                    onBleStartMavlinkReceive = { selected = it })
+            }
+        }
+        compose.onNodeWithTag("nav-more").performClick()
+        compose.onNodeWithText("BLE MAVLink").performScrollTo().performClick()
+        compose.onNodeWithTag("ble-receive-characteristic").performScrollTo().assertIsEnabled().performClick()
+        compose.runOnIdle { org.junit.Assert.assertEquals(bleCharacteristic, selected) }
+    }
+
+    @Test fun bleSubscriptionDoesNotClaimBytesOrEnableAnotherSubscription() {
+        compose.setContent {
+            MamaGcsTheme(ThemeMode.DARK) {
+                VescBluetoothDiscoveryScreen(VescDiscoveryUiState(gattConnected = true,
+                    selectedDeviceName = "Test radio", receivingFrom = bleCharacteristic,
+                    notifyCharacteristics = listOf(bleCharacteristic, bleCharacteristic.copy(characteristicUuid = "other"))))
+            }
+        }
+        compose.onNodeWithText("SUBSCRIBED · WAITING FOR BYTES").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("ble-receive-other").performScrollTo().assertIsNotEnabled()
+    }
+
+    @Test fun bleConnectingCanBeCancelled() {
+        var cancelled = false
+        compose.setContent {
+            MamaGcsTheme(ThemeMode.DARK) {
+                VescBluetoothDiscoveryScreen(VescDiscoveryUiState(gattConnecting = true),
+                    onDisconnectGatt = { cancelled = true })
+            }
+        }
+        compose.onNodeWithTag("ble-disconnect").performScrollTo().assertIsEnabled().performClick()
+        compose.runOnIdle { org.junit.Assert.assertTrue(cancelled) }
+    }
+
     private fun capture(name: String) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val directory = requireNotNull(context.getExternalFilesDir("qa")).apply { mkdirs() }
@@ -65,14 +110,41 @@ class FoundationUiTest {
         compose.onNodeWithTag("nav-more").performClick()
         compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
         compose.onNodeWithText("1234").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("NOT MEASURED").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("NO MAVLINK SESSION").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun diagnosticsRetainsClosedBleSessionWithoutShowingLiveVehicleData() {
+        launch(vehicle = VehicleState(mavlinkDiagnostics = MavlinkDiagnostics(
+            linkKind = TelemetryLinkKind.BLE, startedAtEpochMillis = 100,
+            receivedChunks = 77, receivedBytes = 8888, checksumFailures = 3, signedPacketsRejected = 2)))
+        compose.onNodeWithTag("nav-more").performClick()
+        compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
+        compose.onNodeWithText("LAST SESSION · BLE · CLOSED").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("8888").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Signed packets rejected").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Do not disable a live rover's signing", substring = true).assertExists()
+        compose.onNodeWithText("■  EMERGENCY STOP · UNAVAILABLE").assertIsNotEnabled()
+    }
+
+    @Test fun bleScreenShowsDecoderCountersButNotAnotherTransportsHistory() {
+        var kind by mutableStateOf(TelemetryLinkKind.BLE)
+        compose.setContent {
+            MamaGcsTheme(ThemeMode.DARK) {
+                VescBluetoothDiscoveryScreen(diagnostics = MavlinkDiagnostics(
+                    active = true, linkKind = kind, startedAtEpochMillis = 100, receivedBytes = 5432))
+            }
+        }
+        compose.onNodeWithText("ACTIVE SESSION · BLE").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("5432").performScrollTo().assertIsDisplayed()
+        compose.runOnIdle { kind = TelemetryLinkKind.UDP }
+        compose.onNodeWithText("MAVLINK DECODER").assertDoesNotExist()
     }
     @Test fun initialDashboardDoesNotEnableStop() {
         launch()
         compose.onNodeWithText("NOT CONNECTED").assertIsDisplayed()
         compose.onNodeWithText("■  EMERGENCY STOP · UNAVAILABLE").assertIsNotEnabled()
         compose.onNodeWithTag("operation-map").assertIsDisplayed()
-        compose.onNodeWithText("SPEED", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("GROUND SPEED", substring = false).assertIsDisplayed()
         capture("dashboard-dark")
         compose.onNodeWithTag("vehicle-selector").performClick()
         compose.onNodeWithText("Vehicle selection").assertIsDisplayed()
@@ -87,7 +159,7 @@ class FoundationUiTest {
             compose.onNodeWithText("‹ Back").performClick()
         }
         compose.onNodeWithTag("nav-more").performClick()
-        compose.onNodeWithText("VESC Bluetooth").performScrollTo().performClick()
+        compose.onNodeWithText("BLE MAVLink").performScrollTo().performClick()
         compose.onNodeWithText("BLE MAVLink link").assertIsDisplayed()
         compose.onNodeWithText("READ-ONLY · NO VEHICLE COMMANDS").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Scan for BLE devices").performScrollTo().assertIsNotEnabled()

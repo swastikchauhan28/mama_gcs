@@ -176,7 +176,9 @@ fun MamaGcsApp(
                                 onConnectGatt = onBleConnectGatt,
                                 onStartMavlinkReceive = onBleStartMavlinkReceive,
                                 onDisconnectGatt = onBleDisconnect,
-                                udpLinkOpen = connection.session.endpoint != null || vescDiscovery.gattConnecting || vescDiscovery.gattConnected,
+                                udpLinkOpen = connection.session.endpoint != null,
+                                vehicleConnection = vehicle.connectionStatus,
+                                diagnostics = vehicle.mavlinkDiagnostics,
                             )
                         }
                         composable("spray") { SprayScreen(vehicle) }
@@ -191,7 +193,7 @@ fun MamaGcsApp(
                                 onLocalPortChanged = onLocalPortChanged, onSaveEndpoint = onSaveEndpoint,
                                 onOpenSocket = onOpenSocket, onCloseSocket = onCloseSocket,
                                 onClearEndpoint = onClearEndpoint,
-                                bleLinkOpen = vescDiscovery.gattConnecting || vescDiscovery.gattConnected,
+                                bleLinkOpen = vescDiscovery.gattConnecting || vescDiscovery.gattConnected || vescDiscovery.closing,
                             )
                         }
                     }

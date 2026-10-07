@@ -14,6 +14,56 @@ fun Double?.reading(unit: String): String = if (this == null || !isFinite()) "UN
 fun Double?.coordinateReading(): String = if (this == null || !isFinite()) "UNKNOWN" else String.format(Locale.US, "%.7f °", this)
 
 object ConsolePanels {
+    fun mavlinkDiagnostics(sample: MavlinkDiagnostics, nowEpochMillis: Long = System.currentTimeMillis()): PanelSpec {
+        val started = sample.startedAtEpochMillis != null
+        fun count(value: Long) = if (started) value.toString() else "—"
+        val status = when {
+            !started -> "NO MAVLINK SESSION"
+            sample.active -> "ACTIVE SESSION · ${sample.linkKind}"
+            else -> "LAST SESSION · ${sample.linkKind} · CLOSED"
+        }
+        return PanelSpec("MAVLink decoder", status, listOf(
+            "Input chunks" to count(sample.receivedChunks),
+            "Input bytes" to count(sample.receivedBytes),
+            "Decoded supported messages" to count(sample.decodedMessages),
+            "Accepted from selected autopilot" to count(sample.acceptedMessages),
+            "Ignored before autopilot selection" to count(sample.ignoredBeforeHeartbeat),
+            "Ignored other source" to count(sample.ignoredOtherSource),
+            "Parser errors (CRC + payload)" to count(sample.parserErrors),
+            "Checksum failures" to count(sample.checksumFailures),
+            "Malformed payloads" to count(sample.malformedPayloads),
+            "Unsupported message IDs" to count(sample.unsupportedMessages),
+            "Last unsupported ID" to (sample.lastUnsupportedMessageId?.toString() ?: "—"),
+            "Unsupported flags" to count(sample.unsupportedFlags),
+            "Signed packets rejected" to count(sample.signedPacketsRejected),
+            "Last input" to sampleAge(sample.lastBytesAtEpochMillis, nowEpochMillis),
+            "Last accepted message" to sampleAge(sample.lastAcceptedAtEpochMillis, nowEpochMillis),
+        ), note = "Session totals, not packet-loss rates or a health verdict. Decoded includes messages ignored by source selection. " +
+            "Unsupported/signed candidates are not checksum/authentication verified. Raw noise and incomplete fragments may produce no parser result. " +
+            "Counters remain in memory after disconnect and reset on the next session; they are not saved or exported.")
+    }
+
+    fun mavlinkDiagnosticHints(sample: MavlinkDiagnostics): String = buildList {
+        if (sample.startedAtEpochMillis == null) add("Start UDP or BLE MAVLink receive to collect decoder diagnostics.")
+        else if (!sample.active) add("These are the last session's counters, not a live connection. Open a new receive session to retry.")
+        if (sample.startedAtEpochMillis != null && sample.receivedBytes == 0L)
+            add("No bytes reached the decoder. Check the UDP peer or selected BLE notification characteristic and sender output.")
+        if (sample.receivedBytes > 0L && sample.decodedMessages == 0L)
+            add("Bytes arrived, but no supported message was decoded. The stream may be incomplete, unsupported, or not MAVLink 2; confirm the radio route and format.")
+        if (sample.checksumFailures > 0L || sample.malformedPayloads > 0L)
+            add("Corrupt or incompatible frame candidates were rejected. Check framing, sender settings and the telemetry bridge; these counters do not prove a particular hardware fault.")
+        if (sample.signedPacketsRejected > 0L)
+            add("Signed candidates were rejected because signing verification is not implemented. Do not disable a live rover's signing to work around this; use an approved test setup.")
+        if (sample.unsupportedMessages > 0L || sample.unsupportedFlags > 0L)
+            add("Some candidates are outside the supported message/flag subset. This can coexist with normal telemetry.")
+        if (sample.ignoredBeforeHeartbeat > 0L)
+            add("Messages arrived before a valid autopilot was selected, including any non-autopilot or invalid-source heartbeats. Confirm that the Cube's heartbeat reaches this link.")
+        if (sample.ignoredOtherSource > 0L)
+            add("Messages from another system/component were ignored. Selection stays pinned until a new session; check the sender routing.")
+        if (sample.acceptedMessages > 0L)
+            add("Messages have been accepted in this session. Use current heartbeat status and receive ages to judge liveness; acceptance does not authenticate the vehicle or enable commands.")
+    }.joinToString("\n\n")
+
     fun vehicle(state: VehicleState) = state.forDisplay().let { s -> PanelSpec("Vehicle", s.displayName ?: s.systemId?.let { "OBSERVED SYSTEM $it · NOT PAIRED" } ?: "NO LIVE VEHICLE", listOf(
         "Speed" to s.speedMetersPerSecond.reading("m/s"), "Heading" to s.headingDegrees.reading("°"),
         "VFR_HUD ground speed" to s.roverHud.groundSpeedMetersPerSecond.reading("m/s"),

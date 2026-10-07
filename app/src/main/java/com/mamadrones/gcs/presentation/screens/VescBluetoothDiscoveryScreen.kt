@@ -23,6 +23,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -35,6 +36,11 @@ import com.mamadrones.gcs.presentation.components.Notice
 import com.mamadrones.gcs.presentation.components.ScreenBody
 import com.mamadrones.gcs.presentation.components.ScreenHeader
 import com.mamadrones.gcs.data.transport.bluetooth.BleNotifyCharacteristic
+import com.mamadrones.gcs.domain.model.VehicleConnectionState
+import com.mamadrones.gcs.domain.model.MavlinkDiagnostics
+import com.mamadrones.gcs.domain.model.TelemetryLinkKind
+import com.mamadrones.gcs.presentation.components.SubsystemCard
+import com.mamadrones.gcs.presentation.dashboard.ConsolePanels
 import kotlinx.coroutines.delay
 
 @Composable
@@ -47,9 +53,17 @@ fun VescBluetoothDiscoveryScreen(
     onStartMavlinkReceive: (BleNotifyCharacteristic) -> Unit = {},
     onDisconnectGatt: () -> Unit = {},
     udpLinkOpen: Boolean = false,
+    vehicleConnection: VehicleConnectionState = VehicleConnectionState.DISCONNECTED,
+    diagnostics: MavlinkDiagnostics = MavlinkDiagnostics(),
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val now by produceState(System.currentTimeMillis()) {
+        while (true) {
+            delay(1_000L)
+            value = System.currentTimeMillis()
+        }
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     val permissions = remember { requiredScanPermissions() }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
@@ -132,7 +146,7 @@ fun VescBluetoothDiscoveryScreen(
                     )
                     OutlinedButton(
                         onClick = { onConnectGatt(result.key, result.name) },
-                        enabled = !udpLinkOpen && !state.gattConnecting && !state.gattConnected,
+                        enabled = !udpLinkOpen && !state.gattConnecting && !state.gattConnected && !state.closing,
                         modifier = Modifier.heightIn(min = 48.dp),
                     ) { Text("Connect and inspect GATT") }
                 }
@@ -142,30 +156,54 @@ fun VescBluetoothDiscoveryScreen(
             LinearProgressIndicator(Modifier.fillMaxWidth())
             Text("Connecting and discovering BLE services…")
         }
+        if (state.gattConnecting || state.gattConnected || state.closing) {
+            OutlinedButton(onClick = onDisconnectGatt, enabled = !state.closing,
+                modifier = Modifier.heightIn(min = 48.dp).testTag("ble-disconnect")) {
+                Text(if (state.closing) "Closing BLE…" else if (state.gattConnecting) "Cancel connection" else "Disconnect BLE")
+            }
+        }
         state.gattError?.let { Notice("BLE LINK STATUS", it) }
         if (state.gattConnected) {
             Notice(
-                if (state.receivingFrom == null) "GATT CONNECTED · TELEMETRY NOT STARTED" else "RECEIVING MAVLINK BYTES",
+                when {
+                    state.subscribing -> "ENABLING NOTIFICATIONS"
+                    state.receivingFrom == null -> "GATT CONNECTED · TELEMETRY NOT STARTED"
+                    state.receivedNotifications == 0L -> "SUBSCRIBED · WAITING FOR BYTES"
+                    else -> "BLE BYTES RECEIVED · CHECK MAVLINK STATUS"
+                },
                 "${state.selectedDeviceName ?: "BLE device"}. Select a notify/indicate characteristic only if the hardware team confirms it carries MAVLink serial data. A GATT connection alone does not prove vehicle identity or valid telemetry.",
             )
+            if (state.subscribing) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.notifyCharacteristics.forEach { characteristic ->
                 val selected = state.receivingFrom == characteristic
                 OutlinedCard(
-                    onClick = { if (!udpLinkOpen && !selected) onStartMavlinkReceive(characteristic) },
-                    enabled = !udpLinkOpen && !selected,
-                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { onStartMavlinkReceive(characteristic) },
+                    enabled = !udpLinkOpen && !state.subscribing && state.receivingFrom == null && !state.closing,
+                    modifier = Modifier.fillMaxWidth().testTag("ble-receive-${characteristic.characteristicUuid}"),
                 ) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Text("${if (selected) "RECEIVING · " else "RECEIVE · "}${if (characteristic.supportsIndication) "INDICATE" else "NOTIFY"}", style = MaterialTheme.typography.titleSmall)
+                        Text("${if (selected) "SUBSCRIBED · " else "RECEIVE · "}${if (characteristic.supportsIndication) "INDICATE" else "NOTIFY"}", style = MaterialTheme.typography.titleSmall)
                         Text("Service ${characteristic.serviceUuid}", style = MaterialTheme.typography.bodySmall)
                         Text("Characteristic ${characteristic.characteristicUuid}", style = MaterialTheme.typography.bodySmall)
+                        Text("Instances ${characteristic.serviceInstanceId}/${characteristic.characteristicInstanceId}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
             if (state.notifyCharacteristics.isEmpty()) {
-                Notice("NO RECEIVE CHARACTERISTIC", "This BLE device exposes no notify/indicate characteristic. Ask the hardware team whether its link uses BLE notifications, Bluetooth Classic/SPP, or another route.")
+                Notice("NO RECEIVE CHARACTERISTIC", "This BLE device exposes no notify/indicate characteristic with a notification configuration descriptor. Ask the hardware team whether its link uses BLE notifications, Bluetooth Classic/SPP, or another route.")
             }
-            OutlinedButton(onClick = onDisconnectGatt, modifier = Modifier.heightIn(min = 48.dp)) { Text("Disconnect BLE") }
+        }
+        if (state.selectedDeviceName != null) {
+            Notice("BLE RECEIVE COUNTERS",
+                "Notifications: ${state.receivedNotifications} · Bytes: ${state.receivedBytes}. These are BLE chunks, not MAVLink message counts. Transmit is disabled.")
+            Text("Last bytes: ${com.mamadrones.gcs.presentation.dashboard.sampleAge(state.lastReceivedAtEpochMillis, now)}")
+            Notice("MAVLINK HEARTBEAT",
+                if (state.receivingFrom != null || state.subscribing) "Status: ${vehicleConnection.name}. Only a valid autopilot heartbeat establishes telemetry liveness; it does not authenticate the rover."
+                else "Telemetry receive is not active. Reconnect and select the confirmed characteristic to retry.")
+        }
+        if (diagnostics.linkKind == TelemetryLinkKind.BLE && diagnostics.startedAtEpochMillis != null) {
+            SubsystemCard(ConsolePanels.mavlinkDiagnostics(diagnostics, now))
+            Notice("DECODER GUIDANCE", ConsolePanels.mavlinkDiagnosticHints(diagnostics))
         }
         Notice(
             "NEXT HARDWARE EVIDENCE",

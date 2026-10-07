@@ -47,14 +47,20 @@ class MavlinkSession(
             router.reset()
             selectedAutopilot = null
             lastSessionHeartbeatAtEpochMillis = null
-            vehicleRepository.onSessionStarting()
             val sessionStartedAt = System.currentTimeMillis()
+            val diagnostics = MavlinkDiagnosticsAccumulator(transport.linkKind, sessionStartedAt)
+            vehicleRepository.onSessionStarting(diagnostics.snapshot)
             try {
                 // Subscribe first so the first datagram received during socket startup is retained.
                 receiverJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
                     transport.receive().collect { bytes ->
                         val receivedAt = System.currentTimeMillis()
-                        parser.feed(bytes).forEach { result -> routeSelectedAutopilot(result, receivedAt) }
+                        diagnostics.recordBytes(bytes.size, receivedAt)
+                        parser.feed(bytes).forEach { result ->
+                            val disposition = routeSelectedAutopilot(result, receivedAt)
+                            diagnostics.recordResult(result, disposition, receivedAt)
+                        }
+                        vehicleRepository.onMavlinkDiagnostics(diagnostics.snapshot)
                     }
                 }
                 transport.connect()
@@ -111,21 +117,22 @@ class MavlinkSession(
         vehicleRepository.onSessionStopped()
     }
 
-    private fun routeSelectedAutopilot(result: MavlinkParseResult, receivedAtEpochMillis: Long) {
-        val message = (result as? MavlinkParseResult.Message)?.message ?: return
-        val source = message.sourceIdentity() ?: return
+    private fun routeSelectedAutopilot(result: MavlinkParseResult, receivedAtEpochMillis: Long): MessageDisposition? {
+        val message = (result as? MavlinkParseResult.Message)?.message ?: return null
+        val source = message.sourceIdentity() ?: return MessageDisposition.BEFORE_AUTOPILOT_HEARTBEAT
         val currentSelection = selectedAutopilot
         if (currentSelection == null) {
-            val heartbeat = message as? MavlinkMessage.Heartbeat ?: return
+            val heartbeat = message as? MavlinkMessage.Heartbeat ?: return MessageDisposition.BEFORE_AUTOPILOT_HEARTBEAT
             // MAV_AUTOPILOT_INVALID identifies non-autopilot components (e.g. a camera or GCS).
-            if (heartbeat.autopilotType == MavlinkMessage.MAV_AUTOPILOT_INVALID) return
-            if (source.first == 0 || source.second == 0) return
+            if (heartbeat.autopilotType == MavlinkMessage.MAV_AUTOPILOT_INVALID) return MessageDisposition.BEFORE_AUTOPILOT_HEARTBEAT
+            if (source.first == 0 || source.second == 0) return MessageDisposition.BEFORE_AUTOPILOT_HEARTBEAT
             selectedAutopilot = heartbeat.systemId to heartbeat.componentId
         } else if (currentSelection != source) {
-            return
+            return MessageDisposition.OTHER_SOURCE
         }
         if (message is MavlinkMessage.Heartbeat) lastSessionHeartbeatAtEpochMillis = receivedAtEpochMillis
         router.route(result, receivedAtEpochMillis)
+        return MessageDisposition.ACCEPTED
     }
 
     private fun MavlinkMessage.sourceIdentity(): Pair<Int, Int>? = when (this) {

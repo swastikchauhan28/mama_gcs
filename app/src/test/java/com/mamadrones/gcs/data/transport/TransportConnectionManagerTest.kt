@@ -17,6 +17,42 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TransportConnectionManagerTest {
+    @Test fun `UDP and BLE cannot own telemetry together and failed UDP releases ownership`() = runBlocking {
+        val gate = TelemetryLinkGate()
+        val ble = gate.acquire("BLE")
+        val manager = managerFor(FailingTransport(), gate)
+        val endpoint = UdpEndpoint("127.0.0.1", 14550, 0)
+        try {
+            manager.connect(endpoint)
+            throw AssertionError("Expected BLE ownership rejection")
+        } catch (_: IllegalStateException) { }
+        gate.release(ble)
+        try {
+            manager.connect(endpoint)
+            throw AssertionError("Expected UDP opening failure")
+        } catch (_: TransportException.ConnectionFailed) { }
+        val nextBle = gate.acquire("BLE")
+        manager.close() // A failed UDP owner must not clear the new BLE lease.
+        try {
+            gate.acquire("UDP")
+            throw AssertionError("Expected BLE ownership rejection")
+        } catch (_: IllegalStateException) { }
+        gate.release(nextBle)
+    }
+
+    @Test fun `UDP close releases the shared telemetry lease`() = runBlocking {
+        val gate = TelemetryLinkGate()
+        val manager = managerFor(FakeTransport(), gate)
+        manager.connect(UdpEndpoint("127.0.0.1", 14550, 0))
+        try {
+            gate.acquire("BLE")
+            throw AssertionError("Expected UDP ownership rejection")
+        } catch (_: IllegalStateException) { }
+        manager.disconnect()
+        gate.release(gate.acquire("BLE"))
+        manager.close()
+    }
+
     @Test
     fun `manager forwards an explicit endpoint state and closes the owned transport`() = runBlocking {
         val fake = FakeTransport()
@@ -75,7 +111,7 @@ class TransportConnectionManagerTest {
         override fun close() { closed = true }
     }
 
-    private fun managerFor(transport: VehicleTransport): TransportConnectionManager = TransportConnectionManager(
+    private fun managerFor(transport: VehicleTransport, gate: TelemetryLinkGate = TelemetryLinkGate()): TransportConnectionManager = TransportConnectionManager(
         factory = UdpTransportFactory { transport },
         sessionFactory = MavlinkSessionFactory { sessionTransport, _ ->
             object : VehicleMavlinkSession {
@@ -84,7 +120,8 @@ class TransportConnectionManagerTest {
                 override fun close() { (sessionTransport as? AutoCloseable)?.close() }
             }
         },
-        scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+        linkGate = gate,
     )
 
     private class FailingTransport : VehicleTransport, AutoCloseable {

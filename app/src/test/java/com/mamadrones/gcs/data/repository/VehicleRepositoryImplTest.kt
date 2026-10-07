@@ -88,13 +88,15 @@ class VehicleRepositoryImplTest {
         assertEquals(-0.25, received.climbRateMetersPerSecond!!, 0.001)
         assertEquals(900L, received.lastUpdatedAtEpochMillis)
 
-        repository.onVfrHud(MavlinkMessage.VfrHud(1, 1, Float.NaN, 360, 101, Float.POSITIVE_INFINITY, Float.NaN), 1_000L)
+        repository.onVfrHud(MavlinkMessage.VfrHud(1, 1, Float.NaN, 361, 101, Float.POSITIVE_INFINITY, Float.NaN), 1_000L)
         val invalid = repository.vehicleState.value.roverHud
         assertNull(invalid.groundSpeedMetersPerSecond)
         assertNull(invalid.headingDegrees)
         assertNull(invalid.throttlePercent)
         assertNull(invalid.altitudeMetersMsl)
         assertNull(invalid.climbRateMetersPerSecond)
+        repository.onVfrHud(MavlinkMessage.VfrHud(1, 1, 0f, 360, 0, 0f, 0f), 2_000L)
+        assertEquals(0.0, repository.vehicleState.value.roverHud.headingDegrees!!, 0.0)
     }
 
     @Test
