@@ -16,9 +16,14 @@ fun Double?.coordinateReading(): String = if (this == null || !isFinite()) "UNKN
 object ConsolePanels {
     fun vehicle(state: VehicleState) = state.forDisplay().let { s -> PanelSpec("Vehicle", s.displayName ?: s.systemId?.let { "OBSERVED SYSTEM $it · NOT PAIRED" } ?: "NO LIVE VEHICLE", listOf(
         "Speed" to s.speedMetersPerSecond.reading("m/s"), "Heading" to s.headingDegrees.reading("°"),
+        "VFR_HUD ground speed" to s.roverHud.groundSpeedMetersPerSecond.reading("m/s"),
+        "VFR_HUD heading" to s.roverHud.headingDegrees.reading("°"),
+        "VFR_HUD altitude MSL" to s.roverHud.altitudeMetersMsl.reading("m"),
+        "Throttle" to s.roverHud.throttlePercent?.let { "$it %" }.orUnknown(),
+        "Climb rate" to s.roverHud.climbRateMetersPerSecond.reading("m/s"),
         "Direction" to s.direction.name, "Mode" to (s.mode ?: "UNKNOWN"),
         "Armed" to (s.armed?.let { if (it) "ARMED" else "DISARMED" } ?: "UNKNOWN")
-    ), sampleAge(s.kinematicsLastUpdatedAtEpochMillis)) }
+    ), "${sampleAge(s.kinematicsLastUpdatedAtEpochMillis)} · VFR_HUD ${sampleAge(s.roverHud.lastUpdatedAtEpochMillis)}") }
     fun gps(state: VehicleState) = state.forDisplay().gps.let { s -> PanelSpec("GPS", s.fix.name.replace('_', ' '), listOf(
         "Satellites" to (s.satellites?.toString() ?: "UNKNOWN"), "HDOP" to s.hdop.reading(""),
         "Latitude" to (s.latitude?.toString() ?: "UNKNOWN"), "Longitude" to (s.longitude?.toString() ?: "UNKNOWN")

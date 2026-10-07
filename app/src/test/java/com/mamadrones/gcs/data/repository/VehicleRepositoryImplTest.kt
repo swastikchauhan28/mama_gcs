@@ -76,6 +76,28 @@ class VehicleRepositoryImplTest {
     }
 
     @Test
+    fun `VFR HUD exposes Rover instruments and rejects invalid values`() {
+        val repository = VehicleRepositoryImpl()
+        repository.onVfrHud(MavlinkMessage.VfrHud(1, 1, 2.5f, 270, 43, 584.5f, -0.25f), 900L)
+
+        val received = repository.vehicleState.value.roverHud
+        assertEquals(2.5, received.groundSpeedMetersPerSecond!!, 0.001)
+        assertEquals(270.0, received.headingDegrees!!, 0.001)
+        assertEquals(43, received.throttlePercent)
+        assertEquals(584.5, received.altitudeMetersMsl!!, 0.001)
+        assertEquals(-0.25, received.climbRateMetersPerSecond!!, 0.001)
+        assertEquals(900L, received.lastUpdatedAtEpochMillis)
+
+        repository.onVfrHud(MavlinkMessage.VfrHud(1, 1, Float.NaN, 360, 101, Float.POSITIVE_INFINITY, Float.NaN), 1_000L)
+        val invalid = repository.vehicleState.value.roverHud
+        assertNull(invalid.groundSpeedMetersPerSecond)
+        assertNull(invalid.headingDegrees)
+        assertNull(invalid.throttlePercent)
+        assertNull(invalid.altitudeMetersMsl)
+        assertNull(invalid.climbRateMetersPerSecond)
+    }
+
+    @Test
     fun `system and per-battery telemetry preserve sentinels and battery identities`() {
         val repository = VehicleRepositoryImpl()
         repository.onSystemStatus(

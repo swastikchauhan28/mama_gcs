@@ -59,6 +59,10 @@ private fun TelemetryDock(
         "HEADING" to state.headingDegrees.reading("°"),
         "BATTERY" to batteryValue,
         "GPS FIX" to state.gps.fix.name.replace('_', ' '),
+        "THROTTLE" to (state.roverHud.throttlePercent?.let { "$it %" } ?: "UNKNOWN"),
+        "CLIMB" to state.roverHud.climbRateMetersPerSecond.reading("m/s"),
+        "HUD SPEED" to state.roverHud.groundSpeedMetersPerSecond.reading("m/s"),
+        "HUD HEADING" to state.roverHud.headingDegrees.reading("°"),
     )
     Surface(modifier, shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
         Column(

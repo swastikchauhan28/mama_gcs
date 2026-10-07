@@ -56,6 +56,17 @@ sealed interface MavlinkMessage {
         val yawRateRadiansPerSecond: Float
     ) : MavlinkMessage
 
+    /** Rover-relevant fields from MAVLink VFR_HUD; airspeed is intentionally omitted. */
+    data class VfrHud(
+        val systemId: Int,
+        val componentId: Int,
+        val groundSpeedMetersPerSecond: Float,
+        val headingDegrees: Int,
+        val throttlePercent: Int,
+        val altitudeMetersMsl: Float,
+        val climbRateMetersPerSecond: Float
+    ) : MavlinkMessage
+
     data class SystemStatus(
         val systemId: Int,
         val componentId: Int,
@@ -95,6 +106,7 @@ sealed interface MavlinkMessage {
         const val SYS_STATUS_MESSAGE_ID = 1
         const val GPS_RAW_INT_MESSAGE_ID = 24
         const val ATTITUDE_MESSAGE_ID = 30
+        const val VFR_HUD_MESSAGE_ID = 74
         const val GLOBAL_POSITION_INT_MESSAGE_ID = 33
         const val BATTERY_STATUS_MESSAGE_ID = 147
         const val STATUSTEXT_MESSAGE_ID = 253

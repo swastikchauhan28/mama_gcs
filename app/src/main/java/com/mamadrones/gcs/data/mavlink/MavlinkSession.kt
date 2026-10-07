@@ -133,6 +133,7 @@ class MavlinkSession(
         is MavlinkMessage.GpsRawInt -> systemId to componentId
         is MavlinkMessage.GlobalPositionInt -> systemId to componentId
         is MavlinkMessage.Attitude -> systemId to componentId
+        is MavlinkMessage.VfrHud -> systemId to componentId
         is MavlinkMessage.SystemStatus -> systemId to componentId
         is MavlinkMessage.BatteryStatus -> systemId to componentId
         is MavlinkMessage.StatusText -> systemId to componentId

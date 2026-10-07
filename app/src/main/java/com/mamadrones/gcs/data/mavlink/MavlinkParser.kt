@@ -152,6 +152,17 @@ class MavlinkParser {
                 yawRateRadiansPerSecond = float32(frame.payload, 24)
             )
         }
+        MavlinkMessage.VFR_HUD_MESSAGE_ID -> withPayloadLength(frame, VFR_HUD_LENGTH, VFR_HUD_LENGTH) {
+            MavlinkMessage.VfrHud(
+                systemId = frame.systemId,
+                componentId = frame.componentId,
+                groundSpeedMetersPerSecond = float32(frame.payload, 4),
+                headingDegrees = int16(frame.payload, 8),
+                throttlePercent = uint16(frame.payload, 10),
+                altitudeMetersMsl = float32(frame.payload, 12),
+                climbRateMetersPerSecond = float32(frame.payload, 16)
+            )
+        }
         MavlinkMessage.GLOBAL_POSITION_INT_MESSAGE_ID -> withPayloadLength(frame, GLOBAL_POSITION_INT_LENGTH, GLOBAL_POSITION_INT_LENGTH) {
             MavlinkMessage.GlobalPositionInt(
                 systemId = frame.systemId,
@@ -215,6 +226,7 @@ class MavlinkParser {
         MavlinkMessage.SYS_STATUS_MESSAGE_ID -> SYS_STATUS_CRC_EXTRA
         MavlinkMessage.GPS_RAW_INT_MESSAGE_ID -> GPS_RAW_INT_CRC_EXTRA
         MavlinkMessage.ATTITUDE_MESSAGE_ID -> ATTITUDE_CRC_EXTRA
+        MavlinkMessage.VFR_HUD_MESSAGE_ID -> VFR_HUD_CRC_EXTRA
         MavlinkMessage.GLOBAL_POSITION_INT_MESSAGE_ID -> GLOBAL_POSITION_INT_CRC_EXTRA
         MavlinkMessage.BATTERY_STATUS_MESSAGE_ID -> BATTERY_STATUS_CRC_EXTRA
         MavlinkMessage.STATUSTEXT_MESSAGE_ID -> STATUSTEXT_CRC_EXTRA
@@ -270,6 +282,8 @@ class MavlinkParser {
         const val GPS_RAW_INT_CRC_EXTRA = 24
         const val ATTITUDE_LENGTH = 28
         const val ATTITUDE_CRC_EXTRA = 39
+        const val VFR_HUD_LENGTH = 20
+        const val VFR_HUD_CRC_EXTRA = 20
         const val GLOBAL_POSITION_INT_LENGTH = 28
         const val GLOBAL_POSITION_INT_CRC_EXTRA = 104
         const val BATTERY_STATUS_MIN_LENGTH = 36

@@ -130,6 +130,33 @@ class MavlinkParserTest {
     }
 
     @Test
+    fun `decodes Rover VFR HUD telemetry`() {
+        val payload = ByteArray(20)
+        payload.putFloat32(0, 0f) // airspeed is not used for a ground rover
+        payload.putFloat32(4, 2.75f)
+        payload.putInt16(8, 271)
+        payload.putUInt16(10, 42)
+        payload.putFloat32(12, 584.25f)
+        payload.putFloat32(16, -0.6f)
+
+        val message = MavlinkParser().feed(mavlinkTestFrame(74, payload, 20)).single()
+            .let { (it as MavlinkParseResult.Message).message as MavlinkMessage.VfrHud }
+
+        assertEquals(2.75f, message.groundSpeedMetersPerSecond)
+        assertEquals(271, message.headingDegrees)
+        assertEquals(42, message.throttlePercent)
+        assertEquals(584.25f, message.altitudeMetersMsl)
+        assertEquals(-0.6f, message.climbRateMetersPerSecond)
+    }
+
+    @Test
+    fun `rejects malformed Rover VFR HUD payload length`() {
+        val result = MavlinkParser().feed(mavlinkTestFrame(74, ByteArray(19), 20)).single()
+
+        assertEquals(MavlinkParseResult.MalformedMessage(74), result)
+    }
+
+    @Test
     fun `decodes system status sentinel battery fields`() {
         val payload = ByteArray(31)
         payload.putUInt32(0, 0xFFFF_FFFFL)

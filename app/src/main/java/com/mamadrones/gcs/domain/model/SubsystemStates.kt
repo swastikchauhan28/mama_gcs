@@ -52,6 +52,16 @@ data class AttitudeState(
     val lastUpdatedAtEpochMillis: Long? = null
 )
 
+/** Read-only Rover instrument values decoded from MAVLink VFR_HUD. */
+data class RoverHudState(
+    val groundSpeedMetersPerSecond: Double? = null,
+    val headingDegrees: Double? = null,
+    val throttlePercent: Int? = null,
+    val altitudeMetersMsl: Double? = null,
+    val climbRateMetersPerSecond: Double? = null,
+    val lastUpdatedAtEpochMillis: Long? = null
+)
+
 data class AutopilotSystemStatus(
     val sensorsPresent: Long? = null,
     val sensorsEnabled: Long? = null,
