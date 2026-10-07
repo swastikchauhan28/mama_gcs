@@ -117,7 +117,12 @@ fun MissionScreen(
         VehicleMap(
             state = state.forDisplay(), modifier = mapModifier.testTag("mission-map"),
             draftWaypoints = plan.draft.waypoints, draftFence = plan.draft.keepInFence, planningMode = true,
-            onWaypointRequested = if (canAdd) { lat, lon -> openEditor(null, lat, lon) } else null
+            onWaypointRequested = if (canAdd) { lat, lon -> openEditor(null, lat, lon) } else null,
+            onWaypointSelected = { id ->
+                plan.draft.waypoints.firstOrNull { it.id == id }?.let { point ->
+                    openEditor(point.id, point.latitude, point.longitude)
+                }
+            },
         )
     }
 
@@ -161,7 +166,7 @@ fun MissionScreen(
                 item {
                     Text("${plan.draft.waypoints.size} / ${MissionDraft.MAX_WAYPOINTS} waypoints · ${String.format(Locale.US, "%.0f", plan.draft.distanceMeters)} m",
                         style = MaterialTheme.typography.titleSmall)
-                    Text("Orange points and line are the local draft. Long-press the map to choose a waypoint, or enter coordinates below. Distance is straight-line; terrain and obstacles are not checked.",
+                    Text("Orange points and line are the local draft. Tap a numbered point to edit it; long-press the map to add one, or enter coordinates below. Distance is straight-line; terrain and obstacles are not checked.",
                         style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick = { openEditor(null, null, null) }, enabled = canAdd,
                         modifier = Modifier.testTag("mission-add")) { Text("Add coordinates") }

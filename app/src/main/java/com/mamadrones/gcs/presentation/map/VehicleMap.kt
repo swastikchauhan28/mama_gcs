@@ -102,6 +102,7 @@ fun VehicleMap(
     draftFence: List<DraftWaypoint> = emptyList(),
     planningMode: Boolean = false,
     onWaypointRequested: ((Double, Double) -> Unit)? = null,
+    onWaypointSelected: ((String) -> Unit)? = null,
 ) {
     val mapView = rememberMapViewWithLifecycle()
     val styleUrl = MapStyleConfig.mapTilerStyleUrlOrNull
@@ -113,6 +114,9 @@ fun VehicleMap(
     var loadFailed by remember(mapView) { mutableStateOf(false) }
     var loadAttempt by remember(mapView) { mutableIntStateOf(0) }
     val currentWaypointRequest by rememberUpdatedState(onWaypointRequested)
+    val currentWaypointSelection by rememberUpdatedState(onWaypointSelected)
+    val currentDraftWaypoints by rememberUpdatedState(draftWaypoints)
+    val currentPlanningMode by rememberUpdatedState(planningMode)
     val longClickListener = remember(mapView) {
         MapLibreMap.OnMapLongClickListener { point ->
             val callback = currentWaypointRequest
@@ -122,6 +126,28 @@ fun VehicleMap(
                 callback(point.latitude, longitude)
                 true
             } else false
+        }
+    }
+
+    val waypointClickListener = remember(mapView) {
+        MapLibreMap.OnMapClickListener { point ->
+            val callback = currentWaypointSelection
+            val loadedMap = map
+            if (callback == null || loadedMap == null || !currentPlanningMode || currentDraftWaypoints.isEmpty()) {
+                false
+            } else {
+                val tap = loadedMap.projection.toScreenLocation(point)
+                val density = mapView.resources.displayMetrics.density
+                val candidates = currentDraftWaypoints.map { waypoint ->
+                    val screen = loadedMap.projection.toScreenLocation(LatLng(waypoint.latitude, waypoint.longitude))
+                    WaypointScreenPosition(waypoint.id, screen.x, screen.y)
+                }
+                val selectedId = hitTestDraftWaypoint(tap.x, tap.y, candidates, 36f * density)
+                if (selectedId == null) false else {
+                    callback(selectedId)
+                    true
+                }
+            }
         }
     }
 
@@ -137,7 +163,7 @@ fun VehicleMap(
         }
     }
 
-    DisposableEffect(mapView, styleUrl, moveListener, loadAttempt, planningMode) {
+    DisposableEffect(mapView, styleUrl, moveListener, longClickListener, waypointClickListener, loadAttempt, planningMode) {
         var disposed = false
         var attachedMap: MapLibreMap? = null
         loadFailed = false
@@ -162,6 +188,7 @@ fun VehicleMap(
                 }
                 loadedMap.addOnMoveListener(moveListener)
                 loadedMap.addOnMapLongClickListener(longClickListener)
+                loadedMap.addOnMapClickListener(waypointClickListener)
                 loadedMap.setStyle(styleUrl) { loadedStyle ->
                     if (!disposed) {
                         installVehicleLayers(loadedStyle)
@@ -177,6 +204,7 @@ fun VehicleMap(
             disposed = true
             attachedMap?.removeOnMoveListener(moveListener)
             attachedMap?.removeOnMapLongClickListener(longClickListener)
+            attachedMap?.removeOnMapClickListener(waypointClickListener)
             mapView.removeOnDidFailLoadingMapListener(failureListener)
             style = null
             map = null
@@ -456,6 +484,32 @@ private fun rememberMapViewWithLifecycle(): MapView {
     }
 
     return mapView
+}
+
+internal data class WaypointScreenPosition(val id: String, val x: Float, val y: Float)
+
+/** Pick a route point only when the tap is close enough; other taps remain normal map gestures. */
+internal fun hitTestDraftWaypoint(
+    tapX: Float,
+    tapY: Float,
+    candidates: List<WaypointScreenPosition>,
+    maxDistancePx: Float,
+): String? {
+    if (!tapX.isFinite() || !tapY.isFinite() || !maxDistancePx.isFinite() || maxDistancePx <= 0f) return null
+    val maxDistanceSquared = maxDistancePx * maxDistancePx
+    var closestId: String? = null
+    var closestDistanceSquared = Float.POSITIVE_INFINITY
+    candidates.forEach { candidate ->
+        if (!candidate.x.isFinite() || !candidate.y.isFinite()) return@forEach
+        val dx = tapX - candidate.x
+        val dy = tapY - candidate.y
+        val distanceSquared = dx * dx + dy * dy
+        if (distanceSquared <= maxDistanceSquared && distanceSquared < closestDistanceSquared) {
+            closestId = candidate.id
+            closestDistanceSquared = distanceSquared
+        }
+    }
+    return closestId
 }
 
 private fun installVehicleLayers(style: Style) {
