@@ -2,11 +2,15 @@
 
 Native Android ground-control-station foundation for a Mama agricultural UGV: ArduPilot Rover, VESC motors, spray equipment and hydraulics. Kotlin · Compose · Material 3 · Hilt · offline-first.
 
-## Current delivery: BLE MAVLink receive link (Phase 13)
+## Current delivery: MAVLink receive diagnostics (Phase 15)
 
 The expanded agricultural specification uses incremental acceptance. The current hardware-independent delivery is local mission planning with recovery of unsaved edits, GeoJSON and GPX route-file exchange, a separate on-device route library, structural review, map-based waypoint editing, and an optional local outline that checks waypoint positions and straight draft segments. GPX contains route waypoints only; use GeoJSON to retain Mama GCS's local outline. Phase 8 VESC telemetry groundwork remains pending verification of the Bluetooth module and telemetry path; Phase 8a adds BLE advertisement discovery only to help identify that module. Spray and hydraulic adapters also await hardware details. Mission transfer/execution and vehicle commands remain disabled.
 
 Phase 12 adds read-only ArduPilot Rover `VFR_HUD` instruments (ground speed, heading, throttle, altitude, and climb rate); see the [Phase 12 report](docs/phase-12-report.md). Phase 13 adds runtime BLE GATT inspection and a selectable notify/indicate MAVLink byte receiver; see the [Phase 13 report](docs/phase-13-report.md). Commands remain disabled, and VESC telemetry still needs its own validated route and decoder.
+
+Phase 14 fixes BLE receive selection, adds notification/byte counters and explicit cancel/reconnect states, and enforces exclusive UDP/BLE session ownership below the UI. It also corrects `VFR_HUD` wire offsets and restores truncated MAVLink 2 trailing zeros after CRC validation. See the [reliability report and phone acceptance checklist](docs/phase-14-report.md). These are software changes, not proof of compatibility with the installed BLE radio; physical acceptance remains pending.
+
+Phase 15 adds shared, memory-only MAVLink decoder counters to Diagnostics and the BLE screen: input chunks/bytes, decoded/accepted messages, source-filtered messages, checksum/payload errors, unsupported IDs/flags, and signed candidates rejected by policy. Counters survive disconnect as clearly labeled last-session history and reset on the next receive session. They are not packet-loss measurements, authentication, or a health verdict. See the [Phase 15 report](docs/phase-15-report.md).
 
 - Responsive dark field-console design, light/daylight and system themes, original local icons, shared typography, spacing, cards and status treatments.
 - Map-first Operate, Map, Drive, Plan and Systems workspaces. Phones use bottom navigation; wide windows use a side rail and instrument dock. Connection access and emergency-stop unavailability remain visible on every screen. Detailed telemetry and equipment are reached through Systems or operating shortcuts. See the [operator design and requirements matrix](docs/operator-ui-design.md) for coverage and remaining capabilities.
