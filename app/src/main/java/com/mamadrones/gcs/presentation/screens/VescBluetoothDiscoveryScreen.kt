@@ -15,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +34,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.mamadrones.gcs.presentation.components.Notice
 import com.mamadrones.gcs.presentation.components.ScreenBody
 import com.mamadrones.gcs.presentation.components.ScreenHeader
+import com.mamadrones.gcs.data.transport.bluetooth.BleNotifyCharacteristic
 import kotlinx.coroutines.delay
 
 @Composable
@@ -41,6 +43,10 @@ fun VescBluetoothDiscoveryScreen(
     onStartScan: () -> Unit = {},
     onStopScan: () -> Unit = {},
     onPermissionDenied: () -> Unit = {},
+    onConnectGatt: (String, String) -> Unit = { _, _ -> },
+    onStartMavlinkReceive: (BleNotifyCharacteristic) -> Unit = {},
+    onDisconnectGatt: () -> Unit = {},
+    udpLinkOpen: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -68,10 +74,10 @@ fun VescBluetoothDiscoveryScreen(
     }
 
     ScreenBody(modifier) {
-        ScreenHeader("VESC Bluetooth discovery", "Identify the nearby radio before protocol integration")
+        ScreenHeader("BLE MAVLink link", "Inspect a rover radio and receive telemetry")
         Notice(
-            "DISCOVERY ONLY · NO CONTROLLER CONNECTION",
-            "This performs a short BLE advertisement scan. It does not pair, connect, read VESC telemetry, or send motor commands. Results stay on screen only; MAC addresses are not displayed or saved.",
+            "READ-ONLY · NO VEHICLE COMMANDS",
+            "Connect to a BLE device, inspect its GATT notification characteristics, then select the one carrying MAVLink bytes. The app only receives telemetry in this phase; it does not send commands or VESC data.",
         )
         Notice(
             "BLE VS CLASSIC",
@@ -106,6 +112,7 @@ fun VescBluetoothDiscoveryScreen(
             Text("Scanning for up to 12 seconds…", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         state.error?.let { Notice("SCAN STATUS", it) }
+        if (udpLinkOpen) Notice("CLOSE THE OTHER LINK FIRST", "Close the active UDP connection in Link Setup before opening BLE. Only one telemetry session should feed the rover display at a time.")
         when {
             state.scanning && state.advertisements.isEmpty() -> Text("No BLE advertisements found yet.")
             state.finished && state.advertisements.isEmpty() && state.error == null -> Text(
@@ -123,12 +130,46 @@ fun VescBluetoothDiscoveryScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    OutlinedButton(
+                        onClick = { onConnectGatt(result.key, result.name) },
+                        enabled = !udpLinkOpen && !state.gattConnecting && !state.gattConnected,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) { Text("Connect and inspect GATT") }
                 }
             }
         }
+        if (state.gattConnecting) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text("Connecting and discovering BLE services…")
+        }
+        state.gattError?.let { Notice("BLE LINK STATUS", it) }
+        if (state.gattConnected) {
+            Notice(
+                if (state.receivingFrom == null) "GATT CONNECTED · TELEMETRY NOT STARTED" else "RECEIVING MAVLINK BYTES",
+                "${state.selectedDeviceName ?: "BLE device"}. Select a notify/indicate characteristic only if the hardware team confirms it carries MAVLink serial data. A GATT connection alone does not prove vehicle identity or valid telemetry.",
+            )
+            state.notifyCharacteristics.forEach { characteristic ->
+                val selected = state.receivingFrom == characteristic
+                OutlinedCard(
+                    onClick = { if (!udpLinkOpen && !selected) onStartMavlinkReceive(characteristic) },
+                    enabled = !udpLinkOpen && !selected,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("${if (selected) "RECEIVING · " else "RECEIVE · "}${if (characteristic.supportsIndication) "INDICATE" else "NOTIFY"}", style = MaterialTheme.typography.titleSmall)
+                        Text("Service ${characteristic.serviceUuid}", style = MaterialTheme.typography.bodySmall)
+                        Text("Characteristic ${characteristic.characteristicUuid}", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+            if (state.notifyCharacteristics.isEmpty()) {
+                Notice("NO RECEIVE CHARACTERISTIC", "This BLE device exposes no notify/indicate characteristic. Ask the hardware team whether its link uses BLE notifications, Bluetooth Classic/SPP, or another route.")
+            }
+            OutlinedButton(onClick = onDisconnectGatt, modifier = Modifier.heightIn(min = 48.dp)) { Text("Disconnect BLE") }
+        }
         Notice(
             "NEXT HARDWARE EVIDENCE",
-            "Send the matching device name and advertised service UUIDs to the hardware team. Also capture the VESC Tool hardware/firmware identification for both motor channels and the Bluetooth module label. Discovery does not prove protocol compatibility.",
+            "If telemetry does not appear, send the selected device name, service UUID, characteristic UUID, Cube telemetry-port wiring, baud rate, and ArduPilot Rover version to the hardware team. VESC telemetry still needs its own confirmed route and protocol.",
         )
     }
 }

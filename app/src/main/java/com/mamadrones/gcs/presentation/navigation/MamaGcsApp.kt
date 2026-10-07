@@ -22,6 +22,7 @@ import com.mamadrones.gcs.presentation.settings.ConnectionUiState
 import com.mamadrones.gcs.presentation.mission.MissionPlanUiState
 import com.mamadrones.gcs.presentation.mission.MissionPlanAction
 import com.mamadrones.gcs.presentation.screens.VescDiscoveryUiState
+import com.mamadrones.gcs.data.transport.bluetooth.BleNotifyCharacteristic
 
 enum class AppDestination(val route: String, val label: String, val icon: ConsoleIcon) {
     DASHBOARD("dashboard", "Operate", ConsoleIcon.DASHBOARD), MAP("map", "Map", ConsoleIcon.MAP),
@@ -48,6 +49,9 @@ fun MamaGcsApp(
     onVescScan: () -> Unit = {},
     onVescStopScan: () -> Unit = {},
     onVescPermissionDenied: () -> Unit = {},
+    onBleConnectGatt: (String, String) -> Unit = { _, _ -> },
+    onBleStartMavlinkReceive: (BleNotifyCharacteristic) -> Unit = {},
+    onBleDisconnect: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     var showVehicles by remember { mutableStateOf(false) }
@@ -164,7 +168,16 @@ fun MamaGcsApp(
                         composable("health") { HealthScreen(vehicle) }
                         composable("motors") { MotorScreen(vehicle) }
                         composable("vesc-discovery") {
-                            VescBluetoothDiscoveryScreen(vescDiscovery, onVescScan, onVescStopScan, onVescPermissionDenied)
+                            VescBluetoothDiscoveryScreen(
+                                state = vescDiscovery,
+                                onStartScan = onVescScan,
+                                onStopScan = onVescStopScan,
+                                onPermissionDenied = onVescPermissionDenied,
+                                onConnectGatt = onBleConnectGatt,
+                                onStartMavlinkReceive = onBleStartMavlinkReceive,
+                                onDisconnectGatt = onBleDisconnect,
+                                udpLinkOpen = connection.session.endpoint != null || vescDiscovery.gattConnecting || vescDiscovery.gattConnected,
+                            )
                         }
                         composable("spray") { SprayScreen(vehicle) }
                         composable("hydraulic") { HydraulicScreen(vehicle) }
@@ -178,6 +191,7 @@ fun MamaGcsApp(
                                 onLocalPortChanged = onLocalPortChanged, onSaveEndpoint = onSaveEndpoint,
                                 onOpenSocket = onOpenSocket, onCloseSocket = onCloseSocket,
                                 onClearEndpoint = onClearEndpoint,
+                                bleLinkOpen = vescDiscovery.gattConnecting || vescDiscovery.gattConnected,
                             )
                         }
                     }

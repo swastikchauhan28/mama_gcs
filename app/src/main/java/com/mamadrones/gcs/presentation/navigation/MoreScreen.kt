@@ -32,7 +32,7 @@ fun MoreScreen(vehicle: VehicleState, onNavigate: (String) -> Unit, modifier: Mo
             "motors", "Motors", "VESC drive system · controller inventory, RPM, temperatures and faults",
             if (vehicle.motors.isEmpty()) "VESC LINK PENDING" else "${vehicle.motors.size} REPORTED",
         ),
-        SystemsDestination("vesc-discovery", "VESC Bluetooth", "Identify BLE advertisements; no connection or commands", "SCAN ONLY"),
+        SystemsDestination("vesc-discovery", "BLE MAVLink", "Inspect GATT and receive rover telemetry", "READ ONLY"),
         SystemsDestination("spray", "Spray", "Pump, nozzles, pressure, flow and fault evidence", "HARDWARE PENDING"),
         SystemsDestination("hydraulic", "Hydraulic", "Pump, valves, pressure and temperature evidence", "HARDWARE PENDING"),
     )

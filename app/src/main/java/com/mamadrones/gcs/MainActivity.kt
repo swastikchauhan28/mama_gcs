@@ -64,6 +64,9 @@ class MainActivity : ComponentActivity() {
                     onVescScan = vescBluetoothDiscoveryViewModel::startScan,
                     onVescStopScan = vescBluetoothDiscoveryViewModel::stopScan,
                     onVescPermissionDenied = vescBluetoothDiscoveryViewModel::permissionDenied,
+                    onBleConnectGatt = vescBluetoothDiscoveryViewModel::connectGatt,
+                    onBleStartMavlinkReceive = vescBluetoothDiscoveryViewModel::startMavlinkReceive,
+                    onBleDisconnect = vescBluetoothDiscoveryViewModel::disconnectGatt,
                 )
             }
         }

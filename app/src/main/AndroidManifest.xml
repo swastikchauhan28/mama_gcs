@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Required only for the Phase 2 UDP vehicle transport. -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Used only for the user-initiated, time-bounded VESC BLE identification scan. -->
+    <!-- Used only for user-initiated BLE scanning and a foreground, read-only GATT MAVLink session. -->
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />

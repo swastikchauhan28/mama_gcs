@@ -32,6 +32,7 @@ fun SettingsScreen(
     onOpenSocket: () -> Unit = {},
     onCloseSocket: () -> Unit = {},
     onClearEndpoint: () -> Unit = {},
+    bleLinkOpen: Boolean = false,
     modifier: Modifier = Modifier
 ) = ScreenBody(modifier) {
     ScreenHeader("Settings", "Preferences stored on this device")
@@ -111,7 +112,7 @@ fun SettingsScreen(
                 OutlinedButton(
                     onClick = onOpenSocket,
                     enabled = connection.savedEndpoint != null &&
-                        connection.session.connection.status == TransportStatus.DISCONNECTED,
+                        connection.session.connection.status == TransportStatus.DISCONNECTED && !bleLinkOpen,
                     modifier = Modifier.heightIn(min = 48.dp).testTag("udp-open-socket")
                 ) { Text("Open UDP socket") }
                 OutlinedButton(
@@ -125,7 +126,7 @@ fun SettingsScreen(
     }
     connection.error?.let { Notice("UDP ENDPOINT ERROR", it) }
     Notice("MAVLINK SECURITY", "Only the configured UDP peer is accepted. A CRC-valid unsigned HEARTBEAT reports protocol liveness, not authenticated vehicle identity. Signed frames are rejected until signing-key verification is provisioned. This session sends no vehicle commands.")
-    Notice("BLUETOOTH AND SERIAL", "Systems → VESC Bluetooth can scan nearby BLE advertisements only. It does not pair, connect, read telemetry, or send commands. Bluetooth Classic / SPP, serial, and live VESC telemetry remain unavailable pending hardware identification.")
+    Notice("BLUETOOTH AND SERIAL", "Systems → BLE MAVLink can receive telemetry through a selected GATT notification characteristic. Close BLE before opening UDP. Vehicle commands and live VESC telemetry remain unavailable; Bluetooth Classic / SPP is not supported.")
     Notice("LOCAL DISPLAY PREFERENCES", "Theme is saved offline. Passwords, credentials and machine commands are not stored in display preferences.")
 }
 

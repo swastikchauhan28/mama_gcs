@@ -6,6 +6,7 @@ import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
+import android.bluetooth.BluetoothDevice
 import android.content.Context
 import android.os.ParcelUuid
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,10 +35,12 @@ class BleDeviceScanner(context: Context) {
 
     private var activeScanner: BluetoothLeScanner? = null
     private var activeCallback: ScanCallback? = null
+    private val devicesByKey = mutableMapOf<String, BluetoothDevice>()
 
     @SuppressLint("MissingPermission") // Caller requests the API-appropriate runtime scan permission.
     fun start() {
         stop()
+        synchronized(devicesByKey) { devicesByKey.clear() }
         val bleScanner = try {
             appContext.getSystemService(BluetoothManager::class.java)?.adapter?.bluetoothLeScanner
         } catch (_: SecurityException) {
@@ -64,6 +67,7 @@ class BleDeviceScanner(context: Context) {
                     rssiDbm = result.rssi,
                     serviceUuids = record?.serviceUuids.orEmpty().map(ParcelUuid::toString).distinct(),
                 )
+                synchronized(devicesByKey) { devicesByKey[entry.key] = result.device }
                 mutableState.value = mutableState.value.copy(
                     advertisements = (mutableState.value.advertisements.filterNot { it.key == entry.key } + entry)
                         .sortedByDescending(BleAdvertisement::rssiDbm)
@@ -126,6 +130,9 @@ class BleDeviceScanner(context: Context) {
     }
 
     fun supportsBle(): Boolean = appContext.packageManager.hasSystemFeature("android.hardware.bluetooth_le")
+
+    /** Returns the transient device handle for this scan result; no address is persisted or exposed. */
+    fun deviceForKey(key: String): BluetoothDevice? = synchronized(devicesByKey) { devicesByKey[key] }
 
     private companion object {
         const val MAX_RESULTS = 80
