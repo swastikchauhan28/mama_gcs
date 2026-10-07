@@ -134,10 +134,11 @@ class MavlinkParserTest {
         val payload = ByteArray(20)
         payload.putFloat32(0, 0f) // airspeed is not used for a ground rover
         payload.putFloat32(4, 2.75f)
-        payload.putInt16(8, 271)
-        payload.putUInt16(10, 42)
-        payload.putFloat32(12, 584.25f)
-        payload.putFloat32(16, -0.6f)
+        // Wire order from the generated MAVLink common/vfr_hud definition (not XML order).
+        payload.putFloat32(8, 584.25f)
+        payload.putFloat32(12, -0.6f)
+        payload.putInt16(16, 271)
+        payload.putUInt16(18, 42)
 
         val message = MavlinkParser().feed(mavlinkTestFrame(74, payload, 20)).single()
             .let { (it as MavlinkParseResult.Message).message as MavlinkMessage.VfrHud }
@@ -151,7 +152,7 @@ class MavlinkParserTest {
 
     @Test
     fun `rejects malformed Rover VFR HUD payload length`() {
-        val result = MavlinkParser().feed(mavlinkTestFrame(74, ByteArray(19), 20)).single()
+        val result = MavlinkParser().feed(mavlinkTestFrame(74, ByteArray(21), 20)).single()
 
         assertEquals(MavlinkParseResult.MalformedMessage(74), result)
     }
@@ -211,8 +212,53 @@ class MavlinkParserTest {
     }
 
     @Test
-    fun `rejects known message payload shorter than MAVLink base length`() {
-        val result = MavlinkParser().feed(mavlinkTestFrame(33, ByteArray(27), 104)).single()
+    fun `rejects oversized known message payload`() {
+        val result = MavlinkParser().feed(mavlinkTestFrame(33, ByteArray(29), 104)).single()
         assertEquals(MavlinkParseResult.MalformedMessage(33), result)
+    }
+
+    @Test fun `restores MAVLink 2 trailing zeros for every supported base payload`() {
+        listOf(0 to 50, 1 to 124, 24 to 24, 30 to 39, 33 to 104, 74 to 20, 147 to 154, 253 to 83).forEach { (id, crc) ->
+            val result = MavlinkParser().feed(mavlinkTestFrame(id, byteArrayOf(0), crc)).single()
+            assertTrue("message $id", result is MavlinkParseResult.Message)
+            assertEquals(MavlinkParseResult.MalformedMessage(id),
+                MavlinkParser().feed(mavlinkTestFrame(id, byteArrayOf(), crc)).single())
+        }
+    }
+
+    @Test fun `decodes canonical wire VFR HUD fixture across every BLE split`() {
+        // airspeed 0, groundspeed 2.75, altitude 584.25, climb -0.5, heading 271, throttle 42.
+        // The last zero byte of uint16 throttle is omitted by MAVLink 2 serialization.
+        val payload = "000000000000304000101244000000BF0F012A"
+            .chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+        val bytes = mavlinkTestFrame(74, payload, 20)
+        for (split in 1 until bytes.size) {
+            val parser = MavlinkParser()
+            assertTrue(parser.feed(bytes.copyOfRange(0, split)).isEmpty())
+            val message = (parser.feed(bytes.copyOfRange(split, bytes.size)).single() as MavlinkParseResult.Message).message as MavlinkMessage.VfrHud
+            assertEquals(2.75f, message.groundSpeedMetersPerSecond)
+            assertEquals(584.25f, message.altitudeMetersMsl)
+            assertEquals(-0.5f, message.climbRateMetersPerSecond)
+            assertEquals(271, message.headingDegrees)
+            assertEquals(42, message.throttlePercent)
+        }
+        bytes[11] = 1 // A truncated frame must still pass its original wire CRC.
+        assertTrue(MavlinkParser().feed(bytes).first() is MavlinkParseResult.InvalidChecksum)
+    }
+
+    @Test fun `decodes short status text and partially transmitted extension id`() {
+        val text = byteArrayOf(4) + "READY".encodeToByteArray()
+        val short = (MavlinkParser().feed(mavlinkTestFrame(253, text, 83)).single() as MavlinkParseResult.Message).message as MavlinkMessage.StatusText
+        assertEquals("READY", short.textChunk.takeWhile { it != 0.toByte() }.toByteArray().decodeToString())
+        val extended = text.copyOf(52).also { it[51] = 7 }
+        val message = (MavlinkParser().feed(mavlinkTestFrame(253, extended, 83)).single() as MavlinkParseResult.Message).message as MavlinkMessage.StatusText
+        assertEquals(7, message.id)
+        assertEquals(0, message.chunkSequence)
+    }
+
+    @Test fun `restores high zero byte in partially transmitted battery extension cell`() {
+        val payload = ByteArray(42).also { it[41] = 100 }
+        val message = (MavlinkParser().feed(mavlinkTestFrame(147, payload, 154)).single() as MavlinkParseResult.Message).message as MavlinkMessage.BatteryStatus
+        assertEquals(100, message.cellVoltagesMillivolts[10])
     }
 }

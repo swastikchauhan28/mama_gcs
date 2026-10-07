@@ -84,12 +84,18 @@ class MavlinkParser {
             return MavlinkParseResult.InvalidChecksum(messageId)
         }
 
+        // MAVLink 2 removes trailing zero bytes, including in base fields. Check CRC
+        // against the transmitted bytes BEFORE restoring the omitted zero suffix.
+        val lengths = payloadLengths(messageId)
+        if (payloadLength !in 1..lengths.last) return MavlinkParseResult.MalformedMessage(messageId)
+        val payload = rawFrame.copyOfRange(HEADER_SIZE, checksumOffset)
+            .copyOf(maxOf(payloadLength, lengths.first))
         val frame = MavlinkFrame(
             sequence = rawFrame[4].unsigned(),
             systemId = rawFrame[5].unsigned(),
             componentId = rawFrame[6].unsigned(),
             messageId = messageId,
-            payload = rawFrame.copyOfRange(HEADER_SIZE, checksumOffset)
+            payload = payload
         )
         return decode(frame)
     }
@@ -157,10 +163,10 @@ class MavlinkParser {
                 systemId = frame.systemId,
                 componentId = frame.componentId,
                 groundSpeedMetersPerSecond = float32(frame.payload, 4),
-                headingDegrees = int16(frame.payload, 8),
-                throttlePercent = uint16(frame.payload, 10),
-                altitudeMetersMsl = float32(frame.payload, 12),
-                climbRateMetersPerSecond = float32(frame.payload, 16)
+                headingDegrees = int16(frame.payload, 16),
+                throttlePercent = uint16(frame.payload, 18),
+                altitudeMetersMsl = float32(frame.payload, 8),
+                climbRateMetersPerSecond = float32(frame.payload, 12)
             )
         }
         MavlinkMessage.GLOBAL_POSITION_INT_MESSAGE_ID -> withPayloadLength(frame, GLOBAL_POSITION_INT_LENGTH, GLOBAL_POSITION_INT_LENGTH) {
@@ -180,8 +186,8 @@ class MavlinkParser {
             val voltages = (0 until BATTERY_CELL_COUNT).map { cell -> uint16(frame.payload, BATTERY_VOLTAGES_OFFSET + cell * 2) } +
                 (0 until BATTERY_EXT_CELL_COUNT).mapNotNull { cell ->
                     val offset = BATTERY_EXT_VOLTAGES_OFFSET + cell * 2
-                    if (offset + 2 <= frame.payload.size) {
-                        uint16(frame.payload, offset).takeUnless { it == 0 } ?: UINT16_MAX_VALUE
+                    if (offset < frame.payload.size) {
+                        uint16(frame.payload.copyOf(BATTERY_STATUS_MAX_LENGTH), offset).takeUnless { it == 0 } ?: UINT16_MAX_VALUE
                     } else null
                 }
             MavlinkMessage.BatteryStatus(
@@ -203,11 +209,23 @@ class MavlinkParser {
                 componentId = frame.componentId,
                 severity = uint8(frame.payload[0]),
                 textChunk = frame.payload.copyOfRange(1, 51),
-                id = if (frame.payload.size >= STATUSTEXT_ID_END) uint16(frame.payload, 51) else 0,
+                id = if (frame.payload.size > 51) uint16(frame.payload.copyOf(STATUSTEXT_MAX_LENGTH), 51) else 0,
                 chunkSequence = if (frame.payload.size >= STATUSTEXT_CHUNK_END) uint8(frame.payload[53]) else 0
             )
         }
         else -> MavlinkParseResult.UnsupportedMessage(frame.messageId)
+    }
+
+    private fun payloadLengths(messageId: Int): IntRange = when (messageId) {
+        MavlinkMessage.HEARTBEAT_MESSAGE_ID -> HEARTBEAT_PAYLOAD_SIZE..HEARTBEAT_PAYLOAD_SIZE
+        MavlinkMessage.SYS_STATUS_MESSAGE_ID -> SYS_STATUS_LENGTH..SYS_STATUS_LENGTH
+        MavlinkMessage.GPS_RAW_INT_MESSAGE_ID -> GPS_RAW_INT_MIN_LENGTH..GPS_RAW_INT_MAX_LENGTH
+        MavlinkMessage.ATTITUDE_MESSAGE_ID -> ATTITUDE_LENGTH..ATTITUDE_LENGTH
+        MavlinkMessage.VFR_HUD_MESSAGE_ID -> VFR_HUD_LENGTH..VFR_HUD_LENGTH
+        MavlinkMessage.GLOBAL_POSITION_INT_MESSAGE_ID -> GLOBAL_POSITION_INT_LENGTH..GLOBAL_POSITION_INT_LENGTH
+        MavlinkMessage.BATTERY_STATUS_MESSAGE_ID -> BATTERY_STATUS_MIN_LENGTH..BATTERY_STATUS_MAX_LENGTH
+        MavlinkMessage.STATUSTEXT_MESSAGE_ID -> STATUSTEXT_MIN_LENGTH..STATUSTEXT_MAX_LENGTH
+        else -> error("Unsupported message passed CRC-extra lookup")
     }
 
     private inline fun withPayloadLength(
@@ -300,7 +318,6 @@ class MavlinkParser {
         const val STATUSTEXT_MIN_LENGTH = 51
         const val STATUSTEXT_MAX_LENGTH = 54
         const val STATUSTEXT_CRC_EXTRA = 83
-        const val STATUSTEXT_ID_END = 53
         const val STATUSTEXT_CHUNK_END = 54
         const val MAX_FRAME_SIZE = HEADER_SIZE + 255 + CHECKSUM_SIZE + SIGNATURE_SIZE
     }
