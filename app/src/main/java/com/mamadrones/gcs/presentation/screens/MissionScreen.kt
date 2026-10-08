@@ -118,11 +118,11 @@ fun MissionScreen(
             state = state.forDisplay(), modifier = mapModifier.testTag("mission-map"),
             draftWaypoints = plan.draft.waypoints, draftFence = plan.draft.keepInFence, planningMode = true,
             onWaypointRequested = if (canAdd) { lat, lon -> openEditor(null, lat, lon) } else null,
-            onWaypointSelected = { id ->
+            onWaypointSelected = if (plan.editable) { id ->
                 plan.draft.waypoints.firstOrNull { it.id == id }?.let { point ->
                     openEditor(point.id, point.latitude, point.longitude)
                 }
-            },
+            } else null,
         )
     }
 
@@ -161,6 +161,9 @@ fun MissionScreen(
                     }
                     Text("GPX carries route waypoints only. Use GeoJSON to preserve the local outline.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     plan.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    plan.libraryError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("mission-library-error"))
+                    }
                     if (plan.loadFailed) TextButton(onClick = { onAction(MissionPlanAction.RetryLoad) }) { Text("Retry loading") }
                 }
                 if (!wide) item { mapContent(Modifier.fillMaxWidth().height(280.dp)) }
@@ -260,6 +263,7 @@ fun MissionScreen(
 
     if (showEditor) WaypointDialog(
         initialLatitude, initialLongitude, editingId != null,
+        enabled = plan.editable,
         onDismiss = { showEditor = false },
         onConfirm = { latitude, longitude ->
             val id = editingId
@@ -270,6 +274,7 @@ fun MissionScreen(
     )
     if (showFenceEditor) WaypointDialog(
         initialLatitude, initialLongitude, editing = false,
+        enabled = plan.editable,
         onDismiss = { showFenceEditor = false },
         onConfirm = { latitude, longitude ->
             onAction(MissionPlanAction.AddFenceVertex(latitude, longitude))
@@ -305,6 +310,9 @@ fun MissionScreen(
                         singleLine = true
                     )
                     Text("${plan.library.size} / ${MissionLibraryEntry.MAX_ENTRIES} routes used")
+                    if (plan.library.size >= MissionLibraryEntry.MAX_ENTRIES) {
+                        Text("Library full. Delete a library route before saving another copy.")
+                    }
                 }
             },
             confirmButton = {
@@ -328,7 +336,7 @@ fun MissionScreen(
                 if (plan.library.isEmpty()) Text("No saved route copies yet. Use Save to library to keep a route separate from the active draft.")
                 plan.library.forEach { entry ->
                     Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.small) {
-                        Column(Modifier.fillMaxWidth().padding(10.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(10.dp).testTag("library-entry-${entry.id}")) {
                             Text(entry.draft.name, style = MaterialTheme.typography.titleSmall)
                             Text("${entry.draft.waypoints.size} waypoints · ${String.format(Locale.US, "%.0f", entry.draft.distanceMeters)} m · ${java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT).format(java.util.Date(entry.savedAtEpochMillis))}", style = MaterialTheme.typography.bodySmall)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -395,6 +403,7 @@ private fun java.io.Reader.readBounded(maxChars: Int): String {
 @Composable
 private fun WaypointDialog(
     initialLatitude: String, initialLongitude: String, editing: Boolean,
+    enabled: Boolean,
     onDismiss: () -> Unit, onConfirm: (Double, Double) -> Unit
 ) {
     var latitude by rememberSaveable { mutableStateOf(initialLatitude) }
@@ -414,8 +423,8 @@ private fun WaypointDialog(
                     modifier = Modifier.testTag("mission-longitude"))
             }
         },
-        confirmButton = { TextButton(onClick = { if (lat != null && lon != null) onConfirm(lat, lon) },
-            enabled = lat != null && lon != null, modifier = Modifier.testTag("mission-confirm-waypoint")) { Text(if (editing) "Apply" else "Add") } },
+        confirmButton = { TextButton(onClick = { if (enabled && lat != null && lon != null) onConfirm(lat, lon) },
+            enabled = enabled && lat != null && lon != null, modifier = Modifier.testTag("mission-confirm-waypoint")) { Text(if (editing) "Apply" else "Add") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }

@@ -22,6 +22,45 @@ class FoundationUiTest {
     @get:Rule val compose = createComposeRule()
     private val bleCharacteristic = BleNotifyCharacteristic("service", "characteristic", false)
 
+    @Test fun libraryFailureAndCapacityAreExplainedWithoutHiddenActions() {
+        compose.setContent {
+            MamaGcsTheme(ThemeMode.DARK) {
+                com.mamadrones.gcs.presentation.screens.MissionScreen(VehicleState(),
+                    com.mamadrones.gcs.presentation.mission.MissionPlanUiState(loading = false,
+                        libraryError = "That library route could not be deleted. It has been kept on this device.",
+                        library = (1..MissionLibraryEntry.MAX_ENTRIES).map {
+                            MissionLibraryEntry("route-$it", MissionDraft("Route $it"), it.toLong())
+                        }), onAction = {})
+            }
+        }
+        compose.onNodeWithTag("mission-library-error").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Save to library").performScrollTo().performClick()
+        compose.onNodeWithText("Library full. Delete a library route before saving another copy.").assertIsDisplayed()
+        compose.onNodeWithText("Save copy").assertIsNotEnabled()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithTag("mission-library-error").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun openWaypointDialogCannotConfirmWhileDraftIsSaving() {
+        val plan = mutableStateOf(com.mamadrones.gcs.presentation.mission.MissionPlanUiState(loading = false))
+        var dispatched = false
+        compose.setContent {
+            MamaGcsTheme(ThemeMode.DARK) {
+                com.mamadrones.gcs.presentation.screens.MissionScreen(VehicleState(), plan.value,
+                    onAction = { dispatched = true })
+            }
+        }
+        compose.onNodeWithTag("mission-add").performScrollTo().performClick()
+        compose.onNodeWithTag("mission-latitude").performTextReplacement("-35.36")
+        compose.onNodeWithTag("mission-longitude").performTextReplacement("149.16")
+        compose.onNodeWithTag("mission-confirm-waypoint").assertIsEnabled()
+        compose.runOnIdle { plan.value = plan.value.copy(saving = true) }
+        compose.onNodeWithTag("mission-confirm-waypoint").assertIsNotEnabled()
+        compose.runOnIdle { org.junit.Assert.assertFalse(dispatched) }
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithTag("mission-confirm-waypoint").assertDoesNotExist()
+    }
+
     @Test fun recoveryCleanupFailureAllowsSavingAnUnchangedDraft() {
         var action: com.mamadrones.gcs.presentation.mission.MissionPlanAction? = null
         compose.setContent {

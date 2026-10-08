@@ -1,6 +1,44 @@
 # Mama GCS expanded feature acceptance
 
-The final complete emulator suite passed **40 of 40 Android tests**, with **102 JVM tests passing** and **zero lint errors**. The three original failing cases now pass after the repairs below. This build is still **not accepted as fully tested**: hardware and several end-to-end checks remain. Software test success does not certify rover operation. No vehicle commands were sent.
+The map-recovery follow-up passed **five focused Android tests**, **102 JVM tests**, and lint with **zero errors and 28 existing warnings**. The expanded full run completed **46 tests: 44 passed and two failed**, in the mission map-dialog and system document-picker workflows. A post-restart rerun passed the library case but failed those same two workflows. Android's **System UI not responding** window was then confirmed as the current input-focus owner. This build is still **not accepted as fully tested**: stable-device reruns, hardware and several end-to-end checks remain. Software test success does not certify rover operation. No vehicle commands were sent.
+
+## Map loading and retry acceptance
+
+Map load failures now discard the cached style reference, so map buttons and telemetry source updates cannot continue using a failed style. Waypoint selection also requires a loaded, non-failed style. The default MapTiler provider, credentials, transport and vehicle-control behavior are unchanged.
+
+Two new `MapLoadRecoveryTest` cases use temporary local style files and synthetic vehicle positions with the real MapLibre loader. They passed on the Android 14 emulator and verify:
+
+- Missing configuration disables zoom, Center, Follow and Fit draft even when position and draft data exist.
+- Invalid styles display the generic failure panel without exposing the local URI or raw parser content. Retrying an unchanged invalid source fails again without enabling controls.
+- Repairing the same style file and pressing Retry restores controls, vehicle/track/heading layers and position-source updates.
+- A native reload failure after success clears the app's previous style state. Retry recovers, and configuration removal followed by another failure/retry cycle also recovers.
+
+These tests require neither a provider key nor internet access and remove their own temporary files. They validate native style parsing and application recovery, not DNS failures, HTTP authorization/quota errors, partial tile failures or offline-region support. Existing online-map tests separately cover successful provider loading and gestures.
+
+The baseline full run completed **44 tests: 43 passed, one failed, zero errors or skips**, in 14m 16s. `MissionMapDialogTest` timed out on its first edit tap; the captured semantics showed the mission editor without a dialog. The test now requires both a camera-idle event and the requested fitted camera position before projecting touch coordinates, and checks window input focus. This closes a test synchronization gap; it does not conclusively establish the original timeout's cause or change production gesture timing. The subsequent focused run passed **all five map tests**, including the real mission dialogs, in a successful 7m 29s Gradle run with JVM tests and lint.
+
+The next full run completed **46 tests: 44 passed, two failed, zero errors or skips**, in 19m 11s. Both new map-recovery cases passed. The mission-dialog test failed its new input-focus precondition before injecting a touch. The document-picker test timed out waiting for its first export dialog, reporting `foreground=null`; a device check also found no focused window while DocumentsUI was the focused activity. The emulator reported high load and heavy memory use. Those observations do not conclusively prove an emulator-only cause.
+
+The mission test now waits for the map window to become visible and regain input focus before every gesture, while retaining its immediate focus assertion and all dialog/storage checks. This handles the gap between Compose becoming idle and Android completing a window transition. The test emulator was restarted without wiping its data; no production picker behavior was changed.
+
+The post-restart three-case run completed in 7m 35s: **one passed, two failed**. Library operations passed. The map-dialog test timed out waiting for focus before its first tap, and the picker test timed out with `foreground=android`. A subsequent window dump identified `Application Not Responding: com.android.systemui` as the focused window; the inspected screenshot shows **System UI isn't responding**. The emulator was awake and configured not to sleep during ordinary test durations. Further UI retries were stopped; the focus wait is not claimed as a complete fix. The screenshot establishes an environment blocker at capture time, not the cause of every earlier failure. A final diagnostic-only test change reports map attachment, visibility and root-focus state on timeout. `assembleDebugAndroidTest` passed after that change in 24s; its runtime behavior remains unverified.
+
+Baseline results are retained locally in `app/build/qa-map-recovery/baseline44/results/`, focused results in `app/build/qa-map-recovery/focused5/results/`, the expanded full run in `app/build/qa-map-recovery/full46-before-focus-wait/results/`, and the failed post-restart run in `app/build/qa-map-recovery/post-reboot3/results/`. The inspected system-dialog screenshot is `app/build/qa-map-recovery/system.png`. These are ignored build artifacts, not committed evidence files.
+
+## Mission dialog and library acceptance
+
+Changes after `bafe2d0` make library errors visible in the editor, explain why Save copy is disabled when the library is full, disable map-point selection while the draft is unavailable or saving, and disable confirmation in already-open coordinate dialogs while saving. Persistence formats and vehicle controls are unchanged.
+
+Four new Android cases cover:
+
+- Real library copy/save, case-insensitive duplicate-name rejection, open/delete cancellation and confirmation, and New draft cancellation and confirmation. Opening a copy or clearing the editor does not replace the committed draft until Save draft. Deleting a library copy does not delete the active draft.
+- Native map-point taps and long-presses through the real edit/add dialogs, ViewModel and DataStore. Tests compare prefilled coordinates, preserve waypoint identity on edit, verify cancellation, and require explicit saving before committing changes.
+- A full-library fixture with Save copy disabled and an explanation, plus a library-error fixture visible without reopening the library.
+- An already-open coordinate dialog that cannot confirm while saving but still permits cancellation.
+
+The first targeted run passed three of four cases. Map runs intermittently timed out waiting for the edit dialog; a later diagnostic failure found a second UI root, consistent with an unexpected dialog. The test now checks the visible waypoint and queues tap-up immediately after tap-down; only deliberate long-presses hold the touch. This mitigates a suspected timing issue without changing app gesture handling or weakening dialog/storage assertions. **The final four-case run passed with zero failures, errors or skips**, in a successful 4m 58s Gradle run. The JVM rerun passed all 102 tests and lint completed with zero errors and 28 existing warnings before the final test-only timing adjustment. Repeat device/load acceptance remains necessary; the initial timeout cause is not conclusively established.
+
+The tests use synthetic routes on the Android 14 emulator and restore draft/recovery data; library cleanup removes only the uniquely named test copy. Full-library and deletion-error presentation use controlled UI fixtures, not a forced physical storage failure.
 
 ## Repair results
 
@@ -20,7 +58,7 @@ Validation:
 - **Final complete run: 40 of 40 Android tests passed, zero failures, errors or skips**, in a successful 14m 20s Gradle run. This includes the new recovery retry-button regression and document-picker acceptance. One intervening attempt ran zero tests because APK installation hit an emulator connection timeout; retrying after verifying the connection succeeded.
 - The JVM suite was explicitly rerun: **102 passed, zero failures, errors or skips**. Lint completed successfully with **zero errors and 28 existing warnings**. The final change after that lint run affects only picker-test click synchronization.
 
-The original full-run results below are retained as history, not the current status of the repaired cases. Earlier runs are retained in `app/build/qa-fixes-20261008/full-before-map-sync/` and `app/build/qa-fixes-20261008/full-before-picker-sync/`. The inspected landscape screenshot is `app/build/qa-fixes-20261008/fullscreen-landscape.png`. The latest complete Android results are under `app/build/outputs/androidTest-results/connected/debug/`.
+The original full-run results below are retained as history, not the current status of the repaired cases. Earlier runs are retained in `app/build/qa-fixes-20261008/full-before-map-sync/` and `app/build/qa-fixes-20261008/full-before-picker-sync/`. The inspected landscape screenshot is `app/build/qa-fixes-20261008/fullscreen-landscape.png`. Generated Android results under `app/build/outputs/androidTest-results/connected/debug/` are overwritten on each run and may represent a filtered test selection.
 
 ## Document picker acceptance
 
@@ -89,16 +127,16 @@ PASS means only the stated checks passed. PARTIAL means additional interactions 
 | Launch and fullscreen | PARTIAL | Emulator launch/recreation and orientation checks; physical phone launch. More cutouts, devices, large fonts and accessibility remain. |
 | Main and secondary navigation | PARTIAL | Automated navigation fixtures and real-activity checks; phone Operate, Systems, Motors and BLE screens. Not every phone screen interaction was repeated. |
 | Dark, Light and System themes | PASS for existing regression | Theme selection and persistence tests; not a complete contrast/accessibility audit. |
-| Geographic basemap | PASS for online loading | Physical phone screenshot plus successful emulator style load. Provider/network failure and retry acceptance remain. |
+| Geographic basemap | PASS for online loading and local style recovery | Physical phone screenshot and emulator style load; native local-style failure/retry, missing configuration, disabled controls and restored position updates pass. Real provider/network error scenarios remain. |
 | Map zoom, pan, Center and Follow | PASS on emulator | Camera assertions with changing synthetic positions; drag disables follow; missing position disables Center/Follow. |
-| Route fit, marker selection and long press | PASS at map component level | Real native gestures and callbacks. Full dialog-confirm/cancel chain from a map gesture remains to be exercised. |
+| Route fit, marker selection and long press | PARTIAL | Native component gestures and a focused real-dialog run pass. The latest full run exposed missing input focus in the real mission-dialog test; the test now waits for focus. Repeat full-suite/device/load acceptance remains. |
 | Landscape operator layout | PASS on tested emulator | Toolbar is outside the map viewport; Center, Follow and attribution are unobscured. Other screen sizes remain unverified. |
 | Position track | PASS at repository level | Stationary jitter/invalid coordinates ignored; latest 2,000 points retained; new session clears history. Rendered marker, heading and track still need visual acceptance against a known trace. |
-| Manual mission editor | PASS for tested actions | ViewModel actions, invalid edits and UI add/edit/reorder/outline/save/landscape/relaunch checks pass. Local document-provider exchange now passes; full map-dialog workflows remain separate acceptance work. |
+| Manual mission editor | PASS for tested actions | ViewModel actions, invalid edits, add/edit/reorder/outline/save/landscape/relaunch, local document exchange and targeted map-dialog workflows pass. Open coordinate dialogs cannot confirm while saving. |
 | Recovery | PARTIAL | Obsolete-copy cleanup and normal recovery pass, including failure/race cases and real storage separation. Operating-system process-kill acceptance remains. |
-| Import preview and confirmation | PASS for local Downloads provider | Real Android picker cancellation, GeoJSON preview cancellation, both formats' confirmation and explicit save pass. Invalid content/provider-error handling also has ViewModel coverage. Other providers and process death remain. |
-| GeoJSON and GPX export | PASS for local Downloads provider | Real CreateDocument cancellation and both exported files' contents pass, including GeoJSON outline retention and GPX omission. Other providers and interrupted writes remain. |
-| Local route library | PARTIAL | Actual persistence and ViewModel open/delete/copy separation tests. Full UI confirmation/full-library acceptance remains. |
+| Import preview and confirmation | PARTIAL | Earlier real picker cancellation, preview cancellation, both formats' confirmation and explicit save passed. The latest workflow retries failed before import at the export dialog; stable-device repetition remains. Invalid content/provider-error handling has ViewModel coverage. Other providers and process death remain. |
+| GeoJSON and GPX export | PARTIAL | Earlier real CreateDocument cancellation and both exported files' contents passed, including GeoJSON outline retention and GPX omission. The latest full run timed out opening its first export dialog with no foreground window. Repeat acceptance, other providers and interrupted writes remain. |
+| Local route library | PASS for targeted workflows | Real UI/storage copy, duplicate-name rejection, open/delete confirmation and cancellation, plus New draft/explicit-save separation. Capacity and error presentation pass with UI fixtures; storage-failure recovery and process interruption remain. |
 | Local route and outline review | PASS for existing geometry tests | Bounds, duplicate legs, crossings and concave outline cases. Not physical obstacle, terrain or enforced-geofence validation. |
 | UDP transport and parser integration | PARTIAL | Real loopback datagrams, fixed peer filtering, counters, cleanup and endpoint persistence pass. Current phone-to-SITL reception and network/background transitions remain unverified in this run. |
 | MAVLink decoding and source policy | PASS for supported automated cases | Eight supported message types, CRC, truncation, identity/filtering, heartbeat timeout and diagnostics. Independent captures, fuzzing and long-duration reception remain. |
@@ -115,7 +153,7 @@ PASS means only the stated checks passed. PARTIAL means additional interactions 
 
 ## Test changes and reproduction
 
-The initial run added `MissionWorkflowTest` (8), `MapAcceptanceTest` (2), `LandscapeOverlapTest` (1), and two cases to `VehicleRepositoryImplTest`. The repair follow-up adds four more mission workflow tests, extends the real-storage cleanup check, strengthens the layout assertion, corrects the orientation assertion context and synchronizes native map gestures. The next validation phase adds a Foundation UI retry-button regression and the real document-picker workflow. Production changes are limited to local recovery persistence, its retry UI and dashboard layout.
+The initial run added `MissionWorkflowTest` (8), `MapAcceptanceTest` (2), `LandscapeOverlapTest` (1), and two cases to `VehicleRepositoryImplTest`. The repair follow-up adds four more mission workflow tests, extends the real-storage cleanup check, strengthens the layout assertion, corrects the orientation assertion context and synchronizes native map gestures. Subsequent phases add a Foundation UI retry-button regression, the real document-picker workflow, `MissionLibraryUiTest`, `MissionMapDialogTest`, two Foundation UI cases and two `MapLoadRecoveryTest` cases. Production changes cover local recovery persistence, planning UI error/busy states, map failure-state guards and dashboard layout; vehicle commands remain unavailable.
 
 Use the emulator only for the instrumentation task:
 
@@ -124,12 +162,24 @@ $env:ANDROID_SERIAL='emulator-5554'
 .\gradlew.bat :app:testDebugUnitTest --rerun :app:lintDebug :app:connectedDebugAndroidTest --rerun --max-workers=2 --console=plain --continue
 ```
 
-The online map tests require the existing authorized MapTiler configuration and network access. Keys are not included in this report. Test reports are under `app/build/reports/`; the complete Android run is also retained under `app/build/qa-full-20261008/`. The phone basemap screenshot is retained locally at `app/build/qa-manual/phone-operate.png`. These generated artifacts are not committed.
+To repeat the four mission-dialog/library cases, keep the emulator serial set and run:
+
+```powershell
+.\gradlew.bat :app:connectedDebugAndroidTest --rerun '-Pandroid.testInstrumentationRunnerArguments.class=com.mamadrones.gcs.MissionLibraryUiTest,com.mamadrones.gcs.MissionMapDialogTest,com.mamadrones.gcs.FoundationUiTest#libraryFailureAndCapacityAreExplainedWithoutHiddenActions,com.mamadrones.gcs.FoundationUiTest#openWaypointDialogCannotConfirmWhileDraftIsSaving' --max-workers=2 --console=plain
+```
+
+To repeat only local map failure/retry acceptance without provider access:
+
+```powershell
+.\gradlew.bat :app:connectedDebugAndroidTest --rerun '-Pandroid.testInstrumentationRunnerArguments.class=com.mamadrones.gcs.MapLoadRecoveryTest' --max-workers=2 --console=plain
+```
+
+The online map tests require the existing authorized MapTiler configuration and network access. Keys are not included in this report. Test reports are under `app/build/reports/`; earlier complete Android results are also retained under `app/build/qa-full-20261008/`. The phone basemap screenshot is retained locally at `app/build/qa-manual/phone-operate.png`. These generated artifacts are not committed.
 
 ## Remaining acceptance work
 
-1. Repeat acceptance across additional screen sizes and Android versions. The final complete Android 14 emulator suite now passes all 40 tests; one passing run is not a long-duration reliability measurement.
-2. Extend the passing local document-picker workflow to other providers, picker rotation and interrupted operations. Exercise full map-dialog and library UI workflows.
-3. Test map failure/retry, phone UDP/SITL reception, background closure, disconnect/reconnect and stale-data handling end to end.
+1. Resolve the emulator System UI ANR or use a stable disposable test device. Rerun the affected library/map-dialog/picker sequence, then the complete 46-test suite and additional screen sizes/Android versions. The post-restart rerun still failed; the latest full run is not green.
+2. Extend the passing local document-picker workflow to other providers, picker rotation and interrupted operations. Extend map/library acceptance to process interruption and actual storage failures.
+3. Extend local style-recovery acceptance to real map-provider/network errors. Test phone UDP/SITL reception, background closure, disconnect/reconnect and stale-data handling end to end.
 4. Have the hardware team identify the Cube Orange BLE radio among the discovered devices. Record its identity, service/notification UUIDs, telemetry-port wiring/baud rate and firmware version. Then test read-only GATT reception in a secured setup.
 5. Complete the device/accessibility/soak checklist in the previous report. Do not treat disabled or unfinished controls as tested vehicle functionality.
