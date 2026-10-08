@@ -9,6 +9,38 @@ import org.junit.Test
 
 class VehicleRepositoryImplTest {
     @Test
+    fun `track ignores stationary jitter and invalid coordinates then resets with session`() {
+        val repository = VehicleRepositoryImpl()
+        fun position(latitudeE7: Int, time: Long) = repository.onGlobalPositionInt(
+            MavlinkMessage.GlobalPositionInt(1, 1, latitudeE7, 1491652374, 584000, 0, 0, 0, 0), time)
+        position(-353632621, 1)
+        position(-353632621, 2)
+        position(-353632620, 3)
+        position(Int.MAX_VALUE, 4)
+        assertEquals(1, repository.vehicleState.value.positionTrack.size)
+        position(-353632500, 5)
+        assertEquals(2, repository.vehicleState.value.positionTrack.size)
+        repository.onSessionStopped()
+        assertEquals(2, repository.vehicleState.value.positionTrack.size)
+        repository.onSessionStarting()
+        assertTrue(repository.vehicleState.value.positionTrack.isEmpty())
+        assertNull(repository.vehicleState.value.position.latitude)
+    }
+
+    @Test
+    fun `track retains only the latest two thousand positions`() {
+        val repository = VehicleRepositoryImpl()
+        repeat(2010) { index ->
+            repository.onGlobalPositionInt(MavlinkMessage.GlobalPositionInt(
+                1, 1, -353632621 + index * 100, 1491652374, 584000, 0, 0, 0, 0), index.toLong())
+        }
+        val track = repository.vehicleState.value.positionTrack
+        assertEquals(2000, track.size)
+        assertEquals(10L, track.first().recordedAtEpochMillis)
+        assertEquals(2009L, track.last().recordedAtEpochMillis)
+    }
+
+    @Test
     fun `heartbeat exposes identity armed state and Rover mode`() {
         val repository = VehicleRepositoryImpl()
         repository.onHeartbeat(
