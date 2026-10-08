@@ -55,9 +55,13 @@ Keep the existing toolchain: AGP 8.13.2, Gradle 8.13, Kotlin 2.1.0, compile/targ
 .\gradlew.bat :app:assembleDebug
 .\gradlew.bat :app:testDebugUnitTest :app:lintDebug
 .\gradlew.bat :app:assembleDebugAndroidTest
-# Requires a running Android 26+ emulator or device:
-.\gradlew.bat :app:connectedDebugAndroidTest
+# Full acceptance suite: use a disposable emulator with English system UI.
+# Verify its serial with adb devices; do not target a phone containing user data.
+$env:ANDROID_SERIAL='emulator-5554'
+.\gradlew.bat :app:connectedDebugAndroidTest --max-workers=2 --console=plain
 ```
+
+The document-picker test uses Android's local Downloads provider for temporary GeoJSON/GPX files and removes only its uniquely named files. The tested emulator is Android 14 / API 34. Gradle connected tests may reinstall/uninstall the app; do not use this task to test an operator's populated phone. See the [expanded acceptance report](docs/test-report-2026-10-08.md) for verified coverage and remaining hardware checks.
 
 Open the project in Android Studio, sync, select a device and run `app`. The online map requires a MapTiler key in ignored `local.properties`; see [MapLibre and MapTiler setup](docs/maplibre-maptiler.md). The remaining foundation can open without a vehicle or login. Systems → Settings selects Dark, Light or System; the choice survives process restart. The top connection shortcut opens the same settings screen. Units are currently metric only.
 
