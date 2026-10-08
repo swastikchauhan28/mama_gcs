@@ -21,6 +21,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** Online map acceptance with synthetic positions. Never opens a vehicle transport. */
 class MapAcceptanceTest {
@@ -49,6 +50,18 @@ class MapAcceptanceTest {
         kotlin.math.abs(cameraLatitude(map) - latitude) < 0.00001
     }
 
+    private fun afterCameraIdle(map: MapLibreMap, action: () -> Unit) {
+        val idle = AtomicBoolean(false)
+        val listener = MapLibreMap.OnCameraIdleListener { idle.set(true) }
+        compose.runOnIdle { map.addOnCameraIdleListener(listener) }
+        try {
+            action()
+            compose.waitUntil(10_000) { idle.get() }
+        } finally {
+            compose.runOnIdle { map.removeOnCameraIdleListener(listener) }
+        }
+    }
+
     // Native MapView needs real device-time touch events; Compose's virtual event clock
     // can advance ahead of the native gesture recognizer.
     private fun nativeGesture(start: Offset, end: Offset = start, duration: Long = 100) {
@@ -60,7 +73,9 @@ class MapAcceptanceTest {
             val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action,
                 point.x + location[0], point.y + location[1], 0)
             event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
-            check(instrumentation.uiAutomation.injectInputEvent(event, true))
+            // Queue DOWN without waiting for a busy UI thread: waiting here can stretch a
+            // short tap into a long press before UP is even created.
+            check(instrumentation.uiAutomation.injectInputEvent(event, action != MotionEvent.ACTION_DOWN))
             event.recycle()
         }
         event(MotionEvent.ACTION_DOWN, start)
@@ -91,13 +106,12 @@ class MapAcceptanceTest {
         compose.onNodeWithText("Following").assertIsDisplayed()
         var zoom = 0.0
         compose.runOnIdle { zoom = map.cameraPosition.zoom }
-        compose.onNodeWithContentDescription("Zoom in").performClick()
+        afterCameraIdle(map) { compose.onNodeWithContentDescription("Zoom in").performClick() }
         compose.waitUntil(10_000) {
             var changed = false
             compose.runOnIdle { changed = map.cameraPosition.zoom > zoom + 0.5 }
             changed
         }
-        SystemClock.sleep(500) // Allow the native zoom animation to finish before dragging.
         val size = mapSize()
         nativeGesture(Offset(size.x * 0.3f, size.y * 0.4f), Offset(size.x * 0.65f, size.y * 0.4f), 600)
         compose.onNodeWithText("Follow", substring = false).assertIsDisplayed()
@@ -123,13 +137,12 @@ class MapAcceptanceTest {
         } }
         val map = loadedMap()
         near(map, points.first().latitude)
-        compose.onNodeWithTag("mission-fit").assertIsEnabled().performClick()
+        afterCameraIdle(map) { compose.onNodeWithTag("mission-fit").assertIsEnabled().performClick() }
         compose.waitUntil(10_000) {
             var fitted = false
             compose.runOnIdle { fitted = map.cameraPosition.target?.latitude?.let { it < points.first().latitude && it > points.last().latitude } == true }
             fitted
         }
-        SystemClock.sleep(500) // Project the waypoint after the native fit animation completes.
         var offset = Offset.Zero
         compose.runOnIdle {
             val location = map.projection.toScreenLocation(org.maplibre.android.geometry.LatLng(points.first().latitude, points.first().longitude))

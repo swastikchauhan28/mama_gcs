@@ -55,8 +55,14 @@ class MissionPlanningTest {
                 capture("mission-portrait")
                 scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
                 compose.waitUntil(10_000) {
-                    InstrumentationRegistry.getInstrumentation().targetContext.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+                    // Rotation is window-specific; the application/test context can retain its
+                    // original configuration. Check the activity that actually renders the editor.
+                    var landscape = false
+                    scenario.onActivity { landscape = it.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE }
+                    landscape
                 }
+                val rotatedRoot = compose.onRoot().fetchSemanticsNode().boundsInRoot
+                assertTrue("Editor must actually render in landscape", rotatedRoot.width > rotatedRoot.height)
                 scrollToTag("mission-add").assertIsEnabled()
                 compose.onNodeWithTag("mission-map").assertIsDisplayed()
                 capture("mission-landscape")
