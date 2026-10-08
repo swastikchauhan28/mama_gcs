@@ -103,9 +103,9 @@ fun VehicleMap(
     planningMode: Boolean = false,
     onWaypointRequested: ((Double, Double) -> Unit)? = null,
     onWaypointSelected: ((String) -> Unit)? = null,
+    styleUrl: String? = MapStyleConfig.mapTilerStyleUrlOrNull,
 ) {
     val mapView = rememberMapViewWithLifecycle()
-    val styleUrl = MapStyleConfig.mapTilerStyleUrlOrNull
 
     var map by remember(mapView) { mutableStateOf<MapLibreMap?>(null) }
     var style by remember(mapView) { mutableStateOf<Style?>(null) }
@@ -133,7 +133,8 @@ fun VehicleMap(
         MapLibreMap.OnMapClickListener { point ->
             val callback = currentWaypointSelection
             val loadedMap = map
-            if (callback == null || loadedMap == null || !currentPlanningMode || currentDraftWaypoints.isEmpty()) {
+            if (callback == null || loadedMap == null || style == null || loadFailed ||
+                !currentPlanningMode || currentDraftWaypoints.isEmpty()) {
                 false
             } else {
                 val tap = loadedMap.projection.toScreenLocation(point)
@@ -168,7 +169,13 @@ fun VehicleMap(
         var attachedMap: MapLibreMap? = null
         loadFailed = false
         // Never display the raw SDK error: it may contain a style URL and client key.
-        val failureListener = MapView.OnDidFailLoadingMapListener { if (!disposed) loadFailed = true }
+        val failureListener = MapView.OnDidFailLoadingMapListener {
+            if (!disposed) {
+                loadFailed = true
+                // A failed style must not leave controls or telemetry updates using an old style.
+                style = null
+            }
+        }
         mapView.addOnDidFailLoadingMapListener(failureListener)
 
         if (styleUrl != null) {
