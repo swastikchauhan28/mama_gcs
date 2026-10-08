@@ -10,6 +10,8 @@ import com.mamadrones.gcs.data.local.datastore.LocalMissionDraftRepository
 import com.mamadrones.gcs.data.local.datastore.MissionDraftRouteCodec
 import com.mamadrones.gcs.domain.repository.MissionDraftRepository
 import com.mamadrones.gcs.domain.repository.MissionDraftFileCodec
+import com.mamadrones.gcs.domain.repository.AccessRepository
+import com.mamadrones.gcs.data.local.datastore.LocalAccessRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -20,6 +22,9 @@ import dagger.hilt.components.SingletonComponent
 abstract class RepositoryModule {
     @Binds
     abstract fun bindSettingsRepository(implementation: LocalSettingsRepository): SettingsRepository
+
+    @Binds
+    abstract fun bindAccessRepository(implementation: LocalAccessRepository): AccessRepository
 
     @Binds
     abstract fun bindMissionDraftRepository(implementation: LocalMissionDraftRepository): MissionDraftRepository

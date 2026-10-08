@@ -75,12 +75,13 @@ fun SettingsScreen(
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("UDP endpoint", style = MaterialTheme.typography.titleMedium)
             Text("Configure a known peer. Tapping Open UDP socket starts the receive session; vehicle liveness appears only after a valid autopilot HEARTBEAT.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!connection.canConfigureEndpoint) Notice("ADMIN SIGN-IN REQUIRED", "Sign in from Systems → Admin with an administrator account before changing or clearing the saved telemetry peer. A saved endpoint can still be opened for read-only monitoring.")
             OutlinedTextField(
                 value = connection.remoteHostDraft,
                 onValueChange = onRemoteHostChanged,
                 label = { Text("Remote host") },
                 singleLine = true,
-                enabled = !connection.saving,
+                enabled = connection.canConfigureEndpoint && !connection.saving,
                 modifier = Modifier.fillMaxWidth().testTag("udp-remote-host")
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -90,7 +91,7 @@ fun SettingsScreen(
                     label = { Text("Remote port") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    enabled = !connection.saving,
+                    enabled = connection.canConfigureEndpoint && !connection.saving,
                     modifier = Modifier.weight(1f).testTag("udp-remote-port")
                 )
                 OutlinedTextField(
@@ -99,14 +100,14 @@ fun SettingsScreen(
                     label = { Text("Local port") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    enabled = !connection.saving,
+                    enabled = connection.canConfigureEndpoint && !connection.saving,
                     modifier = Modifier.weight(1f).testTag("udp-local-port")
                 )
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = onSaveEndpoint,
-                    enabled = !connection.saving,
+                    enabled = connection.canConfigureEndpoint && !connection.saving,
                     modifier = Modifier.heightIn(min = 48.dp).testTag("udp-save-endpoint")
                 ) { Text("Save endpoint") }
                 OutlinedButton(
@@ -120,7 +121,7 @@ fun SettingsScreen(
                     enabled = connection.session.connection.status != TransportStatus.DISCONNECTED,
                     modifier = Modifier.heightIn(min = 48.dp).testTag("udp-close-socket")
                 ) { Text("Close socket") }
-                TextButton(onClick = onClearEndpoint, enabled = connection.savedEndpoint != null && !connection.saving, modifier = Modifier.heightIn(min = 48.dp)) { Text("Clear endpoint") }
+                TextButton(onClick = onClearEndpoint, enabled = connection.canConfigureEndpoint && connection.savedEndpoint != null && !connection.saving, modifier = Modifier.heightIn(min = 48.dp)) { Text("Clear endpoint") }
             }
         }
     }

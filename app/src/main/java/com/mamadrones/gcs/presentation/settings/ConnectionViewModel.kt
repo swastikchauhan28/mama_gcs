@@ -5,12 +5,16 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.os.SystemClock
+import com.mamadrones.gcs.core.security.AuthorizationPolicy
 import com.mamadrones.gcs.data.mavlink.MavlinkSessionFactory
 import com.mamadrones.gcs.data.transport.TransportConnectionManager
 import com.mamadrones.gcs.data.transport.TelemetryLinkGate
 import com.mamadrones.gcs.data.transport.TransportSessionState
 import com.mamadrones.gcs.data.transport.UdpTransportFactory
 import com.mamadrones.gcs.domain.model.UdpEndpoint
+import com.mamadrones.gcs.domain.model.Permission
+import com.mamadrones.gcs.domain.repository.AccessRepository
 import com.mamadrones.gcs.domain.repository.SettingsRepository
 import com.mamadrones.gcs.domain.usecase.UpdateUdpEndpointUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,6 +33,7 @@ data class ConnectionUiState(
     val localPortDraft: String = UdpEndpoint.DEFAULT_PORT.toString(),
     val draftChanged: Boolean = false,
     val saving: Boolean = false,
+    val canConfigureEndpoint: Boolean = false,
     val error: String? = null,
     val session: TransportSessionState = TransportSessionState()
 )
@@ -40,7 +45,9 @@ class ConnectionViewModel @Inject constructor(
     factory: UdpTransportFactory,
     mavlinkSessionFactory: MavlinkSessionFactory,
     linkGate: TelemetryLinkGate,
+    private val accessRepository: AccessRepository,
 ) : ViewModel(), DefaultLifecycleObserver {
+    private val authorizationPolicy = AuthorizationPolicy()
     private val manager = TransportConnectionManager(factory, mavlinkSessionFactory, viewModelScope, linkGate)
     private val mutableState = MutableStateFlow(ConnectionUiState())
     val state = mutableState.asStateFlow()
@@ -66,6 +73,13 @@ class ConnectionViewModel @Inject constructor(
         viewModelScope.launch {
             manager.state.collect { session -> mutableState.update { it.copy(session = session) } }
         }
+        viewModelScope.launch {
+            accessRepository.state.collect { access ->
+                mutableState.update { it.copy(canConfigureEndpoint = authorizationPolicy.allows(
+                    access.session, Permission.CONFIGURE, SystemClock.elapsedRealtime(),
+                )) }
+            }
+        }
     }
 
     fun updateRemoteHost(value: String) = updateDraft { it.copy(remoteHostDraft = value, draftChanged = true, error = null) }
@@ -73,6 +87,7 @@ class ConnectionViewModel @Inject constructor(
     fun updateLocalPort(value: String) = updateDraft { it.copy(localPortDraft = value, draftChanged = true, error = null) }
 
     fun saveEndpoint() {
+        if (!hasConfigurationPermission()) return
         val endpoint = draftEndpoint() ?: return
         val previousEndpoint = mutableState.value.savedEndpoint
         // Keep the console responsive while the small local preference write completes. A failed
@@ -82,6 +97,17 @@ class ConnectionViewModel @Inject constructor(
         }
         viewModelScope.launch {
             try {
+                val actor = accessRepository.state.value.session
+                if (actor == null || !accessRepository.recordEndpointChangeRequest(actor, endpoint)) {
+                    mutableState.update {
+                        it.copy(savedEndpoint = previousEndpoint, error = "Endpoint change was not saved because its admin audit record could not be written.")
+                    }
+                    return@launch
+                }
+                if (!hasConfigurationPermission()) {
+                    mutableState.update { it.copy(savedEndpoint = previousEndpoint) }
+                    return@launch
+                }
                 updateUdpEndpoint(endpoint)
             } catch (_: IOException) {
                 mutableState.update {
@@ -111,8 +137,15 @@ class ConnectionViewModel @Inject constructor(
     fun closeSocket() = viewModelScope.launch { manager.disconnect() }
 
     fun clearEndpoint() = viewModelScope.launch {
-        manager.disconnect()
+        if (!hasConfigurationPermission()) return@launch
         try {
+            val actor = accessRepository.state.value.session
+            if (actor == null || !accessRepository.recordEndpointChangeRequest(actor, null)) {
+                mutableState.update { it.copy(error = "Endpoint was not cleared because its admin audit record could not be written.") }
+                return@launch
+            }
+            if (!hasConfigurationPermission()) return@launch
+            manager.disconnect()
             updateUdpEndpoint(null)
             mutableState.update {
                 it.copy(
@@ -156,5 +189,15 @@ class ConnectionViewModel @Inject constructor(
 
     private fun updateDraft(transform: (ConnectionUiState) -> ConnectionUiState) {
         mutableState.update(transform)
+    }
+
+    private fun hasConfigurationPermission(): Boolean {
+        val allowed = authorizationPolicy.allows(
+            accessRepository.state.value.session,
+            Permission.CONFIGURE,
+            SystemClock.elapsedRealtime(),
+        )
+        if (!allowed) mutableState.update { it.copy(error = "Sign in with an administrator account to change the UDP peer.") }
+        return allowed
     }
 }

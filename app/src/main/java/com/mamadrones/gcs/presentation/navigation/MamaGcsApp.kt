@@ -12,6 +12,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.mamadrones.gcs.domain.model.ThemeMode
 import com.mamadrones.gcs.domain.model.VehicleConnectionState
 import com.mamadrones.gcs.domain.model.VehicleState
@@ -22,6 +24,7 @@ import com.mamadrones.gcs.presentation.settings.ConnectionUiState
 import com.mamadrones.gcs.presentation.mission.MissionPlanUiState
 import com.mamadrones.gcs.presentation.mission.MissionPlanAction
 import com.mamadrones.gcs.presentation.screens.VescDiscoveryUiState
+import com.mamadrones.gcs.presentation.security.AccessViewModel
 import com.mamadrones.gcs.data.transport.bluetooth.BleNotifyCharacteristic
 
 enum class AppDestination(val route: String, val label: String, val icon: ConsoleIcon) {
@@ -184,7 +187,19 @@ fun MamaGcsApp(
                         composable("spray") { SprayScreen(vehicle) }
                         composable("hydraulic") { HydraulicScreen(vehicle) }
                         composable("diagnostics") { DiagnosticsScreen(vehicle, connection = connection) }
-                        composable("admin") { AdminScreen() }
+                        composable("admin") {
+                            val accessViewModel: AccessViewModel = hiltViewModel()
+                            val access = accessViewModel.state.collectAsStateWithLifecycle().value
+                            AdminScreen(
+                                access = access,
+                                onInitializeAdmin = accessViewModel::initializeAdministrator,
+                                onSignIn = accessViewModel::signIn,
+                                onSignOut = accessViewModel::signOut,
+                                onCreateAccount = accessViewModel::createAccount,
+                                onAccountEnabled = accessViewModel::setAccountEnabled,
+                                onClearMessage = accessViewModel::clearMessage,
+                            )
+                        }
                         composable("settings") {
                             SettingsScreen(
                                 state = settings, connection = connection,
