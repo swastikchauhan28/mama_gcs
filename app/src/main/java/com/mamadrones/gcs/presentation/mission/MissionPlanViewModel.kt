@@ -28,6 +28,7 @@ data class MissionPlanUiState(
     val dirty: Boolean = false,
     val recovered: Boolean = false,
     val recoverySaved: Boolean = false,
+    val recoveryCleanupFailed: Boolean = false,
     val pendingImport: MissionDraft? = null,
     val exportContent: String? = null,
     val exportFileName: String? = null,
@@ -122,7 +123,7 @@ class MissionPlanViewModel @Inject constructor(
                 pendingImport = null,
                 error = null
             )
-            if (opened != savedDraft) scheduleRecovery(opened)
+            scheduleRecovery(opened)
             return
         }
         if (action is MissionPlanAction.DeleteLibraryEntry) {
@@ -139,7 +140,7 @@ class MissionPlanViewModel @Inject constructor(
                 recoverySaved = false,
                 error = null
             )
-            if (imported != savedDraft) scheduleRecovery(imported) else recoveryJob?.cancel()
+            scheduleRecovery(imported)
             return
         }
         try {
@@ -166,7 +167,7 @@ class MissionPlanViewModel @Inject constructor(
                 recoverySaved = false,
                 error = null
             )
-            if (next != savedDraft) scheduleRecovery(next) else recoveryJob?.cancel()
+            scheduleRecovery(next)
         } catch (_: IllegalArgumentException) {
             mutableState.value = current.copy(error = "Invalid waypoint, name or draft size. The route was not changed.")
         }
@@ -263,7 +264,8 @@ class MissionPlanViewModel @Inject constructor(
             try {
                 persistenceMutex.withLock { repository.save(snapshot) }
                 savedDraft = snapshot
-                mutableState.value = state.value.copy(saving = false, dirty = false, recovered = false, recoverySaved = false)
+                mutableState.value = state.value.copy(saving = false, dirty = false, recovered = false,
+                    recoverySaved = false, recoveryCleanupFailed = false)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
@@ -332,20 +334,31 @@ class MissionPlanViewModel @Inject constructor(
 
     private fun scheduleRecovery(draft: MissionDraft) {
         recoveryJob?.cancel()
+        val matchesSaved = draft == savedDraft
         recoveryJob = viewModelScope.launch {
-            delay(350)
+            // Debounce edits, but discard obsolete recovery immediately when an edit is undone.
+            // Use the same mutex as save so an older in-flight write cannot follow this cleanup.
+            if (!matchesSaved) delay(350)
             try {
-                persistenceMutex.withLock { repository.saveRecovery(draft) }
+                persistenceMutex.withLock {
+                    if (matchesSaved) repository.clearRecovery() else repository.saveRecovery(draft)
+                }
+                if (state.value.draft == draft) {
+                    mutableState.value = state.value.copy(recoveryCleanupFailed = false)
+                }
                 if (state.value.draft == draft && state.value.dirty) {
                     mutableState.value = state.value.copy(recoverySaved = true)
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                if (state.value.draft == draft && state.value.dirty) {
+                if (state.value.draft == draft) {
                     mutableState.value = state.value.copy(
                         recoverySaved = false,
-                        error = "Automatic recovery could not be saved. Use Save draft before leaving this screen."
+                        recoveryCleanupFailed = matchesSaved,
+                        error = if (matchesSaved)
+                            "The old recovery copy could not be cleared. Use Save draft before leaving or a discarded edit may return."
+                        else "Automatic recovery could not be saved. Use Save draft before leaving this screen."
                     )
                 }
             }

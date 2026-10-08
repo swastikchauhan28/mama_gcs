@@ -178,6 +178,69 @@ class MissionWorkflowTest {
         assertFalse(reopened.state.value.recovered)
     }
 
+    @Test fun newImportAndLibraryRestoreClearObsoleteRecovery() {
+        listOf("new", "import", "library").forEach { source ->
+            val storage = MemoryStore().apply {
+                entries = listOf(MissionLibraryEntry("saved-copy", saved, 1))
+            }
+            val vm = model(storage)
+            vm.act(MissionPlanAction.Rename("Discard this"))
+            await { vm.state.value.recoverySaved }
+            when (source) {
+                "new" -> vm.act(MissionPlanAction.New)
+                "import" -> {
+                    vm.act(MissionPlanAction.ImportContent(codec.encode(storage.saved, MissionDraftFileFormat.GEOJSON)))
+                    vm.act(MissionPlanAction.ConfirmImport)
+                }
+                else -> vm.act(MissionPlanAction.OpenLibraryEntry("saved-copy"))
+            }
+            await { storage.recovery == null }
+            assertFalse(vm.state.value.dirty)
+            assertEquals(storage.saved, model(storage).state.value.draft)
+        }
+    }
+
+    @Test fun failedRecoveryCleanupWarnsAndExplicitSaveRetries() {
+        val storage = MemoryStore()
+        val vm = model(storage)
+        vm.act(MissionPlanAction.Rename("Discard this"))
+        await { vm.state.value.recoverySaved }
+        storage.failClear = true
+        vm.act(MissionPlanAction.Rename(storage.saved.name))
+        await { vm.state.value.error != null }
+        assertTrue(vm.state.value.error!!.contains("could not be cleared"))
+        assertTrue(vm.state.value.recoveryCleanupFailed)
+        assertNotNull(storage.recovery)
+        vm.act(MissionPlanAction.Save)
+        await { !vm.state.value.saving }
+        assertNull(storage.recovery)
+        assertNull(vm.state.value.error)
+        assertFalse(vm.state.value.recoveryCleanupFailed)
+    }
+
+    @Test fun undoWaitsForInFlightRecoveryBeforeClearingIt() {
+        val storage = MemoryStore().apply { recoveryWriteDelay = 200 }
+        val vm = model(storage)
+        vm.act(MissionPlanAction.Rename("Slow write"))
+        await { storage.recoveryWriteStarted }
+        vm.act(MissionPlanAction.Rename(storage.saved.name))
+        await { storage.clearCalls > 0 }
+        assertNull(storage.recovery)
+        assertEquals(storage.saved, model(storage).state.value.draft)
+    }
+
+    @Test fun newEditAfterUndoStillGetsItsOwnRecoveryCopy() {
+        val storage = MemoryStore()
+        val vm = model(storage)
+        vm.act(MissionPlanAction.Rename("First edit"))
+        await { vm.state.value.recoverySaved }
+        vm.act(MissionPlanAction.Rename(storage.saved.name))
+        vm.act(MissionPlanAction.Rename("Latest edit"))
+        await { vm.state.value.recoverySaved }
+        assertEquals("Latest edit", storage.recovery?.name)
+        assertEquals("Latest edit", model(storage).state.value.draft.name)
+    }
+
     private class MemoryStore : MissionDraftRepository {
         var saved = MissionDraft()
         @Volatile var recovery: MissionDraft? = null
@@ -186,10 +249,21 @@ class MissionWorkflowTest {
         var failSave = false
         var failRecoveryLoad = false
         var failLibrary = false
+        var failClear = false
+        var recoveryWriteDelay = 0L
+        @Volatile var recoveryWriteStarted = false
+        @Volatile var clearCalls = 0
         override suspend fun load(): MissionDraft { check(!failLoad); return saved }
         override suspend fun save(draft: MissionDraft) { check(!failSave); saved = draft; recovery = null }
         override suspend fun loadRecovery(): MissionDraft? { check(!failRecoveryLoad); return recovery }
-        override suspend fun saveRecovery(draft: MissionDraft) { recovery = draft }
+        override suspend fun saveRecovery(draft: MissionDraft) {
+            recoveryWriteStarted = true
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                delay(recoveryWriteDelay)
+                recovery = draft
+            }
+        }
+        override suspend fun clearRecovery() { check(!failClear); recovery = null; clearCalls++ }
         override suspend fun loadLibrary(): List<MissionLibraryEntry> { check(!failLibrary); return entries }
         override suspend fun saveToLibrary(draft: MissionDraft): MissionLibraryEntry =
             MissionLibraryEntry("copy-${entries.size}", draft, 1).also { entries = entries + it }

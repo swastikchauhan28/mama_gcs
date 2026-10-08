@@ -22,6 +22,22 @@ class FoundationUiTest {
     @get:Rule val compose = createComposeRule()
     private val bleCharacteristic = BleNotifyCharacteristic("service", "characteristic", false)
 
+    @Test fun recoveryCleanupFailureAllowsSavingAnUnchangedDraft() {
+        var action: com.mamadrones.gcs.presentation.mission.MissionPlanAction? = null
+        compose.setContent {
+            MamaGcsTheme(ThemeMode.DARK) {
+                com.mamadrones.gcs.presentation.screens.MissionScreen(
+                    VehicleState(),
+                    com.mamadrones.gcs.presentation.mission.MissionPlanUiState(
+                        loading = false, dirty = false, recoveryCleanupFailed = true),
+                    onAction = { action = it })
+            }
+        }
+        compose.onNodeWithTag("mission-save").performScrollTo().assertIsEnabled().performClick()
+        compose.runOnIdle { org.junit.Assert.assertEquals(
+            com.mamadrones.gcs.presentation.mission.MissionPlanAction.Save, action) }
+    }
+
     @Test fun connectedBleCanStartReceiveThroughAppNavigation() {
         var selected: BleNotifyCharacteristic? = null
         compose.setContent {

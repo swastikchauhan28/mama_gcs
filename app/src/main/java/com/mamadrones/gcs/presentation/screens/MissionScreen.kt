@@ -147,7 +147,8 @@ fun MissionScreen(
                         else -> "No unsaved changes"
                     }, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("mission-save-status"))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Button(onClick = { onAction(MissionPlanAction.Save) }, enabled = plan.editable && plan.dirty,
+                        Button(onClick = { onAction(MissionPlanAction.Save) },
+                            enabled = plan.editable && (plan.dirty || plan.recoveryCleanupFailed),
                             modifier = Modifier.testTag("mission-save")) { Text("Save draft") }
                         TextButton(onClick = { showRename = true }, enabled = plan.editable) { Text("Rename") }
                         TextButton(onClick = { showSaveToLibrary = true }, enabled = plan.editable) { Text("Save to library") }

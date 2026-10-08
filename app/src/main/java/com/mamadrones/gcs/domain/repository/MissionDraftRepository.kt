@@ -9,6 +9,8 @@ interface MissionDraftRepository {
     suspend fun save(draft: MissionDraft)
     suspend fun loadRecovery(): MissionDraft?
     suspend fun saveRecovery(draft: MissionDraft)
+    /** Discard only the working copy; leave the committed draft and library unchanged. */
+    suspend fun clearRecovery()
     suspend fun loadLibrary(): List<MissionLibraryEntry>
     suspend fun saveToLibrary(draft: MissionDraft): MissionLibraryEntry
     suspend fun deleteFromLibrary(id: String)

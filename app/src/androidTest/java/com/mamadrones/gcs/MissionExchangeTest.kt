@@ -95,6 +95,13 @@ class MissionExchangeTest {
             assertEquals(committed, repository.load())
             assertEquals(working, repository.loadRecovery())
 
+            val libraryBefore = repository.loadLibrary()
+            repository.clearRecovery()
+            assertNull(repository.loadRecovery())
+            assertEquals(committed, repository.load())
+            assertEquals(libraryBefore, repository.loadLibrary())
+            repository.saveRecovery(working)
+
             repository.save(working)
             assertEquals(working, repository.load())
             assertNull(repository.loadRecovery())

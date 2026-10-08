@@ -45,6 +45,10 @@ class LocalMissionDraftRepository @Inject constructor(
         context.missionDraftStore.edit { it[recoveryKey] = encoded }
     }
 
+    override suspend fun clearRecovery() {
+        context.missionDraftStore.edit { it.remove(recoveryKey) }
+    }
+
     override suspend fun loadLibrary(): List<MissionLibraryEntry> = context.missionDraftStore.data.first()[libraryKey]
         ?.let(MissionLibraryCodec::decode) ?: emptyList()
 
