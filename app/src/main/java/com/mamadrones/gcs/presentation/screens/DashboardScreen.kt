@@ -143,41 +143,44 @@ fun MapWorkspace(
     val displayed = state.forDisplay()
     val position = displayed.position
     Surface(modifier.testTag("operation-map"), shape = MaterialTheme.shapes.medium, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-        Box {
-            VehicleMap(displayed, Modifier.fillMaxSize())
-            // Reserve the right edge for map controls; provider attribution stays at the bottom.
-            Surface(
-                modifier = Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 8.dp, end = 84.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-                shape = MaterialTheme.shapes.small,
-            ) {
-                Column(Modifier.padding(8.dp)) {
-                    Text(
-                        when (displayed.connectionStatus) {
-                            VehicleConnectionState.CONNECTED -> "ROVER · LIVE TELEMETRY"
-                            VehicleConnectionState.CONNECTING -> "ROVER · CONNECTING"
-                            VehicleConnectionState.DEGRADED -> "ROVER · LINK DEGRADED"
-                            VehicleConnectionState.ERROR -> "ROVER · LINK ERROR"
-                            VehicleConnectionState.DISCONNECTED -> "ROVER · WAITING FOR LINK"
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        if (position.latitude != null && position.longitude != null)
-                            String.format(Locale.US, "%.7f, %.7f", position.latitude, position.longitude)
-                        else "Position unavailable",
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                    Text(
-                        "${displayed.mode ?: "MODE UNKNOWN"} · ${displayed.armed?.let { if (it) "ARMED" else "DISARMED" } ?: "ARM STATE UNKNOWN"}",
-                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+        Column {
+            Box(Modifier.weight(1f).fillMaxWidth().testTag("operation-map-viewport")) {
+                VehicleMap(displayed, Modifier.fillMaxSize())
+                // Reserve the right edge for map controls; provider attribution stays at the bottom.
+                Surface(
+                    modifier = Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 8.dp, end = 84.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                    shape = MaterialTheme.shapes.small,
+                ) {
+                    Column(Modifier.padding(8.dp)) {
+                        Text(
+                            when (displayed.connectionStatus) {
+                                VehicleConnectionState.CONNECTED -> "ROVER · LIVE TELEMETRY"
+                                VehicleConnectionState.CONNECTING -> "ROVER · CONNECTING"
+                                VehicleConnectionState.DEGRADED -> "ROVER · LINK DEGRADED"
+                                VehicleConnectionState.ERROR -> "ROVER · LINK ERROR"
+                                VehicleConnectionState.DISCONNECTED -> "ROVER · WAITING FOR LINK"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            if (position.latitude != null && position.longitude != null)
+                                String.format(Locale.US, "%.7f, %.7f", position.latitude, position.longitude)
+                            else "Position unavailable",
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                        Text(
+                            "${displayed.mode ?: "MODE UNKNOWN"} · ${displayed.armed?.let { if (it) "ARMED" else "DISARMED" } ?: "ARM STATE UNKNOWN"}",
+                            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
+            // Keep actions in their own measured row, never over map controls or attribution.
             if (showOperatorTools) {
                 Surface(
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(start = 8.dp, end = 64.dp, bottom = 8.dp),
+                    modifier = Modifier.fillMaxWidth().testTag("operation-toolbar"),
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
                     shape = MaterialTheme.shapes.medium,
                     tonalElevation = 4.dp,
