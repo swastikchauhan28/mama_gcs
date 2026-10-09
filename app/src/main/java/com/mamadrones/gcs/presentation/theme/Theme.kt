@@ -14,12 +14,12 @@ import com.mamadrones.gcs.domain.model.ThemeMode
 
 object MamaColors {
     val Dark = darkColorScheme(
-        primary = Color(0xFF65B4FF), onPrimary = Color(0xFF00213B),
-        primaryContainer = Color(0xFF203C56), onPrimaryContainer = Color(0xFFD4E9FF),
+        primary = Color(0xFFF1BD69), onPrimary = Color(0xFF382400),
+        primaryContainer = Color(0xFF61451A), onPrimaryContainer = Color(0xFFFFDEAC),
         secondary = Color(0xFF84DDB4), secondaryContainer = Color(0xFF164432),
         background = Color(0xFF0C1219), onBackground = Color(0xFFE5EDF6),
         surface = Color(0xFF151E28), onSurface = Color(0xFFE5EDF6),
-        surfaceTint = Color(0xFF65B4FF), surfaceContainer = Color(0xFF192330),
+        surfaceTint = Color(0xFFF1BD69), surfaceContainer = Color(0xFF192330),
         surfaceContainerLow = Color(0xFF151E28), surfaceContainerHigh = Color(0xFF202C39),
         surfaceContainerHighest = Color(0xFF273546), surfaceContainerLowest = Color(0xFF080E15),
         surfaceVariant = Color(0xFF202C39), onSurfaceVariant = Color(0xFFADBCCD),
@@ -27,15 +27,15 @@ object MamaColors {
         error = Color(0xFFFFB4B4), errorContainer = Color(0xFF53282D), onErrorContainer = Color(0xFFFFDBDC)
     )
     val Light = lightColorScheme(
-        primary = Color(0xFF075D9F), onPrimary = Color.White,
-        primaryContainer = Color(0xFFD8EAFF), onPrimaryContainer = Color(0xFF073454),
+        primary = Color(0xFF865B1D), onPrimary = Color.White,
+        primaryContainer = Color(0xFFFFDEAC), onPrimaryContainer = Color(0xFF382400),
         secondary = Color(0xFF176746), secondaryContainer = Color(0xFFBAEED7),
-        background = Color(0xFFEFF3F7), onBackground = Color(0xFF152331),
+        background = Color(0xFFF4F4F2), onBackground = Color(0xFF202420),
         surface = Color(0xFFFFFFFF), onSurface = Color(0xFF152331),
-        surfaceTint = Color(0xFF075D9F), surfaceContainer = Color(0xFFE7EDF4),
-        surfaceContainerLow = Color(0xFFF5F8FC), surfaceContainerHigh = Color(0xFFE0E8F1),
-        surfaceContainerHighest = Color(0xFFD7E1EC), surfaceContainerLowest = Color.White,
-        surfaceVariant = Color(0xFFE0E8F1), onSurfaceVariant = Color(0xFF41566A),
+        surfaceTint = Color(0xFF865B1D), surfaceContainer = Color(0xFFECEDE9),
+        surfaceContainerLow = Color(0xFFF7F7F4), surfaceContainerHigh = Color(0xFFE3E5DF),
+        surfaceContainerHighest = Color(0xFFDADDD5), surfaceContainerLowest = Color.White,
+        surfaceVariant = Color(0xFFE3E5DF), onSurfaceVariant = Color(0xFF4F554C),
         outline = Color(0xFF65798D), outlineVariant = Color(0xFFBCCBD8),
         error = Color(0xFFA32132), errorContainer = Color(0xFFFFDADD), onErrorContainer = Color(0xFF701728)
     )
@@ -48,7 +48,7 @@ object MamaSpacing {
     val touchTarget = 48.dp
 }
 val MamaShapes = Shapes(
-    small = RoundedCornerShape(6.dp), medium = RoundedCornerShape(10.dp), large = RoundedCornerShape(16.dp)
+    small = RoundedCornerShape(4.dp), medium = RoundedCornerShape(6.dp), large = RoundedCornerShape(10.dp)
 )
 val MamaTypography = Typography(
     headlineMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, fontSize = 27.sp, lineHeight = 34.sp),
@@ -58,7 +58,7 @@ val MamaTypography = Typography(
 )
 
 @Composable
-fun MamaGcsTheme(theme: ThemeMode = ThemeMode.DARK, content: @Composable () -> Unit) {
+fun MamaGcsTheme(theme: ThemeMode = ThemeMode.LIGHT, content: @Composable () -> Unit) {
     val dark = theme == ThemeMode.DARK || (theme == ThemeMode.SYSTEM && isSystemInDarkTheme())
     MaterialTheme(colorScheme = if (dark) MamaColors.Dark else MamaColors.Light, typography = MamaTypography, shapes = MamaShapes, content = content)
 }

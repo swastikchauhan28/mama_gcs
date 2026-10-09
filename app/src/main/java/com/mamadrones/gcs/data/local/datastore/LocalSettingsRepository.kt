@@ -25,7 +25,7 @@ class LocalSettingsRepository @Inject constructor(@ApplicationContext private va
     private val udpLocalPortKey = intPreferencesKey("udp_local_port")
     override val preferences = context.preferences.data.map { values ->
         AppPreferences(
-            theme = ThemeMode.entries.find { it.name == values[themeKey] } ?: ThemeMode.DARK,
+            theme = ThemeMode.entries.find { it.name == values[themeKey] } ?: ThemeMode.LIGHT,
             udpEndpoint = values[udpRemoteHostKey]?.let { host ->
                 runCatching {
                     UdpEndpoint(

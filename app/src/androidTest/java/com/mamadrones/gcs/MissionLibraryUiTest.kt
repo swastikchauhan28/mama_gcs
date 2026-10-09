@@ -33,7 +33,7 @@ class MissionLibraryUiTest {
         try {
             runBlocking { repository.save(route) }
             scenario = ActivityScenario.launch(MainActivity::class.java)
-            compose.onNodeWithTag("nav-mission").performClick()
+            compose.openWorkspace("mission")
             compose.waitUntil(10_000) { compose.onAllNodesWithText("No unsaved changes").fetchSemanticsNodes().isNotEmpty() }
             action("Save to library")
             compose.onNode(hasText("Unique route name") and hasSetTextAction()).performTextReplacement(name)
@@ -99,13 +99,17 @@ class MissionLibraryUiTest {
     }
 
     private fun action(text: String) {
-        compose.onNodeWithTag("mission-editor").performScrollToNode(hasText(text))
+        if (text != "Save draft") {
+            compose.openMissionFiles()
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasText(text))
+        }
         compose.onNodeWithText(text).assertIsEnabled().performClick()
         compose.waitForIdle()
     }
 
     private fun entryAction(id: String, action: String) {
         compose.onNodeWithTag("mission-editor").performScrollToIndex(0)
+        compose.openMissionFiles()
         compose.onNodeWithText("Library ·", substring = true).performClick()
         compose.onNode(hasText(action) and hasAnyAncestor(hasTestTag("library-entry-$id")))
             .performScrollTo().performClick()

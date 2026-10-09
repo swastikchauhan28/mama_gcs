@@ -1,8 +1,10 @@
 # Phase 16 — local access foundation
 
+This records the original Phase 16 delivery. See [Phase 16a](phase-16a-report.md) for subsequent password-change and session-lifecycle work.
+
 ## Delivered
 
-- First-run administrator creation and local username/password sign-in from Systems → Admin.
+- First-run administrator creation and local username/password sign-in from Menu → Accounts & audit.
 - Administrator-created Operator and Viewer accounts; administrators can enable or disable those accounts. Additional administrator provisioning and password recovery are not supported yet.
 - Password length policy: 12–128 characters. Password verifiers are salted PBKDF2-HMAC-SHA256 (600,000 iterations); password hashing runs on a worker dispatcher and input character arrays are cleared after use.
 - Account records and a bounded 500-event audit history are serialized into a device-local DataStore value encrypted with AES-GCM and an Android Keystore AES key. The UI displays the newest 30 events.

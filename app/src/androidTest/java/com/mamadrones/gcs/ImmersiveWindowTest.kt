@@ -50,8 +50,7 @@ class ImmersiveWindowTest {
     @Test fun connectionSettingsRemainAccessibleInFullscreen() {
         assertImmersive()
         compose.onNodeWithTag("connection-shortcut").performClick()
-        compose.onNodeWithTag("nav-dashboard").assertIsDisplayed()
-        compose.onNodeWithTag("nav-dashboard").performClick()
+        compose.onNodeWithTag("exit-workspace").assertIsDisplayed().performClick()
         try {
             compose.waitUntil(10_000) { compose.onNodeWithTag("operation-map").isDisplayed() }
         } catch (failure: AssertionError) {
@@ -76,7 +75,7 @@ class ImmersiveWindowTest {
             }
             assertImmersive()
             compose.onNodeWithTag("operation-map").assertIsDisplayed()
-            compose.onNodeWithTag("nav-more").assertIsDisplayed()
+            compose.onNodeWithTag("station-menu").assertIsDisplayed()
             val instrumentation = InstrumentationRegistry.getInstrumentation()
             val directory = requireNotNull(instrumentation.targetContext.getExternalFilesDir("qa")).apply { mkdirs() }
             var screenshot: Bitmap? = null

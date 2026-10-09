@@ -28,13 +28,8 @@ import com.mamadrones.gcs.presentation.map.VehicleMap
 import com.mamadrones.gcs.presentation.settings.ConnectionUiState
 
 @Composable
-fun MapScreen(state: VehicleState, onNavigate: (String) -> Unit = {}, modifier: Modifier = Modifier) = Column(
-    modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)
-) {
-    MapWorkspace(state, Modifier.fillMaxWidth().weight(1f), onNavigate, showOperatorTools = true)
-    Text("MapTiler · Live position & session track. Offline region downloads are not implemented.",
-        style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(8.dp))
-}
+fun MapScreen(state: VehicleState, onNavigate: (String) -> Unit = {}, modifier: Modifier = Modifier) =
+    DashboardScreen(state, onNavigate, modifier)
 
 @Composable
 fun ControlScreen(state: VehicleState, modifier: Modifier = Modifier) {
@@ -57,6 +52,7 @@ fun ControlScreen(state: VehicleState, modifier: Modifier = Modifier) {
                         .verticalScroll(rememberScrollState()).padding(4.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
+                    EmergencyStopButton(Modifier.fillMaxWidth())
                     DriveStatusPanel(state)
                     DriveLockPanel(assessment.blockers.size)
                     UnavailableActions("Forward", "Reverse", "Stop", "Arm", "Disarm", "Set mode", "Set speed")
@@ -66,6 +62,7 @@ fun ControlScreen(state: VehicleState, modifier: Modifier = Modifier) {
         } else {
             ScreenBody(Modifier.fillMaxSize()) {
                 ScreenHeader("Rover operations", "Forward / reverse · ArduPilot Rover")
+                EmergencyStopButton(Modifier.fillMaxWidth())
                 DriveLockPanel(assessment.blockers.size)
                 UnavailableActions("Forward", "Reverse", "Stop", "Arm", "Disarm", "Set mode", "Set speed")
                 TextButton(onClick = { showChecks = !showChecks }, modifier = Modifier.heightIn(min = 48.dp).testTag("drive-safety-details")) {
@@ -176,12 +173,14 @@ fun AdminScreen(
     onInitializeAdmin: (String, CharArray) -> Unit,
     onSignIn: (String, CharArray) -> Unit,
     onSignOut: () -> Unit,
+    onChangePassword: (CharArray, CharArray) -> Unit,
     onCreateAccount: (String, CharArray, UserRole) -> Unit,
     onAccountEnabled: (String, Boolean) -> Unit,
     onClearMessage: () -> Unit,
     modifier: Modifier = Modifier,
 ) = ScreenBody(modifier) {
     ScreenHeader("Admin", "Device accounts and local access history")
+    if (access.busy && access.setup != AccessSetupState.LOADING) LinearProgressIndicator(Modifier.fillMaxWidth())
     when (access.setup) {
         AccessSetupState.LOADING -> {
             LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -200,6 +199,7 @@ fun AdminScreen(
                 confirmPassword = true,
                 actionLabel = "Create administrator",
                 onSubmit = onInitializeAdmin,
+                enabled = !access.busy,
             )
         }
         AccessSetupState.READY -> {
@@ -207,7 +207,10 @@ fun AdminScreen(
                 CardGrid(listOf(PanelSpec("Signed in", session.role.name,
                     listOf("Username" to (access.accounts.firstOrNull { it.id == session.userId }?.username ?: "UNKNOWN"),
                         "Session" to "EXPIRES AFTER 15 MINUTES"))))
-                Button(onClick = onSignOut, modifier = Modifier.heightIn(min = 48.dp)) { Text("Sign out") }
+                Button(onClick = onSignOut, enabled = !access.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Sign out") }
+                key(session.sessionId) {
+                    PasswordChangeForm(enabled = !access.busy, onSubmit = onChangePassword)
+                }
                 access.message?.let { Notice("ACCESS", it) }
                 access.error?.let { Notice("ACCESS ERROR", it) }
                 if (session.role == UserRole.ADMIN) {
@@ -230,6 +233,7 @@ fun AdminScreen(
                     confirmPassword = false,
                     actionLabel = "Sign in",
                     onSubmit = onSignIn,
+                    enabled = !access.busy,
                 )
                 Notice(
                     "VEHICLE PAIRING UNAVAILABLE",
@@ -249,6 +253,7 @@ private fun AccessCredentialForm(
     confirmPassword: Boolean,
     actionLabel: String,
     onSubmit: (String, CharArray) -> Unit,
+    enabled: Boolean,
 ) {
     var username by rememberSaveable(title) { mutableStateOf("") }
     var password by remember(title) { mutableStateOf("") }
@@ -262,7 +267,7 @@ private fun AccessCredentialForm(
                 onValueChange = { username = it.take(64); localError = null },
                 label = { Text("Username") },
                 singleLine = true,
-                enabled = true,
+                enabled = enabled,
                 modifier = Modifier.fillMaxWidth().testTag("access-username"),
             )
             OutlinedTextField(
@@ -273,6 +278,7 @@ private fun AccessCredentialForm(
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth().testTag("access-password"),
+                enabled = enabled,
             )
             if (confirmPassword) OutlinedTextField(
                 value = confirmation,
@@ -282,6 +288,7 @@ private fun AccessCredentialForm(
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth().testTag("access-password-confirm"),
+                enabled = enabled,
             )
             localError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(
@@ -296,7 +303,7 @@ private fun AccessCredentialForm(
                         onSubmit(username, secret)
                     }
                 },
-                enabled = username.isNotBlank() && password.isNotEmpty() && (!confirmPassword || confirmation.isNotEmpty()),
+                enabled = enabled && username.isNotBlank() && password.isNotEmpty() && (!confirmPassword || confirmation.isNotEmpty()),
                 modifier = Modifier.heightIn(min = 48.dp).testTag("access-submit"),
             ) { Text(actionLabel) }
         }
@@ -324,6 +331,7 @@ private fun AccountManagement(
                     }
                     if (account.role != UserRole.ADMIN) TextButton(
                         onClick = { onAccountEnabled(account.id, !account.enabled) },
+                        enabled = !access.busy,
                         modifier = Modifier.heightIn(min = 48.dp),
                     ) { Text(if (account.enabled) "Disable" else "Enable") }
                 }
@@ -361,7 +369,7 @@ private fun AccountManagement(
                         onCreateAccount(accountName, secret, role)
                     }
                 },
-                enabled = username.isNotBlank() && password.isNotEmpty() && confirmation.isNotEmpty() && access.accounts.size < 50,
+                enabled = !access.busy && username.isNotBlank() && password.isNotEmpty() && confirmation.isNotEmpty() && access.accounts.size < 50,
                 modifier = Modifier.heightIn(min = 48.dp).testTag("add-access-account"),
             ) { Text("Add account") }
         }

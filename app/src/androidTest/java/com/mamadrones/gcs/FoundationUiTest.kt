@@ -34,6 +34,7 @@ class FoundationUiTest {
             }
         }
         compose.onNodeWithTag("mission-library-error").performScrollTo().assertIsDisplayed()
+        compose.openMissionFiles()
         compose.onNodeWithText("Save to library").performScrollTo().performClick()
         compose.onNodeWithText("Library full. Delete a library route before saving another copy.").assertIsDisplayed()
         compose.onNodeWithText("Save copy").assertIsNotEnabled()
@@ -87,8 +88,7 @@ class FoundationUiTest {
                     onBleStartMavlinkReceive = { selected = it })
             }
         }
-        compose.onNodeWithTag("nav-more").performClick()
-        compose.onNodeWithText("BLE MAVLink").performScrollTo().performClick()
+        compose.openWorkspace("vesc-discovery")
         compose.onNodeWithTag("ble-receive-characteristic").performScrollTo().assertIsEnabled().performClick()
         compose.runOnIdle { org.junit.Assert.assertEquals(bleCharacteristic, selected) }
     }
@@ -150,11 +150,10 @@ class FoundationUiTest {
             position = GlobalPositionState(-35.3632621, 149.1652374, 584.1),
             gps = GpsState(fix = GpsFix.RTK_FIXED, satellites = 10, hdop = 1.2),
             battery = BatteryState(percentage = 100)))
-        compose.onNodeWithText("Rover · SYS 1").assertIsDisplayed()
-        compose.onNodeWithText("CONNECTED").assertIsDisplayed()
-        compose.onNodeWithText("■  EMERGENCY STOP · UNAVAILABLE").assertIsNotEnabled()
+        compose.onNodeWithText("Connected", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("App stop unavailable", substring = true).assertIsDisplayed()
         capture("operate-connected-fixture")
-        compose.onNodeWithTag("nav-control").performClick()
+        compose.openWorkspace("control")
         compose.onNodeWithText("Forward").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithText("Arm", substring = false).assertIsNotEnabled()
     }
@@ -162,8 +161,7 @@ class FoundationUiTest {
     @Test fun diagnosticsShowsSessionCounters() {
         launch(connection = ConnectionUiState(session = TransportSessionState(connection = ConnectionState(
             status = TransportStatus.OPEN, packetStatistics = PacketStatistics(receivedPackets = 1234, transmittedPackets = 0)))))
-        compose.onNodeWithTag("nav-more").performClick()
-        compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
+        compose.openWorkspace("diagnostics")
         compose.onNodeWithText("1234").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("NO MAVLINK SESSION").performScrollTo().assertIsDisplayed()
     }
@@ -172,13 +170,12 @@ class FoundationUiTest {
         launch(vehicle = VehicleState(mavlinkDiagnostics = MavlinkDiagnostics(
             linkKind = TelemetryLinkKind.BLE, startedAtEpochMillis = 100,
             receivedChunks = 77, receivedBytes = 8888, checksumFailures = 3, signedPacketsRejected = 2)))
-        compose.onNodeWithTag("nav-more").performClick()
-        compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
+        compose.openWorkspace("diagnostics")
         compose.onNodeWithText("LAST SESSION · BLE · CLOSED").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("8888").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Signed packets rejected").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Do not disable a live rover's signing", substring = true).assertExists()
-        compose.onNodeWithText("■  EMERGENCY STOP · UNAVAILABLE").assertIsNotEnabled()
+        compose.onNodeWithText("App stop unavailable", substring = true).assertIsDisplayed()
     }
 
     @Test fun bleScreenShowsDecoderCountersButNotAnotherTransportsHistory() {
@@ -196,35 +193,30 @@ class FoundationUiTest {
     }
     @Test fun initialDashboardDoesNotEnableStop() {
         launch()
-        compose.onNodeWithText("NOT CONNECTED").assertIsDisplayed()
-        compose.onNodeWithText("■  EMERGENCY STOP · UNAVAILABLE").assertIsNotEnabled()
+        compose.onNodeWithText("Disconnected", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("App stop unavailable", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("operation-map").assertIsDisplayed()
         compose.onNodeWithText("GROUND SPEED", substring = false).assertIsDisplayed()
         capture("dashboard-dark")
-        compose.onNodeWithTag("vehicle-selector").performClick()
-        compose.onNodeWithText("Vehicle selection").assertIsDisplayed()
+        compose.onNodeWithTag("station-menu").assertIsDisplayed()
     }
     @Test fun secondaryScreensAndThemeAreReachable() {
         launch()
-        val destinations = listOf("Health" to "Vehicle health", "Motors" to "VESC drive system", "Spray" to "Pump, nozzles and application flow", "Hydraulic" to "Pump, valves and pressure", "Diagnostics" to "Vehicle and communication inspection", "Admin" to "Local users, pairing and configuration")
-        destinations.forEach { (label, heading) ->
-            compose.onNodeWithTag("nav-more").performClick()
-            compose.onNodeWithText(label).performScrollTo().performClick()
+        val destinations = listOf("health" to "Vehicle health", "motors" to "VESC drive system", "spray" to "Pump, nozzles and application flow", "hydraulic" to "Pump, valves and pressure", "diagnostics" to "Vehicle and communication inspection", "admin" to "Device accounts and local access history")
+        destinations.forEach { (route, heading) ->
+            compose.openWorkspace(route)
             compose.onNodeWithText(heading).assertIsDisplayed()
-            compose.onNodeWithText("‹ Back").performClick()
         }
-        compose.onNodeWithTag("nav-more").performClick()
-        compose.onNodeWithText("BLE MAVLink").performScrollTo().performClick()
+        compose.openWorkspace("vesc-discovery")
         compose.onNodeWithText("BLE MAVLink link").assertIsDisplayed()
         compose.onNodeWithText("READ-ONLY · NO VEHICLE COMMANDS").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Scan for BLE devices").performScrollTo().assertIsNotEnabled()
-        compose.onNodeWithText("‹ Back").performClick()
-        compose.onNodeWithTag("nav-mission").performClick()
+        compose.openWorkspace("mission")
+        compose.openMissionFiles()
         compose.onNodeWithText("Import route file").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Export GPX").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Tap a numbered point to edit it", substring = true).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("nav-more").performClick()
-        compose.onNodeWithText("Settings").performScrollTo().performClick()
+        compose.openWorkspace("general")
         compose.onNodeWithText("Light").performScrollTo().performClick()
         compose.waitUntil(10_000) { compose.onAllNodes(hasText("Light") and isSelected()).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Light").assertIsSelected()
@@ -235,18 +227,18 @@ class FoundationUiTest {
     }
     @Test fun primaryScreensRemainNonOperational() {
         launch()
-        compose.onNodeWithTag("nav-map").performClick()
+        compose.openWorkspace("map")
         compose.onNodeWithTag("map-center").assertIsNotEnabled()
-        compose.onNodeWithText("■  EMERGENCY STOP · UNAVAILABLE").assertIsDisplayed()
+        compose.onNodeWithText("App stop unavailable", substring = true).assertIsDisplayed()
         capture("map-dark")
-        compose.onNodeWithTag("nav-control").performClick()
+        compose.openWorkspace("control")
         compose.onNodeWithText("Forward").performScrollTo().assertIsNotEnabled()
         capture("drive-dark")
         compose.onNodeWithTag("drive-safety-details").performScrollTo().performClick()
         compose.onNodeWithText("DRIVE SAFETY GATE").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("nav-mission").performClick()
+        compose.openWorkspace("mission")
         compose.onNodeWithTag("mission-editor").performScrollToNode(hasText("Start mission"))
-        compose.onNodeWithText("Start mission").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("Start mission").assertIsNotEnabled()
     }
     @Test fun transportSettingsDoNotOpenWithoutASavedEndpoint() {
         launch()

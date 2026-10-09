@@ -20,6 +20,8 @@ import com.mamadrones.gcs.presentation.components.*
 import com.mamadrones.gcs.presentation.settings.ConnectionUiState
 import com.mamadrones.gcs.presentation.settings.SettingsUiState
 
+enum class SettingsSection { ALL, GENERAL, LINK }
+
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
@@ -33,11 +35,14 @@ fun SettingsScreen(
     onCloseSocket: () -> Unit = {},
     onClearEndpoint: () -> Unit = {},
     bleLinkOpen: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    section: SettingsSection = SettingsSection.ALL,
 ) = ScreenBody(modifier) {
-    ScreenHeader("Settings", "Preferences stored on this device")
+    ScreenHeader(if (section == SettingsSection.LINK) "Communication link" else "General settings",
+        if (section == SettingsSection.LINK) "Known-peer UDP · read-only MAVLink telemetry" else "Display and measurement preferences for your rover station")
     if (state.loading) { LinearProgressIndicator(Modifier.fillMaxWidth()); Text("Loading preferences…") }
     state.error?.let { Notice("PREFERENCES ERROR", it) }
+    if (section != SettingsSection.LINK) {
     Surface(shape = MaterialTheme.shapes.medium) {
         Column(Modifier.fillMaxWidth().padding(16.dp).selectableGroup()) {
             Text("Appearance", style = MaterialTheme.typography.titleMedium)
@@ -57,6 +62,10 @@ fun SettingsScreen(
         }
     }
     SubsystemCard(PanelSpec("Units", "METRIC", listOf("Speed" to "m/s", "Distance" to "m / km", "Temperature" to "°C", "Pressure" to "bar")))
+    Notice("ROVER WORKSPACE", "Operate shows the live map and instruments. Plan prepares local routes and field outlines. Rover configuration groups drive safety, motors, spray and hydraulics. Analyze shows received telemetry and link diagnostics.")
+    Notice("LOCAL DISPLAY PREFERENCES", "Theme is saved offline. Passwords, credentials and machine commands are not stored in display preferences.")
+    }
+    if (section != SettingsSection.GENERAL) {
     Text("UDP · MAVLINK RECEIVE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
     SubsystemCard(
         PanelSpec(
@@ -75,7 +84,7 @@ fun SettingsScreen(
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("UDP endpoint", style = MaterialTheme.typography.titleMedium)
             Text("Configure a known peer. Tapping Open UDP socket starts the receive session; vehicle liveness appears only after a valid autopilot HEARTBEAT.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (!connection.canConfigureEndpoint) Notice("ADMIN SIGN-IN REQUIRED", "Sign in from Systems → Admin with an administrator account before changing or clearing the saved telemetry peer. A saved endpoint can still be opened for read-only monitoring.")
+            if (!connection.canConfigureEndpoint) Notice("ADMIN SIGN-IN REQUIRED", "Sign in from Menu → Accounts & audit with an administrator account before changing or clearing the saved telemetry peer. A saved endpoint can still be opened for read-only monitoring.")
             OutlinedTextField(
                 value = connection.remoteHostDraft,
                 onValueChange = onRemoteHostChanged,
@@ -112,7 +121,7 @@ fun SettingsScreen(
                 ) { Text("Save endpoint") }
                 OutlinedButton(
                     onClick = onOpenSocket,
-                    enabled = connection.savedEndpoint != null &&
+                    enabled = connection.savedEndpoint != null && !connection.saving &&
                         connection.session.connection.status == TransportStatus.DISCONNECTED && !bleLinkOpen,
                     modifier = Modifier.heightIn(min = 48.dp).testTag("udp-open-socket")
                 ) { Text("Open UDP socket") }
@@ -127,8 +136,20 @@ fun SettingsScreen(
     }
     connection.error?.let { Notice("UDP ENDPOINT ERROR", it) }
     Notice("MAVLINK SECURITY", "Only the configured UDP peer is accepted. A CRC-valid unsigned HEARTBEAT reports protocol liveness, not authenticated vehicle identity. Signed frames are rejected until signing-key verification is provisioned. This session sends no vehicle commands.")
-    Notice("BLUETOOTH AND SERIAL", "Systems → BLE MAVLink can receive telemetry through a selected GATT notification characteristic. Close BLE before opening UDP. Vehicle commands and live VESC telemetry remain unavailable; Bluetooth Classic / SPP is not supported.")
-    Notice("LOCAL DISPLAY PREFERENCES", "Theme is saved offline. Passwords, credentials and machine commands are not stored in display preferences.")
+    Notice("BLUETOOTH AND SERIAL", "Select Bluetooth / BLE in Application settings to receive telemetry through a selected GATT notification characteristic. Close BLE before opening UDP. Vehicle commands and live VESC telemetry remain unavailable; Bluetooth Classic / SPP is not supported.")
+    }
+}
+
+@Composable
+fun MapSettingsScreen(onOpenMap: () -> Unit) = ScreenBody {
+    ScreenHeader("Maps", "Geographic background and local route overlays")
+    SubsystemCard(PanelSpec("Basemap", "MAPLIBRE · MAPTILER", listOf(
+        "Source" to "MapTiler Streets", "Network" to "Internet required",
+        "Vehicle position" to "Received MAVLink coordinates", "Track" to "Current session",
+    ), "Tile loading requires a valid build-time MapTiler key and network access. The map displays its own loading or error state."))
+    Button(onClick = onOpenMap, modifier = Modifier.heightIn(min = 48.dp)) { Text("Open map") }
+    Notice("OFFLINE REGIONS", "Offline region downloads and alternative basemap selection are not implemented. Do not rely on cached tiles for offline coverage.")
+    Notice("PLANNING OVERLAYS", "Waypoints and keep-in outlines are local planning references. They are not uploaded geofences, obstacle detection, or proof that a route is safe to drive.")
 }
 
 private fun transportLabel(status: TransportStatus): String = when (status) {

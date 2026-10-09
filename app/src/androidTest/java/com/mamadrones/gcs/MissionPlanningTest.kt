@@ -27,7 +27,7 @@ class MissionPlanningTest {
             runBlocking { repository.save(MissionDraft()) }
             val scenario = androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java)
             try {
-                compose.onNodeWithTag("nav-mission").performClick()
+                compose.openWorkspace("mission")
                 compose.waitUntil(10_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
                 addPoint("91", "149.1652374", invalid = true)
                 scrollToTag("mission-route-review").assertIsDisplayed()
@@ -67,11 +67,11 @@ class MissionPlanningTest {
                 compose.onNodeWithTag("mission-map").assertIsDisplayed()
                 capture("mission-landscape")
                 compose.onNodeWithTag("mission-editor").performScrollToNode(hasText("Start mission"))
-                compose.onNodeWithText("Start mission").performScrollTo().assertIsNotEnabled()
+                compose.onNodeWithText("Start mission").assertIsNotEnabled()
                 scenario.close()
                 val relaunched = androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java)
                 try {
-                    compose.onNodeWithTag("nav-mission").performClick()
+                    compose.openWorkspace("mission")
                     compose.waitUntil(10_000) { compose.onAllNodesWithText("No unsaved changes").fetchSemanticsNodes().isNotEmpty() }
                     scrollToTag("mission-edit-1").assertIsDisplayed()
                     scrollToTag("mission-remove-1").performClick()
@@ -106,6 +106,12 @@ class MissionPlanningTest {
     }
 
     private fun scrollToTag(tag: String): SemanticsNodeInteraction {
+        if (tag == "mission-save") return compose.onNodeWithTag(tag)
+        compose.selectMissionTab(when {
+            tag == "mission-route-review" -> "Review"
+            tag.contains("fence") -> "Field outline"
+            else -> "Route"
+        })
         compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag(tag))
         return compose.onNodeWithTag(tag)
     }

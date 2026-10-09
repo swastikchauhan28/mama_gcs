@@ -12,6 +12,8 @@ interface AccessRepository {
     suspend fun initializeAdministrator(username: String, password: CharArray)
     suspend fun signIn(username: String, password: CharArray)
     suspend fun signOut()
+    suspend fun refreshSession()
+    suspend fun changePassword(actor: UserSession, currentPassword: CharArray, newPassword: CharArray)
     suspend fun createAccount(actor: UserSession, username: String, password: CharArray, role: UserRole)
     suspend fun setAccountEnabled(actor: UserSession, accountId: String, enabled: Boolean)
     suspend fun recordEndpointChangeRequest(actor: UserSession, endpoint: UdpEndpoint?): Boolean

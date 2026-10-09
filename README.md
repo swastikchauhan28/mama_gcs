@@ -2,7 +2,7 @@
 
 Native Android ground-control-station foundation for a Mama agricultural UGV: ArduPilot Rover, VESC motors, spray equipment and hydraulics. Kotlin · Compose · Material 3 · Hilt · offline-first.
 
-## Current delivery: local access foundation (Phase 16)
+## Current delivery: account sessions and password changes (Phase 16a)
 
 The expanded agricultural specification uses incremental acceptance. The current hardware-independent delivery is local mission planning with recovery of unsaved edits, GeoJSON and GPX route-file exchange, a separate on-device route library, structural review, map-based waypoint editing, and an optional local outline that checks waypoint positions and straight draft segments. GPX contains route waypoints only; use GeoJSON to retain Mama GCS's local outline. Phase 8 VESC telemetry groundwork remains pending verification of the Bluetooth module and telemetry path; Phase 8a adds BLE advertisement discovery only to help identify that module. Spray and hydraulic adapters also await hardware details. Mission transfer/execution and vehicle commands remain disabled.
 
@@ -14,8 +14,10 @@ Phase 15 adds shared, memory-only MAVLink decoder counters to Diagnostics and th
 
 Phase 16 adds first-run local administrator setup, sign-in, administrator-created Operator/Viewer accounts, enable/disable controls, expiring in-memory sessions, login throttling and an encrypted device-local audit/account store. Password verifiers are salted PBKDF2-HMAC-SHA256; the database uses AES-GCM with an Android Keystore key. Only authenticated admins can change the saved UDP peer. This is not cloud identity, trusted vehicle pairing, tamper-evident auditing, or authorization for vehicle commands. See [security boundaries](docs/security.md) and the [Phase 16 report](docs/phase-16-report.md).
 
-- Responsive dark field-console design, light/daylight and system themes, original local icons, shared typography, spacing, cards and status treatments.
-- Map-first Operate, Map, Drive, Plan and Systems workspaces. Phones use bottom navigation; wide windows use a side rail and instrument dock. Connection access and emergency-stop unavailability remain visible on every screen. Detailed telemetry and equipment are reached through Systems or operating shortcuts. See the [operator design and requirements matrix](docs/operator-ui-design.md) for coverage and remaining capabilities.
+Phase 16a adds **Systems → Admin → Change password**, requiring the current password and a fresh sign-in afterward. Session expiry now updates the UI automatically and on return from device sleep. Logout revokes access even when its audit write fails; failed login persistence cannot issue a session. Saved UDP peers change only after authorization, audit and persistence succeed. Existing account files retain their version-1 format. See the [Phase 16a report](docs/phase-16a-report.md) for validation and remaining account recovery work.
+
+- QGroundControl-inspired rover-station design with daylight as the new-install default plus Dark and System themes. It uses original local icons and rover-specific language rather than aircraft actions.
+- A full-screen, map-first Operate workspace provides compact Plan, Drive and Systems shortcuts, rover instruments and a persistent physical-safety warning. Plan separates Route, Field outline and Review; Rover configuration, Analyze tools and Application settings use responsive category sidebars or portrait chips. See the [rover station UI](docs/rover-station-ui.md) and [requirements matrix](docs/operator-ui-design.md).
 - Nullable/UNKNOWN subsystem models and read-only integration contracts. No invented telemetry, safe actuator state, health verdict, or controller/nozzle inventory.
 - Disabled, explicitly unavailable emergency stop and hardware actions. Navigation and persistent local theme settings work; vehicle selection explains that pairing is unavailable.
 - Device-local account authentication and bounded encrypted account/audit storage, with administrator-only account provisioning and UDP endpoint changes. It does not authenticate a vehicle or authorize a control command.

@@ -46,7 +46,7 @@ class RouteDocumentPickerTest {
         try {
             runBlocking { repository.save(route) }
             scenario = ActivityScenario.launch(MainActivity::class.java)
-            compose.onNodeWithTag("nav-mission").performClick()
+            compose.openWorkspace("mission")
             compose.waitUntil(15_000) {
                 compose.onAllNodesWithText("No unsaved changes").fetchSemanticsNodes().isNotEmpty()
             }
@@ -95,7 +95,6 @@ class RouteDocumentPickerTest {
                 compose.onNodeWithText("Replace working draft").performClick()
                 // Imports remain local working copies until an explicit Save draft.
                 assertEquals(committedBeforeImport, runBlocking { repository.load() })
-                compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-save"))
                 compose.onNodeWithTag("mission-save").assertIsEnabled().performClick()
                 compose.waitUntil(15_000) {
                     val saved = runBlocking { repository.load() }
@@ -114,7 +113,8 @@ class RouteDocumentPickerTest {
     }
 
     private fun action(text: String) {
-        compose.onNodeWithTag("mission-editor").performScrollToNode(hasText(text))
+        compose.openMissionFiles()
+        if (text != "Save draft") compose.onNodeWithTag("mission-editor").performScrollToNode(hasText(text))
         compose.onNodeWithText(text).assertIsEnabled().performClick()
         // Export opens DocumentsUI from a LaunchedEffect on the next Compose frame.
         compose.waitForIdle()

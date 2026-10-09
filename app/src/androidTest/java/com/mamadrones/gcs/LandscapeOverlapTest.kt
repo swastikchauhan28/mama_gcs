@@ -19,12 +19,15 @@ class LandscapeOverlapTest {
             compose.waitUntil(10_000) { compose.activity.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE }
             val toolbar = compose.onNodeWithTag("operation-toolbar").fetchSemanticsNode().boundsInRoot
             val viewport = compose.onNodeWithTag("operation-map-viewport").fetchSemanticsNode().boundsInRoot
-            assertTrue("Toolbar must be outside the map, including native attribution", toolbar.top >= viewport.bottom)
+            // The QGC-inspired toolbar is now on the left of the map. Keep the native
+            // provider attribution strip (bottom 32 dp) clear, not just Center/Follow.
+            val attributionInset = 32 * compose.activity.resources.displayMetrics.density
+            assertTrue("Toolbar must leave native attribution clear", toolbar.bottom <= viewport.bottom - attributionInset)
             val center = compose.onNodeWithTag("map-center").fetchSemanticsNode().boundsInRoot
             assertFalse("Landscape toolbar $toolbar overlaps Center $center", toolbar.overlaps(center))
             val follow = compose.onNodeWithTag("map-follow").fetchSemanticsNode().boundsInRoot
             assertFalse("Toolbar must not cover Follow", toolbar.overlaps(follow))
-            compose.onNodeWithText("ROUTE PLAN").assertIsDisplayed().performClick()
+            compose.onNodeWithText("Plan", substring = false).assertIsDisplayed().performClick()
             compose.onNodeWithTag("mission-map").assertIsDisplayed()
         } finally { compose.activityRule.scenario.onActivity { it.requestedOrientation = previous } }
     }

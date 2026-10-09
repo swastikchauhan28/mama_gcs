@@ -60,108 +60,14 @@ fun MamaGcsApp(
     var showVehicles by remember { mutableStateOf(false) }
     val entry by navController.currentBackStackEntryAsState()
     val route = entry?.destination?.route ?: AppDestination.DASHBOARD.route
-    val selected = AppDestination.entries.find { it.route == route } ?: AppDestination.MORE
     val navigate: (String) -> Unit = { destination ->
-        navController.navigate(destination) { launchSingleTop = true }
-    }
-    val navigatePrimary: (AppDestination) -> Unit = { destination ->
-        navController.navigate(destination.route) {
-            // These are flat destinations, not nested navigation graphs. Restoring the popped
-            // stack can reopen Settings when the operator explicitly chooses Operate.
+        navController.navigate(destination) {
             popUpTo(AppDestination.DASHBOARD.route)
             launchSingleTop = true
         }
     }
-    // Fill the display, but keep touch targets clear of camera cutouts and the software keyboard.
-    BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).displayCutoutPadding().imePadding()) {
-        val wide = maxWidth >= 720.dp
-        Row(Modifier.fillMaxSize()) {
-        if (wide) Surface(Modifier.width(72.dp).fillMaxHeight()) {
-            Column(Modifier.fillMaxHeight().verticalScroll(rememberScrollState()).padding(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                AppDestination.entries.forEach { item ->
-                    NavigationRailItem(selected = selected == item, onClick = { navigatePrimary(item) },
-                        modifier = Modifier.height(56.dp).testTag("nav-${item.route}"),
-                        icon = { MamaIcon(item.icon) }, label = { Text(item.label, style = MaterialTheme.typography.labelSmall) })
-                }
-            }
-        }
-        Scaffold(
-            modifier = Modifier.weight(1f),
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            containerColor = MaterialTheme.colorScheme.background,
-            topBar = {
-                Surface(color = MaterialTheme.colorScheme.surface) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Column(Modifier.widthIn(min = 72.dp, max = 104.dp).padding(start = 4.dp)) {
-                            Text("MAMA GCS", style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Clip)
-                            Text("ROVER STATION", style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                        }
-                        TextButton(onClick = { showVehicles = true }, modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("vehicle-selector")) {
-                            Column(Modifier.fillMaxWidth()) {
-                                Text(
-                                    vehicle.displayName ?: if (vehicle.connected && vehicle.systemId != null) "Rover · SYS ${vehicle.systemId}" else "No rover selected",
-                                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.titleSmall,
-                                )
-                                Text(
-                                    vehicle.vehicleId ?: if (vehicle.connected && vehicle.systemId != null)
-                                        "Observed MAVLink system · not paired" else "Vehicle pairing unavailable",
-                                    style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                        TextButton(onClick = { navigate("settings") }, modifier = Modifier.heightIn(min = 48.dp).testTag("connection-shortcut")) {
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(connectionLabel(vehicle.connectionStatus), style = MaterialTheme.typography.labelLarge,
-                                    color = when (vehicle.connectionStatus) {
-                                        VehicleConnectionState.CONNECTED -> MaterialTheme.colorScheme.secondary
-                                        VehicleConnectionState.DEGRADED, VehicleConnectionState.ERROR -> MaterialTheme.colorScheme.error
-                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                    })
-                                Text("LINK SETUP ›", style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                    }
-                }
-            },
-            bottomBar = {
-                Column {
-                    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            EmergencyStopButton(if (wide) Modifier.width(360.dp) else Modifier.weight(1f))
-                            if (wide) {
-                                Text("MONITORING ONLY · Vehicle controls locked", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
-                                TextButton(onClick = { navigate("control") }) { Text("Drive status") }
-                            }
-                        }
-                    }
-                    if (!wide) NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
-                        AppDestination.entries.forEach { item ->
-                            NavigationBarItem(selected = selected == item, onClick = { navigatePrimary(item) },
-                                modifier = Modifier.testTag("nav-${item.route}"),
-                                icon = { MamaIcon(item.icon) }, label = { Text(item.label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis) })
-                        }
-                    }
-                }
-            }
-        ) { padding ->
-            Row(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-                Column(Modifier.weight(1f)) {
-                    if (route !in AppDestination.entries.map { it.route }) {
-                        TextButton(onClick = { navController.popBackStack() }, modifier = Modifier.heightIn(min = 48.dp)) { Text("‹ Back") }
-                    }
-                    NavHost(navController, startDestination = AppDestination.DASHBOARD.route, modifier = Modifier.weight(1f)) {
+    StationShell(vehicle, route, navigate, onVehicleDetails = { showVehicles = true }) {
+                    NavHost(navController, startDestination = AppDestination.DASHBOARD.route, modifier = Modifier.fillMaxSize()) {
                         composable("dashboard") { DashboardScreen(vehicle, navigate) }
                         composable("map") { MapScreen(vehicle, navigate) }
                         composable("control") { ControlScreen(vehicle) }
@@ -195,13 +101,15 @@ fun MamaGcsApp(
                                 onInitializeAdmin = accessViewModel::initializeAdministrator,
                                 onSignIn = accessViewModel::signIn,
                                 onSignOut = accessViewModel::signOut,
+                                onChangePassword = accessViewModel::changePassword,
                                 onCreateAccount = accessViewModel::createAccount,
                                 onAccountEnabled = accessViewModel::setAccountEnabled,
                                 onClearMessage = accessViewModel::clearMessage,
                             )
                         }
-                        composable("settings") {
+                        listOf("settings", "general").forEach { settingsRoute -> composable(settingsRoute) {
                             SettingsScreen(
+                                section = if (settingsRoute == "general") SettingsSection.GENERAL else SettingsSection.LINK,
                                 state = settings, connection = connection,
                                 onThemeSelected = onThemeSelected,
                                 onRemoteHostChanged = onRemoteHostChanged, onRemotePortChanged = onRemotePortChanged,
@@ -210,12 +118,9 @@ fun MamaGcsApp(
                                 onClearEndpoint = onClearEndpoint,
                                 bleLinkOpen = vescDiscovery.gattConnecting || vescDiscovery.gattConnected || vescDiscovery.closing,
                             )
-                        }
+                        } }
+                        composable("map-settings") { MapSettingsScreen { navigate("map") } }
                     }
-                }
-            }
-        }
-        }
     }
     if (showVehicles) {
         AlertDialog(

@@ -5,6 +5,7 @@ package com.mamadrones.gcs.presentation.screens
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -13,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -98,6 +100,8 @@ fun MissionScreen(
     var showSaveToLibrary by rememberSaveable { mutableStateOf(false) }
     var libraryOpenId by rememberSaveable { mutableStateOf<String?>(null) }
     var libraryDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
+    var editorTab by rememberSaveable { mutableStateOf("Route") }
+    var showFileActions by rememberSaveable { mutableStateOf(false) }
     val canAdd = plan.editable && plan.draft.waypoints.size < MissionDraft.MAX_WAYPOINTS
     val canAddFenceVertex = plan.editable && plan.draft.keepInFence.size < MissionDraft.MAX_FENCE_VERTICES
 
@@ -128,15 +132,35 @@ fun MissionScreen(
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val wide = maxWidth >= 680.dp
-        Row(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            Surface(color = MaterialTheme.colorScheme.surface) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { showFileActions = !showFileActions }, modifier = Modifier.heightIn(min = 48.dp).testTag("mission-file-menu")) {
+                        Text(if (showFileActions) "Close files" else "File / Library")
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(plan.draft.name, maxLines = 1, style = MaterialTheme.typography.titleSmall)
+                        Text("${plan.draft.waypoints.size} points · ${String.format(Locale.US, "%.0f", plan.draft.distanceMeters)} m · Local only",
+                            style = MaterialTheme.typography.labelSmall)
+                    }
+                    Button(onClick = { onAction(MissionPlanAction.Save) }, enabled = plan.editable && (plan.dirty || plan.recoveryCleanupFailed),
+                        modifier = Modifier.heightIn(min = 48.dp).testTag("mission-save")) { Text("Save draft") }
+                }
+            }
+        Row(Modifier.weight(1f).fillMaxWidth()) {
             if (wide) mapContent(Modifier.weight(1f).fillMaxHeight())
             LazyColumn(
                 modifier = (if (wide) Modifier.width(352.dp).fillMaxHeight() else Modifier.fillMaxSize()).testTag("mission-editor"),
                 contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 item {
-                    Text("Plan · Local draft", style = MaterialTheme.typography.titleLarge)
-                    Text(plan.draft.name, style = MaterialTheme.typography.titleMedium)
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("Route", "Field outline", "Review").forEach { tab ->
+                            FilterChip(selected = editorTab == tab, onClick = { editorTab = tab }, label = { Text(tab) },
+                                modifier = Modifier.heightIn(min = 48.dp).testTag("mission-tab-$tab"))
+                        }
+                    }
                     Text(when {
                         plan.loading -> "Loading saved draft…"
                         plan.saving -> "Saving…"
@@ -146,10 +170,9 @@ fun MissionScreen(
                         plan.dirty -> "Unsaved changes · saving recovery copy…"
                         else -> "No unsaved changes"
                     }, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("mission-save-status"))
+                    if (showFileActions) {
+                    Text("LOCAL FILES & LIBRARY", style = MaterialTheme.typography.labelLarge)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Button(onClick = { onAction(MissionPlanAction.Save) },
-                            enabled = plan.editable && (plan.dirty || plan.recoveryCleanupFailed),
-                            modifier = Modifier.testTag("mission-save")) { Text("Save draft") }
                         TextButton(onClick = { showRename = true }, enabled = plan.editable) { Text("Rename") }
                         TextButton(onClick = { showSaveToLibrary = true }, enabled = plan.editable) { Text("Save to library") }
                         TextButton(onClick = { showLibrary = true }, enabled = plan.editable) { Text("Library · ${plan.library.size}") }
@@ -160,6 +183,7 @@ fun MissionScreen(
                         TextButton(onClick = { onAction(MissionPlanAction.Export(MissionDraftFileFormat.GPX)) }, enabled = plan.editable) { Text("Export GPX") }
                     }
                     Text("GPX carries route waypoints only. Use GeoJSON to preserve the local outline.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     plan.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     plan.libraryError?.let {
                         Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("mission-library-error"))
@@ -167,7 +191,7 @@ fun MissionScreen(
                     if (plan.loadFailed) TextButton(onClick = { onAction(MissionPlanAction.RetryLoad) }) { Text("Retry loading") }
                 }
                 if (!wide) item { mapContent(Modifier.fillMaxWidth().height(280.dp)) }
-                item {
+                if (editorTab == "Route") item {
                     Text("${plan.draft.waypoints.size} / ${MissionDraft.MAX_WAYPOINTS} waypoints · ${String.format(Locale.US, "%.0f", plan.draft.distanceMeters)} m",
                         style = MaterialTheme.typography.titleSmall)
                     Text("Orange points and line are the local draft. Tap a numbered point to edit it; long-press the map to add one, or enter coordinates below. Distance is straight-line; terrain and obstacles are not checked.",
@@ -175,7 +199,7 @@ fun MissionScreen(
                     OutlinedButton(onClick = { openEditor(null, null, null) }, enabled = canAdd,
                         modifier = Modifier.testTag("mission-add")) { Text("Add coordinates") }
                 }
-                item {
+                if (editorTab == "Review") item {
                     val review = MissionDraftReview.inspect(plan.draft)
                     SubsystemCard(PanelSpec(
                         title = "Local route review",
@@ -206,6 +230,7 @@ fun MissionScreen(
                         },
                     ), Modifier.testTag("mission-route-review"))
                 }
+                if (editorTab == "Field outline") {
                 item {
                     Text("Local keep-in outline · ${plan.draft.keepInFence.size}/${MissionDraft.MAX_FENCE_VERTICES} vertices",
                         style = MaterialTheme.typography.titleSmall)
@@ -231,6 +256,8 @@ fun MissionScreen(
                         }
                     }
                 }
+                }
+                if (editorTab == "Route") {
                 if (plan.draft.waypoints.isEmpty()) item {
                     Text("No waypoints yet. This draft can be prepared without a vehicle connection.")
                 }
@@ -252,12 +279,14 @@ fun MissionScreen(
                         }
                     }
                 }
+                }
                 item {
                     HorizontalDivider()
                     Text("Onboard mission: unknown. Drafts are stored only on this device. Upload, download and execution are unavailable.", style = MaterialTheme.typography.bodySmall)
                     UnavailableActions("Upload", "Download", "Start mission", "Pause", "Resume")
                 }
             }
+        }
         }
     }
 

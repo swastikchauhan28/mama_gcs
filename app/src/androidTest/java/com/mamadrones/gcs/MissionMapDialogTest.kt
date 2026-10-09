@@ -46,7 +46,7 @@ class MissionMapDialogTest {
                 activity.onActivity { ready = it.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE }
                 ready
             }
-            compose.onNodeWithTag("nav-mission").performClick()
+            compose.openWorkspace("mission")
             lateinit var view: MapView
             var map: MapLibreMap? = null
             compose.waitForIdle()

@@ -8,6 +8,9 @@ import androidx.compose.ui.unit.dp
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.presentation.components.ScreenBody
 import com.mamadrones.gcs.presentation.components.ScreenHeader
+import com.mamadrones.gcs.presentation.components.PanelSpec
+import com.mamadrones.gcs.presentation.components.SubsystemCard
+import com.mamadrones.gcs.presentation.dashboard.forDisplay
 
 private data class SystemsDestination(
     val route: String,
@@ -18,7 +21,14 @@ private data class SystemsDestination(
 
 @Composable
 fun MoreScreen(vehicle: VehicleState, onNavigate: (String) -> Unit, modifier: Modifier = Modifier) = ScreenBody(modifier) {
-    ScreenHeader("Systems", "Rover telemetry, equipment and local configuration")
+    ScreenHeader("Rover summary", "Drive system, field equipment and connection evidence")
+    val live = vehicle.forDisplay()
+    SubsystemCard(PanelSpec("Observed vehicle", if (live.connected) "RECEIVING TELEMETRY · NOT SECURELY PAIRED" else "NO LIVE VEHICLE",
+        listOf("MAVLink system" to (live.systemId?.toString() ?: "UNKNOWN"),
+            "Mode" to (live.mode ?: "UNKNOWN"),
+            "Arming" to (live.armed?.let { if (it) "ARMED" else "DISARMED" } ?: "UNKNOWN"),
+            "App control" to "LOCKED · MONITORING ONLY"),
+        "A received system ID is not an authenticated rover identity. Hardware configuration and safety readiness remain unverified."))
     val monitor = listOf(
         SystemsDestination(
             "telemetry", "Telemetry", "Position, GPS, battery, attitude and receive ages",
@@ -37,8 +47,8 @@ fun MoreScreen(vehicle: VehicleState, onNavigate: (String) -> Unit, modifier: Mo
         SystemsDestination("hydraulic", "Hydraulic", "Pump, valves, pressure and temperature evidence", "HARDWARE PENDING"),
     )
     val setup = listOf(
-        SystemsDestination("admin", "Admin", "Identity, pairing and protected configuration", "AUTH NOT IMPLEMENTED"),
-        SystemsDestination("settings", "Settings", "Connection · UDP receive endpoint and display appearance", "LOCAL SETTINGS"),
+        SystemsDestination("admin", "Accounts & audit", "Local sign-in, roles, passwords and activity records", "LOCAL ACCESS"),
+        SystemsDestination("general", "Application settings", "Display appearance, communication links and maps", "LOCAL SETTINGS"),
     )
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val columns = if (maxWidth >= 620.dp) 2 else 1
