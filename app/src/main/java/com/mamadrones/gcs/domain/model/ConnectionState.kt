@@ -1,7 +1,7 @@
 package com.mamadrones.gcs.domain.model
 
 /**
- * UDP socket lifecycle only. It does not establish MAVLink liveness, vehicle identity,
+ * Transport lifecycle only. It does not establish MAVLink liveness, vehicle identity,
  * or permission to control a vehicle.
  */
 data class ConnectionState(

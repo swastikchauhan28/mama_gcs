@@ -17,6 +17,7 @@ import com.mamadrones.gcs.presentation.settings.ConnectionViewModel
 import com.mamadrones.gcs.presentation.navigation.MamaGcsApp
 import com.mamadrones.gcs.presentation.mission.MissionPlanViewModel
 import com.mamadrones.gcs.presentation.screens.VescBluetoothDiscoveryViewModel
+import com.mamadrones.gcs.presentation.screens.ClassicBluetoothViewModel
 import com.mamadrones.gcs.presentation.theme.MamaGcsTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -27,6 +28,7 @@ class MainActivity : ComponentActivity() {
     private val connectionViewModel: ConnectionViewModel by viewModels()
     private val missionPlanViewModel: MissionPlanViewModel by viewModels()
     private val vescBluetoothDiscoveryViewModel: VescBluetoothDiscoveryViewModel by viewModels()
+    private val classicBluetoothViewModel: ClassicBluetoothViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,6 +47,7 @@ class MainActivity : ComponentActivity() {
             val connection = connectionViewModel.state.collectAsStateWithLifecycle().value
             val missionPlan = missionPlanViewModel.state.collectAsStateWithLifecycle().value
             val vescDiscovery = vescBluetoothDiscoveryViewModel.state.collectAsStateWithLifecycle().value
+            val classicBluetooth = classicBluetoothViewModel.state.collectAsStateWithLifecycle().value
             MamaGcsTheme(settings.preferences.theme) {
                 MamaGcsApp(
                     vehicle = vehicle,
@@ -67,6 +70,11 @@ class MainActivity : ComponentActivity() {
                     onBleConnectGatt = vescBluetoothDiscoveryViewModel::connectGatt,
                     onBleStartMavlinkReceive = vescBluetoothDiscoveryViewModel::startMavlinkReceive,
                     onBleDisconnect = vescBluetoothDiscoveryViewModel::disconnectGatt,
+                    classicBluetooth = classicBluetooth,
+                    onClassicRefresh = classicBluetoothViewModel::refresh,
+                    onClassicPermissionDenied = classicBluetoothViewModel::permissionDenied,
+                    onClassicConnect = classicBluetoothViewModel::connect,
+                    onClassicDisconnect = classicBluetoothViewModel::disconnect,
                 )
             }
         }

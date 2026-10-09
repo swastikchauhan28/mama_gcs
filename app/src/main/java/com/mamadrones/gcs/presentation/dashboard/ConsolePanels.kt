@@ -44,10 +44,10 @@ object ConsolePanels {
     }
 
     fun mavlinkDiagnosticHints(sample: MavlinkDiagnostics): String = buildList {
-        if (sample.startedAtEpochMillis == null) add("Start UDP or BLE MAVLink receive to collect decoder diagnostics.")
+        if (sample.startedAtEpochMillis == null) add("Start UDP, BLE or Bluetooth Classic MAVLink receive to collect decoder diagnostics.")
         else if (!sample.active) add("These are the last session's counters, not a live connection. Open a new receive session to retry.")
         if (sample.startedAtEpochMillis != null && sample.receivedBytes == 0L)
-            add("No bytes reached the decoder. Check the UDP peer or selected BLE notification characteristic and sender output.")
+            add("No bytes reached the decoder. Check the selected UDP peer, BLE characteristic or Classic serial radio and sender output.")
         if (sample.receivedBytes > 0L && sample.decodedMessages == 0L)
             add("Bytes arrived, but no supported message was decoded. The stream may be incomplete, unsupported, or not MAVLink 2; confirm the radio route and format.")
         if (sample.checksumFailures > 0L || sample.malformedPayloads > 0L)

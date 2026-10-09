@@ -1,17 +1,11 @@
 package com.mamadrones.gcs.data.transport
 
-import com.mamadrones.gcs.data.transport.bluetooth.BluetoothTransport
 import com.mamadrones.gcs.data.transport.serial.SerialTransport
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class UnsupportedTransportTest {
-    @Test
-    fun `Bluetooth Classic is explicit extension point without a socket`() = runBlocking {
-        assertUnsupported(BluetoothTransport())
-    }
-
     @Test
     fun `serial is explicit extension point without a socket`() = runBlocking {
         assertUnsupported(SerialTransport())

@@ -26,6 +26,7 @@ import com.mamadrones.gcs.presentation.mission.MissionPlanAction
 import com.mamadrones.gcs.presentation.screens.VescDiscoveryUiState
 import com.mamadrones.gcs.presentation.security.AccessViewModel
 import com.mamadrones.gcs.data.transport.bluetooth.BleNotifyCharacteristic
+import com.mamadrones.gcs.data.transport.bluetooth.ClassicBluetoothPeer
 
 enum class AppDestination(val route: String, val label: String, val icon: ConsoleIcon) {
     DASHBOARD("dashboard", "Operate", ConsoleIcon.DASHBOARD), MAP("map", "Map", ConsoleIcon.MAP),
@@ -55,6 +56,11 @@ fun MamaGcsApp(
     onBleConnectGatt: (String, String) -> Unit = { _, _ -> },
     onBleStartMavlinkReceive: (BleNotifyCharacteristic) -> Unit = {},
     onBleDisconnect: () -> Unit = {},
+    classicBluetooth: ClassicBluetoothUiState = ClassicBluetoothUiState(),
+    onClassicRefresh: () -> Unit = {},
+    onClassicPermissionDenied: () -> Unit = {},
+    onClassicConnect: (ClassicBluetoothPeer) -> Unit = {},
+    onClassicDisconnect: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     var showVehicles by remember { mutableStateOf(false) }
@@ -85,7 +91,20 @@ fun MamaGcsApp(
                                 onConnectGatt = onBleConnectGatt,
                                 onStartMavlinkReceive = onBleStartMavlinkReceive,
                                 onDisconnectGatt = onBleDisconnect,
-                                udpLinkOpen = connection.session.endpoint != null,
+                                udpLinkOpen = connection.session.endpoint != null || classicBluetooth.link.active,
+                                vehicleConnection = vehicle.connectionStatus,
+                                diagnostics = vehicle.mavlinkDiagnostics,
+                            )
+                        }
+                        composable("classic-bluetooth") {
+                            ClassicBluetoothScreen(
+                                state = classicBluetooth,
+                                onRefresh = onClassicRefresh,
+                                onPermissionDenied = onClassicPermissionDenied,
+                                onConnect = onClassicConnect,
+                                onDisconnect = onClassicDisconnect,
+                                otherLinkOpen = connection.session.endpoint != null || vescDiscovery.gattConnecting ||
+                                    vescDiscovery.gattConnected || vescDiscovery.closing,
                                 vehicleConnection = vehicle.connectionStatus,
                                 diagnostics = vehicle.mavlinkDiagnostics,
                             )
@@ -116,7 +135,7 @@ fun MamaGcsApp(
                                 onLocalPortChanged = onLocalPortChanged, onSaveEndpoint = onSaveEndpoint,
                                 onOpenSocket = onOpenSocket, onCloseSocket = onCloseSocket,
                                 onClearEndpoint = onClearEndpoint,
-                                bleLinkOpen = vescDiscovery.gattConnecting || vescDiscovery.gattConnected || vescDiscovery.closing,
+                                bleLinkOpen = vescDiscovery.gattConnecting || vescDiscovery.gattConnected || vescDiscovery.closing || classicBluetooth.link.active,
                             )
                         } }
                         composable("map-settings") { MapSettingsScreen { navigate("map") } }

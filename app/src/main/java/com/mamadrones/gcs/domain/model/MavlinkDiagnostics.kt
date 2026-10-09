@@ -1,6 +1,6 @@
 package com.mamadrones.gcs.domain.model
 
-enum class TelemetryLinkKind { UDP, BLE, OTHER }
+enum class TelemetryLinkKind { UDP, BLE, CLASSIC, OTHER }
 
 /** Fixed-size, memory-only session observations. Not authentication, packet loss, or health. */
 data class MavlinkDiagnostics(

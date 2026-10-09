@@ -126,7 +126,7 @@ fun VescBluetoothDiscoveryScreen(
             Text("Scanning for up to 12 seconds…", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         state.error?.let { Notice("SCAN STATUS", it) }
-        if (udpLinkOpen) Notice("CLOSE THE OTHER LINK FIRST", "Close the active UDP connection in Link Setup before opening BLE. Only one telemetry session should feed the rover display at a time.")
+        if (udpLinkOpen) Notice("CLOSE THE OTHER LINK FIRST", "Close the active UDP or Bluetooth Classic connection before opening BLE. Only one telemetry session can feed the rover display at a time.")
         when {
             state.scanning && state.advertisements.isEmpty() -> Text("No BLE advertisements found yet.")
             state.finished && state.advertisements.isEmpty() && state.error == null -> Text(
