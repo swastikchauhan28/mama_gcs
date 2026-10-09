@@ -15,12 +15,36 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MavlinkSessionTest {
+    @Test fun `cancelled closed startup cannot clear a replacement session`() = runBlocking {
+        val repository = VehicleRepositoryImpl()
+        val stalled = object : VehicleTransport by FakeTransport() {
+            override suspend fun connect(): Unit = awaitCancellation()
+        }
+        val old = MavlinkSession(stalled, MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = this)
+        val pending = launch(start = CoroutineStart.UNDISPATCHED) { old.start() }
+        val replacement = MavlinkSession(FakeTransport(), MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = this)
+        try {
+            // Queue cancellation, then start the replacement before the old catch block runs.
+            pending.cancel()
+            old.close()
+            replacement.start()
+            pending.join()
+            assertEquals(VehicleConnectionState.CONNECTING, repository.vehicleState.value.connectionStatus)
+            assertTrue(repository.vehicleState.value.mavlinkDiagnostics.active)
+            old.close()
+            assertEquals(VehicleConnectionState.CONNECTING, repository.vehicleState.value.connectionStatus)
+        } finally { pending.cancel(); old.close(); replacement.close() }
+    }
+
     @Test fun `session counts parser outcomes and source filtering without admitting rejected data`() = runBlocking {
         val transport = FakeTransport()
         val repository = VehicleRepositoryImpl()

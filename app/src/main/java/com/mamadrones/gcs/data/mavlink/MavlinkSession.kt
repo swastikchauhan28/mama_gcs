@@ -34,6 +34,7 @@ class MavlinkSession(
     private var timeoutJob: Job? = null
     @Volatile private var lastSessionHeartbeatAtEpochMillis: Long? = null
     private var selectedAutopilot: Pair<Int, Int>? = null
+    @Volatile private var closed = false
 
     init {
         require(heartbeatTimeoutMillis > 0) { "Heartbeat timeout must be positive" }
@@ -42,6 +43,7 @@ class MavlinkSession(
 
     override suspend fun start() {
         lifecycleMutex.withLock {
+            check(!closed) { "MAVLink session is closed" }
             if (receiverJob != null) return
             parser.reset()
             router.reset()
@@ -79,7 +81,7 @@ class MavlinkSession(
                 timeoutJob?.cancel()
                 timeoutJob = null
                 transport.disconnect()
-                vehicleRepository.onSessionStopped()
+                if (!closed) vehicleRepository.onSessionStopped()
                 throw cancelled
             } catch (exception: Exception) {
                 receiverJob?.cancel()
@@ -87,7 +89,7 @@ class MavlinkSession(
                 timeoutJob?.cancel()
                 timeoutJob = null
                 transport.disconnect()
-                vehicleRepository.onSessionStopped()
+                if (!closed) vehicleRepository.onSessionStopped()
                 throw exception
             }
         }
@@ -105,10 +107,12 @@ class MavlinkSession(
         activeReceiver?.cancel()
         activeTimeout?.cancel()
         transport.disconnect()
-        vehicleRepository.onSessionStopped()
+        if (!closed) vehicleRepository.onSessionStopped()
     }
 
     override fun close() {
+        if (closed) return
+        closed = true
         receiverJob?.cancel()
         timeoutJob?.cancel()
         receiverJob = null
