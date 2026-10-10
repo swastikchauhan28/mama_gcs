@@ -141,7 +141,8 @@ fun HydraulicScreen(state: VehicleState, modifier: Modifier = Modifier) = Screen
 }
 
 @Composable
-fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connection: ConnectionUiState = ConnectionUiState()) = ScreenBody(modifier) {
+fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connection: ConnectionUiState = ConnectionUiState(),
+    reportControls: @Composable () -> Unit = {}) = ScreenBody(modifier) {
     val now by produceState(System.currentTimeMillis()) {
         while (true) {
             kotlinx.coroutines.delay(1_000L)
@@ -149,6 +150,7 @@ fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connec
         }
     }
     ScreenHeader("Diagnostics", "Vehicle and communication inspection")
+    reportControls()
     val link = connection.session.connection
     SubsystemCard(ConsolePanels.mavlinkDiagnostics(state.mavlinkDiagnostics, now))
     Notice("DECODER GUIDANCE", ConsolePanels.mavlinkDiagnosticHints(state.mavlinkDiagnostics))

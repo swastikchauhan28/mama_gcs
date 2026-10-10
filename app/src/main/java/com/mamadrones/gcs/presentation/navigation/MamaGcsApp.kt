@@ -81,6 +81,7 @@ fun MamaGcsApp(
                         composable("more") { MoreScreen(vehicle, onNavigate = navigate) }
                         composable("telemetry") { TelemetryScreen(vehicle) }
                         composable("health") { HealthScreen(vehicle) }
+                        composable("parameter-review") { ParameterReviewRoute(hiltViewModel()) }
                         composable("motors") { MotorScreen(vehicle) }
                         composable("vesc-discovery") {
                             VescBluetoothDiscoveryScreen(
@@ -111,7 +112,11 @@ fun MamaGcsApp(
                         }
                         composable("spray") { SprayScreen(vehicle) }
                         composable("hydraulic") { HydraulicScreen(vehicle) }
-                        composable("diagnostics") { DiagnosticsScreen(vehicle, connection = connection) }
+                        composable("diagnostics") {
+                            val reportViewModel: TelemetryReportViewModel = hiltViewModel()
+                            DiagnosticsScreen(vehicle, connection = connection,
+                                reportControls = { TelemetryReportControls(vehicle, reportViewModel) })
+                        }
                         composable("admin") {
                             val accessViewModel: AccessViewModel = hiltViewModel()
                             val access = accessViewModel.state.collectAsStateWithLifecycle().value

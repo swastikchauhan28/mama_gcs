@@ -20,6 +20,7 @@ private data class WorkspacePage(val route: String, val title: String)
 private val vehiclePages = listOf(
     WorkspacePage("more", "Summary"), WorkspacePage("control", "Drive & safety"),
     WorkspacePage("health", "Health"), WorkspacePage("motors", "Drive motors"),
+    WorkspacePage("parameter-review", "Parameter file"),
     WorkspacePage("spray", "Spray system"), WorkspacePage("hydraulic", "Hydraulics"),
 )
 private val analyzePages = listOf(WorkspacePage("telemetry", "Instruments"), WorkspacePage("diagnostics", "Link & messages"))
