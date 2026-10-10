@@ -19,11 +19,48 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MavlinkSessionTest {
+    @Test fun `version1 heartbeat still expires`() = runBlocking {
+        val transport = FakeTransport()
+        val repository = VehicleRepositoryImpl()
+        val session = newSession(transport, repository, timeoutMillis = 80, checkIntervalMillis = 5)
+        try {
+            session.start()
+            transport.emit(heartbeat1Frame())
+            waitUntil { repository.vehicleState.value.mavlinkDiagnostics.acceptedMessages == 1L }
+            waitUntil { repository.vehicleState.value.connectionStatus == VehicleConnectionState.DEGRADED }
+            assertEquals(TransportStatus.OPEN, transport.connectionState.value.status)
+        } finally { session.stop(); session.close() }
+    }
+    @Test fun `version1 selects autopilot without loosening mixed version source filtering`() = runBlocking {
+        val transport = FakeTransport()
+        val repository = VehicleRepositoryImpl()
+        val session = newSession(transport, repository)
+        try {
+            session.start()
+            transport.emit(heartbeat1Frame(42, MavlinkMessage.MAV_AUTOPILOT_INVALID) +
+                heartbeat1Frame(42) + heartbeatFrame(systemId = 99) +
+                globalPositionFrame(42, 451_000_000) + heartbeat1Frame(99))
+            waitUntil { repository.vehicleState.value.mavlinkDiagnostics.decodedMessages == 5L }
+            val state = repository.vehicleState.value
+            assertEquals(42, state.systemId)
+            assertEquals(VehicleConnectionState.CONNECTED, state.connectionStatus)
+            assertEquals(45.1, state.position.latitude!!, 0.000001)
+            assertEquals(3L, state.mavlinkDiagnostics.decodedV1Messages)
+            assertEquals(2L, state.mavlinkDiagnostics.decodedV2Messages)
+            assertEquals(2L, state.mavlinkDiagnostics.acceptedMessages)
+            assertEquals(1L, state.mavlinkDiagnostics.ignoredBeforeHeartbeat)
+            assertEquals(2L, state.mavlinkDiagnostics.ignoredOtherSource)
+            session.stop()
+            assertFalse(repository.vehicleState.value.mavlinkDiagnostics.active)
+            assertEquals(3L, repository.vehicleState.value.mavlinkDiagnostics.decodedV1Messages)
+        } finally { session.close() }
+    }
     @Test fun `cancelled closed startup cannot clear a replacement session`() = runBlocking {
         val repository = VehicleRepositoryImpl()
         val stalled = object : VehicleTransport by FakeTransport() {

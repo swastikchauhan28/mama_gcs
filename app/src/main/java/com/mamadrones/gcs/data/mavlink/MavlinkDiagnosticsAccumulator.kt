@@ -21,7 +21,9 @@ class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long) {
         val current = snapshot
         snapshot = when (result) {
             is MavlinkParseResult.Message -> {
-                val decoded = current.copy(decodedMessages = current.decodedMessages + 1)
+                val decoded = current.copy(decodedMessages = current.decodedMessages + 1,
+                    decodedV1Messages = current.decodedV1Messages + if (result.wireVersion == MavlinkWireVersion.V1) 1 else 0,
+                    decodedV2Messages = current.decodedV2Messages + if (result.wireVersion == MavlinkWireVersion.V2) 1 else 0)
                 when (requireNotNull(disposition)) {
                     MessageDisposition.ACCEPTED -> decoded.copy(acceptedMessages = decoded.acceptedMessages + 1,
                         lastAcceptedAtEpochMillis = receivedAt)

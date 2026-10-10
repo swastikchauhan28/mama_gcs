@@ -1,6 +1,6 @@
 package com.mamadrones.gcs.data.mavlink
 
-/** MAVLink X.25 checksum implementation used for MAVLink 2 frame validation. */
+/** MAVLink X.25 checksum implementation used for MAVLink 1/2 frame validation. */
 object MavlinkChecksum {
     fun calculate(bytes: ByteArray, crcExtra: Int): Int {
         var crc = 0xFFFF

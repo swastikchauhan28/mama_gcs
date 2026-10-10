@@ -1,7 +1,7 @@
 package com.mamadrones.gcs.data.mavlink
 
 /**
- * Incremental MAVLink 2 parser for the receive-only telemetry subset. Unsigned frames are
+ * Incremental MAVLink 1/2 parser for the receive-only telemetry subset. Unsigned frames are
  * accepted after CRC validation. Signed frames are rejected because this application
  * does not yet provision or verify MAVLink signing keys.
  */
@@ -21,12 +21,14 @@ class MavlinkParser {
                 break
             }
             cursor = magicIndex
-            if (input.size - cursor < HEADER_SIZE) break
+            val version1 = input[cursor].unsigned() == MAVLINK_V1_MAGIC
+            val headerSize = if (version1) V1_HEADER_SIZE else HEADER_SIZE
+            if (input.size - cursor < headerSize) break
 
             val payloadLength = input[cursor + 1].unsigned()
-            val incompatibilityFlags = input[cursor + 2].unsigned()
+            val incompatibilityFlags = if (version1) 0 else input[cursor + 2].unsigned()
             val signed = incompatibilityFlags and SIGNED_FLAG != 0
-            val frameSize = HEADER_SIZE + payloadLength + CHECKSUM_SIZE + if (signed) SIGNATURE_SIZE else 0
+            val frameSize = headerSize + payloadLength + CHECKSUM_SIZE + if (signed) SIGNATURE_SIZE else 0
             if (input.size - cursor < frameSize) break
 
             val unsupportedFlags = incompatibilityFlags and
@@ -67,13 +69,15 @@ class MavlinkParser {
     }
 
     private fun parseFrame(rawFrame: ByteArray): MavlinkParseResult {
+        val version1 = rawFrame[0].unsigned() == MAVLINK_V1_MAGIC
+        val headerSize = if (version1) V1_HEADER_SIZE else HEADER_SIZE
         val payloadLength = rawFrame[1].unsigned()
-        val messageId = rawFrame[7].unsigned() or
+        val messageId = if (version1) rawFrame[5].unsigned() else rawFrame[7].unsigned() or
             (rawFrame[8].unsigned() shl 8) or
             (rawFrame[9].unsigned() shl 16)
         val crcExtra = crcExtraFor(messageId)
             ?: return MavlinkParseResult.UnsupportedMessage(messageId)
-        val checksumOffset = HEADER_SIZE + payloadLength
+        val checksumOffset = headerSize + payloadLength
         val expectedChecksum = rawFrame[checksumOffset].unsigned() or
             (rawFrame[checksumOffset + 1].unsigned() shl 8)
         val calculatedChecksum = MavlinkChecksum.calculate(
@@ -87,17 +91,23 @@ class MavlinkParser {
         // MAVLink 2 removes trailing zero bytes, including in base fields. Check CRC
         // against the transmitted bytes BEFORE restoring the omitted zero suffix.
         val lengths = payloadLengths(messageId)
-        if (payloadLength !in 1..lengths.last) return MavlinkParseResult.MalformedMessage(messageId)
-        val payload = rawFrame.copyOfRange(HEADER_SIZE, checksumOffset)
+        // Version 1 must contain every base byte, and cannot carry extension fields.
+        if (if (version1) payloadLength != lengths.first else payloadLength !in 1..lengths.last) {
+            return MavlinkParseResult.MalformedMessage(messageId)
+        }
+        val payload = rawFrame.copyOfRange(headerSize, checksumOffset)
             .copyOf(maxOf(payloadLength, lengths.first))
         val frame = MavlinkFrame(
-            sequence = rawFrame[4].unsigned(),
-            systemId = rawFrame[5].unsigned(),
-            componentId = rawFrame[6].unsigned(),
+            sequence = rawFrame[if (version1) 2 else 4].unsigned(),
+            systemId = rawFrame[if (version1) 3 else 5].unsigned(),
+            componentId = rawFrame[if (version1) 4 else 6].unsigned(),
             messageId = messageId,
             payload = payload
         )
-        return decode(frame)
+        val decoded = decode(frame)
+        return if (decoded is MavlinkParseResult.Message) decoded.copy(
+            wireVersion = if (version1) MavlinkWireVersion.V1 else MavlinkWireVersion.V2
+        ) else decoded
     }
 
     private fun decode(frame: MavlinkFrame): MavlinkParseResult = when (frame.messageId) {
@@ -253,7 +263,7 @@ class MavlinkParser {
 
     private fun findMagic(bytes: ByteArray, start: Int): Int {
         for (index in start until bytes.size) {
-            if (bytes[index].unsigned() == MAVLINK_V2_MAGIC) return index
+            if (bytes[index].unsigned() == MAVLINK_V2_MAGIC || bytes[index].unsigned() == MAVLINK_V1_MAGIC) return index
         }
         return -1
     }
@@ -285,6 +295,8 @@ class MavlinkParser {
             (bytes[offset + 3].unsigned().toLong() shl 24)
 
     private companion object {
+        const val MAVLINK_V1_MAGIC = 0xFE
+        const val V1_HEADER_SIZE = 6
         const val MAVLINK_V2_MAGIC = 0xFD
         const val HEADER_SIZE = 10
         const val CHECKSUM_SIZE = 2
@@ -323,8 +335,10 @@ class MavlinkParser {
     }
 }
 
+enum class MavlinkWireVersion { V1, V2 }
+
 sealed interface MavlinkParseResult {
-    data class Message(val message: MavlinkMessage) : MavlinkParseResult
+    data class Message(val message: MavlinkMessage, val wireVersion: MavlinkWireVersion = MavlinkWireVersion.V2) : MavlinkParseResult
     data class InvalidChecksum(val messageId: Int) : MavlinkParseResult
     data class UnsupportedMessage(val messageId: Int) : MavlinkParseResult
     data class UnsupportedIncompatibilityFlags(val flags: Int) : MavlinkParseResult

@@ -5,6 +5,20 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class MavlinkDiagnosticsAccumulatorTest {
+    @Test fun `version counts use decoded frames including filtered sources`() {
+        val counters = MavlinkDiagnosticsAccumulator(TelemetryLinkKind.CLASSIC, 100)
+        counters.recordResult(MavlinkParser().feed(heartbeat1Frame()).single(), MessageDisposition.ACCEPTED, 110)
+        counters.recordResult(MavlinkParser().feed(heartbeatFrame()).single(), MessageDisposition.OTHER_SOURCE, 120)
+        counters.recordResult(MavlinkParseResult.InvalidChecksum(0), null, 130)
+        counters.recordResult(MavlinkParseResult.SignedPacketRejected, null, 130)
+        assertEquals(1L, counters.snapshot.decodedV1Messages)
+        assertEquals(1L, counters.snapshot.decodedV2Messages)
+        assertEquals(2L, counters.snapshot.decodedMessages)
+        assertEquals(1L, counters.snapshot.acceptedMessages)
+        val reset = MavlinkDiagnosticsAccumulator(TelemetryLinkKind.CLASSIC, 200).snapshot
+        assertEquals(0L, reset.decodedV1Messages)
+        assertEquals(0L, reset.decodedV2Messages)
+    }
     @Test fun `chunks are not messages and empty input is not counted`() {
         val counters = MavlinkDiagnosticsAccumulator(TelemetryLinkKind.BLE, 100)
         counters.recordBytes(0, 110)

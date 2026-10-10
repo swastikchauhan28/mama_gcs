@@ -10,6 +10,8 @@ data class MavlinkDiagnostics(
     val receivedChunks: Long = 0,
     val receivedBytes: Long = 0,
     val decodedMessages: Long = 0,
+    val decodedV1Messages: Long = 0,
+    val decodedV2Messages: Long = 0,
     val acceptedMessages: Long = 0,
     val ignoredBeforeHeartbeat: Long = 0,
     val ignoredOtherSource: Long = 0,

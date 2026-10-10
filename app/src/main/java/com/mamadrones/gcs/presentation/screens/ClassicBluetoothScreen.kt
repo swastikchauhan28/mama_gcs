@@ -89,7 +89,7 @@ fun ClassicBluetoothScreen(
             SubsystemCard(ConsolePanels.mavlinkDiagnostics(diagnostics, now))
             Notice("DECODER GUIDANCE", ConsolePanels.mavlinkDiagnosticHints(diagnostics))
         }
-        Notice("RECEPTION ONLY", "A serial connection is not proof of rover telemetry. A supported MAVLink 2 autopilot heartbeat is required. This link sends no commands, heartbeat, baud-rate settings or motor values. It closes when the app goes into the background and does not reconnect automatically.")
+        Notice("RECEPTION ONLY", "A serial connection is not proof of rover telemetry. A supported MAVLink 1 or 2 autopilot heartbeat is required. This link sends no commands, heartbeat, baud-rate settings or motor values. It closes when the app goes into the background and does not reconnect automatically.")
     }
     selected?.let { peer ->
         AlertDialog(onDismissRequest = { selected = null }, title = { Text("Connect to this remote?") },

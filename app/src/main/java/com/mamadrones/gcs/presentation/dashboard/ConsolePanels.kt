@@ -26,6 +26,8 @@ object ConsolePanels {
             "Input chunks" to count(sample.receivedChunks),
             "Input bytes" to count(sample.receivedBytes),
             "Decoded supported messages" to count(sample.decodedMessages),
+            "Decoded MAVLink 1" to count(sample.decodedV1Messages),
+            "Decoded MAVLink 2" to count(sample.decodedV2Messages),
             "Accepted from selected autopilot" to count(sample.acceptedMessages),
             "Ignored before autopilot selection" to count(sample.ignoredBeforeHeartbeat),
             "Ignored other source" to count(sample.ignoredOtherSource),
@@ -49,7 +51,7 @@ object ConsolePanels {
         if (sample.startedAtEpochMillis != null && sample.receivedBytes == 0L)
             add("No bytes reached the decoder. Check the selected UDP peer, BLE characteristic or Classic serial radio and sender output.")
         if (sample.receivedBytes > 0L && sample.decodedMessages == 0L)
-            add("Bytes arrived, but no supported message was decoded. The stream may be incomplete, unsupported, or not MAVLink 2; confirm the radio route and format.")
+            add("Bytes arrived, but no supported message was decoded. The stream may be incomplete, unsupported, or not MAVLink 1/2; confirm the radio route and format.")
         if (sample.checksumFailures > 0L || sample.malformedPayloads > 0L)
             add("Corrupt or incompatible frame candidates were rejected. Check framing, sender settings and the telemetry bridge; these counters do not prove a particular hardware fault.")
         if (sample.signedPacketsRejected > 0L)

@@ -44,3 +44,17 @@ internal fun ByteArray.putUInt32(offset: Int, value: Long) {
 internal fun ByteArray.putInt32(offset: Int, value: Int) = putUInt32(offset, value.toLong())
 
 internal fun ByteArray.putFloat32(offset: Int, value: Float) = putInt32(offset, value.toBits())
+
+internal fun mavlink1TestFrame(
+    messageId: Int, payload: ByteArray, crcExtra: Int,
+    systemId: Int = 1, componentId: Int = 1, sequence: Int = 7,
+): ByteArray {
+    require(messageId in 0..255)
+    val headerAndPayload = byteArrayOf(0xFE.toByte(), payload.size.toByte(), sequence.toByte(),
+        systemId.toByte(), componentId.toByte(), messageId.toByte()) + payload
+    val checksum = MavlinkChecksum.calculate(headerAndPayload.copyOfRange(1, headerAndPayload.size), crcExtra)
+    return headerAndPayload + byteArrayOf(checksum.toByte(), (checksum shr 8).toByte())
+}
+
+internal fun heartbeat1Frame(systemId: Int = 1, autopilot: Int = 3): ByteArray = mavlink1TestFrame(
+    0, byteArrayOf(0, 0, 0, 0, 10, autopilot.toByte(), 0, 4, 3), 50, systemId = systemId)
