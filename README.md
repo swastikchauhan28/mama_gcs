@@ -2,7 +2,9 @@
 
 Native Android ground-control-station foundation for a Mama agricultural UGV: ArduPilot Rover, VESC motors, spray equipment and hydraulics. Kotlin · Compose · Material 3 · Hilt · offline-first.
 
-## Current delivery: passive autopilot firmware information (Phase 23)
+## Current delivery: read-only hardware file summary (Phase 24)
+
+Phase 24 adds **Rover configuration → Parameter file → Hardware summary** after a local import. Review logical output functions/ranges/reversals, serial protocol codes, remote-input mapping, and selected motor, speed and failsafe fields with original value text and source lines. Limited ArduPilot reference labels never confirm installed firmware, actual wiring, safe stopping or speed enforcement. Missing and unknown values remain explicit; the summary uses only the current imported file, not the comparison reference or live telemetry. Nothing is uploaded and controls remain locked. See the [scope and validation](docs/phase-24-report.md).
 
 Phase 23 adds **Rover configuration → Autopilot info**. If the selected autopilot sends `AUTOPILOT_VERSION`, the app displays its reported firmware version/release type and raw middleware, OS, board, vendor and product fields. Disconnected metadata is explicitly historical; reconnect clears it. This receiver does not request the message, install firmware, authenticate hardware or unlock commands. Hardware UIDs and capability flags are not retained. See the [scope and validation](docs/phase-23-report.md).
 
