@@ -25,6 +25,36 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MavlinkSessionTest {
+    @Test fun `rc and pwm require selected heartbeat identity and never transmit`() = runBlocking {
+        val base = FakeTransport()
+        var sends = 0
+        val transport = object : VehicleTransport by base {
+            override suspend fun send(data: ByteArray) { sends++ }
+        }
+        val repository = VehicleRepositoryImpl()
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository,
+            scope = this)
+        fun rc(system: Int, component: Int = 1, value: Int = 1500): ByteArray {
+            val payload = ByteArray(42).apply { putUInt16(4, value); this[40] = 1; this[41] = 255.toByte() }
+            return mavlinkTestFrame(65, payload, 118, system, component)
+        }
+        fun pwm(system: Int, value: Int = 1500) = mavlink1TestFrame(36,
+            ByteArray(21).apply { putUInt16(4, value) }, 222, systemId = system)
+        try {
+            session.start()
+            base.emit(rc(42) + pwm(42) + heartbeatFrame(systemId = 42) +
+                rc(42) + pwm(42) + rc(99, value = 2000) + pwm(99, 2000) + rc(42, component = 2))
+            waitUntil { repository.vehicleState.value.mavlinkDiagnostics.decodedMessages == 8L }
+            val state = repository.vehicleState.value
+            assertEquals(1500, state.rcInput.channelsMicroseconds[0])
+            assertEquals(1500, state.pwmOutputs.single().outputsMicroseconds[0])
+            assertEquals(2L, state.mavlinkDiagnostics.ignoredBeforeHeartbeat)
+            assertEquals(3L, state.mavlinkDiagnostics.ignoredOtherSource)
+            assertEquals(3L, state.mavlinkDiagnostics.acceptedMessages)
+            assertEquals(0, sends)
+        } finally { session.stop(); session.close() }
+    }
+
     @Test fun `version1 heartbeat still expires`() = runBlocking {
         val transport = FakeTransport()
         val repository = VehicleRepositoryImpl()

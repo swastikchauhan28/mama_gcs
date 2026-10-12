@@ -9,6 +9,22 @@ data class MavlinkFrame(
 )
 
 sealed interface MavlinkMessage {
+    data class RcChannels(
+        val systemId: Int,
+        val componentId: Int,
+        val channelCount: Int,
+        val channelsMicroseconds: List<Int>,
+        val rssi: Int,
+    ) : MavlinkMessage
+
+    data class ServoOutputRaw(
+        val systemId: Int,
+        val componentId: Int,
+        val port: Int,
+        // Extension zeros can mean omitted/unavailable, not a confirmed zero output.
+        val outputsMicroseconds: List<Int?>,
+    ) : MavlinkMessage
+
     data class Heartbeat(
         val systemId: Int,
         val componentId: Int,
@@ -103,6 +119,8 @@ sealed interface MavlinkMessage {
 
     companion object {
         const val HEARTBEAT_MESSAGE_ID = 0
+        const val RC_CHANNELS_MESSAGE_ID = 65
+        const val SERVO_OUTPUT_RAW_MESSAGE_ID = 36
         const val SYS_STATUS_MESSAGE_ID = 1
         const val GPS_RAW_INT_MESSAGE_ID = 24
         const val ATTITUDE_MESSAGE_ID = 30

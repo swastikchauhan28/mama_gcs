@@ -21,6 +21,8 @@ data class VehicleState(
     val positionTrack: List<GeoTrackPoint> = emptyList(),
     val attitude: AttitudeState = AttitudeState(),
     val roverHud: RoverHudState = RoverHudState(),
+    val rcInput: RcInputState = RcInputState(),
+    val pwmOutputs: List<PwmOutputState> = emptyList(),
     val systemStatus: AutopilotSystemStatus = AutopilotSystemStatus(),
     val gps: GpsState = GpsState(),
     val battery: BatteryState = BatteryState(),

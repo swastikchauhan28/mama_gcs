@@ -15,6 +15,30 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
     private val _vehicleState = MutableStateFlow(VehicleState())
     override val vehicleState: StateFlow<VehicleState> = _vehicleState.asStateFlow()
 
+    fun onRcChannels(message: MavlinkMessage.RcChannels, receivedAtEpochMillis: Long) {
+        _vehicleState.update { current -> current.copy(rcInput = RcInputState(
+            channelCount = message.channelCount,
+            channelsMicroseconds = List(18) { index ->
+                message.channelsMicroseconds.getOrNull(index)
+                    ?.takeIf { index < message.channelCount && it in 0..65_534 }
+            },
+            rssiRaw = message.rssi.takeIf { it in 0..254 },
+            lastUpdatedAtEpochMillis = receivedAtEpochMillis,
+        )) }
+    }
+
+    fun onServoOutputRaw(message: MavlinkMessage.ServoOutputRaw, receivedAtEpochMillis: Long) {
+        if (message.port !in 0..255) return
+        _vehicleState.update { current ->
+            // Keep the first four distinct ports; existing ports continue updating.
+            if (current.pwmOutputs.none { it.port == message.port } && current.pwmOutputs.size >= 4) current
+            else current.copy(pwmOutputs = (current.pwmOutputs.filterNot { it.port == message.port } +
+                PwmOutputState(message.port, List(16) { index ->
+                    message.outputsMicroseconds.getOrNull(index)?.takeIf { it in 0..65_535 }
+                }, receivedAtEpochMillis)).sortedBy { it.port })
+        }
+    }
+
     fun onHeartbeat(heartbeat: MavlinkMessage.Heartbeat, receivedAtEpochMillis: Long) {
         _vehicleState.value = _vehicleState.value.copy(
             systemId = heartbeat.systemId,

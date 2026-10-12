@@ -111,6 +111,18 @@ class MavlinkParser {
     }
 
     private fun decode(frame: MavlinkFrame): MavlinkParseResult = when (frame.messageId) {
+        MavlinkMessage.RC_CHANNELS_MESSAGE_ID -> withPayloadLength(frame, 42, 42) {
+            MavlinkMessage.RcChannels(frame.systemId, frame.componentId,
+                uint8(frame.payload[40]), List(18) { uint16(frame.payload, 4 + it * 2) }, uint8(frame.payload[41]))
+        }
+        MavlinkMessage.SERVO_OUTPUT_RAW_MESSAGE_ID -> withPayloadLength(frame, 21, 37) {
+            val padded = frame.payload.copyOf(37)
+            MavlinkMessage.ServoOutputRaw(frame.systemId, frame.componentId, uint8(frame.payload[20]),
+                List(16) { index ->
+                    if (index < 8) uint16(padded, 4 + index * 2)
+                    else uint16(padded, 21 + (index - 8) * 2).takeUnless { it == 0 }
+                })
+        }
         MavlinkMessage.HEARTBEAT_MESSAGE_ID -> {
             if (frame.payload.size != HEARTBEAT_PAYLOAD_SIZE) {
                 MavlinkParseResult.MalformedMessage(frame.messageId)
@@ -227,6 +239,8 @@ class MavlinkParser {
     }
 
     private fun payloadLengths(messageId: Int): IntRange = when (messageId) {
+        MavlinkMessage.RC_CHANNELS_MESSAGE_ID -> 42..42
+        MavlinkMessage.SERVO_OUTPUT_RAW_MESSAGE_ID -> 21..37
         MavlinkMessage.HEARTBEAT_MESSAGE_ID -> HEARTBEAT_PAYLOAD_SIZE..HEARTBEAT_PAYLOAD_SIZE
         MavlinkMessage.SYS_STATUS_MESSAGE_ID -> SYS_STATUS_LENGTH..SYS_STATUS_LENGTH
         MavlinkMessage.GPS_RAW_INT_MESSAGE_ID -> GPS_RAW_INT_MIN_LENGTH..GPS_RAW_INT_MAX_LENGTH
@@ -250,6 +264,8 @@ class MavlinkParser {
     }
 
     private fun crcExtraFor(messageId: Int): Int? = when (messageId) {
+        MavlinkMessage.RC_CHANNELS_MESSAGE_ID -> 118
+        MavlinkMessage.SERVO_OUTPUT_RAW_MESSAGE_ID -> 222
         MavlinkMessage.HEARTBEAT_MESSAGE_ID -> HEARTBEAT_CRC_EXTRA
         MavlinkMessage.SYS_STATUS_MESSAGE_ID -> SYS_STATUS_CRC_EXTRA
         MavlinkMessage.GPS_RAW_INT_MESSAGE_ID -> GPS_RAW_INT_CRC_EXTRA
