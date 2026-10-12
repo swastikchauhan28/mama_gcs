@@ -29,6 +29,8 @@ No offline map-region downloader, background communication service, secure vehic
 
 ## Lifecycle and storage
 
+Phase 21's RC/PWM monitor receives only from the existing selected autopilot source. Its raw inputs/outputs are observations, not motor identities, physical output measurements or safety evidence. Values are hidden when link/heartbeat/sample freshness is missing; the five-second display window is not a failsafe. Session restart clears samples; at most four output ports are retained. No command, calibration or stream-rate request is sent. Telemetry report export includes their receipt times only, excluding raw RC/PWM values and RSSI.
+
 Phase 20 permits explicit export of a previewed, allowlisted telemetry evidence snapshot through Android's document picker. It excludes coordinates, track, device addresses/names, network endpoints, accounts, parameters and raw messages. Capture/session times and observed MAVLink source IDs remain included. Saved reports are not encrypted by the app and may be uploaded by a chosen cloud document provider. There is no automatic report transmission or raw-packet logging. A failed/interrupted export may leave a partial file; the user must inspect it before sharing.
 
 Phase 19 adds receive-only MAVLink 1 compatibility to the same message allowlist. MAVLink 1 has no signing support; accepting it does not establish trust. Version counters describe decoded frames, including source-filtered messages, not an authenticated or negotiated peer protocol. MAVLink 2 signed candidates remain rejected. No transmit, automatic protocol negotiation or rover configuration changes are introduced.
