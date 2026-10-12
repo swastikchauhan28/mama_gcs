@@ -22,16 +22,29 @@ import com.mamadrones.gcs.data.parameters.ParameterDifferenceKind
 import com.mamadrones.gcs.presentation.components.Notice
 import com.mamadrones.gcs.presentation.parameters.HardwareFileSectionCard
 import com.mamadrones.gcs.presentation.parameters.ParameterHardwareSummary
+import com.mamadrones.gcs.presentation.parameters.HardwareReportPreview
 import java.io.InputStream
 
 @Composable
 fun ParameterReviewRoute(viewModel: ParameterReviewViewModel) {
     val context = LocalContext.current.applicationContext
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val reportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        if (uri == null) viewModel.reportPickerFinished()
+        else viewModel.saveHardwareReport { context.contentResolver.openOutputStream(uri, "wt") }
+    }
     ParameterReviewScreen(state, onImport = viewModel::importFile, onClear = viewModel::clear,
         openDocument = { uri -> context.contentResolver.openInputStream(uri) },
         onImportReference = viewModel::importReference, onClearReference = viewModel::clearReference,
-        onPickerFailure = viewModel::pickerFailed)
+        onPickerFailure = viewModel::pickerFailed,
+        onPrepareReport = viewModel::prepareHardwareReport,
+        onDismissReport = viewModel::dismissHardwareReport,
+        onSaveReport = {
+            if (viewModel.chooseReportDestination()) {
+                try { reportLauncher.launch("mama-hardware-review.txt") }
+                catch (_: RuntimeException) { viewModel.reportPickerFinished(failed = true) }
+            }
+        })
 }
 
 @Composable
@@ -43,6 +56,9 @@ fun ParameterReviewScreen(
     onImportReference: (() -> InputStream?) -> Unit = {},
     onClearReference: () -> Unit = {},
     onPickerFailure: (Boolean) -> Unit = {},
+    onPrepareReport: () -> Unit = {},
+    onDismissReport: () -> Unit = {},
+    onSaveReport: () -> Unit = {},
 ) {
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) onImport { openDocument(uri) }
@@ -83,16 +99,18 @@ fun ParameterReviewScreen(
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {
                     try { launcher.launch(arrayOf("*/*")) } catch (_: RuntimeException) { onPickerFailure(false) }
-                }, enabled = !state.loading,
+                }, enabled = !state.loading && !state.report.busy,
                     modifier = Modifier.testTag("parameter-import")) { Text("Import .param") }
                 OutlinedButton(onClick = { onClear(); search = ""; category = null; showUnchanged = false; showHardware = false },
-                    enabled = state.loading || snapshot != null || state.reference != null || state.error != null,
+                    enabled = !state.report.busy && (state.loading || snapshot != null || state.reference != null || state.error != null),
                     modifier = Modifier.testTag("parameter-clear")) { Text("Clear review") }
             }
             Text("UTF-8, two columns: NAME,VALUE or NAME VALUE. Maximum 512 KiB / 10,000 values. Kept in memory only; leaving this workspace may discard it. The original file is never changed.",
                 style = MaterialTheme.typography.bodySmall)
         }
         if (state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+        if (state.report.writing) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+        state.report.message?.let { message -> item { Text(message) } }
         state.error?.let { message -> item {
             Notice("IMPORT FAILED", message + if (snapshot != null) " Previous file remains displayed below." else "")
         } }
@@ -106,6 +124,12 @@ fun ParameterReviewScreen(
             }
             if (showHardware) {
                 item {
+                    OutlinedButton(onClick = onPrepareReport, enabled = !state.loading && !state.report.busy,
+                        modifier = Modifier.testTag("prepare-hardware-report")) { Text("Prepare hardware report") }
+                    Text("Preview selected file values and questions for your hardware team, then explicitly save a text file. No automatic sharing.",
+                        style = MaterialTheme.typography.bodySmall)
+                }
+                item {
                     Notice("CURRENT FILE ONLY · HARDWARE UNVERIFIED", "This summary ignores reference-file and search filters. " +
                         "Limited ArduPilot reference labels are not matched to an installed firmware version. Missing means NOT IN FILE, not disabled or default. " +
                         "Shows SERVO1–32 and SERIAL0–9 when present, plus selected input, motor, speed and failsafe fields. Other parameters remain in the raw review. " +
@@ -117,10 +141,10 @@ fun ParameterReviewScreen(
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = {
                         try { referenceLauncher.launch(arrayOf("*/*")) } catch (_: RuntimeException) { onPickerFailure(true) }
-                    }, enabled = !state.loading, modifier = Modifier.testTag("parameter-reference-import")) {
+                    }, enabled = !state.loading && !state.report.busy, modifier = Modifier.testTag("parameter-reference-import")) {
                         Text(if (state.reference == null) "Compare with reference file" else "Replace reference file")
                     }
-                    if (state.reference != null) TextButton(onClick = onClearReference, enabled = !state.loading,
+                    if (state.reference != null) TextButton(onClick = onClearReference, enabled = !state.loading && !state.report.busy,
                         modifier = Modifier.testTag("parameter-reference-clear")) { Text("Remove reference") }
                 }
                 Text("Reference = comparison baseline. Current = the file imported with Import .param. Neither is live vehicle configuration.",
@@ -181,4 +205,5 @@ fun ParameterReviewScreen(
             }
         }
     }
+    HardwareReportPreview(state.report, onDismissReport, onSaveReport)
 }
