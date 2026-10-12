@@ -2,7 +2,9 @@
 
 Native Android ground-control-station foundation for a Mama agricultural UGV: ArduPilot Rover, VESC motors, spray equipment and hydraulics. Kotlin · Compose · Material 3 · Hilt · offline-first.
 
-## Current delivery: read-only hardware file summary (Phase 24)
+## Current delivery: hardware-team review report (Phase 25)
+
+Phase 25 adds **Rover configuration → Parameter file → Hardware summary → Prepare hardware report**. Preview a frozen text report of the current file's selected hardware fields, source lines, fingerprint and outstanding hardware-team questions, then explicitly save through Android's document picker. Reference files and UI filters are excluded. Configuration values are included: review before sharing. No automatic sharing, live parameter reads/writes, hardware approval or command unlocking is introduced. See the [scope and validation](docs/phase-25-report.md).
 
 Phase 24 adds **Rover configuration → Parameter file → Hardware summary** after a local import. Review logical output functions/ranges/reversals, serial protocol codes, remote-input mapping, and selected motor, speed and failsafe fields with original value text and source lines. Limited ArduPilot reference labels never confirm installed firmware, actual wiring, safe stopping or speed enforcement. Missing and unknown values remain explicit; the summary uses only the current imported file, not the comparison reference or live telemetry. Nothing is uploaded and controls remain locked. See the [scope and validation](docs/phase-24-report.md).
 
