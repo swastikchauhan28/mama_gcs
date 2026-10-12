@@ -2,7 +2,9 @@
 
 Native Android ground-control-station foundation for a Mama agricultural UGV: ArduPilot Rover, VESC motors, spray equipment and hydraulics. Kotlin · Compose · Material 3 · Hilt · offline-first.
 
-## Current delivery: read-only RC and PWM monitor (Phase 21)
+## Current delivery: read-only parameter-file comparison (Phase 22)
+
+Phase 22 adds **Rover configuration → Parameter file → Compare with reference file**. Review exact value-text changes, entries present in only one file, and unchanged entries with source line numbers and both file fingerprints. Search and category filters apply to the comparison. Imports and comparison stay in memory; failures retain the prior review. No merge, parameter upload, numeric/firmware interpretation or safety approval is provided. See the [comparison workflow and validation](docs/phase-22-report.md).
 
 Phase 21 adds **Analyze tools → RC & PWM** for autopilot-reported `RC_CHANNELS` inputs and `SERVO_OUTPUT_RAW` outputs. It shows numbered raw values, device-scale RSSI and independently aged output ports, hides stale/disconnected values, and resets samples on a new session. No calibration, channel-to-motor assignment, rate request or command is sent. The report export includes sample receipt times only, not RC/PWM values. See the [monitor scope and validation](docs/phase-21-report.md).
 

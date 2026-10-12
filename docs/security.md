@@ -29,6 +29,8 @@ No offline map-region downloader, background communication service, secure vehic
 
 ## Lifecycle and storage
 
+Phase 22 adds a second bounded in-memory parameter snapshot and an exact-text comparison. Neither snapshot enters vehicle state, command authorization or safety evaluation. There is no merge/apply/export of file contents; missing entries receive no inferred defaults. Import errors retain the previous pair, cancellation/generation checks prevent superseded publication, and removing the reference never deletes the source file. Both fingerprints identify file bytes, not vehicle identity or trustworthy configuration.
+
 Phase 21's RC/PWM monitor receives only from the existing selected autopilot source. Its raw inputs/outputs are observations, not motor identities, physical output measurements or safety evidence. Values are hidden when link/heartbeat/sample freshness is missing; the five-second display window is not a failsafe. Session restart clears samples; at most four output ports are retained. No command, calibration or stream-rate request is sent. Telemetry report export includes their receipt times only, excluding raw RC/PWM values and RSSI.
 
 Phase 20 permits explicit export of a previewed, allowlisted telemetry evidence snapshot through Android's document picker. It excludes coordinates, track, device addresses/names, network endpoints, accounts, parameters and raw messages. Capture/session times and observed MAVLink source IDs remain included. Saved reports are not encrypted by the app and may be uploaded by a chosen cloud document provider. There is no automatic report transmission or raw-packet logging. A failed/interrupted export may leave a partial file; the user must inspect it before sharing.
