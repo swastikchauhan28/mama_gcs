@@ -46,6 +46,7 @@ class RouteDocumentPickerTest {
         try {
             runBlocking { repository.save(route) }
             scenario = ActivityScenario.launch(MainActivity::class.java)
+            awaitApp()
             compose.openWorkspace("mission")
             compose.waitUntil(15_000) {
                 compose.onAllNodesWithText("No unsaved changes").fetchSemanticsNodes().isNotEmpty()
@@ -136,6 +137,7 @@ class RouteDocumentPickerTest {
     }
 
     private fun awaitApp() = awaitCondition("Mama GCS foreground") {
+        acknowledgeFullscreenEducation()
         automation.rootInActiveWindow?.packageName?.toString() == "com.mamadrones.gcs"
     }
 

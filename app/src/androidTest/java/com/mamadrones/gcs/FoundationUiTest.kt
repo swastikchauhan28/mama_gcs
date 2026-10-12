@@ -3,7 +3,7 @@ package com.mamadrones.gcs
 import android.graphics.Bitmap
 import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mamadrones.gcs.domain.model.*
 import com.mamadrones.gcs.presentation.navigation.MamaGcsApp
@@ -19,7 +19,7 @@ import org.junit.Test
 import java.io.File
 
 class FoundationUiTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
     private val bleCharacteristic = BleNotifyCharacteristic("service", "characteristic", false)
 
     @Test fun libraryFailureAndCapacityAreExplainedWithoutHiddenActions() {
@@ -73,7 +73,7 @@ class FoundationUiTest {
                     onAction = { action = it })
             }
         }
-        compose.onNodeWithTag("mission-save").performScrollTo().assertIsEnabled().performClick()
+        compose.onNodeWithTag("mission-save").assertIsDisplayed().assertIsEnabled().performClick()
         compose.runOnIdle { org.junit.Assert.assertEquals(
             com.mamadrones.gcs.presentation.mission.MissionPlanAction.Save, action) }
     }
@@ -121,12 +121,16 @@ class FoundationUiTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val directory = requireNotNull(context.getExternalFilesDir("qa")).apply { mkdirs() }
         val file = File(directory, "$name-${context.resources.configuration.screenWidthDp}.png")
-        compose.waitForIdle()
+        compose.awaitScreenshotFrame(compose.activity.window.decorView)
         // Native surfaces/window transitions can briefly make the system capture unavailable.
         var screenshot: Bitmap? = null
+        val stability = StationScreenshotStability()
         compose.waitUntil(10_000) {
             screenshot = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
-            screenshot != null
+            screenshot?.let {
+                if (stability.accepts(it, compose.activity.window.decorView)) true
+                else { it.recycle(); screenshot = null; false }
+            } ?: false
         }
         val captured = requireNotNull(screenshot)
         try {
@@ -151,7 +155,7 @@ class FoundationUiTest {
             gps = GpsState(fix = GpsFix.RTK_FIXED, satellites = 10, hdop = 1.2),
             battery = BatteryState(percentage = 100)))
         compose.onNodeWithText("Connected", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("App stop unavailable", substring = true).assertIsDisplayed()
+        compose.assertMonitoringOnlySafety()
         capture("operate-connected-fixture")
         compose.openWorkspace("control")
         compose.onNodeWithText("Forward").performScrollTo().assertIsNotEnabled()
@@ -175,7 +179,7 @@ class FoundationUiTest {
         compose.onNodeWithText("8888").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Signed packets rejected").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Do not disable a live rover's signing", substring = true).assertExists()
-        compose.onNodeWithText("App stop unavailable", substring = true).assertIsDisplayed()
+        compose.assertMonitoringOnlySafety()
     }
 
     @Test fun bleScreenShowsDecoderCountersButNotAnotherTransportsHistory() {
@@ -194,7 +198,7 @@ class FoundationUiTest {
     @Test fun initialDashboardDoesNotEnableStop() {
         launch()
         compose.onNodeWithText("Disconnected", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("App stop unavailable", substring = true).assertIsDisplayed()
+        compose.assertMonitoringOnlySafety()
         compose.onNodeWithTag("operation-map").assertIsDisplayed()
         compose.onNodeWithText("GROUND SPEED", substring = false).assertIsDisplayed()
         capture("dashboard-dark")
@@ -229,7 +233,7 @@ class FoundationUiTest {
         launch()
         compose.openWorkspace("map")
         compose.onNodeWithTag("map-center").assertIsNotEnabled()
-        compose.onNodeWithText("App stop unavailable", substring = true).assertIsDisplayed()
+        compose.assertMonitoringOnlySafety()
         capture("map-dark")
         compose.openWorkspace("control")
         compose.onNodeWithText("Forward").performScrollTo().assertIsNotEnabled()

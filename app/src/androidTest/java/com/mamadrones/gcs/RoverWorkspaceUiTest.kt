@@ -102,6 +102,10 @@ class RoverWorkspaceUiTest {
             compose.openWorkspace("general")
             compose.onNodeWithText("Appearance").assertIsDisplayed()
             capture("station-settings-portrait")
+            compose.openWorkspace("classic-bluetooth")
+            compose.onNodeWithText("Bluetooth Classic / HC-05").assertIsDisplayed()
+            compose.onNodeWithTag("classic-refresh").performScrollTo().assertIsEnabled()
+            compose.assertMonitoringOnlySafety()
         } finally { compose.activityRule.scenario.onActivity { it.requestedOrientation = previous } }
     }
 
@@ -112,10 +116,17 @@ class RoverWorkspaceUiTest {
     }
 
     private fun capture(name: String) {
-        compose.waitForIdle()
+        compose.awaitScreenshotFrame(compose.activity.window.decorView)
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         var bitmap: Bitmap? = null
-        compose.waitUntil(10_000) { bitmap = instrumentation.uiAutomation.takeScreenshot(); bitmap != null }
+        val stability = StationScreenshotStability()
+        compose.waitUntil(10_000) {
+            bitmap = instrumentation.uiAutomation.takeScreenshot()
+            bitmap?.let {
+                if (stability.accepts(it, compose.activity.window.decorView)) true
+                else { it.recycle(); bitmap = null; false }
+            } ?: false
+        }
         val image = requireNotNull(bitmap)
         try {
             val directory = requireNotNull(instrumentation.targetContext.getExternalFilesDir("qa")).apply { mkdirs() }

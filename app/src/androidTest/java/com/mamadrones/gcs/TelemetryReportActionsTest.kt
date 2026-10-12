@@ -2,7 +2,7 @@ package com.mamadrones.gcs
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.mamadrones.gcs.presentation.screens.TelemetryReportActions
 import com.mamadrones.gcs.presentation.screens.TelemetryReportState
 import org.junit.Assert.*
@@ -10,7 +10,7 @@ import org.junit.Rule
 import org.junit.Test
 
 class TelemetryReportActionsTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
 
     @Test fun previewRequiresExplicitSaveAction() {
         var saved = false

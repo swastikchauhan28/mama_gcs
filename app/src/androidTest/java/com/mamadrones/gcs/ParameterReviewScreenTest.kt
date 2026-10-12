@@ -2,7 +2,7 @@ package com.mamadrones.gcs
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.mamadrones.gcs.data.parameters.ParameterFileReader
 import com.mamadrones.gcs.data.parameters.ParameterFileComparison
 import com.mamadrones.gcs.presentation.screens.ParameterReviewScreen
@@ -13,7 +13,7 @@ import org.junit.Test
 
 /** File fixtures only; no vehicle connection or file-picker automation. */
 class ParameterReviewScreenTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
     private val snapshot = ParameterFileReader.read("SERVO1_FUNCTION,74\nRC1_TRIM,1500".byteInputStream())
 
     @Test fun comparisonShowsReferenceAndCurrentAndSupportsSearch() {

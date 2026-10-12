@@ -8,9 +8,28 @@ fun ComposeTestRule.openWorkspace(route: String) {
     if (route == "control") {
         onNodeWithTag("safety-shortcut").performClick()
     } else {
+        val parent = when (route) {
+            "health", "motors", "spray", "hydraulic", "parameter-review", "autopilot-info" -> "more"
+            "settings", "classic-bluetooth", "vesc-discovery", "map-settings" -> "general"
+            "telemetry", "rc-pwm" -> "diagnostics"
+            "map" -> "dashboard"
+            else -> route
+        }
         onNodeWithTag("station-menu").performClick()
-        onNodeWithTag("menu-${if (route == "map") "dashboard" else route}").performClick()
+        onNodeWithTag("menu-$parent").performClick()
+        if (parent != route && route != "map") {
+            onNodeWithTag("category-$route").performScrollTo().assertIsDisplayed().performClick()
+        }
     }
+}
+
+/** Both layouts must explicitly state that stopping requires the physical safety system. */
+fun ComposeTestRule.assertMonitoringOnlySafety() {
+    onNode(
+        hasText("MONITORING ONLY · App emergency stop unavailable · Use the physical safety system") or
+            hasText("App stop unavailable · Physical safety required")
+    ).assertIsDisplayed()
+    onNodeWithTag("safety-shortcut").assertIsDisplayed().assertIsEnabled()
 }
 
 fun ComposeTestRule.openMissionFiles() {

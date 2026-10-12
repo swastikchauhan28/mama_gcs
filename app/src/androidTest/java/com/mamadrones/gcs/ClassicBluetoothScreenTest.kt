@@ -2,7 +2,7 @@ package com.mamadrones.gcs
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.mamadrones.gcs.data.transport.bluetooth.ClassicBluetoothPeer
 import com.mamadrones.gcs.data.transport.bluetooth.ClassicLinkState
 import com.mamadrones.gcs.domain.model.*
@@ -14,7 +14,7 @@ import org.junit.Test
 
 /** Fake UI state only: never accesses a radio or sends a vehicle command. */
 class ClassicBluetoothScreenTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
     private val peer = ClassicBluetoothPeer("00:11:22:33:44:55", "Test HC-05")
 
     @Test fun selectingDeviceRequiresExplicitConfirmation() {

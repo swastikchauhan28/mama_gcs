@@ -2,7 +2,7 @@ package com.mamadrones.gcs
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.mamadrones.gcs.domain.model.*
 import com.mamadrones.gcs.presentation.screens.RcPwmContent
 import org.junit.Rule
@@ -10,7 +10,7 @@ import org.junit.Test
 
 /** Synthetic read-only fixtures: no radio, calibration or rover commands. */
 class RcPwmScreenTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
 
     @Test fun emptyMonitorExplainsMissingData() {
         compose.setContent { MaterialTheme { RcPwmContent(VehicleState(), 10_000) } }

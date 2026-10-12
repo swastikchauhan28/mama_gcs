@@ -10,6 +10,8 @@ import android.view.ViewGroup
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mamadrones.gcs.data.local.datastore.LocalMissionDraftRepository
@@ -86,6 +88,7 @@ class MissionMapDialogTest {
                 }
             } finally { activity.onActivity { loadedMap.removeOnCameraIdleListener(listener) } }
 
+            awaitMapInputReady(view)
             var first = Offset.Zero
             activity.onActivity {
                 val point = loadedMap.projection.toScreenLocation(LatLng(original.waypoints[0].latitude, original.waypoints[0].longitude))
@@ -122,9 +125,14 @@ class MissionMapDialogTest {
             var expected = LatLng()
             activity.onActivity {
                 press = Offset(view.width * 0.28f, view.height * 0.55f)
+            }
+            // Dialog/IME dismissal can change the native viewport after Compose
+            // becomes idle. Sample the expected coordinate only after focus is
+            // restored, immediately before input, not from the earlier viewport.
+            val sampleExpected = {
                 expected = loadedMap.projection.fromScreenLocation(android.graphics.PointF(press.x, press.y))
             }
-            gesture(view, press, 1000)
+            gesture(view, press, 1000, sampleExpected)
             awaitDialog("Add waypoint")
             fun field(tag: String) = compose.onNodeWithTag(tag).fetchSemanticsNode()
                 .config[androidx.compose.ui.semantics.SemanticsProperties.EditableText].text.toDouble()
@@ -133,13 +141,12 @@ class MissionMapDialogTest {
             compose.onNodeWithText("Cancel").performClick()
             compose.waitForIdle()
             assertEquals(edited, runBlocking { repository.loadRecovery() })
-            gesture(view, press, 1000)
+            gesture(view, press, 1000, sampleExpected)
             awaitDialog("Add waypoint")
             compose.onNodeWithTag("mission-confirm-waypoint").performClick()
             compose.waitUntil(10_000) { runBlocking { repository.loadRecovery()?.waypoints?.size == 3 } }
             assertEquals(original, runBlocking { repository.load() })
-            compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-save"))
-            compose.onNodeWithTag("mission-save").performClick()
+            compose.onNodeWithTag("mission-save").assertIsDisplayed().assertIsEnabled().performClick()
             compose.waitUntil(10_000) { runBlocking { repository.load().waypoints.size == 3 } }
             val saved = runBlocking { repository.load() }
             assertEquals(edited.waypoints, saved.waypoints.take(2))
@@ -168,28 +175,37 @@ class MissionMapDialogTest {
         return null
     }
 
-    private fun gesture(view: MapView, point: Offset, duration: Long) {
+    private fun gesture(view: MapView, point: Offset, duration: Long, beforeDown: () -> Unit = {}) {
         val location = IntArray(2)
-        // Compose can be idle before Android returns focus after a dialog closes.
-        // Injecting at that point sends the tap to a different window or drops it.
-        try {
-            compose.waitUntil(10_000) {
-                var focused = false
-                instrumentation.runOnMainSync { focused = view.isShown && view.hasWindowFocus() }
-                focused
-            }
-        } catch (failure: ComposeTimeoutException) {
-            var details = ""
-            instrumentation.runOnMainSync {
-                details = "shown=${view.isShown}, attached=${view.isAttachedToWindow}, " +
-                    "windowVisibility=${view.windowVisibility}, root=${view.rootView.javaClass.simpleName}, " +
-                    "rootFocus=${view.rootView.hasWindowFocus()}, size=${view.width}x${view.height}"
-            }
-            throw AssertionError("Map input window unavailable: $details", failure)
-        }
+        awaitMapInputReady(view)
         instrumentation.runOnMainSync {
             assertTrue("Map window must have input focus", view.hasWindowFocus())
             view.getLocationOnScreen(location)
+            beforeDown()
+        }
+        if (duration < android.view.ViewConfiguration.getLongPressTimeout()) {
+            // Dispatch a tap to the actual native MapView in one main-thread turn.
+            // Two cross-process injections can be delayed far enough apart under
+            // emulator load to fire the long-press timer and open Add, not Edit.
+            // This still exercises MapLibre's gesture handling/projection/hit test;
+            // it does not call the app's waypoint callback. Long presses below
+            // continue through the Android window/input pipeline.
+            instrumentation.runOnMainSync {
+                val tapTime = SystemClock.uptimeMillis()
+                val downEvent = MotionEvent.obtain(tapTime, tapTime, MotionEvent.ACTION_DOWN, point.x, point.y, 0)
+                val upEvent = MotionEvent.obtain(tapTime, tapTime + duration, MotionEvent.ACTION_UP, point.x, point.y, 0)
+                try {
+                    downEvent.source = InputDevice.SOURCE_TOUCHSCREEN
+                    upEvent.source = InputDevice.SOURCE_TOUCHSCREEN
+                    assertTrue("Map must accept tap down", view.dispatchTouchEvent(downEvent))
+                    assertTrue("Map must accept tap up", view.dispatchTouchEvent(upEvent))
+                } finally {
+                    downEvent.recycle()
+                    upEvent.recycle()
+                }
+            }
+            compose.waitForIdle()
+            return
         }
         val down = SystemClock.uptimeMillis()
         fun send(action: Int) {
@@ -201,10 +217,44 @@ class MissionMapDialogTest {
             } finally { event.recycle() }
         }
         send(MotionEvent.ACTION_DOWN)
-        // A scheduled sleep can overshoot under emulator load and turn a tap into
-        // a long-press. Queue tap UP immediately; only long-presses hold DOWN.
-        if (duration >= android.view.ViewConfiguration.getLongPressTimeout()) SystemClock.sleep(duration)
+        SystemClock.sleep(duration)
         send(MotionEvent.ACTION_UP)
         compose.waitForIdle()
+    }
+
+    private fun awaitMapInputReady(view: MapView) {
+        // MainActivity hides system bars when a dialog returns focus. Focus alone
+        // does not mean that the resulting native viewport resize has finished.
+        // Wait for hidden bars/IME and stable bounds before projecting or injecting.
+        var previousBounds: List<Int>? = null
+        var stableSince = SystemClock.uptimeMillis()
+        try {
+            compose.waitUntil(10_000) {
+                acknowledgeFullscreenEducation()
+                var ready = false
+                instrumentation.runOnMainSync {
+                    val origin = IntArray(2)
+                    view.getLocationOnScreen(origin)
+                    val bounds = listOf(origin[0], origin[1], view.width, view.height)
+                    val insets = ViewCompat.getRootWindowInsets(view)
+                    val settled = view.isShown && view.hasWindowFocus() && !view.isLayoutRequested &&
+                        view.width > 0 && view.height > 0 && insets != null &&
+                        !insets.isVisible(WindowInsetsCompat.Type.systemBars()) &&
+                        !insets.isVisible(WindowInsetsCompat.Type.ime())
+                    if (!settled || bounds != previousBounds) stableSince = SystemClock.uptimeMillis()
+                    previousBounds = bounds
+                    ready = settled && SystemClock.uptimeMillis() - stableSince >= 250
+                }
+                ready
+            }
+        } catch (failure: ComposeTimeoutException) {
+            var details = ""
+            instrumentation.runOnMainSync {
+                details = "shown=${view.isShown}, attached=${view.isAttachedToWindow}, " +
+                    "windowVisibility=${view.windowVisibility}, root=${view.rootView.javaClass.simpleName}, " +
+                    "rootFocus=${view.rootView.hasWindowFocus()}, size=${view.width}x${view.height}"
+            }
+            throw AssertionError("Map input window unavailable: $details", failure)
+        }
     }
 }

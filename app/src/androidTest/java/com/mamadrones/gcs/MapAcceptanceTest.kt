@@ -5,7 +5,6 @@ import android.view.ViewGroup
 import android.view.MotionEvent
 import android.os.SystemClock
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
@@ -25,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /** Online map acceptance with synthetic positions. Never opens a vehicle transport. */
 class MapAcceptanceTest {
-    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
     private fun findMap(view: View): MapView? {
         if (view is MapView) return view
         if (view is ViewGroup) for (i in 0 until view.childCount) findMap(view.getChildAt(i))?.let { return it }
@@ -66,8 +65,43 @@ class MapAcceptanceTest {
     // can advance ahead of the native gesture recognizer.
     private fun nativeGesture(start: Offset, end: Offset = start, duration: Long = 100) {
         val location = IntArray(2)
-        compose.runOnIdle { requireNotNull(findMap(compose.activity.window.decorView)).getLocationOnScreen(location) }
         val instrumentation = InstrumentationRegistry.getInstrumentation()
+        lateinit var view: MapView
+        compose.runOnIdle { view = requireNotNull(findMap(compose.activity.window.decorView)) }
+        compose.waitUntil(10_000) {
+            var focused = false
+            instrumentation.runOnMainSync { focused = view.isShown && view.hasWindowFocus() }
+            focused
+        }
+        compose.runOnIdle { view.getLocationOnScreen(location) }
+        if (start != end || duration < android.view.ViewConfiguration.getLongPressTimeout()) {
+            // Drive the real native recognizer, not app callbacks. Keep short taps
+            // in one main-thread turn; deliver drag moves directly to this view
+            // so cross-process input scheduling cannot turn them into long presses.
+            val downTime = SystemClock.uptimeMillis()
+            fun dispatch(action: Int, point: Offset, time: Long = SystemClock.uptimeMillis()) {
+                val event = MotionEvent.obtain(downTime, time, action, point.x, point.y, 0)
+                try {
+                    event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                    assertTrue("Native map must accept gesture", view.dispatchTouchEvent(event))
+                } finally { event.recycle() }
+            }
+            if (start == end) instrumentation.runOnMainSync {
+                dispatch(MotionEvent.ACTION_DOWN, start, downTime)
+                dispatch(MotionEvent.ACTION_UP, end, downTime + duration)
+            } else {
+                instrumentation.runOnMainSync { dispatch(MotionEvent.ACTION_DOWN, start) }
+                for (step in 1..20) {
+                    SystemClock.sleep(duration / 20)
+                    instrumentation.runOnMainSync {
+                        dispatch(MotionEvent.ACTION_MOVE, start + (end - start) * (step / 20f))
+                    }
+                }
+                instrumentation.runOnMainSync { dispatch(MotionEvent.ACTION_UP, end) }
+            }
+            compose.waitForIdle()
+            return
+        }
         val downTime = SystemClock.uptimeMillis()
         fun event(action: Int, point: Offset) {
             val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action,
@@ -79,12 +113,7 @@ class MapAcceptanceTest {
             event.recycle()
         }
         event(MotionEvent.ACTION_DOWN, start)
-        if (start == end) {
-            SystemClock.sleep(duration)
-        } else for (step in 1..20) {
-            SystemClock.sleep(duration / 20)
-            event(MotionEvent.ACTION_MOVE, start + (end - start) * (step / 20f))
-        }
+        SystemClock.sleep(duration)
         event(MotionEvent.ACTION_UP, end)
         instrumentation.waitForIdleSync()
     }

@@ -3,7 +3,6 @@ package com.mamadrones.gcs
 import android.net.Uri
 import android.view.View
 import android.view.ViewGroup
-import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
@@ -24,7 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /** Actual SDK load callbacks using disposable local styles; no provider key or network required. */
 class MapLoadRecoveryTest {
-    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
     private val vehicle = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
         position = GlobalPositionState(-35.363, 149.165), headingDegrees = 90.0)
 
