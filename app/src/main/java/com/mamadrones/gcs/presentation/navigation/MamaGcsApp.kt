@@ -80,6 +80,7 @@ fun MamaGcsApp(
                         composable("mission") { MissionScreen(vehicle, missionPlan, onMissionAction) }
                         composable("more") { MoreScreen(vehicle, onNavigate = navigate) }
                         composable("telemetry") { TelemetryScreen(vehicle) }
+                        composable("rc-pwm") { RcPwmScreen(vehicle) }
                         composable("health") { HealthScreen(vehicle) }
                         composable("parameter-review") { ParameterReviewRoute(hiltViewModel()) }
                         composable("motors") { MotorScreen(vehicle) }

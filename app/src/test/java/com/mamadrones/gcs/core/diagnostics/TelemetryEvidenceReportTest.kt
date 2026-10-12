@@ -8,6 +8,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class TelemetryEvidenceReportTest {
+    @Test fun rcPwmReportIncludesReceiptTimesButNotControlValues() {
+        val text = TelemetryEvidenceReport.capture(VehicleState(
+            mavlinkDiagnostics = MavlinkDiagnostics(startedAtEpochMillis = 100),
+            rcInput = RcInputState(1, listOf(1723), 231, 150),
+            pwmOutputs = listOf(PwmOutputState(0, listOf(1827), 160))), 200)
+        assertTrue(text.contains("RC inputs: 1970-01-01T00:00:00.150Z"))
+        assertTrue(text.contains("PWM reported port 0: 1970-01-01T00:00:00.160Z"))
+        assertFalse(text.contains("1723"))
+        assertFalse(text.contains("1827"))
+        assertFalse(text.contains("231"))
+    }
+
     private val vehicle = VehicleState(systemId = 42, componentId = 1,
         connectionStatus = VehicleConnectionState.CONNECTED, lastHeartbeatAtEpochMillis = 1_200,
         mavlinkDiagnostics = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,

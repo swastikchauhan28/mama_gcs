@@ -42,7 +42,7 @@ object ConsolePanels {
             "Last accepted message" to sampleAge(sample.lastAcceptedAtEpochMillis, nowEpochMillis),
         ), note = "Session totals, not packet-loss rates or a health verdict. Decoded includes messages ignored by source selection. " +
             "Unsupported/signed candidates are not checksum/authentication verified. Raw noise and incomplete fragments may produce no parser result. " +
-            "Counters remain in memory after disconnect and reset on the next session; they are not saved or exported.")
+            "Counters remain in memory after disconnect and reset on the next session. Prepare telemetry report allows explicit snapshot export; there is no continuous logging.")
     }
 
     fun mavlinkDiagnosticHints(sample: MavlinkDiagnostics): String = buildList {

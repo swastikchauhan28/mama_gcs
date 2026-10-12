@@ -57,11 +57,16 @@ object TelemetryEvidenceReport {
             "Rover instruments" to vehicle.roverHud.lastUpdatedAtEpochMillis,
             "System status" to vehicle.systemStatus.lastUpdatedAtEpochMillis,
             "Battery summary" to vehicle.battery.lastUpdatedAtEpochMillis,
+            "RC inputs" to vehicle.rcInput.lastUpdatedAtEpochMillis,
         ).forEach { (label, value) -> appendLine("$label: ${timestamp(value)}") }
+        vehicle.pwmOutputs.take(4).forEach { sample ->
+            appendLine("PWM reported port ${sample.port}: ${timestamp(sample.lastUpdatedAtEpochMillis)}")
+        }
         appendLine()
         appendLine("LIMITATIONS / PRIVACY")
         appendLine("No GPS coordinates, track, device names/addresses, network endpoints, account data,")
         appendLine("parameter contents or STATUSTEXT/raw packet payloads are included.")
+        appendLine("RC/PWM values are excluded; only their sample receipt times are included.")
         appendLine("Firmware, wiring, remote interface and physical stop behavior are not verified by this report.")
         appendLine("Vehicle commands and app emergency stop remain unavailable. Use the physical safety system.")
         appendLine("Opening the save picker can close foreground-only telemetry; reconnect manually if needed.")

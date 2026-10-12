@@ -23,7 +23,8 @@ private val vehiclePages = listOf(
     WorkspacePage("parameter-review", "Parameter file"),
     WorkspacePage("spray", "Spray system"), WorkspacePage("hydraulic", "Hydraulics"),
 )
-private val analyzePages = listOf(WorkspacePage("telemetry", "Instruments"), WorkspacePage("diagnostics", "Link & messages"))
+private val analyzePages = listOf(WorkspacePage("telemetry", "Instruments"), WorkspacePage("diagnostics", "Link & messages"),
+    WorkspacePage("rc-pwm", "RC & PWM"))
 private val settingsPages = listOf(
     WorkspacePage("general", "General"), WorkspacePage("settings", "UDP link"),
     WorkspacePage("classic-bluetooth", "Bluetooth / HC-05"),
