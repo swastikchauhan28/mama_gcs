@@ -29,6 +29,8 @@ No offline map-region downloader, background communication service, secure vehic
 
 ## Lifecycle and storage
 
+Phase 23 retains only six numeric AUTOPILOT_VERSION metadata fields and a local receipt timestamp in session memory. UID/UID2, custom version bytes and capability flags are not retained in decoded/domain state. The existing selected-autopilot source filter applies; unsigned metadata is not authenticated hardware identity or command authorization. A disconnected observation is labeled historical and a new session clears it. The telemetry report allowlist is unchanged and does not export the new fields. No request, firmware update or configuration write is sent.
+
 Phase 22 adds a second bounded in-memory parameter snapshot and an exact-text comparison. Neither snapshot enters vehicle state, command authorization or safety evaluation. There is no merge/apply/export of file contents; missing entries receive no inferred defaults. Import errors retain the previous pair, cancellation/generation checks prevent superseded publication, and removing the reference never deletes the source file. Both fingerprints identify file bytes, not vehicle identity or trustworthy configuration.
 
 Phase 21's RC/PWM monitor receives only from the existing selected autopilot source. Its raw inputs/outputs are observations, not motor identities, physical output measurements or safety evidence. Values are hidden when link/heartbeat/sample freshness is missing; the five-second display window is not a failsafe. Session restart clears samples; at most four output ports are retained. No command, calibration or stream-rate request is sent. Telemetry report export includes their receipt times only, excluding raw RC/PWM values and RSSI.

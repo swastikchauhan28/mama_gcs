@@ -83,6 +83,7 @@ fun MamaGcsApp(
                         composable("rc-pwm") { RcPwmScreen(vehicle) }
                         composable("health") { HealthScreen(vehicle) }
                         composable("parameter-review") { ParameterReviewRoute(hiltViewModel()) }
+                        composable("autopilot-info") { AutopilotVersionScreen(vehicle) }
                         composable("motors") { MotorScreen(vehicle) }
                         composable("vesc-discovery") {
                             VescBluetoothDiscoveryScreen(

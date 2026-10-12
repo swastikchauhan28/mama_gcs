@@ -111,6 +111,11 @@ class MavlinkParser {
     }
 
     private fun decode(frame: MavlinkFrame): MavlinkParseResult = when (frame.messageId) {
+        MavlinkMessage.AUTOPILOT_VERSION_MESSAGE_ID -> withPayloadLength(frame, 60, 78) {
+            MavlinkMessage.AutopilotVersion(frame.systemId, frame.componentId,
+                uint32(frame.payload, 16), uint32(frame.payload, 20), uint32(frame.payload, 24),
+                uint32(frame.payload, 28), uint16(frame.payload, 32), uint16(frame.payload, 34))
+        }
         MavlinkMessage.RC_CHANNELS_MESSAGE_ID -> withPayloadLength(frame, 42, 42) {
             MavlinkMessage.RcChannels(frame.systemId, frame.componentId,
                 uint8(frame.payload[40]), List(18) { uint16(frame.payload, 4 + it * 2) }, uint8(frame.payload[41]))
@@ -239,6 +244,7 @@ class MavlinkParser {
     }
 
     private fun payloadLengths(messageId: Int): IntRange = when (messageId) {
+        MavlinkMessage.AUTOPILOT_VERSION_MESSAGE_ID -> 60..78
         MavlinkMessage.RC_CHANNELS_MESSAGE_ID -> 42..42
         MavlinkMessage.SERVO_OUTPUT_RAW_MESSAGE_ID -> 21..37
         MavlinkMessage.HEARTBEAT_MESSAGE_ID -> HEARTBEAT_PAYLOAD_SIZE..HEARTBEAT_PAYLOAD_SIZE
@@ -264,6 +270,7 @@ class MavlinkParser {
     }
 
     private fun crcExtraFor(messageId: Int): Int? = when (messageId) {
+        MavlinkMessage.AUTOPILOT_VERSION_MESSAGE_ID -> 178
         MavlinkMessage.RC_CHANNELS_MESSAGE_ID -> 118
         MavlinkMessage.SERVO_OUTPUT_RAW_MESSAGE_ID -> 222
         MavlinkMessage.HEARTBEAT_MESSAGE_ID -> HEARTBEAT_CRC_EXTRA

@@ -9,6 +9,13 @@ data class MavlinkFrame(
 )
 
 sealed interface MavlinkMessage {
+    /** Deliberately excludes hardware UIDs, custom version bytes and capability claims. */
+    data class AutopilotVersion(
+        val systemId: Int, val componentId: Int,
+        val firmwareVersion: Long, val middlewareVersion: Long, val osVersion: Long,
+        val boardVersion: Long, val vendorId: Int, val productId: Int,
+    ) : MavlinkMessage
+
     data class RcChannels(
         val systemId: Int,
         val componentId: Int,
@@ -118,6 +125,7 @@ sealed interface MavlinkMessage {
     ) : MavlinkMessage
 
     companion object {
+        const val AUTOPILOT_VERSION_MESSAGE_ID = 148
         const val HEARTBEAT_MESSAGE_ID = 0
         const val RC_CHANNELS_MESSAGE_ID = 65
         const val SERVO_OUTPUT_RAW_MESSAGE_ID = 36

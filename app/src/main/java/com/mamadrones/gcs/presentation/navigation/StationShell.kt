@@ -21,6 +21,7 @@ private val vehiclePages = listOf(
     WorkspacePage("more", "Summary"), WorkspacePage("control", "Drive & safety"),
     WorkspacePage("health", "Health"), WorkspacePage("motors", "Drive motors"),
     WorkspacePage("parameter-review", "Parameter file"),
+    WorkspacePage("autopilot-info", "Autopilot info"),
     WorkspacePage("spray", "Spray system"), WorkspacePage("hydraulic", "Hydraulics"),
 )
 private val analyzePages = listOf(WorkspacePage("telemetry", "Instruments"), WorkspacePage("diagnostics", "Link & messages"),
@@ -103,7 +104,8 @@ fun StationShell(
                         if (!wide && pages.isNotEmpty()) Row(Modifier.weight(1f).horizontalScroll(rememberScrollState())) {
                             pages.forEach { page ->
                                 FilterChip(selected = route == page.route, onClick = { onNavigate(page.route) },
-                                    label = { Text(page.title) }, modifier = Modifier.padding(end = 6.dp).heightIn(min = 48.dp))
+                                    label = { Text(page.title) }, modifier = Modifier.padding(end = 6.dp).heightIn(min = 48.dp)
+                                        .testTag("category-${page.route}"))
                             }
                         } else Text(if (route == "mission") "LOCAL PLAN · Not uploaded to rover" else "${pages.firstOrNull { it.route == route }?.title.orEmpty()} · Rover station",
                             style = MaterialTheme.typography.labelMedium)

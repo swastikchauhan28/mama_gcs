@@ -15,6 +15,13 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
     private val _vehicleState = MutableStateFlow(VehicleState())
     override val vehicleState: StateFlow<VehicleState> = _vehicleState.asStateFlow()
 
+    fun onAutopilotVersion(message: MavlinkMessage.AutopilotVersion, receivedAtEpochMillis: Long) {
+        _vehicleState.update { current -> current.copy(autopilotVersion = AutopilotVersionState(
+            message.firmwareVersion, message.middlewareVersion, message.osVersion, message.boardVersion,
+            message.vendorId, message.productId, receivedAtEpochMillis,
+        )) }
+    }
+
     fun onRcChannels(message: MavlinkMessage.RcChannels, receivedAtEpochMillis: Long) {
         _vehicleState.update { current -> current.copy(rcInput = RcInputState(
             channelCount = message.channelCount,

@@ -25,6 +25,33 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MavlinkSessionTest {
+    @Test fun `firmware is selected source only resets on reconnect and never transmits`() = runBlocking {
+        val base = FakeTransport()
+        var sends = 0
+        val transport = object : VehicleTransport by base {
+            override suspend fun send(data: ByteArray) { sends++ }
+        }
+        val repository = VehicleRepositoryImpl()
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = this)
+        fun version(system: Int = 42, component: Int = 1, value: Long = 0x040700FF) =
+            mavlinkTestFrame(148, ByteArray(60).apply { putUInt32(16, value) }, 178, system, component)
+        try {
+            session.start()
+            base.emit(version() + heartbeatFrame(systemId = 42) + version() + version(99, value = 1) + version(component = 2, value = 2))
+            waitUntil { repository.vehicleState.value.mavlinkDiagnostics.decodedMessages == 5L }
+            val state = repository.vehicleState.value
+            assertEquals(0x040700FFL, state.autopilotVersion!!.firmwareVersion)
+            assertEquals(1L, state.mavlinkDiagnostics.ignoredBeforeHeartbeat)
+            assertEquals(2L, state.mavlinkDiagnostics.ignoredOtherSource)
+            assertEquals(2L, state.mavlinkDiagnostics.acceptedMessages)
+            session.stop()
+            assertEquals(state.autopilotVersion, repository.vehicleState.value.autopilotVersion)
+            session.start()
+            assertNull(repository.vehicleState.value.autopilotVersion)
+            assertEquals(0, sends)
+        } finally { session.stop(); session.close() }
+    }
+
     @Test fun `rc and pwm require selected heartbeat identity and never transmit`() = runBlocking {
         val base = FakeTransport()
         var sends = 0
