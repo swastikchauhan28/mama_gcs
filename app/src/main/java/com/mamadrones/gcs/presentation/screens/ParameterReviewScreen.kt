@@ -20,6 +20,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mamadrones.gcs.domain.model.ParameterGroup
 import com.mamadrones.gcs.data.parameters.ParameterDifferenceKind
 import com.mamadrones.gcs.presentation.components.Notice
+import com.mamadrones.gcs.presentation.parameters.HardwareFileSectionCard
+import com.mamadrones.gcs.presentation.parameters.ParameterHardwareSummary
 import java.io.InputStream
 
 @Composable
@@ -50,10 +52,12 @@ fun ParameterReviewScreen(
     }
     var search by rememberSaveable { mutableStateOf("") }
     var showUnchanged by rememberSaveable { mutableStateOf(false) }
+    var showHardware by rememberSaveable { mutableStateOf(false) }
     var category by rememberSaveable { mutableStateOf<String?>(null) }
     val group = ParameterGroup.entries.firstOrNull { it.name == category }
     val snapshot = state.snapshot
     val comparison = state.comparison
+    val hardwareSections = remember(snapshot) { snapshot?.let(ParameterHardwareSummary::sections).orEmpty() }
     val filtered = remember(snapshot, search, group) {
         snapshot?.entries.orEmpty().filter {
             (group == null || it.group == group) && it.name.contains(search.trim(), ignoreCase = true)
@@ -81,7 +85,7 @@ fun ParameterReviewScreen(
                     try { launcher.launch(arrayOf("*/*")) } catch (_: RuntimeException) { onPickerFailure(false) }
                 }, enabled = !state.loading,
                     modifier = Modifier.testTag("parameter-import")) { Text("Import .param") }
-                OutlinedButton(onClick = { onClear(); search = ""; category = null; showUnchanged = false },
+                OutlinedButton(onClick = { onClear(); search = ""; category = null; showUnchanged = false; showHardware = false },
                     enabled = state.loading || snapshot != null || state.reference != null || state.error != null,
                     modifier = Modifier.testTag("parameter-clear")) { Text("Clear review") }
             }
@@ -97,7 +101,18 @@ fun ParameterReviewScreen(
                 Text("${snapshot.entries.size} file values · Unverified source")
                 Text("Current file SHA-256: ${snapshot.sha256}", style = MaterialTheme.typography.bodySmall)
                 Text("Fingerprint identifies the file, not its authenticity.", style = MaterialTheme.typography.bodySmall)
+                FilterChip(selected = showHardware, onClick = { showHardware = !showHardware },
+                    label = { Text("Hardware summary") }, modifier = Modifier.testTag("parameter-hardware-summary"))
             }
+            if (showHardware) {
+                item {
+                    Notice("CURRENT FILE ONLY · HARDWARE UNVERIFIED", "This summary ignores reference-file and search filters. " +
+                        "Limited ArduPilot reference labels are not matched to an installed firmware version. Missing means NOT IN FILE, not disabled or default. " +
+                        "Shows SERVO1–32 and SERIAL0–9 when present, plus selected input, motor, speed and failsafe fields. Other parameters remain in the raw review. " +
+                        "Confirm file date/source, exact firmware, wiring, speed limit and physical emergency-stop/disconnect behavior with the hardware team. No controls are unlocked.")
+                }
+                items(hardwareSections, key = { "hardware-${it.id}" }) { HardwareFileSectionCard(it) }
+            } else {
             item {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = {
@@ -162,6 +177,7 @@ fun ParameterReviewScreen(
                         }
                     }
                 }
+            }
             }
         }
     }

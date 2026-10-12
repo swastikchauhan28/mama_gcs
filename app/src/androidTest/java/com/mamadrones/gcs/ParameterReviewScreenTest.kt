@@ -1,6 +1,7 @@
 package com.mamadrones.gcs
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.mamadrones.gcs.data.parameters.ParameterFileReader
@@ -15,6 +16,42 @@ import org.junit.Test
 class ParameterReviewScreenTest {
     @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
     private val snapshot = ParameterFileReader.read("SERVO1_FUNCTION,74\nRC1_TRIM,1500".byteInputStream())
+
+    @Test(timeout = 120_000) fun hardwareSummaryUsesCurrentFileNotReferenceAndKeepsMissingExplicit() {
+        val reference = ParameterFileReader.read("SERVO1_FUNCTION,73".byteInputStream())
+        compose.setContent { MaterialTheme {
+            ParameterReviewScreen(ParameterReviewState(snapshot, reference = reference,
+                comparison = ParameterFileComparison.compare(reference, snapshot)), {}, {}, { null })
+        } }
+        compose.onNodeWithTag("parameter-review-list").performScrollToNode(hasTestTag("parameter-hardware-summary"))
+        compose.onNodeWithTag("parameter-hardware-summary").performClick()
+        compose.onNodeWithTag("parameter-review-list").performScrollToNode(hasText("Right throttle (reference label)"))
+        compose.onNodeWithText("Right throttle (reference label)").assertIsDisplayed()
+        compose.onNodeWithText("Left throttle (reference label)").assertDoesNotExist()
+        compose.onAllNodesWithText("File value: NOT IN FILE").onFirst().assertExists()
+        compose.onNodeWithTag("parameter-difference-SERVO1_FUNCTION").assertDoesNotExist()
+        compose.onNodeWithTag("parameter-review-list").performScrollToNode(hasTestTag("parameter-hardware-summary"))
+        compose.onNodeWithTag("parameter-hardware-summary").performClick()
+        compose.onNodeWithTag("parameter-review-list").performScrollToNode(hasTestTag("parameter-difference-SERVO1_FUNCTION"))
+        compose.onNodeWithText("Reference: 73").assertIsDisplayed()
+    }
+
+    @Test(timeout = 120_000) fun replacingAndClearingFileRemovesOldHardwareEvidence() {
+        val current = mutableStateOf(ParameterReviewState(snapshot))
+        compose.setContent { MaterialTheme {
+            ParameterReviewScreen(current.value, {}, { current.value = ParameterReviewState() }, { null })
+        } }
+        compose.onNodeWithTag("parameter-review-list").performScrollToNode(hasTestTag("parameter-hardware-summary"))
+        compose.onNodeWithTag("parameter-hardware-summary").performClick()
+        compose.runOnIdle { current.value = ParameterReviewState(ParameterFileReader.read("SERVO2_FUNCTION,73".byteInputStream())) }
+        compose.onNodeWithTag("parameter-review-list").performScrollToNode(hasText("Left throttle (reference label)"))
+        compose.onNodeWithText("Left throttle (reference label)").assertIsDisplayed()
+        compose.onNodeWithTag("hardware-file-output-1").assertDoesNotExist()
+        compose.onNodeWithTag("parameter-review-list").performScrollToNode(hasTestTag("parameter-clear"))
+        compose.onNodeWithTag("parameter-clear").performClick()
+        compose.onNodeWithTag("parameter-hardware-summary").assertDoesNotExist()
+        compose.onNodeWithTag("hardware-file-output-2").assertDoesNotExist()
+    }
 
     @Test fun comparisonShowsReferenceAndCurrentAndSupportsSearch() {
         val reference = ParameterFileReader.read("SERVO1_FUNCTION,73\nRC1_TRIM,1500".byteInputStream())
