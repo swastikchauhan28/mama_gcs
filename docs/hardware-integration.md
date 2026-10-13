@@ -1,5 +1,48 @@
 # Hardware integration gates
 
+## Current hardware record — updated 12 October 2026
+
+Use this record before requesting hardware information. The operator explicitly asked that already supplied answers not be requested repeatedly. Older phase reports describe evidence available at the time; their requests for a remote model, parameter file or maximum speed are superseded by this record. Do not ask the operator to repeat these facts unless they report a change or genuinely new evidence conflicts with them. User-reported configuration and photo observations are not physical safety certification.
+
+### Supplied information — retain as the baseline
+
+| Item | Current record and evidence |
+| --- | --- |
+| Cube configuration | The operator explicitly confirms `Current_Parameters_16_07_2026.param` is correct and instructs us to follow it. Use it as the accepted file baseline despite its filename date; do not keep requesting a new export or reconfirmation. The original export is not bundled in the repository. |
+| Autopilot | Cube Orange family with ArduPilot Rover. The operator previously reported version **4.7.0**, then described it as “latest.” Exact currently installed build remains unverified. The CubeOrangePlus upload-selection screenshot is not installed-board/version evidence. Prefer passive `AUTOPILOT_VERSION` or a connected Mission Planner observation when hardware becomes available, rather than repeatedly asking for the version. |
+| Remote | **Skydroid T12**. This supersedes the earlier FlySky i6 description of the current phone/remote path. |
+| Receiver | **Skydroid R12, Multi Link V1.0**. |
+| Phone-facing Bluetooth name | **HC-05**, identified by the operator as the device used to connect the phone to the remote. Keep this separate from the VESC Bluetooth adapter. The name does not by itself prove protocol or successful reception. |
+| Intended communication route | Phone → T12 remote → R12 receiver → Cube. MAVLink is the reported telemetry protocol. End-to-end reception in Mama GCS is still unverified. |
+| Cube telemetry connector | Latest photo (supplied as `WhatsApp Image 2026-10-09 at 12.38.13 PM.jpeg`) visually indicates **TELEM1**, separately from the SBUS lead. Use TELEM1 as the photo-based working record, not the earlier TELEM2 description; do not repeatedly ask which port. Exact TX/RX pin continuity is not established by the photograph. |
+| Remote-control lead | **SBUS → Cube RCIN**, user-confirmed and consistent with the separate yellow/black lead in the photos. |
+| Motor driver | **Flipsky Dual 75100 with aluminum PCB**, reported hardware version **“48”**. PWM is the reported control connection from the Cube. Exact firmware and hardware-version identification are not independently verified. |
+| Motor-data adapter/path | Operator identifies **Flipsky Bluetooth 2.4G wireless V6 NRF51** and reports motor data comes through Cube MAVLink. Retain those reports; actual VESC feedback wiring, message mapping and live motor measurements have not been demonstrated. PWM control alone does not establish feedback. |
+| Maximum permitted speed | **8 km/h (approximately 2.22 m/s)**, explicitly reconfirmed by the operator. Do not ask for this number again. Enforcement remains unverified. |
+
+### Accepted parameter values
+
+These replace conflicting earlier verbal output assignments and calibration numbers for software review. They are file configuration, not proof of the physical motor direction or stop response.
+
+- `SERVO1_FUNCTION=73`: configured left throttle; `SERVO2_FUNCTION=74`: configured right throttle.
+- Both outputs: `MIN=1100`, `TRIM=1500`, `MAX=1900`, `REVERSED=1`. Do not relabel minimum/maximum as physically verified forward/reverse commands.
+- `RCMAP_ROLL=1`, `RCMAP_THROTTLE=3`.
+- `SERIAL1_PROTOCOL=2`, `SERIAL1_BAUD=57` (**57600 baud**); `SERIAL2_PROTOCOL=11`, `SERIAL2_BAUD=256`. The operator directs us to use the supplied file for the baud-rate baseline as well. Use **57600 baud** for the intended TELEM1 integration and do not repeatedly request a T12/R12 baud screenshot. These are Cube file settings, not an independent readback of receiver/remote configuration; matching end-to-end operation remains a live-test question.
+- `FS_GCS_ENABLE=0`, `FS_THR_ENABLE=0`, `RC_OVERRIDE_TIME=3`. These do not demonstrate a guaranteed stop after phone or radio loss.
+- `CRUISE_SPEED=4` (4 m/s, 14.4 km/h) conflicts with the confirmed **8 km/h maximum**. `SPEED_MAX=0` does not establish enforcement of that maximum. Record this as unresolved safety/configuration work, not permission to exceed 8 km/h or silently alter the Cube file.
+
+### Still unanswered or awaiting tests — ask only when needed
+
+1. No additional baud-rate answer is requested: use the accepted **57600 baud** baseline. Investigate receiver/remote settings only if an actual connection failure or new contradictory evidence makes that diagnostic necessary.
+2. Actual HC-05/T12/R12/Cube telemetry reception in Mama GCS, when that equipment is available. Prefer observing source/firmware information through the existing read-only diagnostics.
+3. Neutral brake/coast response; phone/app loss and radio-loss behavior; operator manual-takeover switch and procedure; physical emergency-stop presence and effect. These require hardware-team evidence from a secured setup, not a moving-rover disconnect experiment.
+4. How the confirmed 8 km/h maximum will be enforced and the accepted file's higher cruise target reconciled. The numerical maximum is already answered.
+5. For later motor monitoring: actual VESC feedback connection, controller firmware/identities and demonstrated telemetry fields. Do not ask again for the reported controller or adapter model.
+
+This record is project memory only. It changes no firmware, parameters, vehicle profile, command permissions or safety-gate evidence. Movement and app emergency-stop functionality remain unavailable pending validated integration.
+
+## General integration checklist
+
 Phase 2 adds an optional, manually configured fixed-peer UDP socket. The app starts without an endpoint, vehicle selection, MAVLink session, or assumed controller inventory. Opening this socket only receives raw bytes; it cannot operate the UGV.
 
 ## Facts needed before adapters or commands
@@ -18,6 +61,8 @@ Phase 2 adds an optional, manually configured fixed-peer UDP socket. The app sta
 VESC telemetry is **not presumed to exist in MAVLink**. It may arrive through an independently authenticated transport, a documented controller gateway, or a supported autopilot mapping. `VescRepository` is separate from `MavlinkRepository` for this reason. No CAN frames, UART packets, relay/servo numbers, nozzle count or hardware thresholds have been invented.
 
 ### Candidate VESC hardware supplied by the operator
+
+The paragraphs below preserve the earlier reference basis. The current record above now includes the operator's V6 NRF51 adapter identification; do not interpret the older “module model not verified” wording as a reason to ask for the model again. Independent protocol/path validation is still pending.
 
 The operator supplied a [manual page for the Flipsky Dual 75100](https://manuals.plus/ae/1005004267433267) and reports the installed controller is the **Dual 75100 with aluminum PCB**, hardware version **"48"**, and is connected by Bluetooth. These are operator-reported identifiers; the exact meaning/format of "48" still needs confirmation from a VESC Tool identification screen or board label. Flipsky's [Dual 75100 product page](https://flipsky.net/products/flipsky-dual-75100-with-aluminum-pcb-based-on-vesc-for-electric-skateboard-electric-scooter-ebike-speed-controller) lists USB, CAN and UART interfaces and two motor channels. The installed Bluetooth module model, BLE vs Classic protocol, and pairing behavior are not yet verified. This does not establish firmware, controller/CAN IDs, telemetry format or a phone-reachable data path for this app. Flipsky describes its [nRF51 module](https://flipsky.net/products/bluetooth-module-2-4g-wireless-based-upon-the-nrf51_vesc-project) as BLE over a VESC UART configured at 115200 baud; do not assume this is the installed module.
 

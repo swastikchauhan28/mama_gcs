@@ -2,7 +2,11 @@
 
 Native Android ground-control-station foundation for a Mama agricultural UGV: ArduPilot Rover, VESC motors, spray equipment and hydraulics. Kotlin · Compose · Material 3 · Hilt · offline-first.
 
-## Current delivery: hardware-team review report (Phase 25)
+For hardware discussions, consult the [current hardware record](docs/hardware-integration.md#current-hardware-record--updated-12-october-2026) first. It records the accepted parameter-file baseline, T12/R12/HC-05 route, photo-indicated TELEM1 connection, confirmed 8 km/h maximum and remaining evidence gaps; do not repeat already answered questions from historical phase reports.
+
+## Current delivery: local route travel-time estimates (Phase 26)
+
+Phase 26 adds a **Plan → Review → Travel-time estimate** calculator. Enter 0.01–8 km/h (the operator's stated maximum, used only as a calculator bound) to see total and per-leg constant-speed estimates for the current local draft. No speed is preselected or copied from the Cube. Editing/reordering points recalculates results; invalid input hides them. The input is screen-local and is not saved/exported with routes or sent to hardware. Stops, turns, terrain, obstacles and equipment work are excluded; this is not a mission ETA, speed limiter or safety approval. The mission editor now has explicit theme surface/content colours. See [scope and validation](docs/phase-26-report.md).
 
 Phase 25 adds **Rover configuration → Parameter file → Hardware summary → Prepare hardware report**. Preview a frozen text report of the current file's selected hardware fields, source lines, fingerprint and outstanding hardware-team questions, then explicitly save through Android's document picker. Reference files and UI filters are excluded. Configuration values are included: review before sharing. No automatic sharing, live parameter reads/writes, hardware approval or command unlocking is introduced. See the [scope and validation](docs/phase-25-report.md).
 

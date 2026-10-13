@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -22,6 +23,7 @@ import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
 import com.mamadrones.gcs.domain.model.MissionLibraryEntry
 import com.mamadrones.gcs.domain.model.MissionDraftReview
+import com.mamadrones.gcs.domain.model.MissionTravelEstimate
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.domain.repository.MissionDraftFileFormat
 import com.mamadrones.gcs.presentation.components.PanelSpec
@@ -31,6 +33,9 @@ import com.mamadrones.gcs.presentation.dashboard.forDisplay
 import com.mamadrones.gcs.presentation.map.VehicleMap
 import com.mamadrones.gcs.presentation.mission.MissionPlanAction
 import com.mamadrones.gcs.presentation.mission.MissionPlanUiState
+import com.mamadrones.gcs.presentation.mission.MissionTimingFormat
+import com.mamadrones.gcs.presentation.mission.MissionTimingPanel
+import com.mamadrones.gcs.presentation.mission.MissionTimingLeg
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -102,6 +107,13 @@ fun MissionScreen(
     var libraryDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
     var editorTab by rememberSaveable { mutableStateOf("Route") }
     var showFileActions by rememberSaveable { mutableStateOf(false) }
+    var planningSpeedInput by rememberSaveable { mutableStateOf("") }
+    val timingRouteAvailable = !plan.loading && !plan.loadFailed
+    val travelEstimate = remember(plan.draft, planningSpeedInput, timingRouteAvailable) {
+        if (!timingRouteAvailable) null else MissionTimingFormat.parseSpeed(planningSpeedInput)?.let {
+            MissionTravelEstimate.calculate(plan.draft, it)
+        }
+    }
     val canAdd = plan.editable && plan.draft.waypoints.size < MissionDraft.MAX_WAYPOINTS
     val canAddFenceVertex = plan.editable && plan.draft.keepInFence.size < MissionDraft.MAX_FENCE_VERTICES
 
@@ -150,8 +162,12 @@ fun MissionScreen(
             }
         Row(Modifier.weight(1f).fillMaxWidth()) {
             if (wide) mapContent(Modifier.weight(1f).fillMaxHeight())
+            Surface(
+                modifier = if (wide) Modifier.width(352.dp).fillMaxHeight() else Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface,
+            ) {
             LazyColumn(
-                modifier = (if (wide) Modifier.width(352.dp).fillMaxHeight() else Modifier.fillMaxSize()).testTag("mission-editor"),
+                modifier = Modifier.fillMaxSize().testTag("mission-editor"),
                 contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 item {
@@ -199,7 +215,8 @@ fun MissionScreen(
                     OutlinedButton(onClick = { openEditor(null, null, null) }, enabled = canAdd,
                         modifier = Modifier.testTag("mission-add")) { Text("Add coordinates") }
                 }
-                if (editorTab == "Review") item {
+                if (editorTab == "Review") {
+                item {
                     val review = MissionDraftReview.inspect(plan.draft)
                     SubsystemCard(PanelSpec(
                         title = "Local route review",
@@ -229,6 +246,11 @@ fun MissionScreen(
                             "Identical consecutive coordinates create a zero-length leg. Edit or remove a point. Outline checks use straight coordinate legs only, not the rover's actual trajectory or safety."
                         },
                     ), Modifier.testTag("mission-route-review"))
+                }
+                item {
+                    MissionTimingPanel(planningSpeedInput, { planningSpeedInput = it }, travelEstimate, timingRouteAvailable)
+                }
+                items(travelEstimate?.legs.orEmpty(), key = { "timing-${it.fromIndex}" }) { MissionTimingLeg(it) }
                 }
                 if (editorTab == "Field outline") {
                 item {
@@ -285,6 +307,7 @@ fun MissionScreen(
                     Text("Onboard mission: unknown. Drafts are stored only on this device. Upload, download and execution are unavailable.", style = MaterialTheme.typography.bodySmall)
                     UnavailableActions("Upload", "Download", "Start mission", "Pause", "Resume")
                 }
+            }
             }
         }
         }

@@ -12,6 +12,17 @@ data class DraftWaypoint(val id: String, val latitude: Double, val longitude: Do
         require(latitude.isFinite() && latitude in -90.0..90.0)
         require(longitude.isFinite() && longitude in -180.0..180.0)
     }
+
+    /** Same spherical surface estimate used by the route total; not terrain distance. */
+    fun distanceMetersTo(other: DraftWaypoint): Double {
+        val latA = Math.toRadians(latitude)
+        val latB = Math.toRadians(other.latitude)
+        val dLat = latB - latA
+        val dLon = Math.toRadians(other.longitude - longitude)
+        val h = (sin(dLat / 2) * sin(dLat / 2) +
+            cos(latA) * cos(latB) * sin(dLon / 2) * sin(dLon / 2)).coerceIn(0.0, 1.0)
+        return 6_371_000.0 * 2 * atan2(sqrt(h), sqrt(1 - h))
+    }
 }
 
 data class MissionDraft(
@@ -45,13 +56,7 @@ data class MissionDraft(
 
     /** Spherical straight-line surface distance; not terrain distance or a drivable route. */
     val distanceMeters: Double get() = waypoints.zipWithNext().sumOf { (a, b) ->
-        val latA = Math.toRadians(a.latitude)
-        val latB = Math.toRadians(b.latitude)
-        val dLat = latB - latA
-        val dLon = Math.toRadians(b.longitude - a.longitude)
-        val h = (sin(dLat / 2) * sin(dLat / 2) +
-            cos(latA) * cos(latB) * sin(dLon / 2) * sin(dLon / 2)).coerceIn(0.0, 1.0)
-        6_371_000.0 * 2 * atan2(sqrt(h), sqrt(1 - h))
+        a.distanceMetersTo(b)
     }
 
     companion object {
