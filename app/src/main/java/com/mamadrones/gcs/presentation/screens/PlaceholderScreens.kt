@@ -86,6 +86,7 @@ private fun DriveLockPanel(unverifiedRequirements: Int) {
 
 @Composable
 private fun DriveStatusPanel(state: VehicleState) {
+    RoverSpeedMonitorPanel(state)
     val live = state.forDisplay()
     val base = ConsolePanels.vehicle(live)
     SubsystemCard(base.copy(

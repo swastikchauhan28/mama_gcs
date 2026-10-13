@@ -2,6 +2,8 @@
 
 ## Current hardware record — updated 12 October 2026
 
+Latest operator confirmation: **13 October 2026** — live Cube telemetry reception in Mama GCS through HC-05 → T12 → R12 → Cube is user-confirmed. This is not an independently observed hardware test or proof of command transmission, stopping behaviour or speed-limit enforcement.
+
 Use this record before requesting hardware information. The operator explicitly asked that already supplied answers not be requested repeatedly. Older phase reports describe evidence available at the time; their requests for a remote model, parameter file or maximum speed are superseded by this record. Do not ask the operator to repeat these facts unless they report a change or genuinely new evidence conflicts with them. User-reported configuration and photo observations are not physical safety certification.
 
 ### Supplied information — retain as the baseline
@@ -13,7 +15,7 @@ Use this record before requesting hardware information. The operator explicitly 
 | Remote | **Skydroid T12**. This supersedes the earlier FlySky i6 description of the current phone/remote path. |
 | Receiver | **Skydroid R12, Multi Link V1.0**. |
 | Phone-facing Bluetooth name | **HC-05**, identified by the operator as the device used to connect the phone to the remote. Keep this separate from the VESC Bluetooth adapter. The name does not by itself prove protocol or successful reception. |
-| Intended communication route | Phone → T12 remote → R12 receiver → Cube. MAVLink is the reported telemetry protocol. End-to-end reception in Mama GCS is still unverified. |
+| Intended communication route | Phone → HC-05/T12 remote → R12 receiver → Cube. MAVLink is the reported telemetry protocol. On 13 October 2026 the operator confirmed live Cube telemetry reaches Mama GCS through this route. Retain as user-confirmed reception, not an independently observed acceptance test or proof of commands reaching the Cube. |
 | Cube telemetry connector | Latest photo (supplied as `WhatsApp Image 2026-10-09 at 12.38.13 PM.jpeg`) visually indicates **TELEM1**, separately from the SBUS lead. Use TELEM1 as the photo-based working record, not the earlier TELEM2 description; do not repeatedly ask which port. Exact TX/RX pin continuity is not established by the photograph. |
 | Remote-control lead | **SBUS → Cube RCIN**, user-confirmed and consistent with the separate yellow/black lead in the photos. |
 | Motor driver | **Flipsky Dual 75100 with aluminum PCB**, reported hardware version **“48”**. PWM is the reported control connection from the Cube. Exact firmware and hardware-version identification are not independently verified. |
@@ -34,7 +36,7 @@ These replace conflicting earlier verbal output assignments and calibration numb
 ### Still unanswered or awaiting tests — ask only when needed
 
 1. No additional baud-rate answer is requested: use the accepted **57600 baud** baseline. Investigate receiver/remote settings only if an actual connection failure or new contradictory evidence makes that diagnostic necessary.
-2. Actual HC-05/T12/R12/Cube telemetry reception in Mama GCS, when that equipment is available. Prefer observing source/firmware information through the existing read-only diagnostics.
+2. HC-05/T12/R12/Cube telemetry reception in Mama GCS is now user-confirmed; do not ask again whether it works. Independent acceptance evidence and source/firmware identification can be captured later through read-only diagnostics when required. Receive confirmation does not validate outbound commands or safety behaviour.
 3. Neutral brake/coast response; phone/app loss and radio-loss behavior; operator manual-takeover switch and procedure; physical emergency-stop presence and effect. These require hardware-team evidence from a secured setup, not a moving-rover disconnect experiment.
 4. How the confirmed 8 km/h maximum will be enforced and the accepted file's higher cruise target reconciled. The numerical maximum is already answered.
 5. For later motor monitoring: actual VESC feedback connection, controller firmware/identities and demonstrated telemetry fields. Do not ask again for the reported controller or adapter model.

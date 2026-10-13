@@ -200,7 +200,8 @@ class FoundationUiTest {
         compose.onNodeWithText("Disconnected", substring = true).assertIsDisplayed()
         compose.assertMonitoringOnlySafety()
         compose.onNodeWithTag("operation-map").assertIsDisplayed()
-        compose.onNodeWithText("GROUND SPEED", substring = false).assertIsDisplayed()
+        compose.onNodeWithTag("rover-speed-monitor").assertIsDisplayed()
+        compose.onNodeWithTag("rover-speed-status").assertTextEquals("SPEED UNAVAILABLE")
         capture("dashboard-dark")
         compose.onNodeWithTag("station-menu").assertIsDisplayed()
     }

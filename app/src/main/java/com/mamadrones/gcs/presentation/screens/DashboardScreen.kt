@@ -36,7 +36,7 @@ fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier:
         Surface(shadowElevation = 2.dp) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Instrument("GROUND SPEED", live.speedMetersPerSecond.reading("m/s"))
+                    RoverSpeedMonitorPanel(state, compact = true)
                     Instrument("HEADING", live.headingDegrees.reading("°"))
                     Instrument("BATTERY", live.battery.percentage?.let { "$it %" } ?: "UNKNOWN")
                     Instrument("GPS", live.gps.fix.name.replace('_', ' '))
@@ -162,6 +162,7 @@ private fun MapAction(label: String, icon: ConsoleIcon, onClick: () -> Unit) {
 @Composable
 fun TelemetryScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
     ScreenHeader("Telemetry", "Vehicle measurements and receive ages")
+    RoverSpeedMonitorPanel(state)
     CardGrid(listOf(
         ConsolePanels.vehicle(state), ConsolePanels.gps(state), ConsolePanels.position(state),
         ConsolePanels.battery(state), ConsolePanels.attitude(state), ConsolePanels.systemStatus(state),
