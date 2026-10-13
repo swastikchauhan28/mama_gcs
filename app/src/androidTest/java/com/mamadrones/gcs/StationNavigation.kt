@@ -11,7 +11,7 @@ fun ComposeTestRule.openWorkspace(route: String) {
         val parent = when (route) {
             "health", "motors", "spray", "hydraulic", "parameter-review", "autopilot-info" -> "more"
             "settings", "classic-bluetooth", "vesc-discovery", "map-settings" -> "general"
-            "telemetry", "rc-pwm" -> "diagnostics"
+            "telemetry", "rc-pwm", "message-inspector" -> "diagnostics"
             "map" -> "dashboard"
             else -> route
         }

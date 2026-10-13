@@ -4,7 +4,9 @@ Native Android ground-control-station foundation for a Mama agricultural UGV: Ar
 
 For hardware discussions, consult the [current hardware record](docs/hardware-integration.md#current-hardware-record--updated-12-october-2026) first. It records the accepted parameter-file baseline, T12/R12/HC-05 route, photo-indicated TELEM1 connection, confirmed 8 km/h maximum and remaining evidence gaps; do not repeat already answered questions from historical phase reports.
 
-## Current delivery: HC-05 receive checklist (Phase 28)
+## Current delivery: read-only MAVLink message inspector (Phase 29)
+
+Phase 29 adds **Analyze tools → Message inspector**. Search the app's supported message types by name/ID, filter to observed types, and inspect decoded MAVLink 1/2 counts, accepted/ignored counts and separate last-decoded/last-accepted ages. The list is bounded, memory-only and reset with each receive session; disconnected data is explicitly historical. No message-rate requests, payload logging, vehicle commands or safety approval are added. See [scope and validation](docs/phase-29-report.md).
 
 Phase 28 adds **Application settings → Bluetooth / HC-05 → HC-05 connection check**. It separates an open Bluetooth socket, recent serial bytes, a fresh autopilot heartbeat and recent measurement-message groups, with guidance for the first missing stage. Evidence must belong to the active Classic session and expires on screen; socket connection alone never means Cube telemetry or control is verified. No commands, stream-rate requests, parameter changes or automatic reconnect are added. See [scope, testing and the manual walkthrough](docs/phase-28-report.md).
 

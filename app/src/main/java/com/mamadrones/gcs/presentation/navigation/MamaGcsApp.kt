@@ -81,6 +81,7 @@ fun MamaGcsApp(
                         composable("more") { MoreScreen(vehicle, onNavigate = navigate) }
                         composable("telemetry") { TelemetryScreen(vehicle) }
                         composable("rc-pwm") { RcPwmScreen(vehicle) }
+                        composable("message-inspector") { MavlinkInspectorScreen(vehicle.mavlinkDiagnostics) }
                         composable("health") { HealthScreen(vehicle) }
                         composable("parameter-review") { ParameterReviewRoute(hiltViewModel()) }
                         composable("autopilot-info") { AutopilotVersionScreen(vehicle) }

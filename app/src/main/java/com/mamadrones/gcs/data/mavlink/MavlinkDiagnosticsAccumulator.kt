@@ -2,6 +2,8 @@ package com.mamadrones.gcs.data.mavlink
 
 import com.mamadrones.gcs.domain.model.MavlinkDiagnostics
 import com.mamadrones.gcs.domain.model.TelemetryLinkKind
+import com.mamadrones.gcs.domain.model.MavlinkMessageObservation
+import com.mamadrones.gcs.domain.model.ObservedMavlinkMessage
 
 enum class MessageDisposition { ACCEPTED, BEFORE_AUTOPILOT_HEARTBEAT, OTHER_SOURCE }
 
@@ -21,10 +23,25 @@ class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long) {
         val current = snapshot
         snapshot = when (result) {
             is MavlinkParseResult.Message -> {
+                val admission = requireNotNull(disposition)
+                val type = result.message.observedType()
+                val previous = current.messageObservations.firstOrNull { it.type == type }
+                    ?: MavlinkMessageObservation(type)
+                val observation = previous.copy(
+                    decodedV1 = previous.decodedV1 + if (result.wireVersion == MavlinkWireVersion.V1) 1 else 0,
+                    decodedV2 = previous.decodedV2 + if (result.wireVersion == MavlinkWireVersion.V2) 1 else 0,
+                    accepted = previous.accepted + if (admission == MessageDisposition.ACCEPTED) 1 else 0,
+                    beforeHeartbeat = previous.beforeHeartbeat + if (admission == MessageDisposition.BEFORE_AUTOPILOT_HEARTBEAT) 1 else 0,
+                    otherSource = previous.otherSource + if (admission == MessageDisposition.OTHER_SOURCE) 1 else 0,
+                    lastDecodedAtEpochMillis = receivedAt,
+                    lastAcceptedAtEpochMillis = if (admission == MessageDisposition.ACCEPTED) receivedAt else previous.lastAcceptedAtEpochMillis,
+                )
                 val decoded = current.copy(decodedMessages = current.decodedMessages + 1,
                     decodedV1Messages = current.decodedV1Messages + if (result.wireVersion == MavlinkWireVersion.V1) 1 else 0,
-                    decodedV2Messages = current.decodedV2Messages + if (result.wireVersion == MavlinkWireVersion.V2) 1 else 0)
-                when (requireNotNull(disposition)) {
+                    decodedV2Messages = current.decodedV2Messages + if (result.wireVersion == MavlinkWireVersion.V2) 1 else 0,
+                    messageObservations = (current.messageObservations.filterNot { it.type == type } + observation)
+                        .sortedBy { it.type.messageId })
+                when (admission) {
                     MessageDisposition.ACCEPTED -> decoded.copy(acceptedMessages = decoded.acceptedMessages + 1,
                         lastAcceptedAtEpochMillis = receivedAt)
                     MessageDisposition.BEFORE_AUTOPILOT_HEARTBEAT -> decoded.copy(ignoredBeforeHeartbeat = decoded.ignoredBeforeHeartbeat + 1)
@@ -39,4 +56,19 @@ class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long) {
             MavlinkParseResult.SignedPacketRejected -> current.copy(signedPacketsRejected = current.signedPacketsRejected + 1)
         }
     }
+}
+
+/** Exhaustive mapping keeps a newly decoded type from silently disappearing from inspection. */
+private fun MavlinkMessage.observedType(): ObservedMavlinkMessage = when (this) {
+    is MavlinkMessage.Heartbeat -> ObservedMavlinkMessage.HEARTBEAT
+    is MavlinkMessage.SystemStatus -> ObservedMavlinkMessage.SYS_STATUS
+    is MavlinkMessage.GpsRawInt -> ObservedMavlinkMessage.GPS_RAW_INT
+    is MavlinkMessage.Attitude -> ObservedMavlinkMessage.ATTITUDE
+    is MavlinkMessage.GlobalPositionInt -> ObservedMavlinkMessage.GLOBAL_POSITION_INT
+    is MavlinkMessage.ServoOutputRaw -> ObservedMavlinkMessage.SERVO_OUTPUT_RAW
+    is MavlinkMessage.RcChannels -> ObservedMavlinkMessage.RC_CHANNELS
+    is MavlinkMessage.VfrHud -> ObservedMavlinkMessage.VFR_HUD
+    is MavlinkMessage.BatteryStatus -> ObservedMavlinkMessage.BATTERY_STATUS
+    is MavlinkMessage.AutopilotVersion -> ObservedMavlinkMessage.AUTOPILOT_VERSION
+    is MavlinkMessage.StatusText -> ObservedMavlinkMessage.STATUSTEXT
 }

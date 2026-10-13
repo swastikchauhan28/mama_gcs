@@ -26,6 +26,8 @@ No new transport, outgoing heartbeat, stream-rate request, baud-rate change, par
 
 ## Manual connection check
 
+Follow-up validation in [Phase 29](phase-29-report.md): all seven Phase 28 checklist/Classic Bluetooth UI tests passed as part of an 11-test isolated API 34 run on 13 October 2026. Light/dark landscape checklist captures were also visually reviewed. This closes the prior emulator execution gap; it does not replace portrait/large-text checks or physical telemetry acceptance. See Phase 29 for the startup recovery and evidence path.
+
 1. Have the hardware team secure the stationary rover and independently prevent motor/actuator operation. Leave it disarmed; do not use the app's unavailable emergency-stop control as protection.
 2. Power the existing Cube/R12/T12 setup using the hardware team's procedure. Keep the phone near the T12. Do not rewire or change the accepted parameter settings for this check.
 3. Close other phone apps using the remote's Bluetooth connection. Turn on phone Bluetooth and pair the identified HC-05 in Android settings if it is not already paired. Use the hardware team's PIN if Android requests one; do not guess a different device.

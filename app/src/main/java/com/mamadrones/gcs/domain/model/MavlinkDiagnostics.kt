@@ -23,6 +23,7 @@ data class MavlinkDiagnostics(
     val lastUnsupportedMessageId: Int? = null,
     val lastBytesAtEpochMillis: Long? = null,
     val lastAcceptedAtEpochMillis: Long? = null,
+    val messageObservations: List<MavlinkMessageObservation> = emptyList(),
 ) {
     val parserErrors: Long get() = checksumFailures + malformedPayloads
 }

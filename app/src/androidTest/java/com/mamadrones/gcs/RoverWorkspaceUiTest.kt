@@ -19,6 +19,16 @@ import java.io.File
 class RoverWorkspaceUiTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
+    @Test fun analyzeMessageInspectorCanOpenWithoutLink() {
+        compose.openWorkspace("message-inspector")
+        compose.onNodeWithText("MAVLink message inspector").assertIsDisplayed()
+        compose.onNodeWithTag("inspector-session").assertTextEquals("NO RECEIVE SESSION")
+        compose.onNodeWithTag("inspector-observed-only").performScrollTo().performClick()
+        compose.onNodeWithTag("inspector-result-count").performScrollTo().assertTextEquals("Message types shown: 0")
+        compose.onNodeWithTag("category-diagnostics").performScrollTo().performClick()
+        compose.onNodeWithText("Vehicle and communication inspection").assertIsDisplayed()
+    }
+
     @Test fun landscapeDaylightWorkspaceAndCategories() {
         val repository = LocalSettingsRepository(compose.activity)
         val previousTheme = runBlocking { repository.preferences.first().theme }

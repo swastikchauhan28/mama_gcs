@@ -78,6 +78,19 @@ class MavlinkSessionTest {
             assertEquals(2L, state.mavlinkDiagnostics.ignoredBeforeHeartbeat)
             assertEquals(3L, state.mavlinkDiagnostics.ignoredOtherSource)
             assertEquals(3L, state.mavlinkDiagnostics.acceptedMessages)
+            val observed = state.mavlinkDiagnostics.messageObservations.associateBy { it.type.messageId }
+            assertEquals(1L, observed.getValue(0).accepted)
+            assertEquals(1L, observed.getValue(65).accepted)
+            assertEquals(1L, observed.getValue(65).beforeHeartbeat)
+            assertEquals(2L, observed.getValue(65).otherSource)
+            assertEquals(1L, observed.getValue(36).accepted)
+            assertEquals(1L, observed.getValue(36).otherSource)
+            session.stop()
+            assertFalse(repository.vehicleState.value.mavlinkDiagnostics.active)
+            assertEquals(state.mavlinkDiagnostics.messageObservations,
+                repository.vehicleState.value.mavlinkDiagnostics.messageObservations)
+            session.start()
+            assertTrue(repository.vehicleState.value.mavlinkDiagnostics.messageObservations.isEmpty())
             assertEquals(0, sends)
         } finally { session.stop(); session.close() }
     }
