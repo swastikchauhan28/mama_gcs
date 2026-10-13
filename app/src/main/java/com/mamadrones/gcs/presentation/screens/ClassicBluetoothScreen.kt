@@ -29,9 +29,9 @@ fun ClassicBluetoothScreen(
     onConnect: (ClassicBluetoothPeer) -> Unit,
     onDisconnect: () -> Unit,
     otherLinkOpen: Boolean,
-    vehicleConnection: VehicleConnectionState,
-    diagnostics: MavlinkDiagnostics,
+    vehicle: VehicleState,
 ) {
+    val diagnostics = vehicle.mavlinkDiagnostics
     val context = LocalContext.current
     var selected by remember { mutableStateOf<ClassicBluetoothPeer?>(null) }
     var settingsError by remember { mutableStateOf<String?>(null) }
@@ -41,6 +41,7 @@ fun ClassicBluetoothScreen(
     val now by produceState(System.currentTimeMillis()) {
         while (true) { delay(1_000L); value = System.currentTimeMillis() }
     }
+    val check = ClassicConnectionCheck.assess(state.link.active, state.link.connection, vehicle, now)
     ScreenBody {
         ScreenHeader("Bluetooth Classic / HC-05", "Paired serial radio · MAVLink receive only")
         Notice("CONNECT YOUR REMOTE", "Pair the identified HC-05 in Android Bluetooth settings, return here and refresh. Select its name and address. The Flipsky NRF51 module uses a separate BLE connection.")
@@ -77,12 +78,13 @@ fun ClassicBluetoothScreen(
                 Text(if (state.link.connection.status == TransportStatus.CONNECTING) "Cancel connection" else "Disconnect Classic")
             }
         }
+        ClassicConnectionCheckPanel(check)
         state.link.peer?.let { peer ->
             SubsystemCard(PanelSpec("Classic serial link", state.link.connection.status.name,
                 listOf("Device" to peer.name, "Address" to peer.address,
                     "Received chunks" to state.link.connection.packetStatistics.receivedPackets.toString(),
                     "Command transmit" to "DISABLED",
-                    "MAVLink heartbeat" to if (state.link.active) vehicleConnection.name else "SESSION CLOSED"),
+                    "MAVLink heartbeat" to if (check.freshHeartbeat) "FRESH" else "NOT CONFIRMED"),
                 state.link.connection.detail ?: "Waiting for serial data."))
         }
         if (diagnostics.linkKind == TelemetryLinkKind.CLASSIC && diagnostics.startedAtEpochMillis != null) {

@@ -108,8 +108,7 @@ fun MamaGcsApp(
                                 onDisconnect = onClassicDisconnect,
                                 otherLinkOpen = connection.session.endpoint != null || vescDiscovery.gattConnecting ||
                                     vescDiscovery.gattConnected || vescDiscovery.closing,
-                                vehicleConnection = vehicle.connectionStatus,
-                                diagnostics = vehicle.mavlinkDiagnostics,
+                                vehicle = vehicle,
                             )
                         }
                         composable("spray") { SprayScreen(vehicle) }
