@@ -15,6 +15,16 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
     private val _vehicleState = MutableStateFlow(VehicleState())
     override val vehicleState: StateFlow<VehicleState> = _vehicleState.asStateFlow()
 
+    fun onHomePosition(message: MavlinkMessage.HomePosition, receivedAtEpochMillis: Long) {
+        val latitude = message.latitudeE7 / DEGREES_E7
+        val longitude = message.longitudeE7 / DEGREES_E7
+        val valid = latitude in -90.0..90.0 && longitude in -180.0..180.0
+        _vehicleState.update { current -> current.copy(homePosition = HomePositionState(
+            latitude.takeIf { valid }, longitude.takeIf { valid },
+            (message.altitudeMillimetersMsl / MILLIMETERS_PER_METER).takeIf { valid }, receivedAtEpochMillis,
+        )) }
+    }
+
     fun onAutopilotVersion(message: MavlinkMessage.AutopilotVersion, receivedAtEpochMillis: Long) {
         _vehicleState.update { current -> current.copy(autopilotVersion = AutopilotVersionState(
             message.firmwareVersion, message.middlewareVersion, message.osVersion, message.boardVersion,

@@ -9,6 +9,11 @@ data class MavlinkFrame(
 )
 
 sealed interface MavlinkMessage {
+    data class HomePosition(
+        val systemId: Int, val componentId: Int,
+        val latitudeE7: Int, val longitudeE7: Int, val altitudeMillimetersMsl: Int,
+    ) : MavlinkMessage
+
     /** Deliberately excludes hardware UIDs, custom version bytes and capability claims. */
     data class AutopilotVersion(
         val systemId: Int, val componentId: Int,
@@ -125,6 +130,7 @@ sealed interface MavlinkMessage {
     ) : MavlinkMessage
 
     companion object {
+        const val HOME_POSITION_MESSAGE_ID = 242
         const val AUTOPILOT_VERSION_MESSAGE_ID = 148
         const val HEARTBEAT_MESSAGE_ID = 0
         const val RC_CHANNELS_MESSAGE_ID = 65

@@ -163,6 +163,7 @@ private fun MapAction(label: String, icon: ConsoleIcon, onClick: () -> Unit) {
 fun TelemetryScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
     ScreenHeader("Telemetry", "Vehicle measurements and receive ages")
     RoverSpeedMonitorPanel(state)
+    com.mamadrones.gcs.presentation.dashboard.HomePositionCard(state)
     CardGrid(listOf(
         ConsolePanels.vehicle(state), ConsolePanels.gps(state), ConsolePanels.position(state),
         ConsolePanels.battery(state), ConsolePanels.attitude(state), ConsolePanels.systemStatus(state),

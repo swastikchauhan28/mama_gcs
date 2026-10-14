@@ -14,7 +14,7 @@ class MavlinkInspectorPanelsTest {
         MavlinkInspectorPanels.panel(type, sample, now)
 
     @Test fun noSessionListsTheAppSubsetAsUnobservedNotVehicleCapabilities() {
-        assertEquals(11, MavlinkInspectorPanels.visibleTypes(MavlinkDiagnostics(), "", false).size)
+        assertEquals(12, MavlinkInspectorPanels.visibleTypes(MavlinkDiagnostics(), "", false).size)
         assertTrue(MavlinkInspectorPanels.visibleTypes(MavlinkDiagnostics(), "", true).isEmpty())
         assertEquals("NOT OBSERVED", panel(MavlinkDiagnostics()).status)
         assertEquals("NOT RECEIVED", panel(MavlinkDiagnostics()).rows.toMap()["Last accepted"])

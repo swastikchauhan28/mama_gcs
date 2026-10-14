@@ -25,6 +25,35 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MavlinkSessionTest {
+    @Test fun `home is selected source only resets on reconnect and never transmits`() = runBlocking {
+        val base = FakeTransport()
+        var sends = 0
+        val transport = object : VehicleTransport by base {
+            override suspend fun send(data: ByteArray) { sends++ }
+        }
+        val repository = VehicleRepositoryImpl()
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = this)
+        fun home(system: Int = 42, component: Int = 1, lat: Long = -353632621) =
+            mavlinkTestFrame(242, ByteArray(52).apply { putUInt32(0, lat); putUInt32(4, 1491652374) }, 104, system, component)
+        try {
+            session.start()
+            base.emit(home() + heartbeatFrame(systemId = 42) + home() + home(99, lat = 1) + home(component = 2, lat = 2))
+            waitUntil { repository.vehicleState.value.mavlinkDiagnostics.decodedMessages == 5L }
+            val state = repository.vehicleState.value
+            assertEquals(-35.3632621, state.homePosition!!.latitude!!, 0.00000001)
+            assertEquals(1L, state.mavlinkDiagnostics.ignoredBeforeHeartbeat)
+            assertEquals(2L, state.mavlinkDiagnostics.ignoredOtherSource)
+            assertEquals(2L, state.mavlinkDiagnostics.acceptedMessages)
+            val observation = state.mavlinkDiagnostics.messageObservations.single { it.type.messageId == 242 }
+            assertEquals(1L, observation.accepted)
+            session.stop()
+            assertEquals(state.homePosition, repository.vehicleState.value.homePosition)
+            session.start()
+            assertNull(repository.vehicleState.value.homePosition)
+            assertEquals(0, sends)
+        } finally { session.stop(); session.close() }
+    }
+
     @Test fun `firmware is selected source only resets on reconnect and never transmits`() = runBlocking {
         val base = FakeTransport()
         var sends = 0

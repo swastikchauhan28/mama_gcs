@@ -31,6 +31,7 @@ class MapAcceptanceTest {
 
     @Test fun allBasemapsRenderThroughTheSharedPreferenceAndKeepDraftLayers() {
         val selected = mutableStateOf(BasemapStyle.STREETS)
+        val homeState = mutableStateOf(VehicleState())
         val renderedFrames = AtomicInteger()
         var observedMap: MapLibreMap? = null
         val listener = MapView.OnDidFinishRenderingFrameListener { fully, _, _ ->
@@ -45,7 +46,7 @@ class MapAcceptanceTest {
         try {
             compose.setContent { MamaGcsTheme {
                 CompositionLocalProvider(LocalBasemapStyle provides selected.value) {
-                    VehicleMap(VehicleState(), Modifier.fillMaxSize(), planningMode = true,
+                    VehicleMap(homeState.value, Modifier.fillMaxSize(), planningMode = true,
                         draftWaypoints = listOf(DraftWaypoint("a", -35.3632621, 149.1652374),
                             DraftWaypoint("b", -35.364, 149.166)))
                 }
@@ -71,11 +72,37 @@ class MapAcceptanceTest {
                 compose.runOnIdle {
                     assertNotNull(map.style!!.getLayer("mama-draft-waypoints"))
                     assertNotNull(map.style!!.getLayer("mama-draft-labels"))
+                    val now = System.currentTimeMillis()
+                    homeState.value = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
+                        lastHeartbeatAtEpochMillis = now,
+                        mavlinkDiagnostics = MavlinkDiagnostics(active = true, startedAtEpochMillis = now - 1_000),
+                        homePosition = HomePositionState(-35.3635, 149.1652, 584.0, now))
+                }
+                compose.waitUntil(5_000) {
+                    var present = false
+                    compose.runOnIdle {
+                        homeState.value = homeState.value.copy(lastHeartbeatAtEpochMillis = System.currentTimeMillis())
+                        present = map.style?.getSourceAs<org.maplibre.android.style.sources.GeoJsonSource>("mama-home-source")
+                            ?.querySourceFeatures(null)?.isNotEmpty() == true
+                    }
+                    present
                 }
                 // Capture the displayed compositor output, not the SDK snapshot callback's
                 // potentially stale framebuffer. Sample the map centre, away from controls/logo.
                 var captured: android.graphics.Bitmap? = null
                 compose.waitUntil(10_000) {
+                    val marker = IntArray(2)
+                    compose.runOnIdle {
+                        // Model continuing telemetry while checking rendering, not a dead link.
+                        // HOME_POSITION itself stays unchanged (it is session metadata).
+                        homeState.value = homeState.value.copy(lastHeartbeatAtEpochMillis = System.currentTimeMillis())
+                        val point = map.projection.toScreenLocation(org.maplibre.android.geometry.LatLng(-35.3635, 149.1652))
+                        view!!.getLocationOnScreen(marker)
+                        marker[0] += point.x.toInt()
+                        marker[1] += point.y.toInt()
+                        map.triggerRepaint()
+                    }
+                    compose.waitForIdle()
                     captured?.recycle()
                     captured = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
                     val bitmap = captured
@@ -91,11 +118,21 @@ class MapAcceptanceTest {
                                 samples++
                             }
                         }
-                        colours.size > 32 && nonBlack > samples * 0.9
+                        // Source data alone does not prove the marker reached the framebuffer.
+                        var homePixels = 0
+                        for (x in maxOf(0, marker[0] - 30)..minOf(bitmap.width - 1, marker[0] + 30)) {
+                            for (y in maxOf(0, marker[1] - 30)..minOf(bitmap.height - 1, marker[1] + 30)) {
+                                val pixel = bitmap.getPixel(x, y)
+                                if (kotlin.math.abs(android.graphics.Color.red(pixel) - 114) < 10 &&
+                                    kotlin.math.abs(android.graphics.Color.green(pixel) - 74) < 10 &&
+                                    kotlin.math.abs(android.graphics.Color.blue(pixel) - 200) < 10) homePixels++
+                            }
+                        }
+                        colours.size > 32 && nonBlack > samples * 0.9 && homePixels > 30
                     }
                 }
                 requireNotNull(captured).let { bitmap ->
-                    java.io.File(compose.activity.getExternalFilesDir(null), "phase30-${style.name}.png").outputStream().use {
+                    java.io.File(compose.activity.getExternalFilesDir(null), "phase31-${style.name}.png").outputStream().use {
                         check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
                     }
                     bitmap.recycle()

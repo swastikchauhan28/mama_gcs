@@ -16,6 +16,7 @@ class MavlinkMessageRouter @Inject constructor(
     fun route(result: MavlinkParseResult, receivedAtEpochMillis: Long) {
         val message = (result as? MavlinkParseResult.Message)?.message ?: return
         when (message) {
+            is MavlinkMessage.HomePosition -> vehicleRepository.onHomePosition(message, receivedAtEpochMillis)
             is MavlinkMessage.AutopilotVersion -> vehicleRepository.onAutopilotVersion(message, receivedAtEpochMillis)
             is MavlinkMessage.RcChannels -> vehicleRepository.onRcChannels(message, receivedAtEpochMillis)
             is MavlinkMessage.ServoOutputRaw -> vehicleRepository.onServoOutputRaw(message, receivedAtEpochMillis)

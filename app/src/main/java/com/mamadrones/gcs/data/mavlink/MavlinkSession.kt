@@ -141,6 +141,7 @@ class MavlinkSession(
 
     private fun MavlinkMessage.sourceIdentity(): Pair<Int, Int>? = when (this) {
         is MavlinkMessage.AutopilotVersion -> systemId to componentId
+        is MavlinkMessage.HomePosition -> systemId to componentId
         is MavlinkMessage.RcChannels -> systemId to componentId
         is MavlinkMessage.ServoOutputRaw -> systemId to componentId
         is MavlinkMessage.Heartbeat -> systemId to componentId

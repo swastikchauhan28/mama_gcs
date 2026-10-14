@@ -70,5 +70,6 @@ private fun MavlinkMessage.observedType(): ObservedMavlinkMessage = when (this) 
     is MavlinkMessage.VfrHud -> ObservedMavlinkMessage.VFR_HUD
     is MavlinkMessage.BatteryStatus -> ObservedMavlinkMessage.BATTERY_STATUS
     is MavlinkMessage.AutopilotVersion -> ObservedMavlinkMessage.AUTOPILOT_VERSION
+    is MavlinkMessage.HomePosition -> ObservedMavlinkMessage.HOME_POSITION
     is MavlinkMessage.StatusText -> ObservedMavlinkMessage.STATUSTEXT
 }

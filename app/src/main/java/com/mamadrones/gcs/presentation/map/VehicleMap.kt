@@ -1,6 +1,9 @@
 package com.mamadrones.gcs.presentation.map
 
 import android.graphics.Color as AndroidColor
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +42,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.mamadrones.gcs.domain.model.GeoTrackPoint
 import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.VehicleState
+import com.mamadrones.gcs.domain.model.HomePositionEvidence
+import kotlinx.coroutines.delay
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -56,6 +62,10 @@ import org.maplibre.android.style.layers.PropertyFactory.textColor
 import org.maplibre.android.style.layers.PropertyFactory.textSize
 import org.maplibre.android.style.layers.PropertyFactory.textAllowOverlap
 import org.maplibre.android.style.layers.PropertyFactory.textIgnorePlacement
+import org.maplibre.android.style.layers.PropertyFactory.iconImage
+import org.maplibre.android.style.layers.PropertyFactory.iconSize
+import org.maplibre.android.style.layers.PropertyFactory.iconAllowOverlap
+import org.maplibre.android.style.layers.PropertyFactory.iconIgnorePlacement
 import org.maplibre.android.style.layers.PropertyFactory.circleColor
 import org.maplibre.android.style.layers.PropertyFactory.circleRadius
 import org.maplibre.android.style.layers.PropertyFactory.circleStrokeColor
@@ -78,6 +88,7 @@ import kotlin.math.sin
 private const val VEHICLE_SOURCE_ID = "mama-vehicle-source"
 private const val TRACK_SOURCE_ID = "mama-track-source"
 private const val HEADING_SOURCE_ID = "mama-heading-source"
+private const val HOME_SOURCE_ID = "mama-home-source"
 private const val DRAFT_POINTS_SOURCE_ID = "mama-draft-points"
 private const val DRAFT_LINE_SOURCE_ID = "mama-draft-line"
 private const val DRAFT_FENCE_SOURCE_ID = "mama-draft-fence"
@@ -106,6 +117,12 @@ fun VehicleMap(
     styleUrl: String? = MapStyleConfig.styleUrlOrNull(LocalBasemapStyle.current),
 ) {
     val mapView = rememberMapViewWithLifecycle()
+    val clockTick by produceState(System.currentTimeMillis()) {
+        while (true) { delay(1_000); value = System.currentTimeMillis() }
+    }
+    // New telemetry may arrive between ticks; never compare it with an older cached clock.
+    val now = remember(clockTick, state) { System.currentTimeMillis() }
+    val reportedHome = HomePositionEvidence.visibleOnMap(state, now)
 
     var map by remember(mapView) { mutableStateOf<MapLibreMap?>(null) }
     var style by remember(mapView) { mutableStateOf<Style?>(null) }
@@ -224,6 +241,15 @@ fun VehicleMap(
         latitude.isFinite() && longitude.isFinite() &&
         latitude in -90.0..90.0 && longitude in -180.0..180.0
     val vehicleTarget = if (hasPosition) LatLng(latitude!!, longitude!!) else null
+
+    LaunchedEffect(style, reportedHome) {
+        style?.getSourceAs<GeoJsonSource>(HOME_SOURCE_ID)?.setGeoJson(
+            reportedHome?.let {
+                FeatureCollection.fromFeatures(arrayOf(Feature.fromGeometry(
+                    Point.fromLngLat(it.longitude!!, it.latitude!!))))
+            } ?: emptyFeatureCollection()
+        )
+    }
 
     LaunchedEffect(
         style,
@@ -520,6 +546,26 @@ internal fun hitTestDraftWaypoint(
 }
 
 private fun installVehicleLayers(style: Style) {
+    if (style.getSource(HOME_SOURCE_ID) == null) {
+        style.addSource(GeoJsonSource(HOME_SOURCE_ID, emptyFeatureCollection()))
+        style.addLayer(CircleLayer("mama-home-marker", HOME_SOURCE_ID).withProperties(
+            circleColor(AndroidColor.rgb(114, 74, 200)), circleRadius(14f),
+            circleStrokeColor(AndroidColor.WHITE), circleStrokeWidth(2f)))
+        // A telemetry marker must not depend on the basemap's remote font/glyph service.
+        val homeIcon = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888).apply {
+            density = android.util.DisplayMetrics.DENSITY_DEFAULT
+            val pen = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = AndroidColor.WHITE; strokeWidth = 4f }
+            Canvas(this).apply {
+                drawLine(15f, 10f, 15f, 38f, pen)
+                drawLine(33f, 10f, 33f, 38f, pen)
+                drawLine(15f, 24f, 33f, 24f, pen)
+            }
+        }
+        style.addImage("mama-home-icon", homeIcon)
+        style.addLayer(SymbolLayer("mama-home-label", HOME_SOURCE_ID).withProperties(
+            iconImage("mama-home-icon"), iconSize(0.5f),
+            iconAllowOverlap(true), iconIgnorePlacement(true)))
+    }
     if (style.getSource(TRACK_SOURCE_ID) == null) {
         style.addSource(GeoJsonSource(TRACK_SOURCE_ID, emptyFeatureCollection()))
     }

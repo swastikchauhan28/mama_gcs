@@ -4,7 +4,7 @@ package com.mamadrones.gcs.domain.model
 enum class ObservedMavlinkMessage(val messageId: Int) {
     HEARTBEAT(0), SYS_STATUS(1), GPS_RAW_INT(24), ATTITUDE(30), GLOBAL_POSITION_INT(33),
     SERVO_OUTPUT_RAW(36), RC_CHANNELS(65), VFR_HUD(74), BATTERY_STATUS(147),
-    AUTOPILOT_VERSION(148), STATUSTEXT(253),
+    AUTOPILOT_VERSION(148), HOME_POSITION(242), STATUSTEXT(253),
 }
 
 /** Bounded, memory-only counters. No raw payloads, coordinates or sender identities. */

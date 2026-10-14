@@ -29,7 +29,7 @@ class MavlinkMessageObservationTest {
         // ID, base payload size, CRC extra: exercised through the real frame decoder.
         val frames = listOf(Triple(0, 9, 50), Triple(1, 31, 124), Triple(24, 30, 24),
             Triple(30, 28, 39), Triple(33, 28, 104), Triple(36, 21, 222), Triple(65, 42, 118),
-            Triple(74, 20, 20), Triple(147, 36, 154), Triple(148, 60, 178), Triple(253, 51, 83))
+            Triple(74, 20, 20), Triple(147, 36, 154), Triple(148, 60, 178), Triple(242, 52, 104), Triple(253, 51, 83))
         frames.reversed().forEach { (id, length, crc) ->
             val result = MavlinkParser().feed(mavlinkTestFrame(id, ByteArray(length), crc)).single()
             assertTrue("ID $id must decode", result is MavlinkParseResult.Message)

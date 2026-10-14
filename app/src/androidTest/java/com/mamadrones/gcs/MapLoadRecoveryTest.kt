@@ -28,6 +28,50 @@ class MapLoadRecoveryTest {
     private val vehicle = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
         position = GlobalPositionState(-35.363, 149.165), headingDegrees = 90.0)
 
+    @Test fun homeMarkerIsSeparateFromVehicleAndClearsWhenEvidenceExpires() {
+        val file = File.createTempFile("map-home-", ".json", compose.activity.cacheDir)
+        file.writeText(VALID_STYLE)
+        val url = mutableStateOf<String?>(Uri.fromFile(file).toString())
+        fun liveState(): VehicleState {
+            val now = System.currentTimeMillis()
+            return vehicle.copy(lastHeartbeatAtEpochMillis = now,
+                mavlinkDiagnostics = MavlinkDiagnostics(active = true, startedAtEpochMillis = now - 100_000),
+                homePosition = HomePositionState(-35.3631, 149.1651, 584.0, now - 90_000))
+        }
+        val state = mutableStateOf(liveState())
+        try {
+            compose.setContent { MamaGcsTheme { VehicleMap(state.value, Modifier.fillMaxSize(), styleUrl = url.value) } }
+            val map = awaitLoaded()
+            compose.runOnIdle { state.value = liveState() }
+            awaitPosition(map, -35.3631, "mama-home-source") {
+                state.value = state.value.copy(lastHeartbeatAtEpochMillis = System.currentTimeMillis())
+                assertNotNull(HomePositionEvidence.visibleOnMap(state.value, System.currentTimeMillis()))
+            }
+            awaitPosition(map, -35.363)
+            compose.runOnIdle {
+                assertNotNull(map.style!!.getLayer("mama-home-marker"))
+                assertNotNull(map.style!!.getLayer("mama-home-label"))
+                assertEquals(-35.363, map.cameraPosition.target!!.latitude, 0.000001)
+            }
+            // Let wall-clock time alone expire the heartbeat, without replacing the state.
+            awaitPosition(map, null, "mama-home-source")
+            compose.runOnIdle { state.value = liveState() }
+            awaitPosition(map, -35.3631, "mama-home-source") {
+                state.value = state.value.copy(lastHeartbeatAtEpochMillis = System.currentTimeMillis())
+            }
+            compose.runOnIdle { state.value = state.value.copy(connectionStatus = VehicleConnectionState.DISCONNECTED) }
+            awaitPosition(map, null, "mama-home-source")
+            compose.runOnIdle { state.value = liveState().copy(homePosition = HomePositionState(null, null, null, System.currentTimeMillis())) }
+            awaitPosition(map, null, "mama-home-source")
+            compose.runOnIdle { state.value = VehicleState() }
+            awaitPosition(map, null, "mama-home-source")
+        } finally {
+            compose.runOnIdle { url.value = null }
+            compose.waitForIdle()
+            check(file.delete())
+        }
+    }
+
     @Test fun switchingStylesPreservesCameraAndRestoresAllOverlays() {
         val first = File.createTempFile("map-switch-a-", ".json", compose.activity.cacheDir)
         val second = File.createTempFile("map-switch-b-", ".json", compose.activity.cacheDir)
@@ -58,7 +102,7 @@ class MapLoadRecoveryTest {
                 assertEquals(14.0, map.cameraPosition.zoom, 0.001)
                 assertEquals(30.0, map.cameraPosition.bearing, 0.001)
                 for (source in listOf("mama-vehicle-source", "mama-track-source", "mama-heading-source",
-                    "mama-draft-points", "mama-draft-line", "mama-draft-fence")) {
+                    "mama-draft-points", "mama-draft-line", "mama-draft-fence", "mama-home-source")) {
                     assertNotNull(source, map.style!!.getSource(source))
                 }
             }
@@ -178,7 +222,12 @@ class MapLoadRecoveryTest {
         return requireNotNull(map)
     }
 
-    private fun awaitPosition(map: MapLibreMap, latitude: Double) {
+    private fun awaitPosition(map: MapLibreMap, latitude: Double?, sourceId: String = "mama-vehicle-source",
+        beforePoll: () -> Unit = {}) {
+        // The home freshness ticker uses Compose's coroutine clock. waitUntil polls wall time
+        // and does not advance a delayed effect once Compose is idle. Drive that clock explicitly;
+        // eligibility still compares real receipt/heartbeat times and must expire without input.
+        if (sourceId == "mama-home-source") compose.mainClock.advanceTimeBy(1_000)
         // Style JSON can finish before the native renderer exists. Source queries need a
         // completed render, not just isFullyLoaded, or the SDK may dereference a null renderer.
         val rendered = AtomicBoolean(false)
@@ -189,16 +238,34 @@ class MapLoadRecoveryTest {
             view.addOnDidFinishRenderingFrameListener(listener)
             map.triggerRepaint()
         }
+        val observed = mutableSetOf<String>()
         try {
             compose.waitUntil(10_000) { rendered.get() }
             compose.waitUntil(10_000) {
+                if (sourceId == "mama-home-source") compose.mainClock.advanceTimeBy(1_000)
                 var found = false
                 compose.runOnIdle {
-                    found = map.style?.getSourceAs<GeoJsonSource>("mama-vehicle-source")?.querySourceFeatures(null)
+                    beforePoll()
+                    val features = map.style?.getSourceAs<GeoJsonSource>(sourceId)?.querySourceFeatures(null)
+                    if (observed.size < 10) observed.add(features?.map { it.geometry().toString() }.toString())
+                    found = if (latitude == null) features?.isEmpty() == true else features
                         ?.any { (it.geometry() as? Point)?.latitude()?.let { value -> kotlin.math.abs(value - latitude) < 0.000001 } == true } == true
                 }
                 found
             }
+        } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+            var details = ""
+            compose.runOnIdle {
+                details = "camera=${map.cameraPosition}; layers=${map.style?.layers?.map { it.id }}; vehicle=" +
+                    map.style?.getSourceAs<GeoJsonSource>("mama-vehicle-source")?.querySourceFeatures(null)
+            }
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()?.let { bitmap ->
+                File(compose.activity.getExternalFilesDir(null), "phase31-local-failure.png").outputStream().use {
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                }
+                bitmap.recycle()
+            }
+            throw AssertionError("Expected $sourceId latitude=$latitude; observed=$observed; $details", failure)
         } finally {
             compose.runOnIdle { view.removeOnDidFinishRenderingFrameListener(listener) }
         }
