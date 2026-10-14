@@ -7,6 +7,7 @@ import android.os.SystemClock
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
@@ -14,6 +15,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.mamadrones.gcs.domain.model.*
 import com.mamadrones.gcs.presentation.map.VehicleMap
+import com.mamadrones.gcs.presentation.map.LocalBasemapStyle
 import com.mamadrones.gcs.presentation.theme.MamaGcsTheme
 import org.junit.Assert.*
 import org.junit.Rule
@@ -21,10 +23,88 @@ import org.junit.Test
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /** Online map acceptance with synthetic positions. Never opens a vehicle transport. */
 class MapAcceptanceTest {
     @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
+
+    @Test fun allBasemapsRenderThroughTheSharedPreferenceAndKeepDraftLayers() {
+        val selected = mutableStateOf(BasemapStyle.STREETS)
+        val renderedFrames = AtomicInteger()
+        var observedMap: MapLibreMap? = null
+        val listener = MapView.OnDidFinishRenderingFrameListener { fully, _, _ ->
+            if (fully && observedMap?.style?.uri?.contains("/maps/${selected.value.mapTilerId}/") == true &&
+                observedMap?.style?.isFullyLoaded == true) {
+                // The style URI can change before the renderer displays its first new frame.
+                // Request subsequent frames rather than treating one queued callback as proof.
+                if (renderedFrames.incrementAndGet() < 3) observedMap?.triggerRepaint()
+            }
+        }
+        var view: MapView? = null
+        try {
+            compose.setContent { MamaGcsTheme {
+                CompositionLocalProvider(LocalBasemapStyle provides selected.value) {
+                    VehicleMap(VehicleState(), Modifier.fillMaxSize(), planningMode = true,
+                        draftWaypoints = listOf(DraftWaypoint("a", -35.3632621, 149.1652374),
+                            DraftWaypoint("b", -35.364, 149.166)))
+                }
+            } }
+            val map = loadedMap()
+            compose.runOnIdle {
+                observedMap = map
+                view = requireNotNull(findMap(compose.activity.window.decorView))
+                view!!.addOnDidFinishRenderingFrameListener(listener)
+                map.cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
+                    .target(org.maplibre.android.geometry.LatLng(-35.3635, 149.1655)).zoom(16.0).build()
+            }
+            for (style in listOf(BasemapStyle.SATELLITE, BasemapStyle.HYBRID, BasemapStyle.STREETS)) {
+                compose.runOnIdle { renderedFrames.set(0); selected.value = style }
+                compose.waitUntil(45_000) {
+                    var ready = false
+                    compose.runOnIdle { ready = map.style?.uri?.contains("/maps/${style.mapTilerId}/") == true &&
+                        map.style?.isFullyLoaded == true && renderedFrames.get() >= 3 }
+                    ready
+                }
+                compose.onNodeWithText("MAP LOAD FAILED").assertDoesNotExist()
+                compose.onNodeWithTag("mission-fit").assertIsEnabled()
+                compose.runOnIdle {
+                    assertNotNull(map.style!!.getLayer("mama-draft-waypoints"))
+                    assertNotNull(map.style!!.getLayer("mama-draft-labels"))
+                }
+                // Capture the displayed compositor output, not the SDK snapshot callback's
+                // potentially stale framebuffer. Sample the map centre, away from controls/logo.
+                var captured: android.graphics.Bitmap? = null
+                compose.waitUntil(10_000) {
+                    captured?.recycle()
+                    captured = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+                    val bitmap = captured
+                    if (bitmap == null) false else {
+                        val colours = mutableSetOf<Int>()
+                        var nonBlack = 0
+                        var samples = 0
+                        for (x in bitmap.width / 4 until bitmap.width * 3 / 4 step 8) {
+                            for (y in bitmap.height / 4 until bitmap.height * 3 / 4 step 8) {
+                                val pixel = bitmap.getPixel(x, y) and 0x00ffffff
+                                colours.add(pixel)
+                                if (pixel != 0) nonBlack++
+                                samples++
+                            }
+                        }
+                        colours.size > 32 && nonBlack > samples * 0.9
+                    }
+                }
+                requireNotNull(captured).let { bitmap ->
+                    java.io.File(compose.activity.getExternalFilesDir(null), "phase30-${style.name}.png").outputStream().use {
+                        check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+                    }
+                    bitmap.recycle()
+                }
+            }
+        } finally {
+            compose.runOnIdle { view?.removeOnDidFinishRenderingFrameListener(listener) }
+        }
+    }
     private fun findMap(view: View): MapView? {
         if (view is MapView) return view
         if (view is ViewGroup) for (i in 0 until view.childCount) findMap(view.getChildAt(i))?.let { return it }

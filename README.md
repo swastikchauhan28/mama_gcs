@@ -4,7 +4,9 @@ Native Android ground-control-station foundation for a Mama agricultural UGV: Ar
 
 For hardware discussions, consult the [current hardware record](docs/hardware-integration.md#current-hardware-record--updated-12-october-2026) first. It records the accepted parameter-file baseline, T12/R12/HC-05 route, photo-indicated TELEM1 connection, confirmed 8 km/h maximum and remaining evidence gaps; do not repeat already answered questions from historical phase reports.
 
-## Current delivery: read-only MAVLink message inspector (Phase 29)
+## Current delivery: saved online basemap choices (Phase 30)
+
+Phase 30 adds **Application settings → Maps → Map appearance**: Streets, Satellite, or Satellite with labels. The device-local choice is shared by Operate, Map and Plan and survives app recreation. Existing builds default to Streets. Online loading still requires the configured MapTiler key, account access and internet; imagery is not live obstacle or safe-route evidence. No offline downloads or vehicle commands are added. See [scope and validation](docs/phase-30-report.md).
 
 Phase 29 adds **Analyze tools → Message inspector**. Search the app's supported message types by name/ID, filter to observed types, and inspect decoded MAVLink 1/2 counts, accepted/ignored counts and separate last-decoded/last-accepted ages. The list is bounded, memory-only and reset with each receive session; disconnected data is explicitly historical. No message-rate requests, payload logging, vehicle commands or safety approval are added. See [scope and validation](docs/phase-29-report.md).
 
@@ -116,7 +118,7 @@ The [local mission planning report](docs/phase-11a-report.md), [recovery report]
 3. **MAVLink HEARTBEAT — delivered.** MAVLink 2 framing/CRC, explicit session lifecycle, autopilot identity pinning, heartbeat timeout, and conservative unsigned/signing policy.
 4. **Telemetry — delivered.** GPS raw fix, global position/kinematics, attitude, Rover VFR_HUD instruments, system status, per-pack and aggregate battery readings, and bounded STATUSTEXT display with source receive ages and invalid-value handling. No health verdicts or controls.
 5. **Health evidence and readiness gate — delivered.** Protocol-reported evidence is visible, while readiness is explicitly not assessed without a signed-off vehicle profile and hardware integration data.
-6. **Map telemetry and online basemap — delivered.** MapLibre Native, MapTiler Streets vector tiles, live coordinate/heading, bounded current-session track, and center/follow controls. Licensed offline regions remain deferred.
+6. **Map telemetry and online basemaps — delivered.** MapLibre Native with saved MapTiler Streets, Satellite and Satellite with labels choices, live coordinate/heading, bounded current-session track, and center/follow controls. Licensed offline regions remain deferred.
 7. **Drive safety gate foundation — delivered.** Deny-by-default admission checklist and visible Control preflight. Trusted identity, signed vehicle identity, approved safety profile, command transport, deadman implementation, command outcomes, and all vehicle movement commands remain unimplemented.
 8. **VESC — groundwork and BLE discovery.** Read-only telemetry admission, identity and stale-data policy are implemented. Phase 8a can identify BLE advertisements, but actual controller protocol/transport integration remains blocked until the installed module and physical telemetry path are confirmed.
 9. Spray — verified hardware mapping and interlocks.

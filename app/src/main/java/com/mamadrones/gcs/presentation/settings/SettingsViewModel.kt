@@ -3,6 +3,7 @@ package com.mamadrones.gcs.presentation.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mamadrones.gcs.domain.model.AppPreferences
+import com.mamadrones.gcs.domain.model.BasemapStyle
 import com.mamadrones.gcs.domain.model.ThemeMode
 import com.mamadrones.gcs.domain.repository.SettingsRepository
 import com.mamadrones.gcs.domain.usecase.UpdateThemeUseCase
@@ -46,9 +47,24 @@ class SettingsViewModel @Inject constructor(
             try {
                 updateTheme(theme)
                 // Also reflect a confirmed write if the initial read collector failed.
-                mutableState.update { it.copy(preferences = AppPreferences(theme)) }
+                mutableState.update { it.copy(preferences = it.preferences.copy(theme = theme)) }
             } catch (_: IOException) {
                 mutableState.update { it.copy(error = "Theme could not be saved. Try again.") }
+            } finally {
+                mutableState.update { it.copy(saving = false) }
+            }
+        }
+    }
+
+    fun selectBasemap(basemap: BasemapStyle) {
+        if (mutableState.value.saving || mutableState.value.loading) return
+        mutableState.update { it.copy(saving = true, error = null) }
+        viewModelScope.launch {
+            try {
+                repository.setBasemap(basemap)
+                mutableState.update { it.copy(preferences = it.preferences.copy(basemap = basemap)) }
+            } catch (_: IOException) {
+                mutableState.update { it.copy(error = "Map choice could not be saved. Try again.") }
             } finally {
                 mutableState.update { it.copy(saving = false) }
             }

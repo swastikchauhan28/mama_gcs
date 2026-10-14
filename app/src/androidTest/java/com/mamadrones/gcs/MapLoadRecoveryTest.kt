@@ -20,12 +20,55 @@ import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Point
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** Actual SDK load callbacks using disposable local styles; no provider key or network required. */
 class MapLoadRecoveryTest {
     @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
     private val vehicle = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
         position = GlobalPositionState(-35.363, 149.165), headingDegrees = 90.0)
+
+    @Test fun switchingStylesPreservesCameraAndRestoresAllOverlays() {
+        val first = File.createTempFile("map-switch-a-", ".json", compose.activity.cacheDir)
+        val second = File.createTempFile("map-switch-b-", ".json", compose.activity.cacheDir)
+        first.writeText(VALID_STYLE)
+        second.writeText(VALID_STYLE.replace("#12202c", "#ccddee"))
+        val url = mutableStateOf<String?>(Uri.fromFile(first).toString())
+        val points = listOf(DraftWaypoint("a", -35.363, 149.165), DraftWaypoint("b", -35.364, 149.166))
+        try {
+            compose.setContent { MamaGcsTheme {
+                VehicleMap(vehicle, Modifier.fillMaxSize(), planningMode = true,
+                    draftWaypoints = points, draftFence = points + DraftWaypoint("c", -35.365, 149.164), styleUrl = url.value)
+            } }
+            val map = awaitLoaded()
+            awaitPosition(map, -35.363)
+            compose.runOnIdle {
+                map.cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
+                    .target(org.maplibre.android.geometry.LatLng(-35.37, 149.17)).zoom(14.0).bearing(30.0).build()
+                url.value = Uri.fromFile(second).toString()
+            }
+            compose.waitUntil(10_000) {
+                var switched = false
+                compose.runOnIdle { switched = map.style?.uri == url.value && map.style?.isFullyLoaded == true }
+                switched
+            }
+            awaitPosition(map, -35.363)
+            compose.runOnIdle {
+                assertEquals(-35.37, map.cameraPosition.target!!.latitude, 0.00001)
+                assertEquals(14.0, map.cameraPosition.zoom, 0.001)
+                assertEquals(30.0, map.cameraPosition.bearing, 0.001)
+                for (source in listOf("mama-vehicle-source", "mama-track-source", "mama-heading-source",
+                    "mama-draft-points", "mama-draft-line", "mama-draft-fence")) {
+                    assertNotNull(source, map.style!!.getSource(source))
+                }
+            }
+            compose.onNodeWithTag("mission-fit").assertIsEnabled()
+        } finally {
+            compose.runOnIdle { url.value = null }
+            compose.waitForIdle()
+            check(first.delete() && second.delete())
+        }
+    }
 
     @Test fun missingConfigurationDisablesMapControlsEvenWithPositionAndDraft() {
         compose.setContent { MamaGcsTheme(ThemeMode.DARK) {
@@ -135,13 +178,30 @@ class MapLoadRecoveryTest {
         return requireNotNull(map)
     }
 
-    private fun awaitPosition(map: MapLibreMap, latitude: Double) = compose.waitUntil(10_000) {
-        var found = false
+    private fun awaitPosition(map: MapLibreMap, latitude: Double) {
+        // Style JSON can finish before the native renderer exists. Source queries need a
+        // completed render, not just isFullyLoaded, or the SDK may dereference a null renderer.
+        val rendered = AtomicBoolean(false)
+        val listener = MapView.OnDidFinishRenderingFrameListener { _, _, _ -> rendered.set(true) }
+        lateinit var view: MapView
         compose.runOnIdle {
-            found = map.style?.getSourceAs<GeoJsonSource>("mama-vehicle-source")?.querySourceFeatures(null)
-                ?.any { (it.geometry() as? Point)?.latitude()?.let { value -> kotlin.math.abs(value - latitude) < 0.000001 } == true } == true
+            view = requireNotNull(findMap(compose.activity.window.decorView))
+            view.addOnDidFinishRenderingFrameListener(listener)
+            map.triggerRepaint()
         }
-        found
+        try {
+            compose.waitUntil(10_000) { rendered.get() }
+            compose.waitUntil(10_000) {
+                var found = false
+                compose.runOnIdle {
+                    found = map.style?.getSourceAs<GeoJsonSource>("mama-vehicle-source")?.querySourceFeatures(null)
+                        ?.any { (it.geometry() as? Point)?.latitude()?.let { value -> kotlin.math.abs(value - latitude) < 0.000001 } == true } == true
+                }
+                found
+            }
+        } finally {
+            compose.runOnIdle { view.removeOnDidFinishRenderingFrameListener(listener) }
+        }
     }
 
     private fun findMap(view: View): MapView? {

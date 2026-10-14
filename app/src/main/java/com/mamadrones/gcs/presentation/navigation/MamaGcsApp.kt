@@ -15,6 +15,8 @@ import androidx.navigation.compose.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mamadrones.gcs.domain.model.ThemeMode
+import com.mamadrones.gcs.domain.model.BasemapStyle
+import com.mamadrones.gcs.presentation.map.LocalBasemapStyle
 import com.mamadrones.gcs.domain.model.VehicleConnectionState
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.presentation.components.*
@@ -61,6 +63,7 @@ fun MamaGcsApp(
     onClassicPermissionDenied: () -> Unit = {},
     onClassicConnect: (ClassicBluetoothPeer) -> Unit = {},
     onClassicDisconnect: () -> Unit = {},
+    onBasemapSelected: (BasemapStyle) -> Unit = {},
 ) {
     val navController = rememberNavController()
     var showVehicles by remember { mutableStateOf(false) }
@@ -72,6 +75,7 @@ fun MamaGcsApp(
             launchSingleTop = true
         }
     }
+    CompositionLocalProvider(LocalBasemapStyle provides settings.preferences.basemap) {
     StationShell(vehicle, route, navigate, onVehicleDetails = { showVehicles = true }) {
                     NavHost(navController, startDestination = AppDestination.DASHBOARD.route, modifier = Modifier.fillMaxSize()) {
                         composable("dashboard") { DashboardScreen(vehicle, navigate) }
@@ -145,8 +149,11 @@ fun MamaGcsApp(
                                 bleLinkOpen = vescDiscovery.gattConnecting || vescDiscovery.gattConnected || vescDiscovery.closing || classicBluetooth.link.active,
                             )
                         } }
-                        composable("map-settings") { MapSettingsScreen { navigate("map") } }
+                        composable("map-settings") {
+                            MapSettingsScreen(settings, onBasemapSelected) { navigate("map") }
+                        }
                     }
+    }
     }
     if (showVehicles) {
         AlertDialog(

@@ -53,6 +53,7 @@ class MainActivity : ComponentActivity() {
                     vehicle = vehicle,
                     settings = settings,
                     onThemeSelected = settingsViewModel::selectTheme,
+                    onBasemapSelected = settingsViewModel::selectBasemap,
                     connection = connection,
                     onRemoteHostChanged = connectionViewModel::updateRemoteHost,
                     onRemotePortChanged = connectionViewModel::updateRemotePort,

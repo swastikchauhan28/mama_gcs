@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.mamadrones.gcs.domain.model.ThemeMode
+import com.mamadrones.gcs.domain.model.BasemapStyle
 import com.mamadrones.gcs.domain.model.TransportStatus
 import com.mamadrones.gcs.presentation.components.*
 import com.mamadrones.gcs.presentation.settings.ConnectionUiState
@@ -141,14 +142,42 @@ fun SettingsScreen(
 }
 
 @Composable
-fun MapSettingsScreen(onOpenMap: () -> Unit) = ScreenBody {
+fun MapSettingsScreen(
+    state: SettingsUiState = SettingsUiState(),
+    onBasemapSelected: (BasemapStyle) -> Unit = {},
+    onOpenMap: () -> Unit,
+) = ScreenBody {
     ScreenHeader("Maps", "Geographic background and local route overlays")
+    if (state.loading) Text("Loading preferences…")
+    state.error?.let { Notice("PREFERENCES ERROR", it) }
+    Surface(shape = MaterialTheme.shapes.medium) {
+        Column(Modifier.fillMaxWidth().padding(16.dp).selectableGroup()) {
+            Text("Map appearance", style = MaterialTheme.typography.titleMedium)
+            Text("Saved on this device for Operate, Map and Plan. No vehicle connection needed.")
+            BasemapStyle.entries.forEach { basemap ->
+                val enabled = !state.loading && !state.saving
+                Row(Modifier.fillMaxWidth().heightIn(min = 64.dp)
+                    .testTag("basemap-${basemap.name}")
+                    .selectable(selected = state.preferences.basemap == basemap, enabled = enabled,
+                        role = Role.RadioButton, onClick = { onBasemapSelected(basemap) }),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = state.preferences.basemap == basemap, onClick = null, enabled = enabled)
+                    Column(Modifier.weight(1f).padding(start = 12.dp, top = 8.dp, bottom = 8.dp)) {
+                        Text(basemap.label)
+                        Text(basemap.description, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+            if (state.saving) Text("Saving…")
+        }
+    }
     SubsystemCard(PanelSpec("Basemap", "MAPLIBRE · MAPTILER", listOf(
-        "Source" to "MapTiler Streets", "Network" to "Internet required",
+        "Source" to "MapTiler ${state.preferences.basemap.label}", "Network" to "Internet required",
         "Vehicle position" to "Received MAVLink coordinates", "Track" to "Current session",
     ), "Tile loading requires a valid build-time MapTiler key and network access. The map displays its own loading or error state."))
     Button(onClick = onOpenMap, modifier = Modifier.heightIn(min = 48.dp)) { Text("Open map") }
-    Notice("OFFLINE REGIONS", "Offline region downloads and alternative basemap selection are not implemented. Do not rely on cached tiles for offline coverage.")
+    Notice("IMAGERY LIMITATIONS", "Satellite imagery is not a live camera feed and may be outdated or offset. It cannot establish obstacle clearance, boundaries or a safe driving surface. Loading depends on your MapTiler account, key and network; a saved choice does not confirm coverage.")
+    Notice("OFFLINE REGIONS", "Offline region downloads are not implemented. Do not rely on cached tiles for offline coverage.")
     Notice("PLANNING OVERLAYS", "Waypoints and keep-in outlines are local planning references. They are not uploaded geofences, obstacle detection, or proof that a route is safe to drive.")
 }
 

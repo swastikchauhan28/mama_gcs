@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.mamadrones.gcs.domain.model.AppPreferences
+import com.mamadrones.gcs.domain.model.BasemapStyle
 import com.mamadrones.gcs.domain.model.ThemeMode
 import com.mamadrones.gcs.domain.model.UdpEndpoint
 import com.mamadrones.gcs.domain.repository.SettingsRepository
@@ -20,12 +21,14 @@ private val Context.preferences by preferencesDataStore(name = "display_preferen
 @Singleton
 class LocalSettingsRepository @Inject constructor(@ApplicationContext private val context: Context) : SettingsRepository {
     private val themeKey = stringPreferencesKey("theme")
+    private val basemapKey = stringPreferencesKey("basemap")
     private val udpRemoteHostKey = stringPreferencesKey("udp_remote_host")
     private val udpRemotePortKey = intPreferencesKey("udp_remote_port")
     private val udpLocalPortKey = intPreferencesKey("udp_local_port")
     override val preferences = context.preferences.data.map { values ->
         AppPreferences(
             theme = ThemeMode.entries.find { it.name == values[themeKey] } ?: ThemeMode.LIGHT,
+            basemap = BasemapStyle.fromStored(values[basemapKey]),
             udpEndpoint = values[udpRemoteHostKey]?.let { host ->
                 runCatching {
                     UdpEndpoint(
@@ -39,6 +42,9 @@ class LocalSettingsRepository @Inject constructor(@ApplicationContext private va
     }
     override suspend fun setTheme(theme: ThemeMode) {
         context.preferences.edit { it[themeKey] = theme.name }
+    }
+    override suspend fun setBasemap(basemap: BasemapStyle) {
+        context.preferences.edit { it[basemapKey] = basemap.name }
     }
     override suspend fun setUdpEndpoint(endpoint: UdpEndpoint?) {
         context.preferences.edit { values ->

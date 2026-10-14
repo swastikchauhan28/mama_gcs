@@ -3,5 +3,6 @@ package com.mamadrones.gcs.domain.model
 enum class ThemeMode { DARK, LIGHT, SYSTEM }
 data class AppPreferences(
     val theme: ThemeMode = ThemeMode.LIGHT,
-    val udpEndpoint: UdpEndpoint? = null
+    val udpEndpoint: UdpEndpoint? = null,
+    val basemap: BasemapStyle = BasemapStyle.STREETS,
 )

@@ -103,7 +103,7 @@ fun VehicleMap(
     planningMode: Boolean = false,
     onWaypointRequested: ((Double, Double) -> Unit)? = null,
     onWaypointSelected: ((String) -> Unit)? = null,
-    styleUrl: String? = MapStyleConfig.mapTilerStyleUrlOrNull,
+    styleUrl: String? = MapStyleConfig.styleUrlOrNull(LocalBasemapStyle.current),
 ) {
     val mapView = rememberMapViewWithLifecycle()
 
@@ -345,7 +345,7 @@ fun VehicleMap(
 
             style == null -> MapMessage(
                 title = "LOADING MAP",
-                detail = "Connecting to the configured MapTiler vector style.",
+                detail = "Connecting to the configured MapTiler map style.",
                 modifier = Modifier.align(Alignment.Center),
             )
         }
