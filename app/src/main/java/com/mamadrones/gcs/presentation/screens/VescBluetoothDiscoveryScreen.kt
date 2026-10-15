@@ -65,6 +65,7 @@ fun VescBluetoothDiscoveryScreen(
     vehicleConnection: VehicleConnectionState = VehicleConnectionState.DISCONNECTED,
     diagnostics: MavlinkDiagnostics = MavlinkDiagnostics(),
     modifier: Modifier = Modifier,
+    reportControls: @Composable () -> Unit = {},
 ) {
     val context = LocalContext.current
     val now by produceState(System.currentTimeMillis()) {
@@ -237,6 +238,7 @@ fun VescBluetoothDiscoveryScreen(
                 }
             }
         }
+        reportControls()
         if (state.gattConnected) {
             Notice(
                 when {

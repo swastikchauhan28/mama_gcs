@@ -94,6 +94,7 @@ fun MamaGcsApp(
                         composable("autopilot-info") { AutopilotVersionScreen(vehicle) }
                         composable("motors") { MotorScreen(vehicle) }
                         composable("vesc-discovery") {
+                            val stabilityReportModel: BleStabilityReportViewModel = hiltViewModel()
                             VescBluetoothDiscoveryScreen(
                                 state = vescDiscovery,
                                 onStartScan = onVescScan,
@@ -108,6 +109,7 @@ fun MamaGcsApp(
                                 udpLinkOpen = connection.session.endpoint != null || classicBluetooth.link.active,
                                 vehicleConnection = vehicle.connectionStatus,
                                 diagnostics = vehicle.mavlinkDiagnostics,
+                                reportControls = { BleStabilityReportControls(vescDiscovery, stabilityReportModel) },
                             )
                         }
                         composable("classic-bluetooth") {

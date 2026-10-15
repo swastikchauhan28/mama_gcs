@@ -4,7 +4,11 @@ Native Android ground-control-station foundation for a Mama agricultural UGV: Ar
 
 For hardware discussions, consult the [current hardware record](docs/hardware-integration.md#current-hardware-record--updated-12-october-2026) first. It records the accepted parameter-file baseline, T12/R12/HC-05 route, photo-indicated TELEM1 connection, confirmed 8 km/h maximum and remaining evidence gaps; do not repeat already answered questions from historical phase reports.
 
-## Current delivery: reported home position (Phase 31)
+## Current delivery: BLE stability report (Phase 36)
+
+Phase 36 adds **Application settings → Bluetooth / BLE → Prepare stability report**. Once BLE is disconnected and history has finished saving, preview and explicitly export up to 20 saved stability results through Android's document picker. The frozen report includes timestamps, durations, outcomes and fixed reason categories; device identifiers, arbitrary errors and payloads are excluded. No automatic sharing, remote connection or command is added. See [scope and validation](docs/phase-36-report.md).
+
+Phases 32–35 add foreground BLE connection counters, a ten-minute continuity test, local result history and recovery of interrupted tests. Physical T12_485 testing passed ten-minute continuity, manual/background stop and process-restart recovery; deliberate remote power-loss remains unverified. These checks do not establish Cube/R12 reception or rover control. See [phone validation](docs/ble-stability-validation-2026-10-15.md).
 
 Phase 31 passively decodes **HOME_POSITION** from the selected autopilot over the existing MAVLink 1/2 receivers. **All telemetry → Reported home** shows coordinates, MSL altitude and observation age; a purple **H** marker appears on maps only with current-session evidence and a fresh heartbeat. Home is retained metadata, not a continuously refreshed position or the phone's location. Disconnect hides the marker, reconnect clears the observation, and invalid coordinate replacements clear the old marker. No Set Home, Return, message request, automatic camera movement or command permission is added. See [scope and validation](docs/phase-31-report.md).
 
