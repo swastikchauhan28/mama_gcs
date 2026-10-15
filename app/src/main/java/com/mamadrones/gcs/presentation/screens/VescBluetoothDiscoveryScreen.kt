@@ -3,6 +3,7 @@ package com.mamadrones.gcs.presentation.screens
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -36,12 +37,17 @@ import com.mamadrones.gcs.presentation.components.Notice
 import com.mamadrones.gcs.presentation.components.ScreenBody
 import com.mamadrones.gcs.presentation.components.ScreenHeader
 import com.mamadrones.gcs.data.transport.bluetooth.BleNotifyCharacteristic
+import com.mamadrones.gcs.data.local.datastore.BleStabilityRun
 import com.mamadrones.gcs.domain.model.VehicleConnectionState
 import com.mamadrones.gcs.domain.model.MavlinkDiagnostics
 import com.mamadrones.gcs.domain.model.TelemetryLinkKind
 import com.mamadrones.gcs.presentation.components.SubsystemCard
 import com.mamadrones.gcs.presentation.dashboard.ConsolePanels
 import kotlinx.coroutines.delay
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun VescBluetoothDiscoveryScreen(
@@ -52,6 +58,9 @@ fun VescBluetoothDiscoveryScreen(
     onConnectGatt: (String, String) -> Unit = { _, _ -> },
     onStartMavlinkReceive: (BleNotifyCharacteristic) -> Unit = {},
     onDisconnectGatt: () -> Unit = {},
+    onStartStabilityTrial: () -> Unit = {},
+    onStopStabilityTrial: () -> Unit = {},
+    onResetStabilityTrial: () -> Unit = {},
     udpLinkOpen: Boolean = false,
     vehicleConnection: VehicleConnectionState = VehicleConnectionState.DISCONNECTED,
     diagnostics: MavlinkDiagnostics = MavlinkDiagnostics(),
@@ -147,7 +156,7 @@ fun VescBluetoothDiscoveryScreen(
                     OutlinedButton(
                         onClick = { onConnectGatt(result.key, result.name) },
                         enabled = !udpLinkOpen && !state.gattConnecting && !state.gattConnected && !state.closing,
-                        modifier = Modifier.heightIn(min = 48.dp),
+                        modifier = Modifier.heightIn(min = 48.dp).testTag("ble-connect-${result.key}"),
                     ) { Text("Connect and inspect GATT") }
                 }
             }
@@ -163,6 +172,71 @@ fun VescBluetoothDiscoveryScreen(
             }
         }
         state.gattError?.let { Notice("BLE LINK STATUS", it) }
+        if (state.selectedDeviceName != null || state.successfulConnections > 0) {
+            val connectedFor = state.connectedAtElapsedMillis?.let { SystemClock.elapsedRealtime() - it }
+            val stabilityDetails = buildList {
+                add(connectedFor?.let { "Current connection: ${formatConnectionDuration(it)}" }
+                    ?: "Current connection: not connected")
+                add("Successful connections this app run: ${state.successfulConnections}")
+                add("Unexpected disconnects: ${state.unexpectedDisconnects}")
+                state.lastSessionDurationMillis?.let { add("Previous session: ${formatConnectionDuration(it)}") }
+                state.lastDisconnectReason?.let { add("Last disconnect: $it") }
+            }.joinToString(" · ")
+            Notice("BLE CONNECTION STABILITY", stabilityDetails)
+        }
+        when (state.stabilityTrial.status) {
+            BleStabilityTrialStatus.IDLE -> Notice(
+                "10-MINUTE STABILITY TEST",
+                "Start while T12_485 is GATT connected. The test watches the foreground connection and ends if the link drops or the app is backgrounded.",
+            )
+            BleStabilityTrialStatus.RUNNING -> {
+                val remaining = (BLE_STABILITY_TARGET_MILLIS - state.stabilityTrial.elapsedMillis).coerceAtLeast(0L)
+                Notice("STABILITY TEST RUNNING · ${formatConnectionDuration(remaining)} LEFT",
+                    "Keep Mama GCS open and the phone unlocked. An unexpected GATT disconnect marks this run failed.")
+                LinearProgressIndicator(
+                    progress = { (state.stabilityTrial.elapsedMillis.toFloat() / BLE_STABILITY_TARGET_MILLIS).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedButton(onClick = onStopStabilityTrial, modifier = Modifier.heightIn(min = 48.dp)
+                    .testTag("ble-stability-stop")) { Text("Stop stability test") }
+            }
+            BleStabilityTrialStatus.PASSED -> {
+                Notice("STABILITY TEST PASSED · 10 MINUTES",
+                    "The T12 GATT connection stayed open for the full foreground test. This checks connection continuity only.")
+                OutlinedButton(onClick = onResetStabilityTrial, modifier = Modifier.heightIn(min = 48.dp)
+                    .testTag("ble-stability-reset")) { Text("Run test again") }
+            }
+            BleStabilityTrialStatus.FAILED -> {
+                Notice("STABILITY TEST FAILED · LINK DROPPED",
+                    state.lastDisconnectReason ?: state.gattError ?: "The T12 GATT connection ended before ten minutes.")
+                OutlinedButton(onClick = onResetStabilityTrial, modifier = Modifier.heightIn(min = 48.dp)
+                    .testTag("ble-stability-reset")) { Text("Retry test") }
+            }
+            BleStabilityTrialStatus.STOPPED -> {
+                Notice("STABILITY TEST STOPPED",
+                    "The test ended before ten minutes. Connect to T12_485 and start again when ready.")
+                OutlinedButton(onClick = onResetStabilityTrial, modifier = Modifier.heightIn(min = 48.dp)
+                    .testTag("ble-stability-reset")) { Text("Run test again") }
+            }
+        }
+        state.stabilityHistoryError?.let { Notice("STABILITY HISTORY", it) }
+        if (state.stabilityHistorySaving) Text("Saving stability test…")
+        if (state.stabilityTrial.status == BleStabilityTrialStatus.IDLE) {
+            Button(
+                onClick = onStartStabilityTrial,
+                enabled = state.gattConnected && state.stabilityHistoryReady && !state.stabilityHistorySaving && !state.closing && !udpLinkOpen,
+                modifier = Modifier.heightIn(min = 48.dp).testTag("ble-stability-start"),
+            ) { Text("Start 10-minute stability test") }
+        }
+        if (state.savedStabilityRuns.isNotEmpty()) {
+            Notice("SAVED STABILITY TESTS", "The latest ${state.savedStabilityRuns.size.coerceAtMost(5)} test results are stored on this phone.")
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                state.savedStabilityRuns.takeLast(5).asReversed().forEach { run ->
+                    Text(formatRunSummary(run), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
         if (state.gattConnected) {
             Notice(
                 when {
@@ -218,4 +292,21 @@ private fun requiredScanPermissions(): List<String> = if (Build.VERSION.SDK_INT 
     listOf(Manifest.permission.ACCESS_FINE_LOCATION)
 }
 
+private fun formatConnectionDuration(durationMillis: Long): String {
+    val totalSeconds = (durationMillis.coerceAtLeast(0L) / 1_000L)
+    val hours = totalSeconds / 3_600L
+    val minutes = (totalSeconds % 3_600L) / 60L
+    val seconds = totalSeconds % 60L
+    return if (hours > 0L) "%02d:%02d:%02d".format(hours, minutes, seconds)
+    else "%02d:%02d".format(minutes, seconds)
+}
+
+private fun formatRunSummary(run: BleStabilityRun): String {
+    val time = DateTimeFormatter.ofPattern("MMM d, HH:mm", Locale.getDefault())
+        .withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(run.finishedAtEpochMillis))
+    val reason = run.disconnectReason?.let { " · $it" }.orEmpty()
+    return "$time · ${run.outcome} · ${formatConnectionDuration(run.durationMillis)}$reason"
+}
+
 private const val SCAN_DURATION_MILLIS = 12_000L
+private const val BLE_STABILITY_TARGET_MILLIS = 10 * 60 * 1_000L

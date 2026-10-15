@@ -6,6 +6,7 @@ import android.content.Context
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import com.mamadrones.gcs.data.transport.TransportException
 import com.mamadrones.gcs.data.transport.VehicleTransport
 import com.mamadrones.gcs.domain.model.ConnectionState
@@ -35,6 +36,12 @@ data class BleMavlinkState(
     val receivedNotifications: Long = 0,
     val receivedBytes: Long = 0,
     val lastReceivedAtEpochMillis: Long? = null,
+    val successfulConnections: Long = 0,
+    val unexpectedDisconnects: Long = 0,
+    val connectedAtEpochMillis: Long? = null,
+    val connectedAtElapsedMillis: Long? = null,
+    val lastSessionDurationMillis: Long? = null,
+    val lastDisconnectReason: String? = null,
     val error: String? = null,
 )
 
@@ -90,7 +97,14 @@ class BleMavlinkTransport(context: Context) : VehicleTransport, AutoCloseable {
                         !notify && indicate, service.instanceId, characteristic.instanceId)
                 }
             }
-            _state.value = _state.value.copy(connected = true, connecting = false, characteristics = options, error = null)
+            val connectedAt = System.currentTimeMillis()
+            _state.update { current ->
+                if (current.connectedAtEpochMillis != null) current
+                else current.copy(connected = true, connecting = false, characteristics = options,
+                    successfulConnections = current.successfulConnections + 1,
+                    connectedAtEpochMillis = connectedAt, lastDisconnectReason = null, error = null)
+                    .copy(connectedAtElapsedMillis = SystemClock.elapsedRealtime())
+            }
             _connectionState.value = ConnectionState(TransportStatus.OPEN,
                 "BLE GATT connected; telemetry not started", System.currentTimeMillis())
             connectWaiter?.complete(Unit)
@@ -135,7 +149,9 @@ class BleMavlinkTransport(context: Context) : VehicleTransport, AutoCloseable {
     @SuppressLint("MissingPermission") // Explicit user action after runtime permission request.
     suspend fun connect(device: BluetoothDevice, advertisedName: String) {
         check(activeGatt == null) { "Disconnect BLE before reconnecting." }
-        _state.value = BleMavlinkState(deviceName = advertisedName, connecting = true)
+        _state.update { it.copy(deviceName = advertisedName, connecting = true, connected = false,
+            subscribing = false, characteristics = emptyList(), receivingFrom = null,
+            receivedNotifications = 0, receivedBytes = 0, lastReceivedAtEpochMillis = null, error = null) }
         _connectionState.value = ConnectionState(TransportStatus.CONNECTING, "Connecting to BLE GATT device")
         val waiter = CompletableDeferred<Unit>()
         connectWaiter = waiter
@@ -218,6 +234,11 @@ class BleMavlinkTransport(context: Context) : VehicleTransport, AutoCloseable {
     override fun receive(): Flow<ByteArray> = incoming.asSharedFlow()
 
     override fun close() {
+        close("Connection closed by app")
+    }
+
+    fun close(reason: String) {
+        finishConnectedSession(reason, unexpected = false)
         releaseGatt()
         connectWaiter?.cancel()
         notifyWaiter?.cancel()
@@ -228,6 +249,7 @@ class BleMavlinkTransport(context: Context) : VehicleTransport, AutoCloseable {
     }
 
     private fun fail(message: String) {
+        finishConnectedSession(message, unexpected = true)
         val error = IllegalStateException(message)
         connectWaiter?.completeExceptionally(error)
         notifyWaiter?.completeExceptionally(error)
@@ -235,6 +257,15 @@ class BleMavlinkTransport(context: Context) : VehicleTransport, AutoCloseable {
         _state.update { it.copy(connected = false, connecting = false, subscribing = false,
             receivingFrom = null, error = message) }
         _connectionState.update { it.copy(status = TransportStatus.ERROR, detail = message) }
+    }
+
+    private fun finishConnectedSession(reason: String, unexpected: Boolean) {
+        val connectedAt = _state.value.connectedAtElapsedMillis ?: return
+        val now = SystemClock.elapsedRealtime()
+        _state.update { it.copy(connectedAtEpochMillis = null, connectedAtElapsedMillis = null,
+            lastSessionDurationMillis = (now - connectedAt).coerceAtLeast(0L),
+            lastDisconnectReason = reason,
+            unexpectedDisconnects = if (unexpected) it.unexpectedDisconnects + 1 else it.unexpectedDisconnects) }
     }
 
     @SuppressLint("MissingPermission") // Each cleanup attempt tolerates permission revocation or adapter loss.

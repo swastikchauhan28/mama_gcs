@@ -3,7 +3,7 @@ package com.mamadrones.gcs
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.ComposeTestRule
 
-/** Navigate through the visible station menu, not obsolete persistent navigation tabs. */
+/** Navigate through the visible station menu. Opening a workspace never opens a hardware link. */
 fun ComposeTestRule.openWorkspace(route: String) {
     if (route == "control") {
         onNodeWithTag("safety-shortcut").performClick()
