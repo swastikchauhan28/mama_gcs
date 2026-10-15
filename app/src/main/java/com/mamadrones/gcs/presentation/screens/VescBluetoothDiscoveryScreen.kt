@@ -76,6 +76,7 @@ fun VescBluetoothDiscoveryScreen(
     modifier: Modifier = Modifier,
     reportControls: @Composable () -> Unit = {},
     lastHeartbeatAtEpochMillis: Long? = null,
+    profileControls: @Composable () -> Unit = {},
 ) {
     val context = LocalContext.current
     var pendingReceive by remember { mutableStateOf<BleReceiveSelection?>(null) }
@@ -268,6 +269,7 @@ fun VescBluetoothDiscoveryScreen(
             }
         }
         reportControls()
+        profileControls()
         if (state.gattConnected) {
             Notice(
                 when {

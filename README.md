@@ -4,7 +4,9 @@ Native Android ground-control-station foundation for a Mama agricultural UGV: Ar
 
 For hardware discussions, consult the [current hardware record](docs/hardware-integration.md#current-hardware-record--updated-12-october-2026) first. It records the accepted parameter-file baseline, T12/R12/HC-05 route, photo-indicated TELEM1 connection, confirmed 8 km/h maximum and remaining evidence gaps; do not repeat already answered questions from historical phase reports.
 
-## Current delivery: connection-bound BLE receive confirmation (Phase 38)
+## Current delivery: BLE receive-profile evidence export (Phase 39)
+
+Phase 39 adds **Bluetooth / BLE → Capture BLE profile**. Capture a bounded, frozen list of discovered eligible receive UUIDs, instance numbers and the app's notify/indicate method without subscribing. Disconnect all telemetry links before reviewing and explicitly saving it as text. Device names, addresses and payloads are excluded; the snapshot is memory-only until saved and is not a full GATT inventory, protocol verification or remote identity. See [scope and validation](docs/phase-39-report.md).
 
 Phase 38 changes a receive-characteristic tap into an explicit review of the device label, service/characteristic UUIDs, instance numbers and notify/indicate method. **Start receive** applies only to that successful GATT connection; disconnects, reconnects, competing links, backgrounding and changed receive options discard the pending choice. The ViewModel and transport recheck it before subscription. Remote-only stability tests need no subscription, and confirmation does not verify a characteristic's protocol or authorize rover commands. See [scope and validation](docs/phase-38-report.md).
 

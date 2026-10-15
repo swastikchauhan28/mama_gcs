@@ -95,6 +95,7 @@ fun MamaGcsApp(
                         composable("motors") { MotorScreen(vehicle) }
                         composable("vesc-discovery") {
                             val stabilityReportModel: BleStabilityReportViewModel = hiltViewModel()
+                            val profileReportModel: BleProfileReportViewModel = hiltViewModel()
                             VescBluetoothDiscoveryScreen(
                                 state = vescDiscovery,
                                 onStartScan = onVescScan,
@@ -110,6 +111,8 @@ fun MamaGcsApp(
                                 vehicleConnection = vehicle.connectionStatus,
                                 diagnostics = vehicle.mavlinkDiagnostics,
                                 reportControls = { BleStabilityReportControls(vescDiscovery, stabilityReportModel) },
+                                profileControls = { BleProfileReportControls(vescDiscovery,
+                                    connection.session.endpoint != null || classicBluetooth.link.active, profileReportModel) },
                                 lastHeartbeatAtEpochMillis = vehicle.lastHeartbeatAtEpochMillis,
                             )
                         }
