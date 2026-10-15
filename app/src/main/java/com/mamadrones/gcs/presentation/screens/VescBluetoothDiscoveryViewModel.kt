@@ -15,6 +15,7 @@ import com.mamadrones.gcs.data.transport.bluetooth.BleDeviceScanner
 import com.mamadrones.gcs.data.transport.TelemetryLinkGate
 import com.mamadrones.gcs.data.transport.bluetooth.BleMavlinkTransport
 import com.mamadrones.gcs.data.transport.bluetooth.BleNotifyCharacteristic
+import com.mamadrones.gcs.data.transport.bluetooth.BleReceiveSelection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -284,16 +285,18 @@ class VescBluetoothDiscoveryViewModel @Inject constructor(
         }
     }
 
-    fun startMavlinkReceive(characteristic: BleNotifyCharacteristic) {
+    fun startMavlinkReceive(selection: BleReceiveSelection) {
+        val current = transport.state.value
         if (lease == null || operation?.isActive == true || closing.value ||
-            !transport.state.value.connected || mavlinkSession != null) return
+            mavlinkSession != null || !selection.isCurrent(current.successfulConnections, current.connected,
+                current.connecting || current.subscribing || current.receivingFrom != null, current.characteristics)) return
         operationError.value = null
         operation = viewModelScope.launch {
             try {
                 // Attach the stream collector before enabling remote notifications.
                 mavlinkSession = mavlinkSessionFactory.create(transport, viewModelScope)
                 mavlinkSession?.start()
-                transport.subscribe(characteristic)
+                transport.subscribe(selection)
             } catch (cancelled: CancellationException) {
                 closeSession()
                 throw cancelled

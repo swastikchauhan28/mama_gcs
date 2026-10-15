@@ -4,7 +4,9 @@ Native Android ground-control-station foundation for a Mama agricultural UGV: Ar
 
 For hardware discussions, consult the [current hardware record](docs/hardware-integration.md#current-hardware-record--updated-12-october-2026) first. It records the accepted parameter-file baseline, T12/R12/HC-05 route, photo-indicated TELEM1 connection, confirmed 8 km/h maximum and remaining evidence gaps; do not repeat already answered questions from historical phase reports.
 
-## Current delivery: BLE reception-stage check (Phase 37)
+## Current delivery: connection-bound BLE receive confirmation (Phase 38)
+
+Phase 38 changes a receive-characteristic tap into an explicit review of the device label, service/characteristic UUIDs, instance numbers and notify/indicate method. **Start receive** applies only to that successful GATT connection; disconnects, reconnects, competing links, backgrounding and changed receive options discard the pending choice. The ViewModel and transport recheck it before subscription. Remote-only stability tests need no subscription, and confirmation does not verify a characteristic's protocol or authorize rover commands. See [scope and validation](docs/phase-38-report.md).
 
 Phase 37 adds a **BLE connection check** at the top of Bluetooth / BLE. It separates GATT connection, completed subscription, recent notification bytes, recent supported MAVLink decoding and a fresh accepted autopilot heartbeat, with guidance for the first missing stage. Remote-only stability testing remains available without the R12/Cube; old sessions and other transports cannot supply current BLE evidence. The panel starts no subscriptions or commands. See [scope and validation](docs/phase-37-report.md).
 

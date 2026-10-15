@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +28,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -36,7 +42,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.mamadrones.gcs.presentation.components.Notice
 import com.mamadrones.gcs.presentation.components.ScreenBody
 import com.mamadrones.gcs.presentation.components.ScreenHeader
-import com.mamadrones.gcs.data.transport.bluetooth.BleNotifyCharacteristic
+import com.mamadrones.gcs.data.transport.bluetooth.BleReceiveSelection
 import com.mamadrones.gcs.data.local.datastore.BleStabilityRun
 import com.mamadrones.gcs.domain.model.VehicleConnectionState
 import com.mamadrones.gcs.domain.model.MavlinkDiagnostics
@@ -59,7 +65,7 @@ fun VescBluetoothDiscoveryScreen(
     onStopScan: () -> Unit = {},
     onPermissionDenied: () -> Unit = {},
     onConnectGatt: (String, String) -> Unit = { _, _ -> },
-    onStartMavlinkReceive: (BleNotifyCharacteristic) -> Unit = {},
+    onStartMavlinkReceive: (BleReceiveSelection) -> Unit = {},
     onDisconnectGatt: () -> Unit = {},
     onStartStabilityTrial: () -> Unit = {},
     onStopStabilityTrial: () -> Unit = {},
@@ -72,6 +78,13 @@ fun VescBluetoothDiscoveryScreen(
     lastHeartbeatAtEpochMillis: Long? = null,
 ) {
     val context = LocalContext.current
+    var pendingReceive by remember { mutableStateOf<BleReceiveSelection?>(null) }
+    val receiveBusy = udpLinkOpen || state.gattConnecting || state.subscribing || state.closing || state.receivingFrom != null
+    val selectionCurrent = pendingReceive?.isCurrent(state.successfulConnections, state.gattConnected,
+        receiveBusy, state.notifyCharacteristics) == true
+    LaunchedEffect(selectionCurrent) {
+        if (!selectionCurrent) pendingReceive = null
+    }
     val now by produceState(System.currentTimeMillis()) {
         while (true) {
             delay(1_000L)
@@ -86,7 +99,10 @@ fun VescBluetoothDiscoveryScreen(
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) onStopScan()
+            if (event == Lifecycle.Event.ON_STOP) {
+                pendingReceive = null
+                onStopScan()
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
@@ -266,12 +282,12 @@ fun VescBluetoothDiscoveryScreen(
             state.notifyCharacteristics.forEach { characteristic ->
                 val selected = state.receivingFrom == characteristic
                 OutlinedCard(
-                    onClick = { onStartMavlinkReceive(characteristic) },
-                    enabled = !udpLinkOpen && !state.subscribing && state.receivingFrom == null && !state.closing,
+                    onClick = { pendingReceive = BleReceiveSelection(characteristic, state.successfulConnections) },
+                    enabled = !receiveBusy && state.successfulConnections > 0,
                     modifier = Modifier.fillMaxWidth().testTag("ble-receive-${characteristic.characteristicUuid}"),
                 ) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Text("${if (selected) "SUBSCRIBED · " else "RECEIVE · "}${if (characteristic.supportsIndication) "INDICATE" else "NOTIFY"}", style = MaterialTheme.typography.titleSmall)
+                        Text("${if (selected) "SUBSCRIBED · " else "REVIEW RECEIVE · "}${if (characteristic.supportsIndication) "INDICATE" else "NOTIFY"}", style = MaterialTheme.typography.titleSmall)
                         Text("Service ${characteristic.serviceUuid}", style = MaterialTheme.typography.bodySmall)
                         Text("Characteristic ${characteristic.characteristicUuid}", style = MaterialTheme.typography.bodySmall)
                         Text("Instances ${characteristic.serviceInstanceId}/${characteristic.characteristicInstanceId}", style = MaterialTheme.typography.bodySmall)
@@ -298,6 +314,31 @@ fun VescBluetoothDiscoveryScreen(
             "NEXT HARDWARE EVIDENCE",
             "If telemetry does not appear, send the selected device name, service UUID, characteristic UUID, Cube telemetry-port wiring, baud rate, and ArduPilot Rover version to the hardware team. VESC telemetry still needs its own confirmed route and protocol.",
         )
+    }
+    val selection = pendingReceive
+    if (selection != null && selectionCurrent) {
+        AlertDialog(onDismissRequest = { pendingReceive = null },
+            title = { Text("Confirm BLE telemetry receive") },
+            text = {
+                Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Device: ${state.selectedDeviceName ?: "Selected BLE device"}")
+                    Text("Service: ${selection.characteristic.serviceUuid}")
+                    Text("Characteristic: ${selection.characteristic.characteristicUuid}")
+                    Text("Instances: ${selection.characteristic.serviceInstanceId}/${selection.characteristic.characteristicInstanceId}")
+                    Text("Receive method: ${if (selection.characteristic.supportsIndication) "INDICATE" else "NOTIFY"}")
+                    Text("Start only if the hardware team has confirmed this characteristic carries MAVLink. UUIDs and device names do not verify its protocol or identity. For remote-only stability testing, cancel; no subscription is needed.")
+                    Text("Starting enables Android notifications and writes the BLE notification configuration descriptor. No MAVLink, motor or vehicle command is sent. This confirmation expires when the connection changes or the app leaves the foreground.")
+                }
+            },
+            confirmButton = { TextButton(onClick = {
+                val request = pendingReceive
+                pendingReceive = null
+                if (request != null && request.isCurrent(state.successfulConnections, state.gattConnected,
+                        receiveBusy, state.notifyCharacteristics)) onStartMavlinkReceive(request)
+            }, modifier = Modifier.testTag("ble-confirm-receive")) { Text("Start receive") } },
+            dismissButton = { TextButton(onClick = { pendingReceive = null },
+                modifier = Modifier.testTag("ble-cancel-receive")) { Text("Cancel") } })
     }
 }
 

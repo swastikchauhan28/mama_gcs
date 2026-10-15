@@ -27,7 +27,7 @@ import com.mamadrones.gcs.presentation.mission.MissionPlanUiState
 import com.mamadrones.gcs.presentation.mission.MissionPlanAction
 import com.mamadrones.gcs.presentation.screens.VescDiscoveryUiState
 import com.mamadrones.gcs.presentation.security.AccessViewModel
-import com.mamadrones.gcs.data.transport.bluetooth.BleNotifyCharacteristic
+import com.mamadrones.gcs.data.transport.bluetooth.BleReceiveSelection
 import com.mamadrones.gcs.data.transport.bluetooth.ClassicBluetoothPeer
 
 enum class AppDestination(val route: String, val label: String, val icon: ConsoleIcon) {
@@ -56,7 +56,7 @@ fun MamaGcsApp(
     onVescStopScan: () -> Unit = {},
     onVescPermissionDenied: () -> Unit = {},
     onBleConnectGatt: (String, String) -> Unit = { _, _ -> },
-    onBleStartMavlinkReceive: (BleNotifyCharacteristic) -> Unit = {},
+    onBleStartMavlinkReceive: (BleReceiveSelection) -> Unit = {},
     onBleDisconnect: () -> Unit = {},
     onBleStartStabilityTrial: () -> Unit = {},
     onBleStopStabilityTrial: () -> Unit = {},

@@ -177,8 +177,13 @@ class BleMavlinkTransport(context: Context) : VehicleTransport, AutoCloseable {
     }
 
     @SuppressLint("MissingPermission") // Runtime revocation is handled by closing the connection.
-    suspend fun subscribe(option: BleNotifyCharacteristic) {
-        check(!_state.value.subscribing && _state.value.receivingFrom == null) { "BLE receive is already starting or active." }
+    suspend fun subscribe(selection: BleReceiveSelection) {
+        val current = _state.value
+        check(selection.isCurrent(current.successfulConnections, current.connected,
+            current.connecting || current.subscribing || current.receivingFrom != null, current.characteristics)) {
+            "BLE receive selection expired. Review the current connection before starting receive."
+        }
+        val option = selection.characteristic
         _state.update { it.copy(subscribing = true, error = null) }
         val waiter = CompletableDeferred<Unit>()
         notifyWaiter = waiter

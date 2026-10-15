@@ -11,6 +11,7 @@ import com.mamadrones.gcs.presentation.settings.SettingsUiState
 import com.mamadrones.gcs.presentation.settings.ConnectionUiState
 import com.mamadrones.gcs.data.transport.TransportSessionState
 import com.mamadrones.gcs.data.transport.bluetooth.BleNotifyCharacteristic
+import com.mamadrones.gcs.data.transport.bluetooth.BleReceiveSelection
 import com.mamadrones.gcs.presentation.screens.VescDiscoveryUiState
 import com.mamadrones.gcs.presentation.screens.VescBluetoothDiscoveryScreen
 import com.mamadrones.gcs.presentation.theme.MamaGcsTheme
@@ -79,18 +80,20 @@ class FoundationUiTest {
     }
 
     @Test fun connectedBleCanStartReceiveThroughAppNavigation() {
-        var selected: BleNotifyCharacteristic? = null
+        var selected: BleReceiveSelection? = null
         compose.setContent {
             MamaGcsTheme(ThemeMode.DARK) {
                 MamaGcsApp(VehicleState(), SettingsUiState(), {},
-                    vescDiscovery = VescDiscoveryUiState(gattConnected = true,
+                    vescDiscovery = VescDiscoveryUiState(gattConnected = true, successfulConnections = 1,
                         selectedDeviceName = "Test radio", notifyCharacteristics = listOf(bleCharacteristic)),
                     onBleStartMavlinkReceive = { selected = it })
             }
         }
         compose.openWorkspace("vesc-discovery")
         compose.onNodeWithTag("ble-receive-characteristic").performScrollTo().assertIsEnabled().performClick()
-        compose.runOnIdle { org.junit.Assert.assertEquals(bleCharacteristic, selected) }
+        compose.runOnIdle { org.junit.Assert.assertNull(selected) }
+        compose.onNodeWithTag("ble-confirm-receive").performClick()
+        compose.runOnIdle { org.junit.Assert.assertEquals(BleReceiveSelection(bleCharacteristic, 1), selected) }
     }
 
     @Test fun bleSubscriptionDoesNotClaimBytesOrEnableAnotherSubscription() {
