@@ -42,6 +42,9 @@ import com.mamadrones.gcs.domain.model.VehicleConnectionState
 import com.mamadrones.gcs.domain.model.MavlinkDiagnostics
 import com.mamadrones.gcs.domain.model.TelemetryLinkKind
 import com.mamadrones.gcs.presentation.components.SubsystemCard
+import com.mamadrones.gcs.presentation.components.BleConnectionCheckPanel
+import com.mamadrones.gcs.domain.model.BleConnectionCheck
+import com.mamadrones.gcs.domain.model.BleReceiveEvidence
 import com.mamadrones.gcs.presentation.dashboard.ConsolePanels
 import kotlinx.coroutines.delay
 import java.time.Instant
@@ -66,6 +69,7 @@ fun VescBluetoothDiscoveryScreen(
     diagnostics: MavlinkDiagnostics = MavlinkDiagnostics(),
     modifier: Modifier = Modifier,
     reportControls: @Composable () -> Unit = {},
+    lastHeartbeatAtEpochMillis: Long? = null,
 ) {
     val context = LocalContext.current
     val now by produceState(System.currentTimeMillis()) {
@@ -99,6 +103,15 @@ fun VescBluetoothDiscoveryScreen(
 
     ScreenBody(modifier) {
         ScreenHeader("BLE MAVLink link", "Inspect a rover radio and receive telemetry")
+        BleConnectionCheckPanel(BleConnectionCheck.assess(
+            BleReceiveEvidence(connected = state.gattConnected, connecting = state.gattConnecting,
+                closing = state.closing, hasError = state.gattError != null,
+                receiveOptionAvailable = state.notifyCharacteristics.isNotEmpty(),
+                subscribing = state.subscribing, subscribed = state.receivingFrom != null,
+                connectedAtEpochMillis = state.connectedAtEpochMillis,
+                notifications = state.receivedNotifications, bytes = state.receivedBytes,
+                lastBytesAtEpochMillis = state.lastReceivedAtEpochMillis),
+            diagnostics, vehicleConnection, lastHeartbeatAtEpochMillis, now))
         Notice(
             "READ-ONLY · NO VEHICLE COMMANDS",
             "Connect to a BLE device, inspect its GATT notification characteristics, then select the one carrying MAVLink bytes. The app only receives telemetry in this phase; it does not send commands or VESC data.",

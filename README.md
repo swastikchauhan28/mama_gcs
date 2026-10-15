@@ -4,7 +4,9 @@ Native Android ground-control-station foundation for a Mama agricultural UGV: Ar
 
 For hardware discussions, consult the [current hardware record](docs/hardware-integration.md#current-hardware-record--updated-12-october-2026) first. It records the accepted parameter-file baseline, T12/R12/HC-05 route, photo-indicated TELEM1 connection, confirmed 8 km/h maximum and remaining evidence gaps; do not repeat already answered questions from historical phase reports.
 
-## Current delivery: BLE stability report (Phase 36)
+## Current delivery: BLE reception-stage check (Phase 37)
+
+Phase 37 adds a **BLE connection check** at the top of Bluetooth / BLE. It separates GATT connection, completed subscription, recent notification bytes, recent supported MAVLink decoding and a fresh accepted autopilot heartbeat, with guidance for the first missing stage. Remote-only stability testing remains available without the R12/Cube; old sessions and other transports cannot supply current BLE evidence. The panel starts no subscriptions or commands. See [scope and validation](docs/phase-37-report.md).
 
 Phase 36 adds **Application settings → Bluetooth / BLE → Prepare stability report**. Once BLE is disconnected and history has finished saving, preview and explicitly export up to 20 saved stability results through Android's document picker. The frozen report includes timestamps, durations, outcomes and fixed reason categories; device identifiers, arbitrary errors and payloads are excluded. No automatic sharing, remote connection or command is added. See [scope and validation](docs/phase-36-report.md).
 

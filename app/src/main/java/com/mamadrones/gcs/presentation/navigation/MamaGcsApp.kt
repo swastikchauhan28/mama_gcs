@@ -110,6 +110,7 @@ fun MamaGcsApp(
                                 vehicleConnection = vehicle.connectionStatus,
                                 diagnostics = vehicle.mavlinkDiagnostics,
                                 reportControls = { BleStabilityReportControls(vescDiscovery, stabilityReportModel) },
+                                lastHeartbeatAtEpochMillis = vehicle.lastHeartbeatAtEpochMillis,
                             )
                         }
                         composable("classic-bluetooth") {
