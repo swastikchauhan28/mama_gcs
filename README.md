@@ -4,7 +4,11 @@ Native Android ground-control-station foundation for a Mama agricultural UGV: Ar
 
 For hardware discussions, consult the [current hardware record](docs/hardware-integration.md#current-hardware-record--updated-12-october-2026) first. It records the accepted parameter-file baseline, T12/R12/HC-05 route, photo-indicated TELEM1 connection, confirmed 8 km/h maximum and remaining evidence gaps; do not repeat already answered questions from historical phase reports.
 
-## Current delivery: read-only RC input activity check (Phase 43)
+## Current delivery: project handover and verification baseline (Phase 44)
+
+Start with the [project instructions](AGENTS.md) and [current handover](docs/HANDOVER.md). The [decision log](docs/DECISIONS.md), [testing and release checklist](docs/TESTING.md), and [rollback guidance](docs/ROLLBACK.md) apply the user's *Defend What You Ship* workflow without changing the app. See the [Phase 44 scope and checks](docs/phase-44-report.md). This documentation baseline is not a production-release or hardware-safety approval.
+
+## Latest application delivery: read-only RC input activity check (Phase 43)
 
 **Analyze telemetry → RC & PWM → RC input activity check** records screen-observed minimum/maximum/span values for up to 18 reported RC channels after an explicit start. It requires fresh selected-autopilot heartbeat and RC telemetry, interrupts on stale data or session/source changes, and labels stopped ranges as historical. It is local to the page, sends no commands and performs no calibration or motor mapping. See [scope and validation](docs/phase-43-report.md). Missing or undecodable telemetry still needs hardware-path diagnosis before this check can start.
 
