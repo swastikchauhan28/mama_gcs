@@ -21,17 +21,18 @@ class MavlinkDiagnosticsAccumulatorTest {
     }
     @Test fun `chunks are not messages and empty input is not counted`() {
         val counters = MavlinkDiagnosticsAccumulator(TelemetryLinkKind.BLE, 100)
-        counters.recordBytes(0, 110)
+        counters.recordBytes(byteArrayOf(), 110)
         assertEquals(0L, counters.snapshot.receivedChunks)
         assertNull(counters.snapshot.lastBytesAtEpochMillis)
-        counters.recordBytes(3, 120)
-        counters.recordBytes(18, 130)
+        counters.recordBytes(byteArrayOf(0xFE.toByte(), 0x01, 0xFD.toByte()), 120)
+        counters.recordBytes(ByteArray(18) { if (it == 0) 0xFD.toByte() else 0x00 }, 130)
         assertEquals(2L, counters.snapshot.receivedChunks)
         assertEquals(21L, counters.snapshot.receivedBytes)
+        assertEquals(1L, counters.snapshot.mavlinkV1StartBytes)
+        assertEquals(2L, counters.snapshot.mavlinkV2StartBytes)
         assertEquals(0L, counters.snapshot.decodedMessages)
         assertEquals(0L, counters.snapshot.parserErrors)
         assertEquals(130L, counters.snapshot.lastBytesAtEpochMillis)
-        assertThrows(IllegalArgumentException::class.java) { counters.recordBytes(-1, 140) }
     }
 
     @Test fun `decoded messages distinguish admission from source filtering`() {
@@ -67,13 +68,14 @@ class MavlinkDiagnosticsAccumulatorTest {
 
     @Test fun `new accumulator resets old session observations`() {
         val previous = MavlinkDiagnosticsAccumulator(TelemetryLinkKind.BLE, 100)
-        previous.recordBytes(64, 110)
+        previous.recordBytes(byteArrayOf(0xFD.toByte()), 110)
         previous.recordResult(MavlinkParseResult.UnsupportedMessage(999), null, 110)
         val next = MavlinkDiagnosticsAccumulator(TelemetryLinkKind.UDP, 200).snapshot
         assertTrue(next.active)
         assertEquals(TelemetryLinkKind.UDP, next.linkKind)
         assertEquals(200L, next.startedAtEpochMillis)
         assertEquals(0L, next.receivedBytes)
+        assertEquals(0L, next.mavlinkV2StartBytes)
         assertEquals(0L, next.unsupportedMessages)
         assertNull(next.lastUnsupportedMessageId)
     }

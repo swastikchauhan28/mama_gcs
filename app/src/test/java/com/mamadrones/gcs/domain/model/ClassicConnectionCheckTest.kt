@@ -6,8 +6,11 @@ import org.junit.Test
 class ClassicConnectionCheckTest {
     private val now = 20_000L
     private val connection = ConnectionState(TransportStatus.OPEN, connectedAtEpochMillis = 10_000L)
+    private val heartbeat = MavlinkMessageObservation(ObservedMavlinkMessage.HEARTBEAT,
+        decodedV2 = 1, accepted = 1, lastDecodedAtEpochMillis = now, lastAcceptedAtEpochMillis = now)
     private val diagnostics = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,
-        startedAtEpochMillis = 9_000L, receivedBytes = 100, lastBytesAtEpochMillis = now)
+        startedAtEpochMillis = 9_000L, receivedBytes = 100, lastBytesAtEpochMillis = now,
+        decodedMessages = 1, messageObservations = listOf(heartbeat))
     private val vehicle = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
         lastHeartbeatAtEpochMillis = now, mavlinkDiagnostics = diagnostics,
         attitude = AttitudeState(lastUpdatedAtEpochMillis = now))
@@ -17,7 +20,7 @@ class ClassicConnectionCheckTest {
     @Test fun freshSessionProvidesReceiveEvidenceOnly() {
         val result = assess()
         assertEquals(ClassicCheckStage.RECEIVING, result.stage)
-        assertTrue(result.socketOpen && result.freshBytes && result.freshHeartbeat)
+        assertTrue(result.socketOpen && result.freshBytes && result.freshDecodedMessage && result.freshHeartbeat)
         assertEquals(listOf("Attitude"), result.measurementMessages)
     }
     @Test fun closedAndConnectingCannotBorrowLiveVehicleData() {
@@ -68,6 +71,30 @@ class ClassicConnectionCheckTest {
         VehicleConnectionState.entries.filter { it != VehicleConnectionState.CONNECTED }.forEach {
             assertEquals(ClassicCheckStage.WAITING_HEARTBEAT, assess(vehicle.copy(connectionStatus = it)).stage)
         }
+    }
+    @Test fun serialBytesWithoutValidatedMavlinkHaveTheirOwnStage() {
+        val result = assess(vehicle.copy(mavlinkDiagnostics = diagnostics.copy(
+            decodedMessages = 0, messageObservations = emptyList(), checksumFailures = 419,
+            unsupportedMessages = 643)))
+        assertEquals(ClassicCheckStage.WAITING_MAVLINK, result.stage)
+        assertTrue(result.socketOpen && result.freshBytes)
+        assertFalse(result.freshDecodedMessage || result.freshHeartbeat)
+    }
+    @Test fun staleOrOutOfSessionDecodeDoesNotBecomeCurrentMavlinkEvidence() {
+        listOf(null, 9_999L, now - 5_001, now + 1).forEach { time ->
+            val result = assess(vehicle.copy(mavlinkDiagnostics = diagnostics.copy(
+                messageObservations = listOf(heartbeat.copy(lastDecodedAtEpochMillis = time)))))
+            assertEquals(ClassicCheckStage.WAITING_MAVLINK, result.stage)
+        }
+        assertEquals(ClassicCheckStage.WAITING_MAVLINK,
+            assess(vehicle.copy(mavlinkDiagnostics = diagnostics.copy(messageObservations = emptyList()))).stage)
+    }
+    @Test fun decodedMessageFromAnotherSourceDoesNotProveAutopilotHeartbeat() {
+        val result = assess(vehicle.copy(mavlinkDiagnostics = diagnostics.copy(
+            messageObservations = listOf(heartbeat.copy(accepted = 0, otherSource = 1)))))
+        assertEquals(ClassicCheckStage.WAITING_HEARTBEAT, result.stage)
+        assertTrue(result.freshDecodedMessage)
+        assertFalse(result.freshHeartbeat)
     }
     @Test fun heartbeatAndAcceptedCounterAreNotMeasurements() {
         assertEquals(ClassicCheckStage.WAITING_MEASUREMENTS, assess(vehicle.copy(attitude = AttitudeState(),

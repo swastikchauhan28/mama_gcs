@@ -12,11 +12,15 @@ class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long) {
     var snapshot = MavlinkDiagnostics(active = true, linkKind = kind, startedAtEpochMillis = startedAt)
         private set
 
-    fun recordBytes(count: Int, receivedAt: Long) {
-        require(count >= 0)
-        if (count == 0) return
+    fun recordBytes(bytes: ByteArray, receivedAt: Long) {
+        if (bytes.isEmpty()) return
+        val v1Starts = bytes.count { it == 0xFE.toByte() }
+        val v2Starts = bytes.count { it == 0xFD.toByte() }
         snapshot = snapshot.copy(receivedChunks = snapshot.receivedChunks + 1,
-            receivedBytes = snapshot.receivedBytes + count, lastBytesAtEpochMillis = receivedAt)
+            receivedBytes = snapshot.receivedBytes + bytes.size,
+            mavlinkV1StartBytes = snapshot.mavlinkV1StartBytes + v1Starts,
+            mavlinkV2StartBytes = snapshot.mavlinkV2StartBytes + v2Starts,
+            lastBytesAtEpochMillis = receivedAt)
     }
 
     fun recordResult(result: MavlinkParseResult, disposition: MessageDisposition?, receivedAt: Long) {

@@ -4,7 +4,15 @@ Native Android ground-control-station foundation for a Mama agricultural UGV: Ar
 
 For hardware discussions, consult the [current hardware record](docs/hardware-integration.md#current-hardware-record--updated-12-october-2026) first. It records the accepted parameter-file baseline, T12/R12/HC-05 route, photo-indicated TELEM1 connection, confirmed 8 km/h maximum and remaining evidence gaps; do not repeat already answered questions from historical phase reports.
 
-## Current delivery: BLE receive-profile evidence export (Phase 39)
+## Current delivery: serial byte-signature diagnosis (Phase 42)
+
+Phase 42 adds session-local counts of raw `0xFE` and `0xFD` bytes to **Analyze telemetry → Link & messages** and the explicit evidence reports. These are possible MAVLink 1/2 start markers, not verified frames. The app now gives separate guidance when bytes arrive with no markers versus markers but no validated supported messages. It stores no raw bytes, changes no radio/Cube settings and sends no commands. See [scope and validation](docs/phase-42-report.md).
+
+## Previous delivery: Classic serial decoder diagnosis (Phase 41)
+
+Phase 41 separates recent Classic serial bytes from recently validated MAVLink in the HC-05 connection check. The photographed case of incoming bytes with zero decoded messages now reads **BYTES ARRIVING · MAVLINK NOT CONFIRMED**, and unsupported IDs are labelled unverified candidates. The incremental parser rescans after an unverified unsupported-ID candidate so its claimed length cannot conceal a later valid supported frame. This does not identify the serial protocol or change vehicle parameters. See [scope and validation](docs/phase-41-report.md).
+
+Phase 40 adds **Bluetooth / HC-05 → Capture Classic evidence** for the actual T12/R12/Cube phone path. While an open Classic session is present, it freezes the current receive-checklist stage and bounded decoder counters without transmitting anything. Disconnect every telemetry link before reviewing and explicitly saving the text file. Paired-device names/addresses, MAVLink bytes/payloads, coordinates and accounts are excluded; the snapshot is not a radio trace, vehicle identity or proof of rover control. See [scope and validation](docs/phase-40-report.md).
 
 Phase 39 adds **Bluetooth / BLE → Capture BLE profile**. Capture a bounded, frozen list of discovered eligible receive UUIDs, instance numbers and the app's notify/indicate method without subscribing. Disconnect all telemetry links before reviewing and explicitly saving it as text. Device names, addresses and payloads are excluded; the snapshot is memory-only until saved and is not a full GATT inventory, protocol verification or remote identity. See [scope and validation](docs/phase-39-report.md).
 

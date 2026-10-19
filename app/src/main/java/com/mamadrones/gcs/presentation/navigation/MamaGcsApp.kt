@@ -117,15 +117,26 @@ fun MamaGcsApp(
                             )
                         }
                         composable("classic-bluetooth") {
+                            val classicEvidenceModel: ClassicLinkEvidenceViewModel = hiltViewModel()
+                            val classicOtherLinkOpen = connection.session.endpoint != null || vescDiscovery.gattConnecting ||
+                                vescDiscovery.gattConnected || vescDiscovery.closing
                             ClassicBluetoothScreen(
                                 state = classicBluetooth,
                                 onRefresh = onClassicRefresh,
                                 onPermissionDenied = onClassicPermissionDenied,
                                 onConnect = onClassicConnect,
                                 onDisconnect = onClassicDisconnect,
-                                otherLinkOpen = connection.session.endpoint != null || vescDiscovery.gattConnecting ||
-                                    vescDiscovery.gattConnected || vescDiscovery.closing,
+                                otherLinkOpen = classicOtherLinkOpen,
                                 vehicle = vehicle,
+                                evidenceControls = {
+                                    ClassicLinkEvidenceControls(
+                                        linkActive = classicBluetooth.link.active,
+                                        competingLink = classicOtherLinkOpen,
+                                        connection = classicBluetooth.link.connection,
+                                        vehicle = vehicle,
+                                        model = classicEvidenceModel,
+                                    )
+                                },
                             )
                         }
                         composable("spray") { SprayScreen(vehicle) }

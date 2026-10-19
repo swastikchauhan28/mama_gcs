@@ -23,13 +23,16 @@ class TelemetryEvidenceReportTest {
     private val vehicle = VehicleState(systemId = 42, componentId = 1,
         connectionStatus = VehicleConnectionState.CONNECTED, lastHeartbeatAtEpochMillis = 1_200,
         mavlinkDiagnostics = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,
-            startedAtEpochMillis = 1_000, receivedBytes = 128, decodedMessages = 3,
+            startedAtEpochMillis = 1_000, receivedBytes = 128, mavlinkV1StartBytes = 4,
+            mavlinkV2StartBytes = 5, decodedMessages = 3,
             decodedV1Messages = 2, decodedV2Messages = 1, acceptedMessages = 2, ignoredOtherSource = 1))
 
     @Test fun capturesVersionCountersSourceAndAgeWithoutInferringSafety() {
         val text = TelemetryEvidenceReport.capture(vehicle, 2_000)
         listOf("ACTIVE AT CAPTURE", "Transport: CLASSIC", "system 42, component 1",
             "age at capture 800 ms", "Decoded MAVLink 1: 2", "Decoded MAVLink 2: 1",
+            "Raw 0xFE bytes (MAVLink 1 start candidates): 4",
+            "Raw 0xFD bytes (MAVLink 2 start candidates): 5",
             "Accepted from selected autopilot: 2", "Ignored other source: 1",
             "Not authentication", "commands and app emergency stop remain unavailable").forEach { assertTrue(it, text.contains(it)) }
     }

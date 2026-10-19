@@ -50,7 +50,7 @@ class ClassicBluetoothScreenTest {
             ConnectionState(TransportStatus.ERROR, "Remote disconnected"))),
             vehicleConnection = VehicleConnectionState.CONNECTED)
         compose.onNodeWithTag("classic-check-status").performScrollTo().assertTextEquals("BLUETOOTH ERROR")
-        compose.onNodeWithText("3. Autopilot heartbeat: NOT CONFIRMED").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("4. Autopilot heartbeat: NOT CONFIRMED").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("classic-disconnect").assertDoesNotExist()
         compose.onNodeWithTag("classic-refresh").performScrollTo().assertIsEnabled()
     }

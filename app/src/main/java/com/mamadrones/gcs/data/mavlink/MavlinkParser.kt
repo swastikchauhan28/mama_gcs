@@ -51,6 +51,12 @@ class MavlinkParser {
                     // Rescan from the next byte so a corrupt length cannot consume a later frame.
                     cursor++
                 }
+                is MavlinkParseResult.UnsupportedMessage -> {
+                    results += result
+                    // The CRC extra is unknown, so this is only a header candidate. Its
+                    // unverified length must not hide a later valid supported frame.
+                    cursor++
+                }
                 else -> {
                     results += result
                     cursor += frameSize

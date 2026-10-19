@@ -30,6 +30,7 @@ fun ClassicBluetoothScreen(
     onDisconnect: () -> Unit,
     otherLinkOpen: Boolean,
     vehicle: VehicleState,
+    evidenceControls: @Composable () -> Unit = {},
 ) {
     val diagnostics = vehicle.mavlinkDiagnostics
     val context = LocalContext.current
@@ -79,6 +80,7 @@ fun ClassicBluetoothScreen(
             }
         }
         ClassicConnectionCheckPanel(check)
+        evidenceControls()
         state.link.peer?.let { peer ->
             SubsystemCard(PanelSpec("Classic serial link", state.link.connection.status.name,
                 listOf("Device" to peer.name, "Address" to peer.address,

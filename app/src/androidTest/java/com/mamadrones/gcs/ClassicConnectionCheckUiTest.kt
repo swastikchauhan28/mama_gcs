@@ -36,21 +36,29 @@ class ClassicConnectionCheckUiTest {
         compose.onNodeWithTag("classic-check-guidance").assertTextContains("SBUS into RCIN alone", substring = true)
         capture("phase28-check-light")
         compose.runOnIdle {
+            check.value = ClassicConnectionAssessment(ClassicCheckStage.WAITING_MAVLINK,
+                socketOpen = true, freshBytes = true)
+        }
+        compose.onNodeWithTag("classic-check-status").assertTextEquals("BYTES ARRIVING · MAVLINK NOT CONFIRMED")
+        compose.onNodeWithTag("classic-check-guidance").assertTextContains("Unsupported", substring = true)
+        compose.runOnIdle {
             theme.value = ThemeMode.DARK
-            check.value = ClassicConnectionAssessment(ClassicCheckStage.RECEIVING, true, true, true, listOf("Attitude", "Battery"))
+            check.value = ClassicConnectionAssessment(ClassicCheckStage.RECEIVING, true, true, true,
+                listOf("Attitude", "Battery"), true)
         }
         compose.onNodeWithTag("classic-check-status").assertTextEquals("LIVE RECEIVE EVIDENCE")
-        compose.onNodeWithTag("classic-check-measurements").assertTextEquals("4. Measurement messages: Attitude, Battery")
+        compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: Attitude, Battery")
         compose.onNodeWithTag("classic-check-guidance").assertTextContains("does not independently prove", substring = true)
         capture("phase28-check-dark")
     }
 
     @Test fun heartbeatOnlyDoesNotClaimMeasurementReception() {
         compose.setContent { MamaGcsTheme {
-            ClassicConnectionCheckPanel(ClassicConnectionAssessment(ClassicCheckStage.WAITING_MEASUREMENTS, true, true, true))
+            ClassicConnectionCheckPanel(ClassicConnectionAssessment(ClassicCheckStage.WAITING_MEASUREMENTS,
+                true, true, true, freshDecodedMessage = true))
         } }
         compose.onNodeWithTag("classic-check-status").assertTextEquals("HEARTBEAT RECEIVED · WAITING FOR MEASUREMENTS")
-        compose.onNodeWithTag("classic-check-measurements").assertTextEquals("4. Measurement messages: NOT CONFIRMED")
+        compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: NOT CONFIRMED")
     }
 
     @Test fun screenExpiresEvidenceWithoutIncomingUpdatesAndDisconnectClearsIt() {
@@ -68,13 +76,16 @@ class ClassicConnectionCheckUiTest {
             vehicle.value = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
                 lastHeartbeatAtEpochMillis = now, attitude = AttitudeState(lastUpdatedAtEpochMillis = now),
                 mavlinkDiagnostics = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,
-                    startedAtEpochMillis = opened, receivedBytes = 100, lastBytesAtEpochMillis = now))
+                    startedAtEpochMillis = opened, receivedBytes = 100, lastBytesAtEpochMillis = now,
+                    decodedMessages = 1, messageObservations = listOf(MavlinkMessageObservation(
+                        ObservedMavlinkMessage.HEARTBEAT, decodedV2 = 1, accepted = 1,
+                        lastDecodedAtEpochMillis = now, lastAcceptedAtEpochMillis = now))))
         }
         compose.waitUntil(5_000) { compose.onAllNodesWithText("LIVE RECEIVE EVIDENCE").fetchSemanticsNodes().isNotEmpty() }
         compose.waitUntil(8_000) { compose.onAllNodesWithText("BYTE STREAM STALE").fetchSemanticsNodes().isNotEmpty() }
         compose.runOnIdle { link.value = link.value.copy(link = link.value.link.copy(active = false)) }
         compose.onNodeWithTag("classic-check-status").assertTextEquals("SESSION CLOSED")
-        compose.onNodeWithTag("classic-check-measurements").assertTextEquals("4. Measurement messages: NOT CONFIRMED")
+        compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: NOT CONFIRMED")
     }
 
     private fun capture(name: String) {

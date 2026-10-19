@@ -27,4 +27,15 @@ class MavlinkDiagnosticsPanelTest {
         assertTrue(hints.contains("no supported message was decoded"))
         assertTrue(hints.contains("Do not disable a live rover's signing"))
     }
+
+    @Test fun `raw start byte hints distinguish absence from unvalidated candidates`() {
+        val noStarts = MavlinkDiagnostics(active = true, startedAtEpochMillis = 100,
+            receivedBytes = 80)
+        assertTrue(ConsolePanels.mavlinkDiagnosticHints(noStarts).contains("No MAVLink 1/2 start bytes"))
+        val candidates = noStarts.copy(mavlinkV2StartBytes = 2)
+        assertTrue(ConsolePanels.mavlinkDiagnosticHints(candidates).contains("no supported frame validated"))
+        val panel = ConsolePanels.mavlinkDiagnostics(candidates)
+        assertEquals("2", panel.rows.first { it.first.startsWith("Raw 0xFD") }.second)
+        assertTrue(panel.note.orEmpty().contains("not validated frames"))
+    }
 }

@@ -25,6 +25,8 @@ object ConsolePanels {
         return PanelSpec("MAVLink decoder", status, listOf(
             "Input chunks" to count(sample.receivedChunks),
             "Input bytes" to count(sample.receivedBytes),
+            "Raw 0xFE bytes (MAVLink 1 start candidates)" to count(sample.mavlinkV1StartBytes),
+            "Raw 0xFD bytes (MAVLink 2 start candidates)" to count(sample.mavlinkV2StartBytes),
             "Decoded supported messages" to count(sample.decodedMessages),
             "Decoded MAVLink 1" to count(sample.decodedV1Messages),
             "Decoded MAVLink 2" to count(sample.decodedV2Messages),
@@ -34,13 +36,14 @@ object ConsolePanels {
             "Parser errors (CRC + payload)" to count(sample.parserErrors),
             "Checksum failures" to count(sample.checksumFailures),
             "Malformed payloads" to count(sample.malformedPayloads),
-            "Unsupported message IDs" to count(sample.unsupportedMessages),
-            "Last unsupported ID" to (sample.lastUnsupportedMessageId?.toString() ?: "—"),
+            "Unverified unsupported-ID candidates" to count(sample.unsupportedMessages),
+            "Last unsupported-ID candidate" to (sample.lastUnsupportedMessageId?.toString() ?: "—"),
             "Unsupported flags" to count(sample.unsupportedFlags),
             "Signed packets rejected" to count(sample.signedPacketsRejected),
             "Last input" to sampleAge(sample.lastBytesAtEpochMillis, nowEpochMillis),
             "Last accepted message" to sampleAge(sample.lastAcceptedAtEpochMillis, nowEpochMillis),
         ), note = "Session totals, not packet-loss rates or a health verdict. Decoded includes messages ignored by source selection. " +
+            "Raw start-byte counts are only byte-pattern candidates, not validated frames; arbitrary data can contain them. " +
             "Unsupported/signed candidates are not checksum/authentication verified. Raw noise and incomplete fragments may produce no parser result. " +
             "Counters remain in memory after disconnect and reset on the next session. Prepare telemetry report allows explicit snapshot export; there is no continuous logging.")
     }
@@ -52,6 +55,12 @@ object ConsolePanels {
             add("No bytes reached the decoder. Check the selected UDP peer, BLE characteristic or Classic serial radio and sender output.")
         if (sample.receivedBytes > 0L && sample.decodedMessages == 0L)
             add("Bytes arrived, but no supported message was decoded. The stream may be incomplete, unsupported, or not MAVLink 1/2; confirm the radio route and format.")
+        if (sample.receivedBytes > 0L && sample.decodedMessages == 0L &&
+            sample.mavlinkV1StartBytes + sample.mavlinkV2StartBytes == 0L)
+            add("No MAVLink 1/2 start bytes (0xFE/0xFD) appeared in this captured stream. Check the serial forwarding format; this does not locate a wiring fault.")
+        if (sample.receivedBytes > 0L && sample.decodedMessages == 0L &&
+            sample.mavlinkV1StartBytes + sample.mavlinkV2StartBytes > 0L)
+            add("MAVLink start-byte patterns appeared, but no supported frame validated. These bytes may occur in other data; inspect the serial route and framing without assuming a valid MAVLink stream.")
         if (sample.checksumFailures > 0L || sample.malformedPayloads > 0L)
             add("Corrupt or incompatible frame candidates were rejected. Check framing, sender settings and the telemetry bridge; these counters do not prove a particular hardware fault.")
         if (sample.signedPacketsRejected > 0L)

@@ -43,7 +43,7 @@ class MavlinkMessageObservationTest {
 
     @Test fun rawChunksAndAllRejectedFramesCannotCreateRows() {
         val accumulator = MavlinkDiagnosticsAccumulator(TelemetryLinkKind.BLE, 100)
-        accumulator.recordBytes(500, 110)
+        accumulator.recordBytes(ByteArray(500), 110)
         listOf(MavlinkParseResult.InvalidChecksum(0), MavlinkParseResult.MalformedMessage(74),
             MavlinkParseResult.UnsupportedMessage(999), MavlinkParseResult.UnsupportedIncompatibilityFlags(2),
             MavlinkParseResult.SignedPacketRejected).forEach { accumulator.recordResult(it, null, 110) }

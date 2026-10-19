@@ -57,7 +57,7 @@ class MavlinkSession(
                 receiverJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
                     transport.receive().collect { bytes ->
                         val receivedAt = System.currentTimeMillis()
-                        diagnostics.recordBytes(bytes.size, receivedAt)
+                        diagnostics.recordBytes(bytes, receivedAt)
                         parser.feed(bytes).forEach { result ->
                             val disposition = routeSelectedAutopilot(result, receivedAt)
                             diagnostics.recordResult(result, disposition, receivedAt)

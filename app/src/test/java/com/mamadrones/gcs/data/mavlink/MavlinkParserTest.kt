@@ -65,6 +65,19 @@ class MavlinkParserTest {
     }
 
     @Test
+    fun `unverified unsupported candidate cannot conceal a valid heartbeat`() {
+        val valid = heartbeatFrame(customMode = 7)
+        val unverified = mavlinkTestFrame(200, valid, 0)
+
+        val results = MavlinkParser().feed(unverified)
+
+        assertTrue(results.first() is MavlinkParseResult.UnsupportedMessage)
+        val heartbeat = results.filterIsInstance<MavlinkParseResult.Message>().single()
+            .message as MavlinkMessage.Heartbeat
+        assertEquals(7L, heartbeat.customMode)
+    }
+
+    @Test
     fun `reset discards an incomplete frame between sessions`() {
         val parser = MavlinkParser()
         val heartbeat = heartbeatFrame(customMode = 0, baseMode = 0)

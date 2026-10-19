@@ -33,21 +33,7 @@ fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier:
     var showInstruments by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxSize()) {
         MapWorkspace(state, Modifier.weight(1f).fillMaxWidth(), onNavigate, showOperatorTools = true)
-        Surface(shadowElevation = 2.dp) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    RoverSpeedMonitorPanel(state, compact = true)
-                    Instrument("HEADING", live.headingDegrees.reading("°"))
-                    Instrument("BATTERY", live.battery.percentage?.let { "$it %" } ?: "UNKNOWN")
-                    Instrument("GPS", live.gps.fix.name.replace('_', ' '))
-                    Instrument("DIRECTION", live.direction.name)
-                }
-                HeadingInstrument(live.headingDegrees)
-                TextButton(onClick = { showInstruments = true }, modifier = Modifier.heightIn(min = 48.dp).testTag("show-instruments")) {
-                    Text("More", style = MaterialTheme.typography.labelMedium)
-                }
-            }
-        }
+        RoverInstrumentBar(state, onShowInstruments = { showInstruments = true })
     }
     if (showInstruments) AlertDialog(
         onDismissRequest = { showInstruments = false },
@@ -56,6 +42,10 @@ fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier:
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 TelemetryRow("Mode", live.mode ?: "UNKNOWN")
                 TelemetryRow("Arming", live.armed?.let { if (it) "ARMED" else "DISARMED" } ?: "UNKNOWN")
+                TelemetryRow("Heading", live.headingDegrees.reading("°"))
+                TelemetryRow("Battery", live.battery.percentage?.let { "$it %" } ?: "UNKNOWN")
+                TelemetryRow("GPS fix", live.gps.fix.name.replace('_', ' '))
+                TelemetryRow("Direction", live.direction.name)
                 TelemetryRow("Satellites", live.gps.satellites?.toString() ?: "UNKNOWN")
                 TelemetryRow("HDOP", live.gps.hdop.reading(""))
                 listOf("All telemetry" to "telemetry", "Motors" to "motors", "Spray" to "spray",
@@ -66,6 +56,48 @@ fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier:
         },
         confirmButton = { TextButton(onClick = { showInstruments = false }) { Text("Close") } },
     )
+}
+
+/** Keep the primary heading fully visible without scrolling on narrow displays. */
+@Composable
+internal fun RoverInstrumentBar(state: VehicleState, onShowInstruments: () -> Unit) {
+    val live = state.forDisplay()
+    Surface(shadowElevation = 2.dp) {
+        BoxWithConstraints(Modifier.fillMaxWidth().testTag("rover-instrument-bar")) {
+            if (maxWidth < 600.dp) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f)) { RoverSpeedMonitorPanel(state, compact = true) }
+                        MoreInstrumentsButton(onShowInstruments)
+                    }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Instrument("HEADING", live.headingDegrees.reading("°"),
+                            Modifier.weight(1f).testTag("rover-heading-reading"))
+                        HeadingInstrument(live.headingDegrees)
+                    }
+                }
+            } else {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        RoverSpeedMonitorPanel(state, compact = true)
+                        Instrument("HEADING", live.headingDegrees.reading("°"), Modifier.testTag("rover-heading-reading"))
+                        Instrument("BATTERY", live.battery.percentage?.let { "$it %" } ?: "UNKNOWN")
+                        Instrument("GPS", live.gps.fix.name.replace('_', ' '))
+                        Instrument("DIRECTION", live.direction.name)
+                    }
+                    HeadingInstrument(live.headingDegrees)
+                    MoreInstrumentsButton(onShowInstruments)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MoreInstrumentsButton(onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = Modifier.heightIn(min = 48.dp).testTag("show-instruments")) {
+        Text("More", style = MaterialTheme.typography.labelMedium)
+    }
 }
 
 @Composable

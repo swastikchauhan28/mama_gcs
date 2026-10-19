@@ -37,6 +37,8 @@ object TelemetryEvidenceReport {
         appendLine("DECODER TOTALS - decoded includes source-filtered messages")
         listOf(
             "Input chunks" to d.receivedChunks, "Input bytes" to d.receivedBytes,
+            "Raw 0xFE bytes (MAVLink 1 start candidates)" to d.mavlinkV1StartBytes,
+            "Raw 0xFD bytes (MAVLink 2 start candidates)" to d.mavlinkV2StartBytes,
             "Decoded supported messages" to d.decodedMessages,
             "Decoded MAVLink 1" to d.decodedV1Messages, "Decoded MAVLink 2" to d.decodedV2Messages,
             "Accepted from selected autopilot" to d.acceptedMessages,
@@ -45,9 +47,10 @@ object TelemetryEvidenceReport {
             "Unsupported message candidates" to d.unsupportedMessages, "Unsupported flags" to d.unsupportedFlags,
             "Signed candidates rejected" to d.signedPacketsRejected,
         ).forEach { (label, value) -> appendLine("$label: ${count(value)}") }
-        appendLine("Last unsupported message ID: ${if (started == null) "NOT RECORDED" else d.lastUnsupportedMessageId ?: "NONE RECORDED"}")
+        appendLine("Last unverified unsupported-ID candidate: ${if (started == null) "NOT RECORDED" else d.lastUnsupportedMessageId ?: "NONE RECORDED"}")
         appendLine("Last input: ${timestamp(d.lastBytesAtEpochMillis)}")
         appendLine("Last accepted message: ${timestamp(d.lastAcceptedAtEpochMillis)}")
+        appendLine("Start-byte counts are raw patterns, not validated frames or proof of MAVLink traffic.")
         appendLine("These are not packet-loss measurements. Rejected/unsupported candidates are not authenticated.")
         appendLine()
         appendLine("SAMPLE RECEIPT TIMES - do not establish valid sensor readings")

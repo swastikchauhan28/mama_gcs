@@ -56,6 +56,10 @@ fun StationShell(
         settingsPages -> "Application settings"
         else -> if (route == "mission") "Plan route" else "Operate"
     }
+    // MaterialTheme alone does not paint a background or provide a content color.
+    // Own both here so transparent pages cannot expose the Android window theme.
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground) {
     BoxWithConstraints(Modifier.fillMaxSize().displayCutoutPadding().imePadding()) {
         val wide = maxWidth >= 720.dp
         Column(Modifier.fillMaxSize()) {
@@ -137,5 +141,6 @@ fun StationShell(
                 }
             }
         }
+    }
     }
 }

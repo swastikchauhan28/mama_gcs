@@ -2,7 +2,7 @@ package com.mamadrones.gcs.domain.model
 
 enum class ClassicCheckStage {
     CLOSED, CONNECTING, ERROR, WAITING_SESSION, WAITING_BYTES, BYTES_STALE,
-    WAITING_HEARTBEAT, WAITING_MEASUREMENTS, RECEIVING,
+    WAITING_MAVLINK, WAITING_HEARTBEAT, WAITING_MEASUREMENTS, RECEIVING,
 }
 
 data class ClassicConnectionAssessment(
@@ -11,6 +11,7 @@ data class ClassicConnectionAssessment(
     val freshBytes: Boolean = false,
     val freshHeartbeat: Boolean = false,
     val measurementMessages: List<String> = emptyList(),
+    val freshDecodedMessage: Boolean = false,
 )
 
 /** Receive evidence only. Never authenticates the rover or grants permission to command it. */
@@ -39,8 +40,20 @@ object ClassicConnectionCheck {
         if (!fresh(diagnostics.lastBytesAtEpochMillis)) {
             return ClassicConnectionAssessment(ClassicCheckStage.BYTES_STALE, socketOpen = true)
         }
-        if (!vehicle.connected || !fresh(vehicle.lastHeartbeatAtEpochMillis)) {
-            return ClassicConnectionAssessment(ClassicCheckStage.WAITING_HEARTBEAT, socketOpen = true, freshBytes = true)
+        val decoded = diagnostics.decodedMessages > 0 && diagnostics.messageObservations.any {
+            it.decoded > 0 && fresh(it.lastDecodedAtEpochMillis)
+        }
+        if (!decoded) {
+            return ClassicConnectionAssessment(ClassicCheckStage.WAITING_MAVLINK,
+                socketOpen = true, freshBytes = true)
+        }
+        val acceptedHeartbeat = diagnostics.messageObservations.any {
+            it.type == ObservedMavlinkMessage.HEARTBEAT && it.accepted > 0 &&
+                fresh(it.lastAcceptedAtEpochMillis)
+        }
+        if (!vehicle.connected || !fresh(vehicle.lastHeartbeatAtEpochMillis) || !acceptedHeartbeat) {
+            return ClassicConnectionAssessment(ClassicCheckStage.WAITING_HEARTBEAT,
+                socketOpen = true, freshBytes = true, freshDecodedMessage = true)
         }
         // Receipt is distinct from sensor validity: a GPS message can report NO_FIX.
         val messages = listOf(
@@ -54,6 +67,7 @@ object ClassicConnectionCheck {
         ).filter { fresh(it.second) }.map { it.first }
         return ClassicConnectionAssessment(
             if (messages.isEmpty()) ClassicCheckStage.WAITING_MEASUREMENTS else ClassicCheckStage.RECEIVING,
-            socketOpen = true, freshBytes = true, freshHeartbeat = true, measurementMessages = messages)
+            socketOpen = true, freshBytes = true, freshHeartbeat = true,
+            measurementMessages = messages, freshDecodedMessage = true)
     }
 }

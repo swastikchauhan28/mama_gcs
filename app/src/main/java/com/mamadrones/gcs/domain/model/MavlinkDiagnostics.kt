@@ -9,6 +9,8 @@ data class MavlinkDiagnostics(
     val startedAtEpochMillis: Long? = null,
     val receivedChunks: Long = 0,
     val receivedBytes: Long = 0,
+    val mavlinkV1StartBytes: Long = 0,
+    val mavlinkV2StartBytes: Long = 0,
     val decodedMessages: Long = 0,
     val decodedV1Messages: Long = 0,
     val decodedV2Messages: Long = 0,
