@@ -4,7 +4,11 @@ Native Android ground-control-station foundation for a Mama agricultural UGV: Ar
 
 For hardware discussions, consult the [current hardware record](docs/hardware-integration.md#current-hardware-record--updated-12-october-2026) first. It records the accepted parameter-file baseline, T12/R12/HC-05 route, photo-indicated TELEM1 connection, confirmed 8 km/h maximum and remaining evidence gaps; do not repeat already answered questions from historical phase reports.
 
-## Current delivery: serial byte-signature diagnosis (Phase 42)
+## Current delivery: read-only RC input activity check (Phase 43)
+
+**Analyze telemetry → RC & PWM → RC input activity check** records screen-observed minimum/maximum/span values for up to 18 reported RC channels after an explicit start. It requires fresh selected-autopilot heartbeat and RC telemetry, interrupts on stale data or session/source changes, and labels stopped ranges as historical. It is local to the page, sends no commands and performs no calibration or motor mapping. See [scope and validation](docs/phase-43-report.md). Missing or undecodable telemetry still needs hardware-path diagnosis before this check can start.
+
+## Previous delivery: serial byte-signature diagnosis (Phase 42)
 
 Phase 42 adds session-local counts of raw `0xFE` and `0xFD` bytes to **Analyze telemetry → Link & messages** and the explicit evidence reports. These are possible MAVLink 1/2 start markers, not verified frames. The app now gives separate guidance when bytes arrive with no markers versus markers but no validated supported messages. It stores no raw bytes, changes no radio/Cube settings and sends no commands. See [scope and validation](docs/phase-42-report.md).
 

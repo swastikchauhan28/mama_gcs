@@ -32,6 +32,7 @@ fun RcPwmContent(state: VehicleState, now: Long, modifier: Modifier = Modifier) 
     ScreenHeader("RC & PWM monitor", "Receive-only · no calibration or output commands")
     Notice("OBSERVATION ONLY", "These are autopilot-reported values, not measurements of motor movement or proof of a safe stop. " +
         "Use only a hardware-team-secured test setup. The app cannot stop the rover.")
+    RcInputActivityPanel(state, now)
     if (port == null) {
         SubsystemCard(RcPwmPanels.rc(state, now))
         Notice("PWM OUTPUTS NOT RECEIVED", "No SERVO_OUTPUT_RAW sample has arrived from the selected autopilot in this session.")
