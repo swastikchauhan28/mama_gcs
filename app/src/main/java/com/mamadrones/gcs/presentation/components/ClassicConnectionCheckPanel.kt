@@ -33,7 +33,11 @@ fun ClassicConnectionCheckPanel(check: ClassicConnectionAssessment) {
             Text("4. Autopilot heartbeat: ${if (check.freshHeartbeat) "FRESH" else "NOT CONFIRMED"}")
             Text("5. Measurement messages: ${check.measurementMessages.joinToString().ifEmpty { "NOT CONFIRMED" }}",
                 Modifier.testTag("classic-check-measurements"))
+            Text("6. RC_CHANNELS from selected autopilot: ${if (check.freshRcChannels) "FRESH" else "NOT CONFIRMED"}",
+                Modifier.testTag("classic-check-rc-status"))
             Text(guidance, Modifier.testTag("classic-check-guidance"))
+            Text("RC receipt does not prove stick movement, SBUS wiring, neutral position or safe control.",
+                style = MaterialTheme.typography.bodySmall)
             Text("5-second display window · receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.",
                 style = MaterialTheme.typography.bodySmall)
         }

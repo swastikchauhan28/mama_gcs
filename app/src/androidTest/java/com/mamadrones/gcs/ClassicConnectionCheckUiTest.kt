@@ -34,6 +34,7 @@ class ClassicConnectionCheckUiTest {
         } }
         compose.onNodeWithTag("classic-check-status").assertTextEquals("SOCKET OPEN · WAITING FOR BYTES")
         compose.onNodeWithTag("classic-check-guidance").assertTextContains("SBUS into RCIN alone", substring = true)
+        compose.onNodeWithTag("classic-check-rc-status").assertTextContains("NOT CONFIRMED", substring = true)
         capture("phase28-check-light")
         compose.runOnIdle {
             check.value = ClassicConnectionAssessment(ClassicCheckStage.WAITING_MAVLINK,
@@ -44,10 +45,11 @@ class ClassicConnectionCheckUiTest {
         compose.runOnIdle {
             theme.value = ThemeMode.DARK
             check.value = ClassicConnectionAssessment(ClassicCheckStage.RECEIVING, true, true, true,
-                listOf("Attitude", "Battery"), true)
+                listOf("Attitude", "Battery"), true, true)
         }
         compose.onNodeWithTag("classic-check-status").assertTextEquals("LIVE RECEIVE EVIDENCE")
         compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: Attitude, Battery")
+        compose.onNodeWithTag("classic-check-rc-status").assertTextEquals("6. RC_CHANNELS from selected autopilot: FRESH")
         compose.onNodeWithTag("classic-check-guidance").assertTextContains("does not independently prove", substring = true)
         capture("phase28-check-dark")
     }
@@ -59,6 +61,7 @@ class ClassicConnectionCheckUiTest {
         } }
         compose.onNodeWithTag("classic-check-status").assertTextEquals("HEARTBEAT RECEIVED · WAITING FOR MEASUREMENTS")
         compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: NOT CONFIRMED")
+        compose.onNodeWithTag("classic-check-rc-status").assertTextEquals("6. RC_CHANNELS from selected autopilot: NOT CONFIRMED")
     }
 
     @Test fun screenExpiresEvidenceWithoutIncomingUpdatesAndDisconnectClearsIt() {
@@ -86,6 +89,7 @@ class ClassicConnectionCheckUiTest {
         compose.runOnIdle { link.value = link.value.copy(link = link.value.link.copy(active = false)) }
         compose.onNodeWithTag("classic-check-status").assertTextEquals("SESSION CLOSED")
         compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: NOT CONFIRMED")
+        compose.onNodeWithTag("classic-check-rc-status").assertTextEquals("6. RC_CHANNELS from selected autopilot: NOT CONFIRMED")
     }
 
     private fun capture(name: String) {

@@ -8,6 +8,8 @@ class ClassicConnectionCheckTest {
     private val connection = ConnectionState(TransportStatus.OPEN, connectedAtEpochMillis = 10_000L)
     private val heartbeat = MavlinkMessageObservation(ObservedMavlinkMessage.HEARTBEAT,
         decodedV2 = 1, accepted = 1, lastDecodedAtEpochMillis = now, lastAcceptedAtEpochMillis = now)
+    private val rcObservation = MavlinkMessageObservation(ObservedMavlinkMessage.RC_CHANNELS,
+        decodedV2 = 1, accepted = 1, lastDecodedAtEpochMillis = now, lastAcceptedAtEpochMillis = now)
     private val diagnostics = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,
         startedAtEpochMillis = 9_000L, receivedBytes = 100, lastBytesAtEpochMillis = now,
         decodedMessages = 1, messageObservations = listOf(heartbeat))
@@ -22,6 +24,7 @@ class ClassicConnectionCheckTest {
         assertEquals(ClassicCheckStage.RECEIVING, result.stage)
         assertTrue(result.socketOpen && result.freshBytes && result.freshDecodedMessage && result.freshHeartbeat)
         assertEquals(listOf("Attitude"), result.measurementMessages)
+        assertFalse(result.freshRcChannels)
     }
     @Test fun closedAndConnectingCannotBorrowLiveVehicleData() {
         assertEquals(ClassicCheckStage.CLOSED, assess(active = false).stage)
@@ -126,5 +129,21 @@ class ClassicConnectionCheckTest {
             rcInput = RcInputState(lastUpdatedAtEpochMillis = now)))
         assertEquals(listOf("GPS", "Position", "Attitude", "Battery", "Rover HUD", "System status", "RC input"),
             result.measurementMessages)
+        assertFalse(result.freshRcChannels) // A state timestamp alone is not selected-source evidence.
+    }
+    @Test fun rcReceiptRequiresFreshAcceptedObservationAndStateInCurrentClassicSession() {
+        val current = vehicle.copy(rcInput = RcInputState(lastUpdatedAtEpochMillis = now),
+            mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(heartbeat, rcObservation)))
+        assertTrue(assess(current).freshRcChannels)
+        assertFalse(assess(current.copy(mavlinkDiagnostics = diagnostics.copy(
+            messageObservations = listOf(heartbeat, rcObservation.copy(accepted = 0, otherSource = 1))))).freshRcChannels)
+        listOf(null, 9_999L, now - 5_001, now + 1).forEach { time ->
+            assertFalse(assess(current.copy(rcInput = RcInputState(lastUpdatedAtEpochMillis = time))).freshRcChannels)
+            assertFalse(assess(current.copy(mavlinkDiagnostics = diagnostics.copy(
+                messageObservations = listOf(heartbeat, rcObservation.copy(lastAcceptedAtEpochMillis = time))))).freshRcChannels)
+        }
+        assertFalse(assess(current.copy(lastHeartbeatAtEpochMillis = now - 5_001)).freshRcChannels)
+        assertFalse(assess(current, active = false).freshRcChannels)
+        assertFalse(assess(current, link = connection.copy(connectedAtEpochMillis = now + 1), time = now + 2).freshRcChannels)
     }
 }

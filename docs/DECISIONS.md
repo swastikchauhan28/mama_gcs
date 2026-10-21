@@ -2,6 +2,21 @@
 
 Record consequential choices before implementing them. Keep dated corrections; do not rewrite earlier outcomes. Existing phase reports remain the historical record. This file starts with Phase 44 and does not invent the reasoning behind earlier designs.
 
+## D-045-01: Show RC receipt as a separate Classic receive observation
+
+- Date: 2026-10-21.
+- Status: Phase 45 implemented under the user's “next phase” request; software verification recorded in the [phase report](phase-45-report.md). Emulator visual and physical acceptance remain open.
+- AI model/version: exact runtime identifier unavailable.
+- Baseline: `ced11d690dbdad392bdb4b9ab465266feb59c3d7` on clean `main`.
+- Context: the latest bench evidence has Classic serial bytes but no validated supported MAVLink or RC values. The current connection checklist groups RC input with other measurements, so a fresh attitude/battery message can make the overall stage `RECEIVING` while RC remains absent.
+- Alternatives: (1) rely only on the existing RC & PWM screen, which is accurate but requires a separate screen and makes the receive-chain checklist less explicit; (2) add a new decoder or protocol heuristic, which broadens telemetry trust behavior without evidence that the serial stream is MAVLink; (3) expose a separate, session-local RC receipt indicator based on existing accepted-message and freshness evidence.
+- Choice: option 3. Keep the parser, source selection, protocol handling, transport and command boundaries unchanged. The new indicator requires current-session Classic bytes, a fresh selected-autopilot heartbeat, a fresh accepted `RC_CHANNELS` observation and a fresh RC state timestamp. It remains false for stale/disconnected/other-source evidence.
+- Reason: distinguish a functioning Cube receive path from the narrower RC-channel path without claiming stick movement, physical receiver wiring or safety. A boolean is sufficient because this checklist reports only receipt; numbered values remain on RC & PWM.
+- Trade-off: the indicator may be `NOT CONFIRMED` when the Cube does not stream `RC_CHANNELS`, even if SBUS is functioning. The app does not request a stream rate or diagnose the specific missing hop.
+- Verification: unit tests for session/freshness/source gates and report output, Android fixture test and visual review if an emulator is healthy; fresh JVM/build/lint checks. No physical acceptance without a separately scoped secured bench check.
+- Rollback: revert this cohesive UI/model/report change after reviewing the diff; no schema, persisted data, Cube setting or radio change is involved.
+- Revisit if: a validated Cube stream shows RC messages but the indicator remains absent, or a later approved control design needs stronger authenticated evidence.
+
 ## D-044-01: Consolidate working records without changing the app
 
 - Date: 2026-10-19.

@@ -12,6 +12,7 @@ data class ClassicConnectionAssessment(
     val freshHeartbeat: Boolean = false,
     val measurementMessages: List<String> = emptyList(),
     val freshDecodedMessage: Boolean = false,
+    val freshRcChannels: Boolean = false,
 )
 
 /** Receive evidence only. Never authenticates the rover or grants permission to command it. */
@@ -65,9 +66,16 @@ object ClassicConnectionCheck {
             "System status" to vehicle.systemStatus.lastUpdatedAtEpochMillis,
             "RC input" to vehicle.rcInput.lastUpdatedAtEpochMillis,
         ).filter { fresh(it.second) }.map { it.first }
+        // Both timestamps must belong to this socket session: a previous/foreign RC state is not receipt evidence.
+        val freshRcChannels = fresh(vehicle.rcInput.lastUpdatedAtEpochMillis) &&
+            diagnostics.messageObservations.any {
+                it.type == ObservedMavlinkMessage.RC_CHANNELS && it.accepted > 0 &&
+                    fresh(it.lastAcceptedAtEpochMillis)
+            }
         return ClassicConnectionAssessment(
             if (messages.isEmpty()) ClassicCheckStage.WAITING_MEASUREMENTS else ClassicCheckStage.RECEIVING,
             socketOpen = true, freshBytes = true, freshHeartbeat = true,
-            measurementMessages = messages, freshDecodedMessage = true)
+            measurementMessages = messages, freshDecodedMessage = true,
+            freshRcChannels = freshRcChannels)
     }
 }

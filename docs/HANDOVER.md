@@ -2,6 +2,31 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-21 — Phase 45 Classic RC receive evidence
+
+### Done
+
+- From clean `main` at `ced11d690dbdad392bdb4b9ab465266feb59c3d7`, Phase 45 added a separate, read-only fresh `RC_CHANNELS` indication to the Classic checklist and explicit evidence report. It requires current Classic session, fresh selected-autopilot heartbeat, accepted RC observation and fresh RC state. Parser, transport, source selection, storage, parameters and command paths did not change. See [Phase 45](phase-45-report.md) and [decision D-045-01](DECISIONS.md).
+- Fresh Gradle run completed: 381 JVM tests/62 suites, no failures/errors/skips; debug and Android-test APK builds passed; lint 0 errors/32 warnings. Instrumentation compiled but did not run. The user subsequently authorized a focused Phase 45 commit and push; check Git history and remote status for their actual outcome.
+
+### In progress
+
+- Emulator visual execution is open: ADB had no attached device and existing AVDs were not established as disposable. The new UI test compiled but has no executed screenshot review.
+
+### Broken or risky
+
+- Latest supplied physical bench session still shows Classic bytes but zero validated supported MAVLink; no current Cube heartbeat or RC has been independently observed. The new RC indicator will remain `NOT CONFIRMED` until the existing receive chain validates such data. Its `FRESH` state would still not prove physical stick movement, SBUS wiring or safe control.
+- The Phase 44 release, speed/failsafe, authenticated-source, recovery and ANR caveats below remain unresolved. Do not label the app rover-control-ready.
+
+### Next
+
+- On a verified disposable emulator with adequate resources, run `ClassicConnectionCheckUiTest`, inspect the captured checklist in both themes, and record device health after the run. Do not use a populated phone as a test fixture.
+- If the identified Cube/R12/T12 setup is available under a hardware-team-secured read-only procedure with outputs isolated, compare current Classic byte counts, checksum-validated supported messages, fresh selected-autopilot heartbeat and RC_CHANNELS. Preserve a sanitized evidence report. No parameter changes, arming or actuator commands.
+
+### Do not touch
+
+- Preserve the accepted [hardware record](hardware-integration.md) and all historical failures. Keep vehicle commands unavailable; do not infer hardware safety or identity from a receive indicator. Do not clear app data, operate hardware, or commit/push without the corresponding authorization.
+
 ## 2026-10-19 - Phase 44 documentation baseline
 
 ### Done

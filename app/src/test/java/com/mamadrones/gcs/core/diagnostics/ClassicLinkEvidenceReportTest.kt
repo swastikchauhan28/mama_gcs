@@ -20,6 +20,7 @@ class ClassicLinkEvidenceReportTest {
         freshDecodedMessage = true,
         freshHeartbeat = true,
         measurementMessages = listOf("GPS", "Attitude", "GPS", "private\naddress"),
+        freshRcChannels = true,
     )
     private val connection = ConnectionState(TransportStatus.OPEN,
         packetStatistics = PacketStatistics(receivedPackets = 7))
@@ -34,6 +35,7 @@ class ClassicLinkEvidenceReportTest {
         assertTrue(text.contains("1970-01-01T00:00:00Z"))
         assertTrue(text.contains("Checklist stage: RECEIVING"))
         assertTrue(text.contains("Fresh measurement groups: GPS, Attitude"))
+        assertTrue(text.contains("Fresh selected-autopilot RC_CHANNELS: YES"))
         assertTrue(text.contains("Input bytes: 11"))
         assertTrue(text.contains("Raw 0xFE bytes (MAVLink 1 start candidates): 3"))
         assertTrue(text.contains("Raw 0xFD bytes (MAVLink 2 start candidates): 4"))
@@ -43,6 +45,7 @@ class ClassicLinkEvidenceReportTest {
         assertTrue(text.contains("Unverified unsupported-ID candidates: 3"))
         assertTrue(text.contains("Expected receive route"))
         assertTrue(text.contains("does not prove"))
+        assertTrue(text.contains("RC receipt does not prove stick movement"))
         assertFalse(text.contains("private"))
     }
 
