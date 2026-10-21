@@ -35,7 +35,10 @@ class ClassicConnectionCheckUiTest {
         compose.onNodeWithTag("classic-check-status").assertTextEquals("SOCKET OPEN · WAITING FOR BYTES")
         compose.onNodeWithTag("classic-check-guidance").assertTextContains("SBUS into RCIN alone", substring = true)
         compose.onNodeWithTag("classic-check-rc-status").assertTextContains("NOT CONFIRMED", substring = true)
-        capture("phase28-check-light")
+        capture("phase46-check-light-top")
+        compose.onNodeWithText("5-second display window · receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.")
+            .performScrollTo().assertIsDisplayed()
+        capture("phase46-check-light-bottom")
         compose.runOnIdle {
             check.value = ClassicConnectionAssessment(ClassicCheckStage.WAITING_MAVLINK,
                 socketOpen = true, freshBytes = true)
@@ -51,7 +54,11 @@ class ClassicConnectionCheckUiTest {
         compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: Attitude, Battery")
         compose.onNodeWithTag("classic-check-rc-status").assertTextEquals("6. RC_CHANNELS from selected autopilot: FRESH")
         compose.onNodeWithTag("classic-check-guidance").assertTextContains("does not independently prove", substring = true)
-        capture("phase28-check-dark")
+        compose.onNodeWithTag("classic-check-status").performScrollTo().assertIsDisplayed()
+        capture("phase46-check-dark-top")
+        compose.onNodeWithText("5-second display window · receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.")
+            .performScrollTo().assertIsDisplayed()
+        capture("phase46-check-dark-bottom")
     }
 
     @Test fun heartbeatOnlyDoesNotClaimMeasurementReception() {

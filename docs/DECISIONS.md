@@ -2,6 +2,21 @@
 
 Record consequential choices before implementing them. Keep dated corrections; do not rewrite earlier outcomes. Existing phase reports remain the historical record. This file starts with Phase 44 and does not invent the reasoning behind earlier designs.
 
+## D-047-01: Add plain-language Classic receive status without changing evidence
+
+- Date: 2026-10-21.
+- Status: Drafted before Phase 47 implementation under the user's UI-only request; verification belongs in the phase report.
+- AI model/version: exact runtime identifier unavailable.
+- Baseline: `34c49d0f0436c8c863b554ed08302974581ea58d` on `main`, with the unrelated uncommitted Phase 46 UI-test and documentation work preserved.
+- Context: the Classic checklist already distinguishes socket, bytes, validated MAVLink, selected-autopilot heartbeat and measurement receipt, but its technical labels are difficult to interpret during a hardware-unavailable session.
+- Alternatives: (1) leave the technical checklist unchanged and explain it only in chat; (2) add a separate troubleshooting flow, which duplicates state and navigation; (3) add one short summary derived only from the existing checklist stage, keeping the detailed evidence visible.
+- Choice: option 3. Add a plain-language line to the existing Classic panel and synthetic UI assertions for every stage. Do not change assessment logic, telemetry trust/source filtering, storage, transport, parameters or commands.
+- Reason: make the next safe interpretation immediately visible without treating an open Bluetooth socket or raw bytes as proof of Cube telemetry.
+- Trade-off: the summary cannot identify the failing physical hop or authenticate a vehicle; its wording must remain narrower than the underlying evidence. The panel grows slightly and needs light/dark visual review.
+- Verification: fresh JVM/build/lint checks, targeted disposable-emulator UI assertions and visual inspection when the emulator is healthy; no phone or hardware test in this phase.
+- Rollback: remove only the summary line and its test after reviewing the diff; no persisted data or hardware setting changes.
+- Revisit if: operators misread a stage, assessment semantics change, or physical evidence contradicts the displayed summary.
+
 ## D-045-01: Show RC receipt as a separate Classic receive observation
 
 - Date: 2026-10-21.

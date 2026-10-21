@@ -2,6 +2,80 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-21 — physical Classic telemetry follow-up
+
+### Done
+
+- The operator confirms receiver telemetry is wired to Cube **TELEM2**, separately from **SBUS → RCIN**. The supplied photos show TELEM2 occupied and the R12 Multi Link V1.0 UART1/UART2/SBUS labels, but the connector hides which UART pair and exact signal pin order are used.
+- Read-only phone inspection during an active Classic session (`T12_131`) found 202 chunks / 53,084 bytes, 2,392 MAVLink 1 start-byte candidates, 0 MAVLink 2 candidates, 0 supported decoded messages, 782 checksum failures and 1,597 unverified unsupported-ID candidates. Last input was 0 seconds ago. Mama GCS showed `Link lost · Setup` and `No sample received`.
+
+### In progress
+
+- Hardware person to identify whether the TELEM2 cable uses R12 UART1 or UART2 and verify TX↔RX, RX↔TX and GND wiring with power off. No physical pin order is inferred from wire color or the label.
+- Resolve the configuration discrepancy read-only: the accepted parameter export records `SERIAL2_PROTOCOL=11` and `SERIAL2_BAUD=256`, while a prior Mission Planner observation was recorded as SERIAL2 MAVLink2/57600. Do not change parameters until the hardware owner reconciles the sources.
+
+### Broken or risky
+
+- Current app receive is byte-active but has no validated supported MAVLink, heartbeat or RC sample. This is not Cube-link acceptance and does not authorize movement, arming or any other hardware command.
+- The Phase 47 implementation-time note that hardware was unavailable is historical; this later same-day bench observation supersedes it for current status. It does not retroactively validate the telemetry stream.
+
+### Next
+
+- Obtain the R12 UART choice/pin map and a fresh read-only SERIAL2 parameter readback; then repeat the bounded Classic receive check and require supported decoded messages, a selected-autopilot heartbeat, and fresh RC_CHANNELS before claiming telemetry acceptance.
+
+### Do not touch
+
+- Do not change Cube parameters, disconnect/reconnect live wiring, move sticks, arm, or issue vehicle commands as part of this diagnosis. Preserve the populated phone and all historical test evidence.
+
+## 2026-10-21 — Phase 47 plain-language Classic UI
+
+### Done
+
+- Added a short stage-derived explanation above the existing Bluetooth Classic/HC-05 technical checklist, without changing receive assessment, parser, transport, trust filtering, storage or command behavior. See [Phase 47](phase-47-report.md) and [decision D-047-01](DECISIONS.md#d-047-01-add-plain-language-classic-receive-status-without-changing-evidence).
+- Fresh final Gradle run: 382 JVM tests/63 suites, 0 failures/errors/skips; app and Android-test APKs built; lint 0 errors/32 warnings. The new synthetic Android test compiled but did not execute.
+
+### In progress
+
+- Visual acceptance of the new text in light/dark themes is pending a healthy verified disposable emulator. Phase 46's targeted visual check is separately recorded; broader UI visual acceptance remains open.
+
+### Broken or risky
+
+- The disposable emulator showed a `com.android.systemui` ANR before Phase 47 APK installation/instrumentation; it was stopped without dismissing the dialog or clearing data. This repeats the environmental risk already recorded in Phase 46 and is not a passing visual check.
+- At implementation time, hardware was unavailable. Earlier Classic bytes were not validated as supported MAVLink. A prior read-only Mission Planner observation was recorded as TELEM1/MAVLink2/57600, but later user-confirmed wiring is TELEM2 and the accepted parameter export disagrees with the recorded SERIAL2 settings; see the newer physical telemetry follow-up above. Neither Cube identity nor physical control readiness is established.
+
+### Next
+
+- On a healthy verified disposable emulator, run the focused `ClassicConnectionPlainLanguageUiTest`, inspect its two theme captures and Android health, then run the broader current UI inventory before any release claim. Keep the separate secured hardware diagnosis for when the identified setup is available.
+
+### Do not touch
+
+- Preserve Phase 46's existing dirty files and the operator's populated phone. Do not weaken safety wording, dismiss ANRs, modify hardware settings, enable vehicle commands or commit/push without authorization.
+
+## 2026-10-21 — Phase 46 visual acceptance attempt
+
+### Done
+
+- Created a fresh disposable API 34 `MamaPhase46` AVD under ignored `app/build/` and installed the Phase 45 app/test APKs on that AVD only. See the [Phase 46 report](phase-46-report.md) for the test choice, legacy AVD-manager failure and exact scope.
+- The first acceptance attempt stopped before instrumentation because Android System UI showed an ANR. A clean lower-memory retry then passed the original `ClassicConnectionCheckUiTest` **3/3** with no post-run Android error; synthetic light/dark top-of-panel captures were inspected and showed legible checklist rows. The safety guidance was below the captured viewport.
+- Strengthened only that synthetic UI test to assert/record bottom-of-page visibility in both themes. Test APK rebuild and lint passed (0 errors/32 warnings). An ANR blocked the first attempt with the updated APK, but a final clean boot without reinstall passed the strengthened fixture **3/3**; four light/dark top/bottom captures were inspected and post-run Android health was clean. Evidence and both earlier ANRs remain in [Phase 46](phase-46-report.md). The verified disposable emulator was stopped without clearing data or dismissing dialogs. Production app and hardware code did not change.
+
+### In progress
+
+- Targeted Phase 45 Classic checklist visual acceptance is complete. No further Phase 46 test is running. Broader Android suite and physical acceptance remain separate open work.
+
+### Broken or risky
+
+- `com.android.systemui` ANR recurred after APK installs, including once with about 2.4 GB host RAM free. Clean-boot tests passed, but causation and broader emulator stability are not established. Do not dismiss ANRs or treat this targeted pass as a full UI/endurance qualification.
+- The latest physical Classic stream still lacks validated supported MAVLink, heartbeat and RC evidence. The safety/release gaps below are unchanged.
+
+### Next
+
+- Before a release claim, run the complete current UI inventory on a healthy disposable emulator and complete the release gate. Keep the separate secured read-only Cube/R12/T12 bench observation for when that setup is available; the latest real stream is still undecoded.
+
+### Do not touch
+
+- Do not run synthetic UI fixtures on a populated phone, clear operator data, weaken the acceptance runner, change Cube/radio/VESC settings or enable vehicle commands. No commit/push was requested for this phase.
+
 ## 2026-10-21 — Phase 45 Classic RC receive evidence
 
 ### Done
@@ -56,6 +130,6 @@ Read this first, then the [project instructions](../AGENTS.md). Keep the newest 
 
 ### Do not touch
 
-- Preserve the [accepted hardware/parameter record](hardware-integration.md). It retains Cube Orange family, Skydroid T12/R12 Multi Link V1.0, remote-name history, photo-based TELEM1 plus separate SBUS/RCIN, 57600-baud file baseline and the 8 km/h maximum. These are not independently verified physical behavior. Do not repeat old questions without a new conflict.
+- Preserve the [accepted hardware/parameter record](hardware-integration.md). It retains Cube Orange family, Skydroid T12/R12 Multi Link V1.0, remote-name history, user-confirmed TELEM2 plus separate SBUS/RCIN, the parameter-file values and 8 km/h maximum. Exact R12 UART pins and the current live SERIAL2 configuration remain unresolved. These are not independently verified physical behavior. Do not repeat old questions without a new conflict.
 - Keep command paths unavailable; protect auth, trust filtering, storage and safety boundaries under [security](security.md) and [project instructions](../AGENTS.md).
 - No raw telemetry or user secrets in Git; no app-data clearing/uninstall, destructive rollback, automatic commit/push or hardware operation. Preserve old reports and unrelated changes.

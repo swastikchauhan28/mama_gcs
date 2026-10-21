@@ -10,6 +10,7 @@ import com.mamadrones.gcs.domain.model.*
 
 @Composable
 fun ClassicConnectionCheckPanel(check: ClassicConnectionAssessment) {
+    val simpleSummary = classicConnectionSimpleSummary(check.stage)
     val (status, guidance) = when (check.stage) {
         ClassicCheckStage.CLOSED -> "SESSION CLOSED" to "Pair your identified HC-05 in Android settings, refresh the paired list, then choose Connect for telemetry and confirm Start receive."
         ClassicCheckStage.CONNECTING -> "OPENING BLUETOOTH" to "Keep the T12 powered and nearby. If connection fails, check that another app is not using the remote. You can cancel the connection."
@@ -26,6 +27,7 @@ fun ClassicConnectionCheckPanel(check: ClassicConnectionAssessment) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("HC-05 connection check", style = MaterialTheme.typography.titleMedium)
             Text(status, Modifier.testTag("classic-check-status"), style = MaterialTheme.typography.titleSmall)
+            Text("In simple words: $simpleSummary", Modifier.testTag("classic-check-simple-summary"))
             Text("Expected receive route: Cube → R12 → T12 / HC-05 → phone", style = MaterialTheme.typography.bodySmall)
             Text("1. Bluetooth socket: ${if (check.socketOpen) "OPEN" else "NOT OPEN"}")
             Text("2. Recent bytes: ${if (check.freshBytes) "RECEIVED" else "NOT CONFIRMED"}")
@@ -42,4 +44,18 @@ fun ClassicConnectionCheckPanel(check: ClassicConnectionAssessment) {
                 style = MaterialTheme.typography.bodySmall)
         }
     }
+}
+
+/** Explains existing receive evidence only; never decides connection trust or control readiness. */
+internal fun classicConnectionSimpleSummary(stage: ClassicCheckStage): String = when (stage) {
+    ClassicCheckStage.CLOSED -> "No remote telemetry session is open."
+    ClassicCheckStage.CONNECTING -> "The app is trying to open the Bluetooth link."
+    ClassicCheckStage.ERROR -> "The Bluetooth link could not be opened or was lost."
+    ClassicCheckStage.WAITING_SESSION -> "Bluetooth is open, but this session has no current decoder evidence yet."
+    ClassicCheckStage.WAITING_BYTES -> "Bluetooth is open, but no data has arrived in this session yet."
+    ClassicCheckStage.BYTES_STALE -> "Data arrived earlier, but none arrived in the last 5 seconds."
+    ClassicCheckStage.WAITING_MAVLINK -> "Data is arriving, but valid MAVLink is not confirmed."
+    ClassicCheckStage.WAITING_HEARTBEAT -> "Some MAVLink is readable, but a current autopilot heartbeat is not confirmed."
+    ClassicCheckStage.WAITING_MEASUREMENTS -> "An autopilot heartbeat is recent, but measurements are not confirmed."
+    ClassicCheckStage.RECEIVING -> "An autopilot heartbeat and some measurements are recent; rover control is still unavailable."
 }

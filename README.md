@@ -2,11 +2,17 @@
 
 Native Android ground-control-station foundation for a Mama agricultural UGV: ArduPilot Rover, VESC motors, spray equipment and hydraulics. Kotlin · Compose · Material 3 · Hilt · offline-first.
 
-For hardware discussions, consult the [current hardware record](docs/hardware-integration.md#current-hardware-record--updated-12-october-2026) first. It records the accepted parameter-file baseline, T12/R12/HC-05 route, photo-indicated TELEM1 connection, confirmed 8 km/h maximum and remaining evidence gaps; do not repeat already answered questions from historical phase reports.
+For hardware discussions, consult the [current hardware record](docs/hardware-integration.md#current-hardware-record--updated-21-october-2026) first. It records the accepted parameter-file baseline, user-reported TELEM2 plus SBUS/RCIN wiring, T12/R12/HC-05 route, confirmed 8 km/h maximum and current undecoded telemetry evidence; do not repeat already answered questions from historical phase reports.
 
-## Current application change: Classic RC receive evidence (Phase 45)
+## Current UI change: simpler Classic connection explanation (Phase 47)
+
+**Application settings → Bluetooth / HC-05** now puts a one-sentence plain-language explanation above its detailed receive checklist. It uses the existing connection stage only and does not change telemetry decoding, hardware settings or control availability. The [Phase 47 report](docs/phase-47-report.md) records fresh JVM/build/lint checks and the still-pending visual run after a disposable emulator System UI ANR. Hardware acceptance is also pending.
+
+## Previous application change: Classic RC receive evidence (Phase 45)
 
 **Application settings → Bluetooth / HC-05** now distinguishes fresh selected-autopilot `RC_CHANNELS` receipt from generic measurement messages, and the explicit Classic evidence report includes the same yes/no observation. It requires the existing current-session heartbeat, source selection and five-second receipt window; it does not prove stick movement, physical SBUS wiring or safe operation. See the [Phase 45 report](docs/phase-45-report.md). The latest supplied bench stream still has bytes but no validated supported MAVLink, so physical RC acceptance remains open.
+
+The [Phase 46 visual check](docs/phase-46-report.md) passed the focused synthetic Classic checklist UI fixture and inspected light/dark top/bottom views on a disposable emulator. Earlier System UI ANRs and the absence of a current physical Cube receive test remain separate gaps.
 
 ## Previous documentation delivery: project handover and verification baseline (Phase 44)
 
