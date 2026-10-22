@@ -41,10 +41,13 @@ class ClassicConnectionCheckUiTest {
         capture("phase46-check-light-bottom")
         compose.runOnIdle {
             check.value = ClassicConnectionAssessment(ClassicCheckStage.WAITING_MAVLINK,
-                socketOpen = true, freshBytes = true)
+                socketOpen = true, freshBytes = true,
+                streamDiagnosis = ClassicStreamDiagnosis.REJECTED_FRAME_CANDIDATES)
         }
         compose.onNodeWithTag("classic-check-status").assertTextEquals("BYTES ARRIVING · MAVLINK NOT CONFIRMED")
         compose.onNodeWithTag("classic-check-guidance").assertTextContains("Unsupported", substring = true)
+        compose.onNodeWithTag("classic-stream-diagnosis")
+            .assertTextContains("This cannot distinguish baud mismatch", substring = true)
         compose.runOnIdle {
             theme.value = ThemeMode.DARK
             check.value = ClassicConnectionAssessment(ClassicCheckStage.RECEIVING, true, true, true,

@@ -37,11 +37,40 @@ fun ClassicConnectionCheckPanel(check: ClassicConnectionAssessment) {
                 Modifier.testTag("classic-check-measurements"))
             Text("6. RC_CHANNELS from selected autopilot: ${if (check.freshRcChannels) "FRESH" else "NOT CONFIRMED"}",
                 Modifier.testTag("classic-check-rc-status"))
+            check.streamDiagnosis?.let { diagnosis ->
+                ClassicStreamDiagnosisBlock(diagnosis)
+            }
             Text(guidance, Modifier.testTag("classic-check-guidance"))
             Text("RC receipt does not prove stick movement, SBUS wiring, neutral position or safe control.",
                 style = MaterialTheme.typography.bodySmall)
             Text("5-second display window · receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.",
                 style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+/** Diagnostic copy is intentionally narrower than a hardware diagnosis. */
+@Composable
+private fun ClassicStreamDiagnosisBlock(diagnosis: ClassicStreamDiagnosis) {
+    val (title, detail) = when (diagnosis) {
+        ClassicStreamDiagnosis.NO_MAVLINK_START_BYTES ->
+            "NO MAVLINK START-BYTE CANDIDATES" to
+                "Bytes are arriving, but none is 0xFE or 0xFD. First rule out a non-MAVLink data source, the wrong R12 UART, or incompatible serial forwarding. This does not prove a wiring fault."
+        ClassicStreamDiagnosis.REJECTED_FRAME_CANDIDATES ->
+            "MAVLINK-LIKE BYTES REJECTED" to
+                "Start-byte candidates and CRC/payload rejections were seen. Compare Cube and R12 protocol/baud in read-only views, then inspect TX, RX and GND with power off. This cannot distinguish baud mismatch, wrong UART, crossed wires or electrical noise."
+        ClassicStreamDiagnosis.UNVERIFIED_UNSUPPORTED_CANDIDATES ->
+            "UNVERIFIED UNSUPPORTED-ID CANDIDATES" to
+                "Some byte patterns look like unsupported MAVLink IDs, but no supported checksum-validated message was decoded. Confirm the telemetry route and serial format before changing any setting."
+        ClassicStreamDiagnosis.NO_VALIDATED_SUPPORTED_FRAME ->
+            "NO VALIDATED SUPPORTED FRAME" to
+                "Bytes are arriving, but the app has no supported checksum-validated MAVLink frame. Check the telemetry route and serial format; this result cannot identify the failing physical hop."
+    }
+    OutlinedCard(Modifier.fillMaxWidth().testTag("classic-stream-diagnosis")) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("STREAM DIAGNOSIS", style = MaterialTheme.typography.labelLarge)
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(detail)
         }
     }
 }

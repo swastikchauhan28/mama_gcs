@@ -2,6 +2,31 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-22 — Phase 48 Classic telemetry-stream diagnosis
+
+### Done
+
+- Added a read-only diagnosis card to **Application settings → Bluetooth / HC-05** only for fresh Classic bytes with no supported validated MAVLink. Existing counters select one bounded category: no MAVLink start-byte candidates, rejected frame candidates, unverified unsupported-ID candidates or no more-specific validated-frame evidence. It names a safe next check but explicitly cannot determine wrong baud, R12 UART, TX/RX, noise or any physical cause. See [Phase 48](phase-48-report.md) and [decision D-048-01](DECISIONS.md#d-048-01-classify-undecoded-classic-receive-evidence-without-identifying-a-physical-fault).
+- Fresh verification on 22 October: `:app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --no-daemon --max-workers=1 --console=plain` passed in 7m57s. XML reports 383 JVM tests across 63 suites, 0 failures/errors/skips; both APKs compiled; lint reports 0 errors/32 warnings. The synthetic Android UI test compiled but did not execute because no verified disposable device was available in this session.
+- Updated the hardware record with a user-supplied 21 October Mission Planner live readback: current `SERIAL2_PROTOCOL=2` and `SERIAL2_BAUD=57` (MAVLink 2 / 57600). The older accepted `.param` file differs and must not be written to the Cube as a reconciliation step.
+
+### In progress
+
+- Hardware acceptance remains blocked on the receiver side: identify the R12 UART carrying the Cube TELEM2 route, TX/RX/GND continuity, and its serial forwarding configuration. Current Classic bytes have not produced a supported MAVLink message, Cube heartbeat or RC sample.
+
+### Broken or risky
+
+- The Phase 48 diagnosis is a UI interpretation of existing counters, not a test of wiring, receiver configuration, baud, electrical signal quality, radio forwarding, Cube identity or safe operation. Movement, arming and app emergency-stop commands remain unavailable.
+- Android visual acceptance for this new card remains open. The known disposable-emulator/System UI ANR history is unchanged; do not use a populated phone as an instrumented test fixture or dismiss an ANR to obtain a pass.
+
+### Next
+
+- Run the focused `ClassicConnectionCheckUiTest` on a healthy verified disposable emulator, inspect the diagnosis card in light/dark themes and record post-run Android health. Separately, after the R12 details are established with a secured read-only procedure, repeat the Classic receive test and require supported decoded MAVLink, a selected-autopilot heartbeat and fresh `RC_CHANNELS`.
+
+### Do not touch
+
+- Do not write Cube parameters, infer receiver pinout from wire colors, disconnect/reconnect live wiring, move sticks, arm, or issue vehicle commands. Preserve the older parameter export and historical bench evidence.
+
 ## 2026-10-21 — physical Classic telemetry follow-up
 
 ### Done
@@ -12,7 +37,7 @@ Read this first, then the [project instructions](../AGENTS.md). Keep the newest 
 ### In progress
 
 - Hardware person to identify whether the TELEM2 cable uses R12 UART1 or UART2 and verify TX↔RX, RX↔TX and GND wiring with power off. No physical pin order is inferred from wire color or the label.
-- Resolve the configuration discrepancy read-only: the accepted parameter export records `SERIAL2_PROTOCOL=11` and `SERIAL2_BAUD=256`, while a prior Mission Planner observation was recorded as SERIAL2 MAVLink2/57600. Do not change parameters until the hardware owner reconciles the sources.
+- The live Cube `SERIAL2_PROTOCOL=2` / `SERIAL2_BAUD=57` readback is recorded in the current hardware record. Preserve the different older parameter file, but do not write it to the Cube.
 
 ### Broken or risky
 

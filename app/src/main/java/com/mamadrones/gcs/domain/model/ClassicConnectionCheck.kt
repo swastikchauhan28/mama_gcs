@@ -5,6 +5,29 @@ enum class ClassicCheckStage {
     WAITING_MAVLINK, WAITING_HEARTBEAT, WAITING_MEASUREMENTS, RECEIVING,
 }
 
+/**
+ * Bounded interpretation of current-session decoder counters while bytes are fresh but no
+ * supported MAVLink message has validated. It identifies no physical fault or configuration.
+ */
+enum class ClassicStreamDiagnosis {
+    NO_MAVLINK_START_BYTES,
+    REJECTED_FRAME_CANDIDATES,
+    UNVERIFIED_UNSUPPORTED_CANDIDATES,
+    NO_VALIDATED_SUPPORTED_FRAME;
+
+    companion object {
+        fun from(diagnostics: MavlinkDiagnostics): ClassicStreamDiagnosis = when {
+            diagnostics.checksumFailures > 0 || diagnostics.malformedPayloads > 0 ->
+                REJECTED_FRAME_CANDIDATES
+            diagnostics.mavlinkV1StartBytes + diagnostics.mavlinkV2StartBytes == 0L ->
+                NO_MAVLINK_START_BYTES
+            diagnostics.unsupportedMessages > 0 || diagnostics.unsupportedFlags > 0 ->
+                UNVERIFIED_UNSUPPORTED_CANDIDATES
+            else -> NO_VALIDATED_SUPPORTED_FRAME
+        }
+    }
+}
+
 data class ClassicConnectionAssessment(
     val stage: ClassicCheckStage,
     val socketOpen: Boolean = false,
@@ -13,6 +36,7 @@ data class ClassicConnectionAssessment(
     val measurementMessages: List<String> = emptyList(),
     val freshDecodedMessage: Boolean = false,
     val freshRcChannels: Boolean = false,
+    val streamDiagnosis: ClassicStreamDiagnosis? = null,
 )
 
 /** Receive evidence only. Never authenticates the rover or grants permission to command it. */
@@ -46,7 +70,8 @@ object ClassicConnectionCheck {
         }
         if (!decoded) {
             return ClassicConnectionAssessment(ClassicCheckStage.WAITING_MAVLINK,
-                socketOpen = true, freshBytes = true)
+                socketOpen = true, freshBytes = true,
+                streamDiagnosis = ClassicStreamDiagnosis.from(diagnostics))
         }
         val acceptedHeartbeat = diagnostics.messageObservations.any {
             it.type == ObservedMavlinkMessage.HEARTBEAT && it.accepted > 0 &&

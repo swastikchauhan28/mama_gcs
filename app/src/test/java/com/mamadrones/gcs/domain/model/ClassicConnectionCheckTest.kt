@@ -82,6 +82,22 @@ class ClassicConnectionCheckTest {
         assertEquals(ClassicCheckStage.WAITING_MAVLINK, result.stage)
         assertTrue(result.socketOpen && result.freshBytes)
         assertFalse(result.freshDecodedMessage || result.freshHeartbeat)
+        assertEquals(ClassicStreamDiagnosis.REJECTED_FRAME_CANDIDATES, result.streamDiagnosis)
+    }
+    @Test fun undecodedClassicCountersUseOnlyBoundedEvidencePatterns() {
+        fun diagnosisFor(diagnostics: MavlinkDiagnostics): ClassicStreamDiagnosis? = assess(
+            vehicle.copy(mavlinkDiagnostics = diagnostics.copy(
+                decodedMessages = 0, messageObservations = emptyList()))).streamDiagnosis
+
+        assertEquals(ClassicStreamDiagnosis.NO_MAVLINK_START_BYTES,
+            diagnosisFor(diagnostics.copy(mavlinkV1StartBytes = 0, mavlinkV2StartBytes = 0)))
+        assertEquals(ClassicStreamDiagnosis.REJECTED_FRAME_CANDIDATES,
+            diagnosisFor(diagnostics.copy(mavlinkV1StartBytes = 2, checksumFailures = 1,
+                unsupportedMessages = 9)))
+        assertEquals(ClassicStreamDiagnosis.UNVERIFIED_UNSUPPORTED_CANDIDATES,
+            diagnosisFor(diagnostics.copy(mavlinkV2StartBytes = 2, unsupportedMessages = 1)))
+        assertEquals(ClassicStreamDiagnosis.NO_VALIDATED_SUPPORTED_FRAME,
+            diagnosisFor(diagnostics.copy(mavlinkV1StartBytes = 2)))
     }
     @Test fun staleOrOutOfSessionDecodeDoesNotBecomeCurrentMavlinkEvidence() {
         listOf(null, 9_999L, now - 5_001, now + 1).forEach { time ->

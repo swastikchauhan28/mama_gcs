@@ -2,6 +2,21 @@
 
 Record consequential choices before implementing them. Keep dated corrections; do not rewrite earlier outcomes. Existing phase reports remain the historical record. This file starts with Phase 44 and does not invent the reasoning behind earlier designs.
 
+## D-048-01: Classify undecoded Classic receive evidence without identifying a physical fault
+
+- Date: 2026-10-22.
+- Status: approved by the user for Phase 48 before implementation; verification belongs in the phase report.
+- AI model/version: exact runtime identifier unavailable.
+- Baseline: `ad895537f27893465d566260f27a06dc23a4e7db` on clean `main`.
+- Context: the current T12/R12/Cube bench session has fresh Classic bytes and MAVLink-like start-byte candidates but zero supported decoded messages plus checksum failures. Existing decoder counters are accurate but require the operator to interpret several values before deciding what evidence to obtain next.
+- Alternatives: (1) leave the existing counters and provide hardware advice only in chat; (2) assert a likely baud, UART or wiring fault from counter patterns; (3) classify only the observable byte/frame evidence and show a bounded next safe check plus the ambiguity that remains.
+- Choice: option 3. Add a pure, session-local diagnosis category for the existing `WAITING_MAVLINK` Classic stage and render explicit diagnostic copy in the existing panel. No transport, parser, source selection, persistence, parameter, permission or command behavior changes.
+- Reason: make the current failure actionable while preserving the distinction between received bytes, validated MAVLink and physical wiring/configuration evidence.
+- Trade-off: counters cannot distinguish wrong baud, wrong receiver UART, TX/RX crossover, power/ground continuity, radio bridge configuration, electrical noise or unsupported protocol. The app must not select one as the cause.
+- Verification: unit tests for deterministic pattern classification and UI text, full build/JVM/lint checks, and a focused disposable-emulator visual check only if the emulator is healthy. No phone/vehicle test or hardware change is part of this phase.
+- Rollback: remove the classifier and panel block as one cohesive UI-only change after review; no data migration, local setting or hardware configuration is involved.
+- Revisit if: a validated hardware capture shows that the labels are misleading, parser semantics change, or a later approved integration provides authenticated receiver-port metadata.
+
 ## D-047-01: Add plain-language Classic receive status without changing evidence
 
 - Date: 2026-10-21.

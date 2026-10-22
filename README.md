@@ -4,7 +4,11 @@ Native Android ground-control-station foundation for a Mama agricultural UGV: Ar
 
 For hardware discussions, consult the [current hardware record](docs/hardware-integration.md#current-hardware-record--updated-21-october-2026) first. It records the accepted parameter-file baseline, user-reported TELEM2 plus SBUS/RCIN wiring, T12/R12/HC-05 route, confirmed 8 km/h maximum and current undecoded telemetry evidence; do not repeat already answered questions from historical phase reports.
 
-## Current UI change: simpler Classic connection explanation (Phase 47)
+## Current UI change: Classic telemetry-stream diagnosis (Phase 48)
+
+**Application settings → Bluetooth / HC-05** now adds a short stream-diagnosis card only when fresh Classic bytes arrive but no supported MAVLink message validates. It distinguishes no MAVLink start-byte candidates, rejected frame candidates, unverified unsupported-ID candidates, and no more-specific validated-frame evidence. The card names safe next checks and explicitly does not identify a wrong baud, receiver UART, TX/RX wiring or electrical fault. It changes no parser, transport, configuration, persistence or control behavior. See the [Phase 48 report](docs/phase-48-report.md).
+
+## Previous UI change: simpler Classic connection explanation (Phase 47)
 
 **Application settings → Bluetooth / HC-05** now puts a one-sentence plain-language explanation above its detailed receive checklist. It uses the existing connection stage only and does not change telemetry decoding, hardware settings or control availability. The [Phase 47 report](docs/phase-47-report.md) records fresh JVM/build/lint checks and the still-pending visual run after a disposable emulator System UI ANR. Hardware acceptance is also pending.
 
