@@ -2,6 +2,52 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-23 — T12 radio-status comparison
+
+### Done
+
+- Reconciled the 22 October QGroundControl and Mama GCS screenshots in the [hardware record](hardware-integration.md#23-october-2026--phone-side-comparison-and-next-isolation-test). QGC parsed `RADIO_STATUS (109)` from component 68 on the tested Bluetooth link; the operator did not see a Cube `HEARTBEAT (0)`. Mama GCS's separate Classic session had 126,757 bytes but zero supported decoded messages. Its parser intentionally does not decode `RADIO_STATUS`, so those results are compatible and do not identify a failed hardware hop.
+- Recorded the operator's R12 UART2, crossed TX/RX, 57,600 baud and forwarding reports as reports, alongside the earlier live Cube SERIAL2 readback. No app or hardware behavior changed.
+
+### In progress
+
+- Localize where Cube-origin heartbeat stops using a secured read-only comparison at Cube TELEM2, R12 UART2 and the phone-side T12 Bluetooth link. Phase 49 emulator visual acceptance remains open separately.
+
+### Broken or risky
+
+- QGC radio-status reception establishes a radio message, not Cube liveness. Raw start-byte and checksum counters are not validated packet-loss or fault-location measurements. No physical telemetry or control acceptance is established.
+
+### Next
+
+- Ask the hardware team for a bounded same-setup heartbeat trace with source IDs at each hop. If QGC receives a Cube heartbeat on the same Bluetooth path while Mama GCS does not, inspect app transport/parser/source filtering. A later approved app phase may add validated, radio-only `RADIO_STATUS` visibility without satisfying Cube heartbeat gates.
+
+### Do not touch
+
+- Preserve existing Phase 49 documentation edits and historical evidence. Do not change Cube/radio parameters or wiring, run actuator commands, or treat a radio message as an authenticated vehicle.
+
+## 2026-10-22 — Phase 49 visual acceptance attempt
+
+### Done
+
+- Attempted the approved disposable-emulator visual acceptance for the Phase 48 Classic stream diagnosis. Existing debug and Android-test APKs were available.
+- ADB could not start its server and listed no emulator/device, so no APK was installed and no synthetic UI or physical-phone test was run. See [Phase 49](phase-49-report.md).
+
+### In progress
+
+- Phase 49 remains open pending a healthy disposable emulator and functioning ADB server.
+
+### Broken or risky
+
+- This is an environment block, not visual acceptance. Do not claim the diagnosis card passed screenshot review. Do not dismiss Android ANRs or use the populated phone as a software fixture.
+
+### Next
+
+- Repair/start the disposable emulator and ADB server, then run `ClassicConnectionCheckUiTest` with pre/post Android health checks and inspect light/dark captures.
+
+### Do not touch
+
+- Do not alter Cube/R12/T12 wiring or parameters, operate the rover, clear app data, or use the physical phone for instrumentation.
+
 ## 2026-10-22 — Phase 48 Classic telemetry-stream diagnosis
 
 ### Done
