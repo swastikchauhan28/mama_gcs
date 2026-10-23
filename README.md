@@ -4,6 +4,10 @@ Native Android ground-control-station foundation for a Mama agricultural UGV: Ar
 
 For hardware discussions, consult the [current hardware record](docs/hardware-integration.md#current-hardware-record--updated-21-october-2026) first. It records the accepted parameter-file baseline, user-reported TELEM2 plus SBUS/RCIN wiring, T12/R12/HC-05 route, confirmed 8 km/h maximum and current undecoded telemetry evidence; do not repeat already answered questions from historical phase reports.
 
+## Current uncommitted change: home-marker legibility (Phases 52–53)
+
+The offline map's local H icon was enlarged and its Android test now checks rendered purple/white marker pixels, not only map-layer presence. JVM/build/lint checks passed in Phase 52; the focused Android test and visual screenshot review subsequently passed on a disposable offline-map emulator in [Phase 53](docs/phase-53-report.md). Earlier emulator System UI failures remain recorded. No telemetry or control behavior changed. See [Phase 52](docs/phase-52-report.md).
+
 ## Current change: software-only lint cleanup (Phase 51)
 
 Four source-level lint findings were fixed without changing runtime data flow: Compose optional `modifier` order on three screens and use of the existing KTX bitmap helper for the home marker. Fresh lint fell from 32 to 28 warnings with no errors; dependency/toolchain and permission/debug-config warnings remain for separate review. See [Phase 51](docs/phase-51-report.md). The physical Cube heartbeat path is still unresolved.

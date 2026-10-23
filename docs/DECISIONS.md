@@ -2,6 +2,17 @@
 
 Record consequential choices before implementing them. Keep dated corrections; do not rewrite earlier outcomes. Existing phase reports remain the historical record. This file starts with Phase 44 and does not invent the reasoning behind earlier designs.
 
+## D-052-01: Verify home-marker pixels before changing its renderer
+
+- Date: 2026-10-23. Status: drafted before Phase 52 code edits; the user approved a bounded home-marker visual investigation and small fix if needed. Exact AI model/version unavailable.
+- Baseline: clean `main` at `0917dab5d934576a10a3e55d8fc8b4c128d5bd95`.
+- Context: the Phase 51 offline-map capture shows the purple home circle but no discernible white H. The test checks layer/source presence and freshness, not rendered H pixels. The bitmap icon and symbol layer are in-memory map-style data; they do not affect telemetry or persistence.
+- Alternatives: accept layer presence as sufficient, switch to a basemap text glyph, replace the marker renderer, or add a pixel-level offline-map check and enlarge the existing local icon. Choose the last option. A basemap glyph would add remote-font dependence; a renderer replacement is disproportionate while the existing icon path can be checked.
+- Risk/trade-off: a larger H could crowd the home circle at some densities; pixel tests must check both purple marker and white center, and the screenshot still needs visual review. Emulator System UI ANRs may prevent physical rendering acceptance even when a test APK builds; do not substitute an earlier weaker test result. Keep marker visibility/freshness tests. If the icon path remains unreliable, prefer a local self-contained marker instead of weakening the assertion.
+- Verification: focused disposable-emulator map test, screenshot inspection, JVM/build/lint checks, and review that command/telemetry/hardware paths stay untouched. No owner/physical acceptance is implied.
+- Rollback: review and reverse only the Phase 52 map/test/documentation diff if needed; no schema, app-data or hardware migration.
+- 2026-10-23 follow-up: [Phase 53](phase-53-report.md) passed the unchanged focused disposable-emulator pixel/expiry test and visually confirmed a legible H. This closes the narrow fixture visual gate, not the hardware or release gates; earlier Android ANRs remain recorded.
+
 ## D-051-01: Fix narrow source lint warnings without changing behavior
 
 - Date: 2026-10-23.

@@ -564,7 +564,8 @@ private fun installVehicleLayers(style: Style) {
         }
         style.addImage("mama-home-icon", homeIcon)
         style.addLayer(SymbolLayer("mama-home-label", HOME_SOURCE_ID).withProperties(
-            iconImage("mama-home-icon"), iconSize(0.5f),
+            // Keep the locally drawn H legible inside the home circle at handset density.
+            iconImage("mama-home-icon"), iconSize(1f),
             iconAllowOverlap(true), iconIgnorePlacement(true)))
     }
     if (style.getSource(TRACK_SOURCE_ID) == null) {

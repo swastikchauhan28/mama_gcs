@@ -21,6 +21,7 @@ import org.maplibre.geojson.Point
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.roundToInt
 
 /** Actual SDK load callbacks using disposable local styles; no provider key or network required. */
 class MapLoadRecoveryTest {
@@ -47,13 +48,54 @@ class MapLoadRecoveryTest {
                 state.value = state.value.copy(lastHeartbeatAtEpochMillis = System.currentTimeMillis())
                 assertNotNull(HomePositionEvidence.visibleOnMap(state.value, System.currentTimeMillis()))
             }
-            compose.runOnIdle { map.triggerRepaint() }
+            val renderedFrames = AtomicInteger()
+            val frameListener = MapView.OnDidFinishRenderingFrameListener { _, _, _ -> renderedFrames.incrementAndGet() }
+            lateinit var mapView: MapView
+            compose.runOnIdle {
+                mapView = requireNotNull(findMap(compose.activity.window.decorView))
+                mapView.addOnDidFinishRenderingFrameListener(frameListener)
+                map.triggerRepaint()
+            }
+            try {
+                compose.waitUntil(5_000) { renderedFrames.get() >= 1 }
+                compose.runOnIdle { map.triggerRepaint() }
+                compose.waitUntil(5_000) { renderedFrames.get() >= 2 }
+            } finally {
+                compose.runOnIdle { mapView.removeOnDidFinishRenderingFrameListener(frameListener) }
+            }
             val screenshot = requireNotNull(androidx.test.platform.app.InstrumentationRegistry
                 .getInstrumentation().uiAutomation.takeScreenshot())
             try {
-                File(compose.activity.getExternalFilesDir(null), "phase51-home-marker.png").outputStream().use {
+                File(compose.activity.getExternalFilesDir(null), "phase52-home-marker.png").outputStream().use {
                     assertTrue(screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
                 }
+                var centerX = 0
+                var centerY = 0
+                compose.runOnIdle {
+                    val view = requireNotNull(findMap(compose.activity.window.decorView))
+                    val location = IntArray(2)
+                    view.getLocationOnScreen(location)
+                    val home = map.projection.toScreenLocation(org.maplibre.android.geometry.LatLng(-35.3631, 149.1651))
+                    centerX = (location[0] + home.x).roundToInt()
+                    centerY = (location[1] + home.y).roundToInt()
+                }
+                // The map source/layer can exist while its actual H icon is still invisible.
+                // Sample only the center, far inside the white circle border and away from the vehicle.
+                var whiteCenterPixels = 0
+                var purpleCenterPixels = 0
+                for (dy in -7..7) for (dx in -7..7) {
+                    val pixel = screenshot.getPixel(centerX + dx, centerY + dy)
+                    if (android.graphics.Color.red(pixel) >= 220 &&
+                        android.graphics.Color.green(pixel) >= 220 &&
+                        android.graphics.Color.blue(pixel) >= 220) whiteCenterPixels++
+                    if (kotlin.math.abs(android.graphics.Color.red(pixel) - 114) <= 20 &&
+                        kotlin.math.abs(android.graphics.Color.green(pixel) - 74) <= 20 &&
+                        kotlin.math.abs(android.graphics.Color.blue(pixel) - 200) <= 20) purpleCenterPixels++
+                }
+                assertTrue("Projected home is not the purple marker: $purpleCenterPixels purple pixels at $centerX,$centerY",
+                    purpleCenterPixels >= 10)
+                assertTrue("Home H is not visible at $centerX,$centerY: $whiteCenterPixels white pixels",
+                    whiteCenterPixels >= 3)
             } finally { screenshot.recycle() }
             awaitPosition(map, -35.363)
             compose.runOnIdle {

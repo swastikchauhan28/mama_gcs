@@ -2,6 +2,72 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-23 — Phase 53 home-marker visual gate accepted on disposable emulator
+
+### Done
+
+- The focused Phase 52 home-marker Android test passed `OK (1 test)` on the disposable Android 34 emulator from the moved Desktop checkout. Its synthetic screenshot was visually inspected: a white H is legible on the purple home marker, separate from the green vehicle point. Post-test Android had no ANR/error dialog. See [Phase 53](phase-53-report.md) for the exact command and ignored evidence paths.
+
+### In progress
+
+- Physical Cube-origin heartbeat localization and independent owner/release gates remain open. The Phase 52/53 changes are uncommitted; no commit or push was requested.
+
+### Broken or risky
+
+- Earlier Android System UI ANRs remain recorded. This one offline fixture at one emulator size does not prove appearance across devices, live telemetry or physical safety. The H nearly reaches the purple circle edge. The original checkout was moved to `C:\Users\swastik\OneDrive\Desktop\mama_gcs`; untracked `desktop.ini` was not touched.
+
+### Next
+
+- Keep the monitoring-only boundary. Await the hardware team's secured Cube-heartbeat trace; before any release, complete independent owner review, recovery and physical acceptance. If the home marker is revised further, rerun its pixel/expiry test and inspect a new screenshot.
+
+### Do not touch
+
+- Do not infer hardware acceptance from the emulator, change Cube/radio settings, enable vehicle commands, clear a populated app, or commit/push without a separate request.
+
+## 2026-10-23 — Phase 52 visual-gate completion attempt, emulator blocked
+
+### Done
+
+- Retried the focused home-marker acceptance on the disposable Android 34 emulator. The first boot showed an Android System UI ANR; the second did not complete Android boot. Post-run file timestamps indicate the second boot's `-wipe-data` reset the **disposable AVD's** data despite a separate `-datadir` argument. Neither task-started emulator dismissed an ANR. See the [Phase 52 follow-up](phase-52-report.md#23-october-follow-up--requested-visual-gate-completion-attempt).
+
+### In progress
+
+- The post-change purple-plus-white pixel test and screenshot visual review remain unrun; the Phase 52 icon-size change is still provisional. Hardware-team Cube-heartbeat localization and owner/release gates remain open.
+
+### Broken or risky
+
+- The disposable emulator is currently not a healthy UI-test environment; its data may have been reset by the second boot. Existing JVM/build/lint results do not prove a rendered H, and the earlier weaker UI pass predates the change. No physical hardware or operator phone was tested.
+
+### Next
+
+- Restore a healthy disposable emulator, then run only the focused home-marker test and inspect its synthetic screenshot. If the H fails, investigate the MapLibre symbol path without relaxing assertions.
+
+### Do not touch
+
+- Do not dismiss Android ANRs, repeat the `-datadir`/`-wipe-data` combination without verifying its effect, clear a populated app, use a physical phone as a substitute, change hardware settings or enable controls. Do not commit/push without a separate request.
+
+## 2026-10-23 — Phase 52 home-marker legibility, visual acceptance pending
+
+### Done
+
+- Enlarged the local in-memory H icon on the offline map and added a focused Android assertion for both purple marker and white center pixels. The prior Phase 51 screenshot showed a purple point but no discernible H. Fresh post-source-change JVM/build/lint checks passed: 389/389 JVM tests, both debug APKs built, lint 0 errors/28 warnings. See [Phase 52](phase-52-report.md).
+
+### In progress
+
+- Post-change pixel test and screenshot visual review remain unaccepted. The disposable emulator repeatedly showed an Android System UI ANR before that test could start; no dialog was dismissed. Hardware-team Cube-origin heartbeat localization and owner/release review remain open.
+
+### Broken or risky
+
+- The H-size adjustment is provisional until rendered on a healthy emulator. A pre-change, weaker white-pixel test passed once, but its screenshot was unavailable afterward and it did not verify purple pixels. It cannot establish post-change visual acceptance. The 28 lint warnings remain. No physical hardware was tested.
+
+### Next
+
+- Run the focused Phase 52 offline-map test on a healthy disposable emulator, inspect its screenshot for H legibility at the purple home point and verify freshness removal. If the icon is still absent, diagnose MapLibre symbol rendering without relaxing the test. Independently await the hardware team's secured heartbeat trace.
+
+### Do not touch
+
+- Do not bypass/dismiss an emulator ANR, use a populated phone as a test substitute, alter Cube/radio wiring or settings, or enable vehicle commands. Do not commit/push without a separate request.
+
 ## 2026-10-23 — Phase 51 software-only lint cleanup
 
 ### Done
