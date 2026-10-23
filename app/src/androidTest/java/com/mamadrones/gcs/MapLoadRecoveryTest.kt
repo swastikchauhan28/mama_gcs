@@ -47,6 +47,14 @@ class MapLoadRecoveryTest {
                 state.value = state.value.copy(lastHeartbeatAtEpochMillis = System.currentTimeMillis())
                 assertNotNull(HomePositionEvidence.visibleOnMap(state.value, System.currentTimeMillis()))
             }
+            compose.runOnIdle { map.triggerRepaint() }
+            val screenshot = requireNotNull(androidx.test.platform.app.InstrumentationRegistry
+                .getInstrumentation().uiAutomation.takeScreenshot())
+            try {
+                File(compose.activity.getExternalFilesDir(null), "phase51-home-marker.png").outputStream().use {
+                    assertTrue(screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+                }
+            } finally { screenshot.recycle() }
             awaitPosition(map, -35.363)
             compose.runOnIdle {
                 assertNotNull(map.style!!.getLayer("mama-home-marker"))

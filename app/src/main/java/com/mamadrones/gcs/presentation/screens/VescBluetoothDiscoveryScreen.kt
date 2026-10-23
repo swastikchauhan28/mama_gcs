@@ -60,6 +60,7 @@ import java.util.Locale
 
 @Composable
 fun VescBluetoothDiscoveryScreen(
+    modifier: Modifier = Modifier,
     state: VescDiscoveryUiState = VescDiscoveryUiState(),
     onStartScan: () -> Unit = {},
     onStopScan: () -> Unit = {},
@@ -73,7 +74,6 @@ fun VescBluetoothDiscoveryScreen(
     udpLinkOpen: Boolean = false,
     vehicleConnection: VehicleConnectionState = VehicleConnectionState.DISCONNECTED,
     diagnostics: MavlinkDiagnostics = MavlinkDiagnostics(),
-    modifier: Modifier = Modifier,
     reportControls: @Composable () -> Unit = {},
     lastHeartbeatAtEpochMillis: Long? = null,
     profileControls: @Composable () -> Unit = {},

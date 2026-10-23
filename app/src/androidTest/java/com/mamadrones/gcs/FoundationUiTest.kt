@@ -99,7 +99,7 @@ class FoundationUiTest {
     @Test fun bleSubscriptionDoesNotClaimBytesOrEnableAnotherSubscription() {
         compose.setContent {
             MamaGcsTheme(ThemeMode.DARK) {
-                VescBluetoothDiscoveryScreen(VescDiscoveryUiState(gattConnected = true,
+                VescBluetoothDiscoveryScreen(state = VescDiscoveryUiState(gattConnected = true,
                     selectedDeviceName = "Test radio", receivingFrom = bleCharacteristic,
                     notifyCharacteristics = listOf(bleCharacteristic, bleCharacteristic.copy(characteristicUuid = "other"))))
             }
@@ -112,7 +112,7 @@ class FoundationUiTest {
         var cancelled = false
         compose.setContent {
             MamaGcsTheme(ThemeMode.DARK) {
-                VescBluetoothDiscoveryScreen(VescDiscoveryUiState(gattConnecting = true),
+                VescBluetoothDiscoveryScreen(state = VescDiscoveryUiState(gattConnecting = true),
                     onDisconnectGatt = { cancelled = true })
             }
         }

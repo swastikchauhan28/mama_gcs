@@ -28,7 +28,7 @@ import com.mamadrones.gcs.presentation.map.VehicleMap
 import com.mamadrones.gcs.presentation.settings.ConnectionUiState
 
 @Composable
-fun MapScreen(state: VehicleState, onNavigate: (String) -> Unit = {}, modifier: Modifier = Modifier) =
+fun MapScreen(state: VehicleState, modifier: Modifier = Modifier, onNavigate: (String) -> Unit = {}) =
     DashboardScreen(state, onNavigate, modifier)
 
 @Composable

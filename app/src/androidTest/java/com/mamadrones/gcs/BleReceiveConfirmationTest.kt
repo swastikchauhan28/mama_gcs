@@ -28,7 +28,7 @@ class BleReceiveConfirmationTest {
     @Test fun selectingAndCancellingNeverStartsReceive() {
         var calls = 0
         compose.setContent { MamaGcsTheme(ThemeMode.DARK) {
-            VescBluetoothDiscoveryScreen(connected, onStartMavlinkReceive = { calls++ })
+            VescBluetoothDiscoveryScreen(state = connected, onStartMavlinkReceive = { calls++ })
         } }
         openSelection()
         compose.onNodeWithText("Confirm BLE telemetry receive").assertIsDisplayed()
@@ -41,7 +41,7 @@ class BleReceiveConfirmationTest {
     @Test fun explicitConfirmationDispatchesExactConnectionAndCharacteristicOnce() {
         val requests = mutableListOf<BleReceiveSelection>()
         compose.setContent { MamaGcsTheme(ThemeMode.DARK) {
-            VescBluetoothDiscoveryScreen(connected, onStartMavlinkReceive = { requests.add(it) })
+            VescBluetoothDiscoveryScreen(state = connected, onStartMavlinkReceive = { requests.add(it) })
         } }
         openSelection()
         compose.onNodeWithText("Instances: 2/3").assertExists()
@@ -63,7 +63,7 @@ class BleReceiveConfirmationTest {
         val competing = mutableStateOf(false)
         var calls = 0
         compose.setContent { MamaGcsTheme(ThemeMode.DARK) {
-            VescBluetoothDiscoveryScreen(state.value, onStartMavlinkReceive = { calls++ }, udpLinkOpen = competing.value)
+            VescBluetoothDiscoveryScreen(state = state.value, onStartMavlinkReceive = { calls++ }, udpLinkOpen = competing.value)
         } }
         listOf(connected.copy(gattConnected = false), connected.copy(successfulConnections = 5),
             connected.copy(notifyCharacteristics = emptyList()), connected.copy(subscribing = true),
@@ -85,7 +85,7 @@ class BleReceiveConfirmationTest {
     @Test fun leavingForegroundDiscardsPendingSelection() {
         var calls = 0
         compose.setContent { MamaGcsTheme(ThemeMode.DARK) {
-            VescBluetoothDiscoveryScreen(connected, onStartMavlinkReceive = { calls++ })
+            VescBluetoothDiscoveryScreen(state = connected, onStartMavlinkReceive = { calls++ })
         } }
         openSelection()
         compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
@@ -96,7 +96,7 @@ class BleReceiveConfirmationTest {
 
     @Test fun unknownConnectionNumberCannotSelectReceive() {
         compose.setContent { MamaGcsTheme(ThemeMode.DARK) {
-            VescBluetoothDiscoveryScreen(connected.copy(successfulConnections = 0))
+            VescBluetoothDiscoveryScreen(state = connected.copy(successfulConnections = 0))
         } }
         awaitScreen()
         compose.onNodeWithTag("ble-receive-${characteristic.characteristicUuid}").performScrollTo().assertIsNotEnabled()

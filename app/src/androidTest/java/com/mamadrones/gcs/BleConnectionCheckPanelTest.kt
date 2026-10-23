@@ -22,7 +22,7 @@ class BleConnectionCheckPanelTest {
 
     @Test fun remoteOnlyScreenExplainsWhatCanBeTestedWithoutCube() {
         compose.setContent { MaterialTheme {
-            VescBluetoothDiscoveryScreen(VescDiscoveryUiState(gattConnected = true,
+            VescBluetoothDiscoveryScreen(state = VescDiscoveryUiState(gattConnected = true,
                 notifyCharacteristics = listOf(BleNotifyCharacteristic("service", "characteristic", false))))
         } }
         awaitPanel()

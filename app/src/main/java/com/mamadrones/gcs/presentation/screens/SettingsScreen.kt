@@ -26,6 +26,7 @@ enum class SettingsSection { ALL, GENERAL, LINK }
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
+    modifier: Modifier = Modifier,
     connection: ConnectionUiState = ConnectionUiState(),
     onThemeSelected: (ThemeMode) -> Unit,
     onRemoteHostChanged: (String) -> Unit = {},
@@ -36,7 +37,6 @@ fun SettingsScreen(
     onCloseSocket: () -> Unit = {},
     onClearEndpoint: () -> Unit = {},
     bleLinkOpen: Boolean = false,
-    modifier: Modifier = Modifier,
     section: SettingsSection = SettingsSection.ALL,
 ) = ScreenBody(modifier) {
     ScreenHeader(if (section == SettingsSection.LINK) "Communication link" else "General settings",

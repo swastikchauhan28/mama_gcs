@@ -82,7 +82,7 @@ fun MamaGcsApp(
     StationShell(vehicle, route, navigate, onVehicleDetails = { showVehicles = true }) {
                     NavHost(navController, startDestination = AppDestination.DASHBOARD.route, modifier = Modifier.fillMaxSize()) {
                         composable("dashboard") { DashboardScreen(vehicle, navigate) }
-                        composable("map") { MapScreen(vehicle, navigate) }
+                        composable("map") { MapScreen(vehicle, onNavigate = navigate) }
                         composable("control") { ControlScreen(vehicle) }
                         composable("mission") { MissionScreen(vehicle, missionPlan, onMissionAction) }
                         composable("more") { MoreScreen(vehicle, onNavigate = navigate) }

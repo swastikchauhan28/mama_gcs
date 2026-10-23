@@ -2,6 +2,28 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-23 — Phase 51 software-only lint cleanup
+
+### Done
+
+- Audited the prior 32 lint warnings and removed four source-level warnings through Compose optional-`modifier` ordering and the existing KTX bitmap helper. Fresh lint: 0 errors/28 warnings; fresh JVM: 389/389 passed; debug and Android-test APKs built. Focused read-only-emulator UI batches passed 9/9, 23/23 and 1/1. See [Phase 51](phase-51-report.md) for exact commands, warning categories and ignored evidence paths.
+
+### In progress
+
+- Hardware-team Cube-origin heartbeat localization, remaining lint disposition and independent owner/release review remain open.
+
+### Broken or risky
+
+- The local-style map screenshot shows the purple home point, but the small white H glyph is not discernible, so that visual detail is not accepted. The 28 remaining warnings include dependency/toolchain version notices and two policy/configuration warnings. None was suppressed. No physical hardware was tested.
+
+### Next
+
+- If UI polish is pursued, investigate the H glyph with a targeted visual test; otherwise await the hardware team's secured read-only heartbeat trace before repeating a phone-side telemetry check.
+
+### Do not touch
+
+- Do not upgrade dependencies, change Bluetooth permission/orientation policy, touch Cube/radio settings or wiring, or enable vehicle commands as part of lint cleanup. Do not commit/push without a separate request.
+
 ## 2026-10-23 — Phase 50 radio-status diagnostics
 
 ### Done

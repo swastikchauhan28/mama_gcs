@@ -2,6 +2,16 @@
 
 Record consequential choices before implementing them. Keep dated corrections; do not rewrite earlier outcomes. Existing phase reports remain the historical record. This file starts with Phase 44 and does not invent the reasoning behind earlier designs.
 
+## D-051-01: Fix narrow source lint warnings without changing behavior
+
+- Date: 2026-10-23.
+- Status: drafted before Phase 51 source edits; user approved a software-only lint pass. Exact AI model/version unavailable.
+- Baseline: clean `main` at `2134eb492a636571ce25156e3baa9ebede0cbbc7`.
+- Context: the last lint report has 32 warnings. Most are version notices; three are Compose optional-`modifier` ordering, and one recommends an existing KTX bitmap helper. Hardware diagnosis remains blocked outside this software phase.
+- Alternatives: upgrade dependencies/build tools, suppress warnings, or fix only behavior-preserving source usages. Choose the narrow source fixes; dependency upgrades and manifest/debug orientation policy need separate risk review. Do not suppress lint.
+- Risk/trade-off: reordering public Composable parameters can break positional Kotlin call sites, so update and compile every repo call site. Replacing `Bitmap.createBitmap` with `createBitmap` should preserve dimensions/configuration/drawing, but verify the marker path and targeted UI on a disposable emulator when available.
+- Revisit if: compilation, UI/layout or marker appearance changes, or lint reveals a different warning set on a fresh run. Roll back only this small source/call-site diff after review; no app-data or hardware migration is involved.
+
 ## D-050-01: Decode RADIO_STATUS only into a radio diagnostic channel
 
 - Date: 2026-10-23.

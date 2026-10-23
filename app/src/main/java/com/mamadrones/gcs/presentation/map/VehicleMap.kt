@@ -4,6 +4,7 @@ import android.graphics.Color as AndroidColor
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import androidx.core.graphics.createBitmap
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -552,7 +553,7 @@ private fun installVehicleLayers(style: Style) {
             circleColor(AndroidColor.rgb(114, 74, 200)), circleRadius(14f),
             circleStrokeColor(AndroidColor.WHITE), circleStrokeWidth(2f)))
         // A telemetry marker must not depend on the basemap's remote font/glyph service.
-        val homeIcon = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888).apply {
+        val homeIcon = createBitmap(48, 48, Bitmap.Config.ARGB_8888).apply {
             density = android.util.DisplayMetrics.DENSITY_DEFAULT
             val pen = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = AndroidColor.WHITE; strokeWidth = 4f }
             Canvas(this).apply {

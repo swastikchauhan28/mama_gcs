@@ -18,7 +18,7 @@ class BleStabilityScreenTest {
         val state = mutableStateOf(VescDiscoveryUiState())
         var starts = 0
         compose.setContent { MaterialTheme {
-            VescBluetoothDiscoveryScreen(state.value, onStartStabilityTrial = { starts++ })
+            VescBluetoothDiscoveryScreen(state = state.value, onStartStabilityTrial = { starts++ })
         } }
         awaitContent()
         compose.onNodeWithTag("ble-stability-start").performScrollTo().assertIsNotEnabled()
@@ -34,7 +34,7 @@ class BleStabilityScreenTest {
     @Test fun runningTrialOffersStopAndShowsRemainingTime() {
         var stopped = false
         compose.setContent { MaterialTheme {
-            VescBluetoothDiscoveryScreen(VescDiscoveryUiState(stabilityTrial = BleStabilityTrialUiState(
+            VescBluetoothDiscoveryScreen(state = VescDiscoveryUiState(stabilityTrial = BleStabilityTrialUiState(
                 status = BleStabilityTrialStatus.RUNNING, elapsedMillis = 60_000)),
                 onStopStabilityTrial = { stopped = true })
         } }
@@ -49,7 +49,7 @@ class BleStabilityScreenTest {
         val state = mutableStateOf(VescDiscoveryUiState())
         var resets = 0
         compose.setContent { MaterialTheme {
-            VescBluetoothDiscoveryScreen(state.value, onResetStabilityTrial = { resets++ })
+            VescBluetoothDiscoveryScreen(state = state.value, onResetStabilityTrial = { resets++ })
         } }
         awaitContent()
         for (status in listOf(BleStabilityTrialStatus.PASSED, BleStabilityTrialStatus.FAILED, BleStabilityTrialStatus.STOPPED)) {
@@ -66,7 +66,7 @@ class BleStabilityScreenTest {
 
     @Test fun historyShowsOnlyLatestFiveIncludingInterruptedRun() {
         val runs = (1L..7L).map { BleStabilityRun(it, it + 1000, if (it == 7L) "INTERRUPTED" else "PASSED", 1000, "run-$it") }
-        compose.setContent { MaterialTheme { VescBluetoothDiscoveryScreen(VescDiscoveryUiState(savedStabilityRuns = runs)) } }
+        compose.setContent { MaterialTheme { VescBluetoothDiscoveryScreen(state = VescDiscoveryUiState(savedStabilityRuns = runs)) } }
         awaitContent()
         compose.onNodeWithText("run-7", substring = true).performScrollTo().assertTextContains("INTERRUPTED", substring = true)
         compose.onNodeWithText("run-3", substring = true).performScrollTo().assertIsDisplayed()
