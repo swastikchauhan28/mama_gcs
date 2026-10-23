@@ -46,10 +46,17 @@ class ClassicConnectionCheckUiTest {
         }
         compose.onNodeWithTag("classic-check-status").assertTextEquals("BYTES ARRIVING · MAVLINK NOT CONFIRMED")
         compose.onNodeWithTag("classic-check-guidance").assertTextContains("Unsupported", substring = true)
-        compose.onNodeWithTag("classic-stream-diagnosis")
-            .assertTextContains("This cannot distinguish baud mismatch", substring = true)
+        compose.onNodeWithTag("classic-stream-diagnosis").assertExists()
+        compose.onNode(
+            hasText("This cannot distinguish baud mismatch", substring = true) and
+                hasAnyAncestor(hasTestTag("classic-stream-diagnosis")),
+        ).performScrollTo().assertIsDisplayed()
+        capture("phase49-diagnosis-light")
+        compose.runOnIdle { theme.value = ThemeMode.DARK }
+        compose.onNodeWithText("This cannot distinguish baud mismatch", substring = true)
+            .performScrollTo().assertIsDisplayed()
+        capture("phase49-diagnosis-dark")
         compose.runOnIdle {
-            theme.value = ThemeMode.DARK
             check.value = ClassicConnectionAssessment(ClassicCheckStage.RECEIVING, true, true, true,
                 listOf("Attitude", "Battery"), true, true)
         }

@@ -2,6 +2,50 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-23 — broad software regression
+
+### Done
+
+- Fresh JVM run: 383/383 passed, 0 skipped. Debug/test APK builds and lint passed (0 errors, 32 warnings). On a read-only emulator, both software-only Android batches passed: 7/7 map/BLE-report and 121/121 other tests, with no ANR/crash dialog before or after. Original-resolution map captures and a disconnected app-launch screenshot were inspected. See the [23 October test report](test-report-2026-10-23.md).
+
+### In progress
+
+- Physical Cube-origin heartbeat localization and an independent manual operator path remain unverified.
+
+### Broken or risky
+
+- Four physical BLE-remote methods were excluded, and emulator tests do not verify Cube/R12/T12 telemetry or physical safety. The full software result is not production readiness.
+
+### Next
+
+- Have the hardware team trace Cube heartbeat read-only through TELEM2 → R12 UART2 → T12 Bluetooth on the identified setup; then compare Mama GCS. Keep physical controls unavailable.
+
+### Do not touch
+
+- No Cube/radio settings, wiring, actuators, populated phone data, production secrets or historical test evidence should be altered as a shortcut.
+
+## 2026-10-23 — Phase 49 emulator acceptance completed
+
+### Done
+
+- On a read-only disposable emulator, the focused `ClassicConnectionCheckUiTest` passed all 3 tests after correcting a test-only Compose semantics assertion. Light/dark diagnosis-card screenshots were visually inspected; pre/post Android window checks showed no ANR/crash dialog. The earlier ADB block and first failed assertion remain in the [Phase 49 report](phase-49-report.md).
+
+### In progress
+
+- Physical Cube-origin heartbeat tracing remains separate; synthetic UI acceptance does not resolve the hardware telemetry path.
+
+### Broken or risky
+
+- The full Android suite, manual installed-app path and physical acceptance were not run in Phase 49. No rover-control capability is approved.
+
+### Next
+
+- Perform the hardware-team-secured read-only comparison at Cube TELEM2, R12 UART2 and the phone-side T12 Bluetooth link. Consider radio-only `RADIO_STATUS` diagnostics only after separate review.
+
+### Do not touch
+
+- Do not change Cube/radio parameters or wiring, run actuator commands, clear the populated phone, or interpret synthetic test data as physical proof.
+
 ## 2026-10-23 — T12 radio-status comparison
 
 ### Done
