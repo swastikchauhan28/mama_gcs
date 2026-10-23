@@ -1,5 +1,9 @@
 # Hardware integration gates
 
+## 23 October 2026 — Phase 50 software-only correction
+
+After the comparison below was written, Phase 50 added a separate checksum-validated `RADIO_STATUS (109)` radio-only diagnostic. The statement below that Mama GCS has no CRC-extra/decoder entry for ID 109 was correct for the earlier app build, not the current working tree. The original 22 October screenshot counts remain historical and must not be reinterpreted as a new live test. No current phone/R12/Cube path was tested in this software phase; the read-only heartbeat isolation below remains required. See [Phase 50](phase-50-report.md).
+
 ## 23 October 2026 — phone-side comparison and next isolation test
 
 The operator reports that QGroundControl connected to the T12 Bluetooth link and its MAVLink Inspector displayed `RADIO_STATUS (109)` from component 68, with counts/rates changing (screenshots supplied 22 October). The operator then reports that `HEARTBEAT (0)` did not appear; the supplied Inspector screenshots show only the `RADIO_STATUS` row in the visible list. This establishes that QGC parsed at least a radio-status message on its tested link. It does **not** establish Cube telemetry, identify which hop loses it, or prove that QGC and Mama GCS used identical remote/device/session settings. QGC's received `RADIO_STATUS` is distinct from its own heartbeat emission.

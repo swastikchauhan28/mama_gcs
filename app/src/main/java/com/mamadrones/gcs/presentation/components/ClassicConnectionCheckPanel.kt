@@ -18,7 +18,7 @@ fun ClassicConnectionCheckPanel(check: ClassicConnectionAssessment) {
         ClassicCheckStage.WAITING_SESSION -> "WAITING FOR CURRENT SESSION" to "The socket is open, but current Classic decoder evidence is not available. Data from another link or a closed session is not used here."
         ClassicCheckStage.WAITING_BYTES -> "SOCKET OPEN · WAITING FOR BYTES" to "Bluetooth is open, but no current serial data has reached the decoder. Check T12/R12 power and radio link, and the separate R12 UART-to-Cube telemetry connection. SBUS into RCIN alone does not provide MAVLink telemetry."
         ClassicCheckStage.BYTES_STALE -> "BYTE STREAM STALE" to "No new bytes have reached the decoder within 5 seconds. Check the remote/radio link and Cube power. Old counters are not live reception."
-        ClassicCheckStage.WAITING_MAVLINK -> "BYTES ARRIVING · MAVLINK NOT CONFIRMED" to "Serial bytes are arriving, but no recent supported MAVLink 1/2 message passed checksum and payload validation. Unsupported IDs are unverified candidates. Check the T12/R12 telemetry route and serial format before checking RC stream settings."
+        ClassicCheckStage.WAITING_MAVLINK -> "BYTES ARRIVING · CUBE MAVLINK NOT CONFIRMED" to "Serial bytes are arriving, but no recent supported vehicle message passed checksum and payload validation. Radio-only status, if shown below, does not confirm the Cube path. Check the T12/R12 telemetry route before checking RC stream settings."
         ClassicCheckStage.WAITING_HEARTBEAT -> "BYTES ARRIVING · HEARTBEAT MISSING OR STALE" to "Bytes are arriving, but there is no fresh selected-autopilot heartbeat. Review Decoder guidance below for CRC, unsupported or rejected messages. Compare the actual radio settings with the accepted parameter baseline; do not change baud rates or signing blindly."
         ClassicCheckStage.WAITING_MEASUREMENTS -> "HEARTBEAT RECEIVED · WAITING FOR MEASUREMENTS" to "The selected autopilot is sending a fresh heartbeat, but none of the measurement groups checked here is fresh. Keep this page open and review message diagnostics. This app does not request stream rates."
         ClassicCheckStage.RECEIVING -> "LIVE RECEIVE EVIDENCE" to "Fresh heartbeat and measurement messages are arriving in this Classic session. Review their values in All telemetry. This does not independently prove every hop, sensor accuracy, trusted identity or command capability."
@@ -31,7 +31,7 @@ fun ClassicConnectionCheckPanel(check: ClassicConnectionAssessment) {
             Text("Expected receive route: Cube → R12 → T12 / HC-05 → phone", style = MaterialTheme.typography.bodySmall)
             Text("1. Bluetooth socket: ${if (check.socketOpen) "OPEN" else "NOT OPEN"}")
             Text("2. Recent bytes: ${if (check.freshBytes) "RECEIVED" else "NOT CONFIRMED"}")
-            Text("3. Validated MAVLink: ${if (check.freshDecodedMessage) "RECEIVED" else "NOT CONFIRMED"}")
+            Text("3. Validated vehicle MAVLink: ${if (check.freshDecodedMessage) "RECEIVED" else "NOT CONFIRMED"}")
             Text("4. Autopilot heartbeat: ${if (check.freshHeartbeat) "FRESH" else "NOT CONFIRMED"}")
             Text("5. Measurement messages: ${check.measurementMessages.joinToString().ifEmpty { "NOT CONFIRMED" }}",
                 Modifier.testTag("classic-check-measurements"))
@@ -53,6 +53,9 @@ fun ClassicConnectionCheckPanel(check: ClassicConnectionAssessment) {
 @Composable
 private fun ClassicStreamDiagnosisBlock(diagnosis: ClassicStreamDiagnosis) {
     val (title, detail) = when (diagnosis) {
+        ClassicStreamDiagnosis.VALIDATED_RADIO_ONLY ->
+            "VALIDATED RADIO STATUS ONLY" to
+                "A checksum-valid RADIO_STATUS frame appeared in this session, but no supported Cube message was decoded. This does not prove Cube telemetry, receiver wiring, RC input or the failing hop. See the decoder panel for its receipt age."
         ClassicStreamDiagnosis.NO_MAVLINK_START_BYTES ->
             "NO MAVLINK START-BYTE CANDIDATES" to
                 "Bytes are arriving, but none is 0xFE or 0xFD. First rule out a non-MAVLink data source, the wrong R12 UART, or incompatible serial forwarding. This does not prove a wiring fault."
@@ -83,7 +86,7 @@ internal fun classicConnectionSimpleSummary(stage: ClassicCheckStage): String = 
     ClassicCheckStage.WAITING_SESSION -> "Bluetooth is open, but this session has no current decoder evidence yet."
     ClassicCheckStage.WAITING_BYTES -> "Bluetooth is open, but no data has arrived in this session yet."
     ClassicCheckStage.BYTES_STALE -> "Data arrived earlier, but none arrived in the last 5 seconds."
-    ClassicCheckStage.WAITING_MAVLINK -> "Data is arriving, but valid MAVLink is not confirmed."
+    ClassicCheckStage.WAITING_MAVLINK -> "Data is arriving, but Cube MAVLink is not confirmed."
     ClassicCheckStage.WAITING_HEARTBEAT -> "Some MAVLink is readable, but a current autopilot heartbeat is not confirmed."
     ClassicCheckStage.WAITING_MEASUREMENTS -> "An autopilot heartbeat is recent, but measurements are not confirmed."
     ClassicCheckStage.RECEIVING -> "An autopilot heartbeat and some measurements are recent; rover control is still unavailable."

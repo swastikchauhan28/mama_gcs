@@ -10,6 +10,7 @@ enum class ClassicCheckStage {
  * supported MAVLink message has validated. It identifies no physical fault or configuration.
  */
 enum class ClassicStreamDiagnosis {
+    VALIDATED_RADIO_ONLY,
     NO_MAVLINK_START_BYTES,
     REJECTED_FRAME_CANDIDATES,
     UNVERIFIED_UNSUPPORTED_CANDIDATES,
@@ -17,6 +18,7 @@ enum class ClassicStreamDiagnosis {
 
     companion object {
         fun from(diagnostics: MavlinkDiagnostics): ClassicStreamDiagnosis = when {
+            diagnostics.validatedRadioStatusFrames > 0 -> VALIDATED_RADIO_ONLY
             diagnostics.checksumFailures > 0 || diagnostics.malformedPayloads > 0 ->
                 REJECTED_FRAME_CANDIDATES
             diagnostics.mavlinkV1StartBytes + diagnostics.mavlinkV2StartBytes == 0L ->

@@ -30,6 +30,14 @@ object ConsolePanels {
             "Decoded supported messages" to count(sample.decodedMessages),
             "Decoded MAVLink 1" to count(sample.decodedV1Messages),
             "Decoded MAVLink 2" to count(sample.decodedV2Messages),
+            "Validated RADIO_STATUS (radio only)" to count(sample.validatedRadioStatusFrames),
+            "Latest radio status" to sampleAge(sample.latestRadioStatus?.receivedAtEpochMillis, nowEpochMillis),
+            "Radio reported source" to (sample.latestRadioStatus?.let { "system ${it.systemId} · component ${it.componentId}" } ?: "—"),
+            "Radio RSSI / remote RSSI (raw)" to (sample.latestRadioStatus?.let { "${it.rssi} / ${it.remoteRssi}" } ?: "—"),
+            "Radio TX buffer free (reported %)" to (sample.latestRadioStatus?.txBufferPercent?.toString() ?: "—"),
+            "Radio noise / remote noise (raw)" to (sample.latestRadioStatus?.let { "${it.noise} / ${it.remoteNoise}" } ?: "—"),
+            "Radio RX errors / corrected packets (since radio boot)" to
+                (sample.latestRadioStatus?.let { "${it.rxErrors} / ${it.fixedPackets}" } ?: "—"),
             "Accepted from selected autopilot" to count(sample.acceptedMessages),
             "Ignored before autopilot selection" to count(sample.ignoredBeforeHeartbeat),
             "Ignored other source" to count(sample.ignoredOtherSource),
@@ -42,7 +50,8 @@ object ConsolePanels {
             "Signed packets rejected" to count(sample.signedPacketsRejected),
             "Last input" to sampleAge(sample.lastBytesAtEpochMillis, nowEpochMillis),
             "Last accepted message" to sampleAge(sample.lastAcceptedAtEpochMillis, nowEpochMillis),
-        ), note = "Session totals, not packet-loss rates or a health verdict. Decoded includes messages ignored by source selection. " +
+        ), note = "RADIO_STATUS is checksum-validated radio-only evidence, not a Cube heartbeat, RC sample, authenticated sender or vehicle-health verdict. Radio RSSI/noise scales are device-specific; error counters may wrap. " +
+            "Session totals are not packet-loss rates. Decoded supported messages excludes radio-only frames and includes vehicle messages ignored by source selection. " +
             "Raw start-byte counts are only byte-pattern candidates, not validated frames; arbitrary data can contain them. " +
             "Unsupported/signed candidates are not checksum/authentication verified. Raw noise and incomplete fragments may produce no parser result. " +
             "Counters remain in memory after disconnect and reset on the next session. Prepare telemetry report allows explicit snapshot export; there is no continuous logging.")
@@ -53,8 +62,10 @@ object ConsolePanels {
         else if (!sample.active) add("These are the last session's counters, not a live connection. Open a new receive session to retry.")
         if (sample.startedAtEpochMillis != null && sample.receivedBytes == 0L)
             add("No bytes reached the decoder. Check the selected UDP peer, BLE characteristic or Classic serial radio and sender output.")
-        if (sample.receivedBytes > 0L && sample.decodedMessages == 0L)
+        if (sample.receivedBytes > 0L && sample.decodedMessages == 0L && sample.validatedRadioStatusFrames == 0L)
             add("Bytes arrived, but no supported message was decoded. The stream may be incomplete, unsupported, or not MAVLink 1/2; confirm the radio route and format.")
+        if (sample.validatedRadioStatusFrames > 0L && sample.decodedMessages == 0L)
+            add("Checksum-valid RADIO_STATUS arrived from the radio, but no supported Cube message was decoded. Radio status alone cannot confirm a Cube heartbeat, RC values or the failing hardware hop.")
         if (sample.receivedBytes > 0L && sample.decodedMessages == 0L &&
             sample.mavlinkV1StartBytes + sample.mavlinkV2StartBytes == 0L)
             add("No MAVLink 1/2 start bytes (0xFE/0xFD) appeared in this captured stream. Check the serial forwarding format; this does not locate a wiring fault.")

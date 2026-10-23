@@ -37,6 +37,16 @@ class TelemetryEvidenceReportTest {
             "Not authentication", "commands and app emergency stop remain unavailable").forEach { assertTrue(it, text.contains(it)) }
     }
 
+    @Test fun radioOnlyValuesStayOutOfAllowlistedExport() {
+        val withRadio = vehicle.copy(mavlinkDiagnostics = vehicle.mavlinkDiagnostics.copy(
+            validatedRadioStatusFrames = 77,
+            latestRadioStatus = RadioStatusObservation(68, 69, 12345, 23456, 95, 100, 80, 1, 2, 1_500)))
+        val text = TelemetryEvidenceReport.capture(withRadio, 2_000)
+        listOf("RADIO_STATUS", "12345", "23456", "component 69", "radio-only").forEach {
+            assertFalse(it, text.contains(it))
+        }
+    }
+
     @Test fun emptyStateUsesNotRecordedNotFakeZero() {
         val text = TelemetryEvidenceReport.capture(VehicleState(), 2_000)
         assertTrue(text.contains("State: NO SESSION"))

@@ -98,6 +98,12 @@ class ClassicConnectionCheckTest {
             diagnosisFor(diagnostics.copy(mavlinkV2StartBytes = 2, unsupportedMessages = 1)))
         assertEquals(ClassicStreamDiagnosis.NO_VALIDATED_SUPPORTED_FRAME,
             diagnosisFor(diagnostics.copy(mavlinkV1StartBytes = 2)))
+        val radioOnly = assess(vehicle.copy(mavlinkDiagnostics = diagnostics.copy(
+            decodedMessages = 0, messageObservations = emptyList(), validatedRadioStatusFrames = 1,
+            checksumFailures = 7)))
+        assertEquals(ClassicCheckStage.WAITING_MAVLINK, radioOnly.stage)
+        assertEquals(ClassicStreamDiagnosis.VALIDATED_RADIO_ONLY, radioOnly.streamDiagnosis)
+        assertFalse(radioOnly.freshDecodedMessage || radioOnly.freshHeartbeat || radioOnly.freshRcChannels)
     }
     @Test fun staleOrOutOfSessionDecodeDoesNotBecomeCurrentMavlinkEvidence() {
         listOf(null, 9_999L, now - 5_001, now + 1).forEach { time ->

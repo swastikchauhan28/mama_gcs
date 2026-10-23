@@ -4,7 +4,11 @@ Native Android ground-control-station foundation for a Mama agricultural UGV: Ar
 
 For hardware discussions, consult the [current hardware record](docs/hardware-integration.md#current-hardware-record--updated-21-october-2026) first. It records the accepted parameter-file baseline, user-reported TELEM2 plus SBUS/RCIN wiring, T12/R12/HC-05 route, confirmed 8 km/h maximum and current undecoded telemetry evidence; do not repeat already answered questions from historical phase reports.
 
-## Current UI change: Classic telemetry-stream diagnosis (Phase 48)
+## Current change: radio-only MAVLink diagnosis (Phase 50)
+
+The receive parser now checks MAVLink 1/2 `RADIO_STATUS (109)` with its own CRC and keeps a bounded, session-memory radio observation. The decoder shows count, receipt age, source and device-specific raw fields. It never routes this message into vehicle state, selects an autopilot, satisfies Cube heartbeat/RC gates or adds it to exported reports. The Classic checklist explicitly says Cube telemetry remains unconfirmed when only radio status is valid. See the [Phase 50 report](docs/phase-50-report.md); physical T12/R12/Cube acceptance remains open.
+
+## Previous UI change: Classic telemetry-stream diagnosis (Phase 48)
 
 **Application settings → Bluetooth / HC-05** now adds a short stream-diagnosis card only when fresh Classic bytes arrive but no supported MAVLink message validates. It distinguishes no MAVLink start-byte candidates, rejected frame candidates, unverified unsupported-ID candidates, and no more-specific validated-frame evidence. The card names safe next checks and explicitly does not identify a wrong baud, receiver UART, TX/RX wiring or electrical fault. It changes no parser, transport, configuration, persistence or control behavior. See the [Phase 48 report](docs/phase-48-report.md).
 

@@ -2,6 +2,21 @@
 
 Record consequential choices before implementing them. Keep dated corrections; do not rewrite earlier outcomes. Existing phase reports remain the historical record. This file starts with Phase 44 and does not invent the reasoning behind earlier designs.
 
+## D-050-01: Decode RADIO_STATUS only into a radio diagnostic channel
+
+- Date: 2026-10-23.
+- Status: user approved radio-status diagnostics; drafted before implementation. Verification belongs in the Phase 50 report.
+- AI model/version: exact runtime identifier unavailable.
+- Baseline: `7535d0d17b1c088b82b823e5fddec2a44749a730` on `main`; pre-existing uncommitted handover and 23 October test-report edits are preserved.
+- Context: QGroundControl observed MAVLink `RADIO_STATUS (109)` on a T12 Bluetooth session while Mama GCS received bytes but decoded no supported messages or Cube heartbeat. The current parser does not know ID 109. MAVLink's generated common header defines a 9-byte payload and CRC extra 185; those protocol facts do not establish the current physical stream identity or Cube reachability.
+- Alternatives: (1) leave the app unchanged and use QGC for radio observation; (2) add `RADIO_STATUS` to the vehicle-message router, risking radio data being conflated with selected-autopilot evidence; (3) checksum-validate ID 109 into a separate radio-only parse result and bounded session-memory diagnostic.
+- Choice: option 3. Show a count, last receipt age, reported source and raw/device-specific fields in existing decoder UI. Do not route it to vehicle state, select an autopilot, refresh heartbeat/RC evidence, persist it or add it to exports. Signed candidates remain rejected.
+- Reason: identify a valid radio-generated MAVLink frame without claiming that Cube-origin messages crossed the radio link.
+- Trade-off: extra parser/UI surface and a bounded memory snapshot; radio fields may be vendor-specific and a valid CRC is not sender authentication. A radio-only stream must still display missing Cube heartbeat.
+- Verification: MAVLink 1/2 valid and corrupt fixtures, length/signing cases, session isolation and heartbeat/RC gate tests, UI text tests, build/lint and disposable-emulator visual inspection if healthy. Physical proof remains a separate secured read-only test.
+- Rollback: revert the isolated parser result, diagnostic fields/UI and tests after diff review; no schema, migration, dependency, secret or hardware setting changes.
+- Revisit if: a same-link QGC capture proves Cube heartbeat while Mama GCS does not, or the diagnostic wording misleads operators about vehicle health.
+
 ## D-048-01: Classify undecoded Classic receive evidence without identifying a physical fault
 
 - Date: 2026-10-22.

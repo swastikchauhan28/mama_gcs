@@ -4,6 +4,7 @@ import com.mamadrones.gcs.domain.model.MavlinkDiagnostics
 import com.mamadrones.gcs.domain.model.TelemetryLinkKind
 import com.mamadrones.gcs.domain.model.MavlinkMessageObservation
 import com.mamadrones.gcs.domain.model.ObservedMavlinkMessage
+import com.mamadrones.gcs.domain.model.RadioStatusObservation
 
 enum class MessageDisposition { ACCEPTED, BEFORE_AUTOPILOT_HEARTBEAT, OTHER_SOURCE }
 
@@ -26,6 +27,14 @@ class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long) {
     fun recordResult(result: MavlinkParseResult, disposition: MessageDisposition?, receivedAt: Long) {
         val current = snapshot
         snapshot = when (result) {
+            is MavlinkParseResult.RadioStatus -> current.copy(
+                validatedRadioStatusFrames = current.validatedRadioStatusFrames + 1,
+                latestRadioStatus = RadioStatusObservation(
+                    result.systemId, result.componentId, result.rxErrors, result.fixedPackets,
+                    result.rssi, result.remoteRssi, result.txBufferPercent, result.noise,
+                    result.remoteNoise, receivedAt,
+                ),
+            )
             is MavlinkParseResult.Message -> {
                 val admission = requireNotNull(disposition)
                 val type = result.message.observedType()

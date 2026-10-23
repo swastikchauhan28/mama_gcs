@@ -14,6 +14,8 @@ import com.mamadrones.gcs.data.transport.bluetooth.ClassicBluetoothPeer
 import com.mamadrones.gcs.data.transport.bluetooth.ClassicLinkState
 import com.mamadrones.gcs.domain.model.*
 import com.mamadrones.gcs.presentation.components.ClassicConnectionCheckPanel
+import com.mamadrones.gcs.presentation.components.SubsystemCard
+import com.mamadrones.gcs.presentation.dashboard.ConsolePanels
 import com.mamadrones.gcs.presentation.screens.ClassicBluetoothScreen
 import com.mamadrones.gcs.presentation.screens.ClassicBluetoothUiState
 import com.mamadrones.gcs.presentation.theme.MamaGcsTheme
@@ -25,6 +27,42 @@ import org.junit.Test
 /** Synthetic UI evidence only: no Bluetooth access or commands. */
 class ClassicConnectionCheckUiTest {
     @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
+
+    @Test fun validatedRadioOnlyDoesNotClaimCubeTelemetry() {
+        compose.setContent { MamaGcsTheme {
+            Surface(Modifier.verticalScroll(rememberScrollState())) {
+                ClassicConnectionCheckPanel(ClassicConnectionAssessment(
+                    ClassicCheckStage.WAITING_MAVLINK, socketOpen = true, freshBytes = true,
+                    streamDiagnosis = ClassicStreamDiagnosis.VALIDATED_RADIO_ONLY))
+            }
+        } }
+        compose.onNodeWithTag("classic-check-status")
+            .assertTextEquals("BYTES ARRIVING · CUBE MAVLINK NOT CONFIRMED")
+        compose.onNodeWithText("VALIDATED RADIO STATUS ONLY").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("4. Autopilot heartbeat: NOT CONFIRMED").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("classic-check-rc-status").performScrollTo()
+            .assertTextContains("NOT CONFIRMED", substring = true)
+        capture("phase50-radio-only")
+        compose.onNodeWithText("A checksum-valid RADIO_STATUS frame appeared", substring = true)
+            .performScrollTo().assertIsDisplayed()
+        capture("phase50-radio-only-detail")
+    }
+
+    @Test fun radioDecoderPanelLabelsRawValuesAsRadioOnly() {
+        val sample = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,
+            startedAtEpochMillis = 100, receivedBytes = 18, validatedRadioStatusFrames = 1,
+            latestRadioStatus = RadioStatusObservation(68, 68, 3, 4, 95, 100, 80, 1, 2, 1_000))
+        compose.setContent { MamaGcsTheme {
+            Surface(Modifier.verticalScroll(rememberScrollState())) {
+                SubsystemCard(ConsolePanels.mavlinkDiagnostics(sample, 2_000))
+            }
+        } }
+        compose.onNodeWithText("Validated RADIO_STATUS (radio only)").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Radio RSSI / remote RSSI (raw)").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("RADIO_STATUS is checksum-validated radio-only evidence", substring = true)
+            .performScrollTo().assertIsDisplayed()
+        capture("phase50-radio-decoder")
+    }
 
     @Test fun stagesAndGuidanceRemainReadableInBothThemes() {
         val check = mutableStateOf(ClassicConnectionAssessment(ClassicCheckStage.WAITING_BYTES, socketOpen = true))
@@ -44,8 +82,8 @@ class ClassicConnectionCheckUiTest {
                 socketOpen = true, freshBytes = true,
                 streamDiagnosis = ClassicStreamDiagnosis.REJECTED_FRAME_CANDIDATES)
         }
-        compose.onNodeWithTag("classic-check-status").assertTextEquals("BYTES ARRIVING · MAVLINK NOT CONFIRMED")
-        compose.onNodeWithTag("classic-check-guidance").assertTextContains("Unsupported", substring = true)
+        compose.onNodeWithTag("classic-check-status").assertTextEquals("BYTES ARRIVING · CUBE MAVLINK NOT CONFIRMED")
+        compose.onNodeWithTag("classic-check-guidance").assertTextContains("Radio-only status", substring = true)
         compose.onNodeWithTag("classic-stream-diagnosis").assertExists()
         compose.onNode(
             hasText("This cannot distinguish baud mismatch", substring = true) and

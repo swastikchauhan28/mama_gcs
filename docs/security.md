@@ -29,6 +29,8 @@ No offline map-region downloader, background communication service, secure vehic
 
 ## Lifecycle and storage
 
+Phase 50 parses checksum-valid MAVLink `RADIO_STATUS (109)` into a separate radio-only result and retains one latest field sample plus a count in the current in-memory diagnostic session. It is never a vehicle message, autopilot selection, heartbeat/RC evidence, command authorization, persisted record or telemetry-report export. Raw RSSI/noise scales are device-specific; CRC is not source authentication. A new session clears the observation, and a closed-session display remains labelled historical. Physical Cube-heartbeat delivery is still unverified.
+
 Phase 23 retains only six numeric AUTOPILOT_VERSION metadata fields and a local receipt timestamp in session memory. UID/UID2, custom version bytes and capability flags are not retained in decoded/domain state. The existing selected-autopilot source filter applies; unsigned metadata is not authenticated hardware identity or command authorization. A disconnected observation is labeled historical and a new session clears it. The telemetry report allowlist is unchanged and does not export the new fields. No request, firmware update or configuration write is sent.
 
 Phase 22 adds a second bounded in-memory parameter snapshot and an exact-text comparison. Neither snapshot enters vehicle state, command authorization or safety evaluation. There is no merge/apply/export of file contents; missing entries receive no inferred defaults. Import errors retain the previous pair, cancellation/generation checks prevent superseded publication, and removing the reference never deletes the source file. Both fingerprints identify file bytes, not vehicle identity or trustworthy configuration.

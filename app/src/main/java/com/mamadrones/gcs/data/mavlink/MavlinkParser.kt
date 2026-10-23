@@ -103,6 +103,18 @@ class MavlinkParser {
         }
         val payload = rawFrame.copyOfRange(headerSize, checksumOffset)
             .copyOf(maxOf(payloadLength, lengths.first))
+        if (messageId == RADIO_STATUS_MESSAGE_ID) {
+            // Radio-generated evidence is intentionally outside MavlinkMessage and the vehicle router.
+            return MavlinkParseResult.RadioStatus(
+                systemId = rawFrame[if (version1) 3 else 5].unsigned(),
+                componentId = rawFrame[if (version1) 4 else 6].unsigned(),
+                rxErrors = uint16(payload, 0), fixedPackets = uint16(payload, 2),
+                rssi = uint8(payload[4]), remoteRssi = uint8(payload[5]),
+                txBufferPercent = uint8(payload[6]), noise = uint8(payload[7]),
+                remoteNoise = uint8(payload[8]),
+                wireVersion = if (version1) MavlinkWireVersion.V1 else MavlinkWireVersion.V2,
+            )
+        }
         val frame = MavlinkFrame(
             sequence = rawFrame[if (version1) 2 else 4].unsigned(),
             systemId = rawFrame[if (version1) 3 else 5].unsigned(),
@@ -266,6 +278,7 @@ class MavlinkParser {
         MavlinkMessage.GLOBAL_POSITION_INT_MESSAGE_ID -> GLOBAL_POSITION_INT_LENGTH..GLOBAL_POSITION_INT_LENGTH
         MavlinkMessage.BATTERY_STATUS_MESSAGE_ID -> BATTERY_STATUS_MIN_LENGTH..BATTERY_STATUS_MAX_LENGTH
         MavlinkMessage.STATUSTEXT_MESSAGE_ID -> STATUSTEXT_MIN_LENGTH..STATUSTEXT_MAX_LENGTH
+        RADIO_STATUS_MESSAGE_ID -> RADIO_STATUS_LENGTH..RADIO_STATUS_LENGTH
         else -> error("Unsupported message passed CRC-extra lookup")
     }
 
@@ -293,6 +306,7 @@ class MavlinkParser {
         MavlinkMessage.GLOBAL_POSITION_INT_MESSAGE_ID -> GLOBAL_POSITION_INT_CRC_EXTRA
         MavlinkMessage.BATTERY_STATUS_MESSAGE_ID -> BATTERY_STATUS_CRC_EXTRA
         MavlinkMessage.STATUSTEXT_MESSAGE_ID -> STATUSTEXT_CRC_EXTRA
+        RADIO_STATUS_MESSAGE_ID -> RADIO_STATUS_CRC_EXTRA
         else -> null
     }
 
@@ -339,6 +353,9 @@ class MavlinkParser {
         const val SIGNED_FLAG = 0x01
         const val SUPPORTED_INCOMPATIBILITY_FLAGS = 0
         const val HEARTBEAT_PAYLOAD_SIZE = 9
+        const val RADIO_STATUS_MESSAGE_ID = 109
+        const val RADIO_STATUS_LENGTH = 9
+        const val RADIO_STATUS_CRC_EXTRA = 185
         const val HEARTBEAT_CRC_EXTRA = 50
         const val SYS_STATUS_LENGTH = 31
         const val SYS_STATUS_CRC_EXTRA = 124
@@ -374,6 +391,12 @@ enum class MavlinkWireVersion { V1, V2 }
 
 sealed interface MavlinkParseResult {
     data class Message(val message: MavlinkMessage, val wireVersion: MavlinkWireVersion = MavlinkWireVersion.V2) : MavlinkParseResult
+    /** Checksum-validated radio observation, never a vehicle message or autopilot identity. */
+    data class RadioStatus(
+        val systemId: Int, val componentId: Int, val rxErrors: Int, val fixedPackets: Int,
+        val rssi: Int, val remoteRssi: Int, val txBufferPercent: Int,
+        val noise: Int, val remoteNoise: Int, val wireVersion: MavlinkWireVersion,
+    ) : MavlinkParseResult
     data class InvalidChecksum(val messageId: Int) : MavlinkParseResult
     data class UnsupportedMessage(val messageId: Int) : MavlinkParseResult
     data class UnsupportedIncompatibilityFlags(val flags: Int) : MavlinkParseResult

@@ -2,6 +2,15 @@ package com.mamadrones.gcs.domain.model
 
 enum class TelemetryLinkKind { UDP, BLE, CLASSIC, OTHER }
 
+/** Latest radio-generated frame only; raw scales are device-specific and not vehicle health. */
+data class RadioStatusObservation(
+    val systemId: Int, val componentId: Int,
+    val rxErrors: Int, val fixedPackets: Int,
+    val rssi: Int, val remoteRssi: Int, val txBufferPercent: Int,
+    val noise: Int, val remoteNoise: Int,
+    val receivedAtEpochMillis: Long,
+)
+
 /** Fixed-size, memory-only session observations. Not authentication, packet loss, or health. */
 data class MavlinkDiagnostics(
     val active: Boolean = false,
@@ -14,6 +23,8 @@ data class MavlinkDiagnostics(
     val decodedMessages: Long = 0,
     val decodedV1Messages: Long = 0,
     val decodedV2Messages: Long = 0,
+    val validatedRadioStatusFrames: Long = 0,
+    val latestRadioStatus: RadioStatusObservation? = null,
     val acceptedMessages: Long = 0,
     val ignoredBeforeHeartbeat: Long = 0,
     val ignoredOtherSource: Long = 0,

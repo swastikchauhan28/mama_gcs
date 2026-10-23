@@ -25,6 +25,35 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MavlinkSessionTest {
+    @Test fun `radio status is observed without selecting autopilot or refreshing heartbeat and resets next session`() = runBlocking {
+        val transport = FakeTransport()
+        val repository = VehicleRepositoryImpl()
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = this)
+        val radio = mavlink1TestFrame(109, ByteArray(9).apply {
+            putUInt16(0, 3); putUInt16(2, 4); this[4] = 95.toByte()
+        }, 185, systemId = 68, componentId = 68)
+        try {
+            session.start()
+            transport.emit(radio)
+            waitUntil { repository.vehicleState.value.mavlinkDiagnostics.validatedRadioStatusFrames == 1L }
+            val state = repository.vehicleState.value
+            assertEquals(0L, state.mavlinkDiagnostics.decodedMessages)
+            assertEquals(0L, state.mavlinkDiagnostics.acceptedMessages)
+            assertTrue(state.mavlinkDiagnostics.messageObservations.isEmpty())
+            assertNull(state.lastHeartbeatAtEpochMillis)
+            assertNull(state.rcInput.lastUpdatedAtEpochMillis)
+            assertEquals(68, state.mavlinkDiagnostics.latestRadioStatus?.componentId)
+            transport.emit(heartbeatFrame(systemId = 42, componentId = 1))
+            waitUntil { repository.vehicleState.value.mavlinkDiagnostics.acceptedMessages == 1L }
+            assertEquals(42, repository.vehicleState.value.systemId)
+            assertEquals(1L, repository.vehicleState.value.mavlinkDiagnostics.validatedRadioStatusFrames)
+            session.stop()
+            session.start()
+            assertEquals(0L, repository.vehicleState.value.mavlinkDiagnostics.validatedRadioStatusFrames)
+            assertNull(repository.vehicleState.value.mavlinkDiagnostics.latestRadioStatus)
+        } finally { session.stop(); session.close() }
+    }
+
     @Test fun `home is selected source only resets on reconnect and never transmits`() = runBlocking {
         val base = FakeTransport()
         var sends = 0

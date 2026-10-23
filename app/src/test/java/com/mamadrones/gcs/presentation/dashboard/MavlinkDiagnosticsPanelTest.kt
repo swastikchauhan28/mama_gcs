@@ -2,6 +2,7 @@ package com.mamadrones.gcs.presentation.dashboard
 
 import com.mamadrones.gcs.domain.model.MavlinkDiagnostics
 import com.mamadrones.gcs.domain.model.TelemetryLinkKind
+import com.mamadrones.gcs.domain.model.RadioStatusObservation
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -37,5 +38,20 @@ class MavlinkDiagnosticsPanelTest {
         val panel = ConsolePanels.mavlinkDiagnostics(candidates)
         assertEquals("2", panel.rows.first { it.first.startsWith("Raw 0xFD") }.second)
         assertTrue(panel.note.orEmpty().contains("not validated frames"))
+    }
+
+    @Test fun `radio only panel shows bounded raw evidence without Cube claim`() {
+        val sample = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,
+            startedAtEpochMillis = 100, receivedBytes = 18, mavlinkV1StartBytes = 1,
+            validatedRadioStatusFrames = 1,
+            latestRadioStatus = RadioStatusObservation(68, 68, 3, 4, 95, 100, 80, 1, 2, 1_000))
+        val panel = ConsolePanels.mavlinkDiagnostics(sample, 2_000)
+        assertEquals("1", panel.rows.first { it.first == "Validated RADIO_STATUS (radio only)" }.second)
+        assertEquals("Received 1s ago", panel.rows.first { it.first == "Latest radio status" }.second)
+        assertEquals("95 / 100", panel.rows.first { it.first == "Radio RSSI / remote RSSI (raw)" }.second)
+        assertTrue(panel.note.orEmpty().contains("not a Cube heartbeat"))
+        val hints = ConsolePanels.mavlinkDiagnosticHints(sample)
+        assertTrue(hints.contains("Checksum-valid RADIO_STATUS arrived"))
+        assertFalse(hints.contains("stream may be incomplete, unsupported"))
     }
 }

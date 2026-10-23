@@ -39,7 +39,7 @@ class ClassicConnectionPlainLanguageUiTest {
             ClassicCheckStage.WAITING_SESSION to "Bluetooth is open, but this session has no current decoder evidence yet.",
             ClassicCheckStage.WAITING_BYTES to "Bluetooth is open, but no data has arrived in this session yet.",
             ClassicCheckStage.BYTES_STALE to "Data arrived earlier, but none arrived in the last 5 seconds.",
-            ClassicCheckStage.WAITING_MAVLINK to "Data is arriving, but valid MAVLink is not confirmed.",
+            ClassicCheckStage.WAITING_MAVLINK to "Data is arriving, but Cube MAVLink is not confirmed.",
             ClassicCheckStage.WAITING_HEARTBEAT to "Some MAVLink is readable, but a current autopilot heartbeat is not confirmed.",
             ClassicCheckStage.WAITING_MEASUREMENTS to "An autopilot heartbeat is recent, but measurements are not confirmed.",
             ClassicCheckStage.RECEIVING to "An autopilot heartbeat and some measurements are recent; rover control is still unavailable.",
@@ -60,11 +60,11 @@ class ClassicConnectionPlainLanguageUiTest {
             }
         } }
         compose.onNodeWithTag("classic-check-simple-summary")
-            .assertTextEquals("In simple words: Data is arriving, but valid MAVLink is not confirmed.")
+            .assertTextEquals("In simple words: Data is arriving, but Cube MAVLink is not confirmed.")
         capture("phase47-simple-classic-light")
         compose.runOnIdle { theme.value = ThemeMode.DARK }
         compose.onNodeWithTag("classic-check-simple-summary")
-            .assertTextEquals("In simple words: Data is arriving, but valid MAVLink is not confirmed.")
+            .assertTextEquals("In simple words: Data is arriving, but Cube MAVLink is not confirmed.")
         capture("phase47-simple-classic-dark")
     }
 
