@@ -2,6 +2,73 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-23 — Phase 50 radio-status diagnostics
+
+### Done
+
+- Added CRC-validated MAVLink `RADIO_STATUS` (ID 109) parsing and a separate, session-scoped radio diagnostic. The app now labels radio-only reception without treating it as a Cube heartbeat, RC data or vehicle admission. See [Phase 50](phase-50-report.md).
+- Final fresh JVM run: 389 tests in 64 suites, 0 failures/errors/skips. Debug APK, Android-test APK and lint passed before a JVM-test-only export-boundary addition; final focused emulator run passed 5/5 UI tests, and a related screen batch passed 27/27. Synthetic radio screens were visually inspected. Exact commands and evidence locations are in the phase report.
+
+### In progress
+
+- The hardware team is localizing where the Cube-origin heartbeat stops. Independent human review and release gates remain open.
+
+### Broken or risky
+
+- Physical Cube/R12/T12/Bluetooth behavior was not retested in this phase. A valid radio frame is unauthenticated radio evidence, not proof of vehicle telemetry, RC reception or safe operation. Lint's 32 warnings were not individually dispositioned.
+
+### Next
+
+- Obtain a secured read-only trace at Cube TELEM2, R12 UART2 and the T12 phone-side stream; compare valid Cube heartbeats at each hop. Keep vehicle controls unavailable.
+
+### Do not touch
+
+- Do not change wiring or Cube/radio parameters, run actuators, or treat radio-only status as hardware acceptance. The user separately authorized committing and pushing this phase on 23 October.
+
+## 2026-10-23 — blank draft persisted across app restart
+
+### Done
+
+- With operator approval, created a new two-point synthetic local route from an empty draft on the read-only disposable emulator, saved it, force-stopped only Mama GCS, relaunched it and reopened Plan. The app process ID changed `4406` → `5208`; the two-point count, 15,724 m estimate and **No unsaved changes** remained. Android showed no ANR/crash dialog. See the [23 October follow-up](test-report-2026-10-23.md#blank-draft-and-process-restart-follow-up--23-october-2026).
+
+### In progress
+
+- Independent human operator acceptance and hardware-team Cube-origin heartbeat localization remain open.
+
+### Broken or risky
+
+- Synthetic emulator persistence does not establish geospatial safety, Cube telemetry, physical control acceptance or production readiness. Waypoint 2 was not separately re-inspected after restart.
+
+### Next
+
+- Await the secured, read-only Cube heartbeat trace across TELEM2, R12 UART2 and T12 Bluetooth; keep the monitoring-only boundary. If release work resumes, obtain independent operator review and the remaining defense/recovery gates.
+
+### Do not touch
+
+- Do not change Cube/radio settings, wiring, actuators or populated phone data to advance this software check.
+
+## 2026-10-23 — manual local-route walkthrough
+
+### Done
+
+- On the read-only disposable emulator, manually reordered the two points in the existing saved fixture, saved, navigated away and reopened Plan, exported GeoJSON to local Downloads, previewed and—after explicit operator approval—imported the same file, then saved again. The two coordinates and their order matched the export. Route review and dark/light layouts were visually inspected; upload/start remained unavailable. The final Android window check showed no ANR/crash dialog. See the [23 October test report](test-report-2026-10-23.md#manual-local-route-walkthrough--23-october-2026).
+
+### In progress
+
+- Hardware-team Cube-origin heartbeat localization and independent human operator acceptance remain open.
+
+### Broken or risky
+
+- This reused an existing two-point fixture, reopened the Plan screen rather than restarting the app process, and did not validate blank-draft creation or physical telemetry. The emulator export is local test data, not a vehicle mission.
+
+### Next
+
+- Await the secured read-only heartbeat trace at Cube TELEM2, R12 UART2 and phone-side T12 Bluetooth. If needed for release, separately have an operator complete a blank-draft and process-restart path.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, wiring, actuators, populated phone data or the monitoring-only command boundary to advance this test.
+
 ## 2026-10-23 — broad software regression
 
 ### Done
