@@ -37,6 +37,21 @@ internal fun acknowledgeFullscreenEducation() {
     }
 }
 
+/** Compose can be idle while Android's system screenshot compositor is not ready.
+ * Keep the real window capture used for visual evidence, with a bounded failure
+ * if the platform never returns pixels; never substitute a fixture/mock image.
+ */
+internal fun ComposeTestRule.awaitSystemScreenshot(): Bitmap {
+    waitForIdle()
+    val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+    var screenshot: Bitmap? = null
+    waitUntil(10_000) {
+        screenshot = automation.takeScreenshot()
+        screenshot != null
+    }
+    return requireNotNull(screenshot) { "Android system screenshot unavailable after 10 seconds" }
+}
+
 /** Compose semantics may be idle before the rotated window has submitted a frame.
  * Wait for a real render commit, then the next vsync, before taking system pixels.
  * This still captures native map surfaces through UiAutomation, not a drawn mock.

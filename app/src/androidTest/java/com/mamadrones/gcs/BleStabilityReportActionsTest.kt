@@ -62,12 +62,12 @@ class BleStabilityReportActionsTest {
         awaitContent()
         compose.onNodeWithText(report).assertExists()
         compose.onNodeWithTag("save-ble-stability-report").assertIsDisplayed().assertIsEnabled()
-        compose.waitForIdle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val image = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+        val image = compose.awaitSystemScreenshot()
         try {
             File(instrumentation.targetContext.getExternalFilesDir(null), "ble-report-preview.png").outputStream().use {
-                image.compress(Bitmap.CompressFormat.PNG, 100, it)
+                assertTrue("BLE stability screenshot could not be encoded",
+                    image.compress(Bitmap.CompressFormat.PNG, 100, it))
             }
         } finally { image.recycle() }
     }

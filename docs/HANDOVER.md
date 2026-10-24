@@ -2,6 +2,94 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-24 — bounded screenshot-test repair attempt
+
+### Done
+
+- Added one test-only bounded Android screenshot helper and applied it to three BLE fixture tests that had null one-shot captures. The affected methods passed together (3/3); after a no-wipe emulator restart, the four related BLE classes passed 17/17. The BLE/map batch passed 7/7 before helper consolidation. Exact failures, corrections and evidence are in [Phase 54 follow-up](phase-54-report.md#2026-10-24-follow-up--bounded-system-screenshot-capture).
+
+### In progress
+
+- Full software UI regression remains **not clean**. The 52-method rerun passed the formerly failing BLE connection screenshot but hit an unrelated ActivityScenario teardown failure, then aborted at method 9 when Android reported a system crash. Other software batches were not rerun after the helper change.
+
+### Broken or risky
+
+- The emulator produced ADB input/output errors after the system crash; a no-wipe restart recovered it. The two screenshots were then retrieved and visually inspected, and the four related BLE fixture classes passed 17/17. Do not treat this as a completed 52-method run. Earlier home-marker/picker batch failures and physical Cube-origin heartbeat/RC verification remain open.
+
+### Next
+
+- Diagnose the separate lifecycle/system-crash failure, then rerun the reviewed software-only inventory on the recovered disposable emulator.
+
+### Do not touch
+
+- Do not declare physical or production readiness, change Cube/radio settings or command availability, clear populated app data, or commit/push without a separate request. Preserve `desktop.ini` and unrelated edits.
+
+## 2026-10-24 — Phase 54 test-only follow-up
+
+### Done
+
+- Rebuilt and installed the restored-source Android test APK on the disposable emulator. Both previously failing home-marker/picker methods passed together (2/2). Fresh JVM tests passed 389/389; lint had 0 errors, 28 warnings. Details and evidence are appended to [Phase 54](phase-54-report.md#2026-10-24-follow-up--test-only-rerun-on-restored-source).
+
+### In progress
+
+- The software UI suite is still **not clean**. The seven-method map/BLE batch had a null Android screenshot failure (6/7); that method passed alone. The remaining 33 software UI classes were not rerun in this follow-up. Diagnose screenshot/window synchronization without weakening assertions, then rerun the entire software inventory.
+
+### Broken or risky
+
+- Prior batch home-marker/picker failures and the new screenshot failure remain recorded. Isolated passes do not establish sequence reliability. Physical Cube-origin heartbeat/RC and owner/release gates remain unverified.
+
+### Next
+
+- Scope a test-environment/screenshot synchronization investigation, preserving visual evidence and non-green runs. Then rerun all reviewed software UI classes. Hardware acceptance stays separate.
+
+### Do not touch
+
+- Do not declare physical or production readiness, change Cube/radio settings or command availability, clear populated app data, or commit/push without a separate request. Preserve `desktop.ini` and prior documentation edits.
+
+## 2026-10-24 — Phase 54 synthetic UI-test reliability investigation
+
+### Done
+
+- Investigated two intermittent test failures. A scroll-before-visibility edit was reverted because it weakened the original assertion; a Compose screenshot replacement was reverted after a new PixelCopy failure. Final test and production code match `edda04a`; hardware was untouched. On the provisional APK, focused UI 4/4, map 7/7, and software batch 1 52/52 passed. All 130 reviewed software UI methods completed across four disjoint batches; exact checks, failures and later correction are in [Phase 54](phase-54-report.md).
+
+### In progress
+
+- The software UI regression is **not clean**: batch 2 was 24/25 and batch 3 was 45/46, although both failed methods passed alone. The final restored test source was not rerun through the full inventory. Diagnose home-marker rendering/capture, screenshot reliability and document-picker foreground behavior. Physical Cube-origin heartbeat/RC acceptance and owner/release gates remain open.
+
+### Broken or risky
+
+- A saved synthetic map screenshot shows the purple home point with white border but no white H; the pixel test correctly failed. This contradicts any claim of consistent home-marker legibility from the earlier focused pass. The picker foreground became `null` after Save in a long batch. The replacement Compose screenshot also failed in PixelCopy and was not retained. The previous long-batch ActivityScenario teardown timeout remains unresolved. Emulator tests do not establish physical safety.
+
+### Next
+
+- Scope a separate renderer/timing investigation for the intermittent missing H and a picker lifecycle/accessibility investigation, then rerun the full software inventory without weakening assertions. Separately await the hardware team's secured Cube-heartbeat trace.
+
+### Do not touch
+
+- Do not declare production or physical readiness; do not enable movement, arming, stop or actuator commands; do not alter Cube/radio settings, dismiss ANRs, clear populated app data, or commit/push without a separate request. Preserve `desktop.ini` and the pre-existing 23 October report edits.
+
+## 2026-10-23 — Pre-Phase 54 broad software retest
+
+### Done
+
+- At `edda04a` on `main`, fresh JVM tests passed 389/389 (64 suites); debug app and Android-test APKs built; lint had 0 errors and 28 warnings. The map/UI batch passed 7/7. The other 33 software-only Android classes ran 123 tests, with 121 passes and 2 failures; both failures passed in a focused rerun. Exact commands, failures and ignored evidence paths are in [today's test report](test-report-2026-10-23.md#pre-phase-54-broad-software-retest--23-october-2026). No code or hardware was changed.
+
+### In progress
+
+- Identify and stabilize the sequence-dependent Android test failures before calling the full suite clean. Physical Cube-origin heartbeat and RC acceptance, independent owner review and release gates remain open.
+
+### Broken or risky
+
+- The first large Android batch had one home-position assertion failure and then an Android system crash; the full rerun had an activity-cleanup timeout and a null screenshot capture. Focused reruns passed but do not erase those failures. This is a software regression exercise on a disposable emulator, not physical acceptance. Existing untracked `desktop.ini` was left untouched.
+
+### Next
+
+- Diagnose the test isolation/lifecycle and screenshot-capture issues in a bounded phase if approved; then rerun the full suite. Separately await a secured Cube-heartbeat trace through R12/T12 before live telemetry acceptance.
+
+### Do not touch
+
+- Do not infer hardware readiness from emulator tests, enable movement/arming/stop controls, change Cube/radio settings, dismiss ANRs, clear populated app data, or commit/push without a separate request.
+
 ## 2026-10-23 — Phase 53 home-marker visual gate accepted on disposable emulator
 
 ### Done

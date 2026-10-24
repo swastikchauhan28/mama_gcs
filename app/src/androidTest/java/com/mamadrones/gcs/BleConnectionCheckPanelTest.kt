@@ -29,12 +29,12 @@ class BleConnectionCheckPanelTest {
         compose.onNodeWithTag("ble-check-status").performScrollTo().assertTextEquals("REMOTE CONNECTED · RECEIVE NOT STARTED")
         compose.onNodeWithTag("ble-check-heartbeat").performScrollTo().assertTextContains("NOT CONFIRMED", substring = true)
         compose.onNodeWithTag("ble-check-guidance").performScrollTo().assertTextContains("without the Cube or receiver", substring = true)
-        compose.waitForIdle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+        val bitmap = compose.awaitSystemScreenshot()
         try {
             File(instrumentation.targetContext.getExternalFilesDir(null), "ble-connection-check.png").outputStream().use {
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+                org.junit.Assert.assertTrue("BLE connection screenshot could not be encoded",
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
             }
         } finally { bitmap.recycle() }
     }

@@ -52,12 +52,12 @@ class BleProfileReportActionsTest {
         } }
         awaitContent()
         compose.onNodeWithTag("save-ble-profile").assertIsDisplayed().assertIsEnabled()
-        compose.waitForIdle()
+        compose.onNodeWithText("Review BLE receive profile").assertIsDisplayed()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+        val bitmap = compose.awaitSystemScreenshot()
         try {
             File(instrumentation.targetContext.getExternalFilesDir(null), "ble-profile-preview.png").outputStream().use {
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+                assertTrue("BLE preview screenshot could not be encoded", bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
             }
         } finally { bitmap.recycle() }
         compose.runOnIdle { idle.value = false }
