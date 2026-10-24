@@ -1,5 +1,23 @@
 # Decisions and alternatives
 
+## D-057-01: Gate emulator acceptance on JUnit and Android health
+
+- Date: 2026-10-24. User approved Phase 57. Exact AI model/version unavailable. Baseline `f467724c3801ba20b8c5374e8ed4910d6aceedde`; preserve existing documentation edits and untracked `desktop.ini`.
+- Context: Phase 56's host-GPU run aborted after Android System UI crashed, whereas one SwiftShader run passed 130 software methods. The current acceptance runner checks boot/error windows before instrumentation and JUnit afterward, but records neither the actual renderer nor Android health after the run.
+- Alternatives: rely on manual log inspection; require only a post-run window check; or capture the emulator process's GPU option and compare Android crash/ANR log entries across the run, in addition to post-run boot/window checks. Choose the last option, without clearing log buffers or changing test assertions.
+- Reason/trade-off: a JUnit pass cannot silently overrule a concurrent Android crash. Device logs can contain unrelated background failures; label the responsible process and preserve evidence instead of automatically attributing a crash to Mama GCS. If a required health inspection fails, the run is not accepted. The GPU option is a local test-environment observation, not proof of graphics-driver identity.
+- Verification: test pass/fail branches with controlled fixture output, then run the reviewed 35-class/130-method software-only inventory on the disposable SwiftShader AVD and inspect the runner's saved evidence. The four physical BLE acceptance methods remain excluded.
+- Rollback: revert only the test-runner/documentation diff after review; no APK, schema, dependency, app data or hardware change. Revisit if the Android log format changes or background system events cause a misleading gate.
+
+## D-056-01: Use software-rendered disposable AVD to isolate System UI crash
+
+- Date: 2026-10-24. Exact AI model/version unavailable. Baseline `f467724c3801ba20b8c5374e8ed4910d6aceedde`; preserve the earlier handover/report edits and `desktop.ini`.
+- Context: the monolithic 130-method software UI run on the task's `-gpu host` AVD aborted at method 30. Timestamped Android logs show `com.android.systemui` failing in `FinalizerWatchdogDaemon` while destroying a `HardwareRenderer` context, followed by window death and ANR stack collection. The prior exact 46-method group had passed; no Mama GCS assertion failure explains the system crash.
+- Alternatives: patch app/test code without an app-level cause; ignore the crashed run; split the suite indefinitely; or compare the same AVD, APKs, test order and assertions with the installed emulator's `swiftshader_indirect` renderer. Choose the controlled renderer comparison and keep the failed result.
+- Reason/trade-off: one software-rendered AVD completed 130/130 and stayed free of reported ANR/error windows, supporting an emulator graphics-backend issue without proving a specific driver root cause. SwiftShader is not identical to host-GPU rendering, may have different performance, and one pass does not establish repeatability, real-device behavior or physical safety.
+- Revisit condition: another SwiftShader crash, a reproducible Mama GCS process failure, or UI rendering differences on supported devices. Re-run the full software inventory after such changes; do not weaken assertions or count an aborted run as a pass.
+- Rollback: no app/test/build source or user data changed. The renderer choice affects only the disposable AVD launch; restore the prior option only for a scoped comparison after preserving evidence. No physical hardware or release rollback occurred.
+
 ## D-055-01: Bound system screenshot capture for BLE fixture tests
 
 - Date: 2026-10-24. Status: drafted before the test edit under the user's request to work on the failed test. Exact AI model/version unavailable. Baseline `edda04a91460bcdd5e0a4968a5fcf2c564a19933`; preserve existing documentation edits and `desktop.ini`.

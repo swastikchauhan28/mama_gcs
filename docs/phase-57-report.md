@@ -1,0 +1,24 @@
+# Phase 57 — repeatable emulator acceptance gate
+
+Date: 2026-10-24. User approved Phase 57. Exact AI model/version unavailable. Starting revision `f467724c3801ba20b8c5374e8ed4910d6aceedde`; pre-existing Phase 55/56 documentation edits and untracked `desktop.ini` were preserved. No commit or push was requested.
+
+## Scope and path
+
+`scripts/Test-AndroidAcceptance.ps1` remains a software-only, disposable-emulator runner. It reads an emulator AVD name, matches that name to a Windows emulator process and records only its `-gpu` launch option. It snapshots the emulator's seconds-since-epoch before instrumentation, then reads JUnit output, the crash and ANR-event log buffers, boot property and window state after instrumentation. Fresh crash/ANR lines or a failed health query make the run fail even if JUnit says `OK`. The log buffers are not cleared and the runner does not install an APK, contact a rover, or send a vehicle command.
+
+The inputs are the operator-selected emulator serial and optional class selection, installed debug/test APKs, process metadata and Android system diagnostics. The trust boundary is local test tooling: no log or JUnit result authenticates physical Cube telemetry. Evidence is written under ignored `app/build/acceptance-*/`; it is not persisted in the app or automatically shared. The line arrays are bounded by Android's own log buffers and the instrumentation output. A log buffer may roll over in a long run; a pre-existing event in the same starting second can cause a conservative false failure. GPU `unavailable` is recorded rather than guessed if the host process cannot be matched.
+
+## Verification
+
+- PowerShell parser check on `scripts/Test-AndroidAcceptance.ps1`: no syntax errors. The first focused attempt exposed an uninitialized `[ref]` timestamp variable before instrumentation; it was corrected, and that pre-instrumentation failure was not counted as a test result.
+- Focused command: `./scripts/Test-AndroidAcceptance.ps1 -Serial emulator-5554 -TestClass com.mamadrones.gcs.BleReceiveConfirmationTest`. After correction, JUnit passed `OK (5 tests)` and the health gate passed. Evidence: `app/build/acceptance-20261024-134433-35f172e7/`.
+- Full command: enumerate `app/src/androidTest/java/com/mamadrones/gcs/*Test.kt`, exclude `BleRemoteStabilityAcceptanceTest`, verify 35 remaining classes, join their fully qualified names, then call `./scripts/Test-AndroidAcceptance.ps1 -Serial emulator-5554 -TestClass $selection`. The installed debug/test APKs were reused. One uninterrupted run passed **`OK (130 tests)`** in 1,227.732 seconds on the process-matched `swiftshader_indirect` AVD. The runner recorded ADB/JUnit success, zero new crash-buffer lines, zero ANR events, boot `1`, and no post-run ANR/error dialog. Evidence: `app/build/acceptance-20261024-134523-42c1629a/instrumentation.txt` and `android-health.txt` in that directory.
+- The full run revealed a reporting-only issue: piping an empty event array did not create the expected sibling crash/ANR files. The runner was corrected to write explicit “No new …” markers. The same focused command passed 5/5 again with both files present: `app/build/acceptance-20261024-140634-3bb782d7/`. The 130-method result predates only this evidence-file correction; the complete suite was not rerun after that final one-line-behavior change.
+- A local ignored fake-ADB fixture (`app/build/phase57-fake-adb.ps1`) supplied controlled JUnit/health output without operating the emulator UI or hardware. Clean output was accepted; a fresh crash-buffer entry and a fresh `am_anr` event were each rejected. Evidence: `app/build/acceptance-20261024-140805-8ef4ed22/`, `app/build/acceptance-20261024-140806-97524fe8/`, and `app/build/acceptance-20261024-140806-981063a1/`. This checks the gate branches, not real crash detection under every Android log-buffer behavior.
+- `git diff --check` found no whitespace errors (Git emitted line-ending conversion warnings). Scoped changed-file and obvious secret-pattern review found no new dependency, permission, network destination, app behavior, or credential value.
+
+The four physical `BleRemoteStabilityAcceptanceTest` methods were excluded. No fresh APK build, JVM test or lint result is claimed because runtime app/test/build source did not change. The previous host-GPU System UI crash remains historical failure evidence; this second full SwiftShader pass improves local repeatability confidence but does not establish hardware or production acceptance.
+
+## Recovery and review
+
+Review only the runner and Phase 57 documentation delta for weakened assertions, new dependencies, secrets or unexpected external behavior. The source rollback is a reviewed inverse patch of these scoped changes; there is no APK/data/schema migration or hardware rollback. A clean software gate is not a production or rover-safety release gate.

@@ -2,6 +2,76 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-24 — Phase 57 emulator acceptance health gate
+
+### Done
+
+- The software-only acceptance runner now records the matched AVD's GPU launch option and rejects a green JUnit result if post-run Android crash/ANR logs, boot or window health fail. It preserves ignored per-run evidence without clearing Android logs. See [Phase 57](phase-57-report.md) and [D-057-01](DECISIONS.md#d-057-01-gate-emulator-acceptance-on-junit-and-android-health).
+- On the disposable SwiftShader AVD, the same 35-class/130-method software suite passed in one sequence, `OK (130 tests)`, with zero new crash/ANR evidence and healthy post-run boot/window checks. A final evidence-file-only correction passed a focused 5/5 smoke run. No physical class ran, and no app or APK code changed.
+- Controlled local fake-ADB checks accepted a clean fixture and rejected fresh crash and ANR fixtures; they did not exercise a physical device.
+
+### In progress
+
+- Observe repeatability on future software runs. The full 130-method suite was not repeated after the final empty-log-file marker correction.
+
+### Broken or risky
+
+- The earlier host-GPU System UI crash remains unresolved for that renderer. A software-only SwiftShader pass does not verify a real phone, Cube-origin heartbeat/RC, rover safety, owner review or production release. Android log-buffer rollover can hide earlier events in unusually long/noisy runs.
+
+### Next
+
+- Keep SwiftShader and the health-gated runner for disposable-emulator acceptance; investigate any new failure with the saved JUnit and Android evidence. Resume physical link diagnosis only under separate authorization and a secured bench setup.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send rover commands, clear real app data, weaken assertions, or commit/push without a separate request. Preserve untracked `desktop.ini` and earlier documentation edits.
+
+## 2026-10-24 — Phase 56 emulator graphics diagnosis
+
+### Done
+
+- Captured a monolithic software-only UI run with filtered Android logs. Under the existing host-GPU renderer, System UI crashed in `HardwareRenderer` context destruction at method 30 and instrumentation aborted. The exact 46-method sequence had passed immediately before that run. See the [Phase 55 diagnostic follow-up](phase-55-report.md#2026-10-24-follow-up--phase-56-emulator-graphics-comparison).
+- Restarted only the disposable AVD without wiping data using its installed SwiftShader renderer. The same 35-class, 130-method software-only suite passed in one sequence (`OK (130 tests)`), followed by a booted/no-error-window check. No app, test, dependency or build code changed; the physical-hardware class remained excluded.
+
+### In progress
+
+- Confirm renderer stability on future emulator runs and keep the host-GPU crash visible as a test-environment failure. This comparison supports a graphics-backend issue but does not prove a specific driver root cause.
+
+### Broken or risky
+
+- The host-GPU emulator cannot currently be trusted for long-run UI acceptance on this machine. The SwiftShader pass is software-only and says nothing about the physical Cube/R12/T12 telemetry path, rover stopping, production readiness, or the release gate.
+
+### Next
+
+- Use the documented disposable-AVD SwiftShader procedure for subsequent full UI acceptance; preserve failed logs and stop on any new ANR/crash. Resume separately authorized hardware diagnosis only when its setup is available.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send rover commands, clear a real app installation, weaken assertions, or commit/push without a separate request. Preserve pre-existing `desktop.ini` and prior documentation edits.
+
+## 2026-10-24 — Phase 55 software UI retest and emulator-state diagnosis
+
+### Done
+
+- The exact previously crashing 52-method sequence passed 52/52, including `BleReceiveConfirmationTest` teardown. The other initial groups passed 7/7 and 25/25. The final 46-method group completed with 41 passes and five failures; the failures are preserved in [Phase 55](phase-55-report.md).
+- After a no-wipe restart of only the disposable emulator, the five failed methods passed in focused checks, and the 46-method portion passed in three disjoint groups (23/23, 17/17, 6/6). Thus all 130 inventoried software-only UI methods have a passing bounded run, **not** a clean long-sequence run. No app or test assertions were changed.
+
+### In progress
+
+- Reproduce and diagnose the long-sequence Compose idle, PixelCopy, RC-readiness and Android document-picker window failures on a controlled emulator before changing code or declaring a clean full regression. The prior ActivityScenario/system crash did not recur, but its root cause is unproven.
+
+### Broken or risky
+
+- The first 46-method run failed 5/46, including a recurrent picker `foreground=null` timeout. A focused run on the same emulator still failed three methods; all three passed after the no-wipe restart. Sequence/emulator-state sensitivity is supported, but app/test defects are not ruled out. Physical Cube heartbeat, RC and safety acceptance remain unverified.
+
+### Next
+
+- Capture lifecycle, graphics and window diagnostics during a reproducible failing sequence, then make only a scoped, evidence-backed repair and rerun the affected and full software inventory. Do not treat bounded green groups as a production release gate.
+
+### Do not touch
+
+- No physical rover/phone commands, Cube/radio settings, real app data wipe, assertion weakening, or commit/push without separate authorization. Preserve the pre-existing untracked `desktop.ini`.
+
 ## 2026-10-24 — bounded screenshot-test repair attempt
 
 ### Done
