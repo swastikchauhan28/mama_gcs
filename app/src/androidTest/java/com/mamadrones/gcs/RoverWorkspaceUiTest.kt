@@ -129,13 +129,18 @@ class RoverWorkspaceUiTest {
         compose.awaitScreenshotFrame(compose.activity.window.decorView)
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         var bitmap: Bitmap? = null
+        var nullScreenshots = 0
         val stability = StationScreenshotStability()
-        compose.waitUntil(10_000) {
-            bitmap = instrumentation.uiAutomation.takeScreenshot()
-            bitmap?.let {
-                if (stability.accepts(it, compose.activity.window.decorView)) true
-                else { it.recycle(); bitmap = null; false }
-            } ?: false
+        try {
+            compose.waitUntil(10_000) {
+                bitmap = instrumentation.uiAutomation.takeScreenshot()
+                bitmap?.let {
+                    if (stability.accepts(it, compose.activity.window.decorView)) true
+                    else { it.recycle(); bitmap = null; false }
+                } ?: run { nullScreenshots++; false }
+            }
+        } catch (failure: ComposeTimeoutException) {
+            throw AssertionError("Screenshot $name timed out: null screenshots=$nullScreenshots, ${stability.diagnostics()}", failure)
         }
         val image = requireNotNull(bitmap)
         try {

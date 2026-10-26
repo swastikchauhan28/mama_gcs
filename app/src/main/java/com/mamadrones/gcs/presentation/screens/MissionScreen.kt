@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,7 +19,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
@@ -102,6 +106,7 @@ fun MissionScreen(
     var showRename by rememberSaveable { mutableStateOf(false) }
     var showNewConfirmation by rememberSaveable { mutableStateOf(false) }
     var showLibrary by rememberSaveable { mutableStateOf(false) }
+    var librarySearchQuery by rememberSaveable { mutableStateOf("") }
     var showSaveToLibrary by rememberSaveable { mutableStateOf(false) }
     var libraryOpenId by rememberSaveable { mutableStateOf<String?>(null) }
     var libraryDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -144,20 +149,42 @@ fun MissionScreen(
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val wide = maxWidth >= 680.dp
+        val enlargedMobileHeader = !wide && androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.8f
         Column(Modifier.fillMaxSize()) {
             Surface(color = MaterialTheme.colorScheme.surface) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { showFileActions = !showFileActions }, modifier = Modifier.heightIn(min = 48.dp).testTag("mission-file-menu")) {
-                        Text(if (showFileActions) "Close files" else "File / Library")
+                if (enlargedMobileHeader) {
+                    val draftSummary = "${plan.draft.waypoints.size} points · ${String.format(Locale.US, "%.0f", plan.draft.distanceMeters)} m · Local only"
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            TextButton(onClick = { showFileActions = !showFileActions },
+                                modifier = Modifier.heightIn(min = 48.dp).testTag("mission-file-menu")) {
+                                Text(if (showFileActions) "Close files" else "File / Library")
+                            }
+                            Button(onClick = { onAction(MissionPlanAction.Save) },
+                                enabled = plan.editable && (plan.dirty || plan.recoveryCleanupFailed),
+                                modifier = Modifier.heightIn(min = 48.dp).testTag("mission-save")) { Text("Save draft") }
+                        }
+                        Column(Modifier.fillMaxWidth()) {
+                            Text(plan.draft.name, style = MaterialTheme.typography.titleSmall)
+                            Text(draftSummary, style = MaterialTheme.typography.labelSmall)
+                        }
                     }
-                    Column(Modifier.weight(1f)) {
-                        Text(plan.draft.name, maxLines = 1, style = MaterialTheme.typography.titleSmall)
-                        Text("${plan.draft.waypoints.size} points · ${String.format(Locale.US, "%.0f", plan.draft.distanceMeters)} m · Local only",
-                            style = MaterialTheme.typography.labelSmall)
+                } else {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { showFileActions = !showFileActions }, modifier = Modifier.heightIn(min = 48.dp).testTag("mission-file-menu")) {
+                            Text(if (showFileActions) "Close files" else "File / Library")
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(plan.draft.name, maxLines = 1, style = MaterialTheme.typography.titleSmall)
+                            Text("${plan.draft.waypoints.size} points · ${String.format(Locale.US, "%.0f", plan.draft.distanceMeters)} m · Local only",
+                                style = MaterialTheme.typography.labelSmall)
+                        }
+                        Button(onClick = { onAction(MissionPlanAction.Save) }, enabled = plan.editable && (plan.dirty || plan.recoveryCleanupFailed),
+                            modifier = Modifier.heightIn(min = 48.dp).testTag("mission-save")) { Text("Save draft") }
                     }
-                    Button(onClick = { onAction(MissionPlanAction.Save) }, enabled = plan.editable && (plan.dirty || plan.recoveryCleanupFailed),
-                        modifier = Modifier.heightIn(min = 48.dp).testTag("mission-save")) { Text("Save draft") }
                 }
             }
         Row(Modifier.weight(1f).fillMaxWidth()) {
@@ -191,7 +218,7 @@ fun MissionScreen(
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         TextButton(onClick = { showRename = true }, enabled = plan.editable) { Text("Rename") }
                         TextButton(onClick = { showSaveToLibrary = true }, enabled = plan.editable) { Text("Save to library") }
-                        TextButton(onClick = { showLibrary = true }, enabled = plan.editable) { Text("Library · ${plan.library.size}") }
+                        TextButton(onClick = { librarySearchQuery = ""; showLibrary = true }, enabled = plan.editable) { Text("Library · ${plan.library.size}") }
                         TextButton(onClick = { showNewConfirmation = true }, enabled = plan.editable) { Text("New draft") }
                         TextButton(onClick = { importLauncher.launch(arrayOf("application/geo+json", "application/json", "application/gpx+xml", "application/xml", "text/xml", "*/*")) },
                             enabled = plan.editable) { Text("Import route file") }
@@ -376,32 +403,64 @@ fun MissionScreen(
             dismissButton = { TextButton(onClick = { showSaveToLibrary = false }) { Text("Cancel") } }
         )
     }
-    if (showLibrary) AlertDialog(
-        onDismissRequest = { showLibrary = false },
-        title = { Text("Local route library · ${plan.library.size}") },
-        text = {
-            Column(
-                modifier = Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                plan.libraryError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                if (plan.library.isEmpty()) Text("No saved route copies yet. Use Save to library to keep a route separate from the active draft.")
-                plan.library.forEach { entry ->
-                    Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.small) {
-                        Column(Modifier.fillMaxWidth().padding(10.dp).testTag("library-entry-${entry.id}")) {
-                            Text(entry.draft.name, style = MaterialTheme.typography.titleSmall)
-                            Text("${entry.draft.waypoints.size} waypoints · ${String.format(Locale.US, "%.0f", entry.draft.distanceMeters)} m · ${java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT).format(java.util.Date(entry.savedAtEpochMillis))}", style = MaterialTheme.typography.bodySmall)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                TextButton(onClick = { libraryOpenId = entry.id; showLibrary = false }, enabled = plan.editable) { Text("Open") }
-                                TextButton(onClick = { libraryDeleteId = entry.id; showLibrary = false }, enabled = plan.editable) { Text("Delete") }
+    if (showLibrary) {
+        val searchTerm = librarySearchQuery.trim()
+        val matchingLibrary = if (searchTerm.isEmpty()) plan.library else
+            plan.library.filter { it.draft.name.contains(searchTerm, ignoreCase = true) }
+        AlertDialog(
+            onDismissRequest = { showLibrary = false },
+            title = { Text("Local route library · ${plan.library.size}") },
+            text = {
+                val keyboardController = LocalSoftwareKeyboardController.current
+                Column(
+                    modifier = Modifier.heightIn(max = 440.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    plan.libraryError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    if (plan.library.isNotEmpty()) {
+                        OutlinedTextField(
+                            value = librarySearchQuery,
+                            onValueChange = { librarySearchQuery = it.take(MissionDraft.MAX_NAME_LENGTH) },
+                            label = { Text("Search route names") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                            trailingIcon = {
+                                if (librarySearchQuery.isNotEmpty()) {
+                                    TextButton(onClick = { librarySearchQuery = "" },
+                                        modifier = Modifier.testTag("mission-library-clear-search")) { Text("Clear") }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().testTag("mission-library-search"),
+                        )
+                        if (searchTerm.isNotEmpty()) Text("${matchingLibrary.size} of ${plan.library.size} routes",
+                            style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("mission-library-result-count"))
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (plan.library.isEmpty()) Text("No saved route copies yet. Use Save to library to keep a route separate from the active draft.")
+                        else if (matchingLibrary.isEmpty()) Text("No matching routes. Clear search or try another name.",
+                            modifier = Modifier.testTag("mission-library-no-matches"))
+                        matchingLibrary.forEach { entry ->
+                            Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.small) {
+                                Column(Modifier.fillMaxWidth().padding(10.dp).testTag("library-entry-${entry.id}")) {
+                                    Text(entry.draft.name, style = MaterialTheme.typography.titleSmall)
+                                    Text("${entry.draft.waypoints.size} waypoints · ${String.format(Locale.US, "%.0f", entry.draft.distanceMeters)} m · ${java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT).format(java.util.Date(entry.savedAtEpochMillis))}", style = MaterialTheme.typography.bodySmall)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        TextButton(onClick = { libraryOpenId = entry.id; showLibrary = false }, enabled = plan.editable) { Text("Open") }
+                                        TextButton(onClick = { libraryDeleteId = entry.id; showLibrary = false }, enabled = plan.editable) { Text("Delete") }
+                                    }
+                                }
                             }
                         }
                     }
                 }
-            }
-        },
-        confirmButton = { TextButton(onClick = { showLibrary = false }) { Text("Close") } }
-    )
+            },
+            confirmButton = { TextButton(onClick = { showLibrary = false }) { Text("Close") } }
+        )
+    }
     libraryOpenId?.let { id ->
         val entry = plan.library.firstOrNull { it.id == id }
         AlertDialog(

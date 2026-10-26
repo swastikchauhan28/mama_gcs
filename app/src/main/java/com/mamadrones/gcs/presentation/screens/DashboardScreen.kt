@@ -15,8 +15,10 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.presentation.components.*
@@ -152,20 +154,26 @@ fun MapWorkspace(
 ) {
     val live = state.forDisplay()
     val position = live.position
-    Box(modifier.testTag("operation-map")) {
+    BoxWithConstraints(modifier.testTag("operation-map")) {
+        val largeTextOnPhone = showOperatorTools && maxWidth < 600.dp && LocalDensity.current.fontScale >= 1.8f
+        val toolbarWidth = if (largeTextOnPhone) 120.dp else 72.dp
         VehicleMap(live, Modifier.fillMaxSize().testTag("operation-map-viewport"))
         if (showOperatorTools) Surface(
-            Modifier.align(Alignment.TopStart).padding(8.dp).width(72.dp).testTag("operation-toolbar"),
+            Modifier.align(Alignment.TopStart).padding(8.dp).width(toolbarWidth).testTag("operation-toolbar"),
             shape = MaterialTheme.shapes.small, shadowElevation = 2.dp,
         ) {
             Column(Modifier.heightIn(max = 192.dp).verticalScroll(rememberScrollState())) {
                 MapAction("Plan", ConsoleIcon.MISSION) { onNavigate("mission") }
                 MapAction("Drive", ConsoleIcon.CONTROL) { onNavigate("control") }
-                MapAction("Systems", ConsoleIcon.MORE) { onNavigate("more") }
+                MapAction(if (largeTextOnPhone) "More" else "Systems", ConsoleIcon.MORE) { onNavigate("more") }
             }
         }
         Surface(
-            Modifier.align(Alignment.TopCenter).padding(start = if (showOperatorTools) 88.dp else 8.dp, end = 88.dp, top = 8.dp),
+            Modifier.align(Alignment.TopCenter).padding(
+                start = if (showOperatorTools) toolbarWidth + 16.dp else 8.dp,
+                end = if (largeTextOnPhone) 8.dp else 88.dp,
+                top = 8.dp,
+            ).testTag("operation-status"),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
             contentColor = MaterialTheme.colorScheme.onSurface,
             shape = MaterialTheme.shapes.small,
@@ -186,7 +194,9 @@ private fun MapAction(label: String, icon: ConsoleIcon, onClick: () -> Unit) {
     TextButton(onClick = onClick, shape = MaterialTheme.shapes.small, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             MamaIcon(icon)
-            Text(label, style = MaterialTheme.typography.labelSmall)
+            Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1,
+                softWrap = false, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.testTag("map-action-$label"))
         }
     }
 }

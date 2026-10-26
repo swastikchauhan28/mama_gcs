@@ -2,6 +2,281 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-26 — UI Phases 60–70 verification
+
+### Done
+
+- Targeted verification of the uncommitted UI phases passed: 389/389 JVM tests, 43/43 emulator Android tests in two healthy batches, and lint with 0 errors/28 baseline warnings. Fresh waypoint and route-library screenshots were visually inspected. Exact commands, evidence and limits: [UI Phases 60–70 test report](test-report-2026-10-26-ui-phases-60-70.md).
+
+### In progress
+
+- The Phase 60–70 changes and verification record form one delivery; check Git history and remote state for its commit/push result. Preserve unrelated `desktop.ini`. Hardware work remains on hold by user request.
+
+### Broken or risky
+
+- The Phase 70 keyboard-open landscape occlusion remains: pressing Done reveals the filtered result. This targeted run does not cover every Android test class, other phones/locales/IMEs, or physical BLE/Cube/receiver/remote acceptance. The 28 lint warnings remain.
+
+### Next
+
+- Scope any real-phone portrait/IME or hardware acceptance separately. Keep the Phase 60–70 test evidence with the delivery record.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, or weaken safety/accessibility checks. Preserve `desktop.ini`. The current user request authorizes this scoped commit and push.
+
+## 2026-10-26 — Phase 70 route search keyboard path
+
+### Done
+
+- Added an explicit Done action to the saved-route search field that hides the keyboard. Moved Clear into the field's trailing area so a matching card and its actions fit after Done at 320 dp / 2× text. Query/filtering and stable route IDs are unchanged. See [Phase 70](phase-70-report.md) and [D-070-01](DECISIONS.md#d-070-01-check-route-search-while-the-android-keyboard-is-visible).
+- Final debug app and test APKs built; the two route-search UI tests passed `OK (2 tests)` with a healthy Android gate. Full-display keyboard-open and after-Done screenshots were inspected. No saved user route or hardware was used.
+
+### In progress
+
+- Phases 60–70 remain uncommitted. Preserve unrelated `desktop.ini`. Physical hardware work remains on hold by user request.
+
+### Broken or risky
+
+- At 320 dp / 2× in the landscape fixture, the open IME covers result cards. Pressing Done reveals the matching card and Close. Earlier semantic-only assertions falsely marked covered controls as displayed; the first visual pass and later failing Done test are retained in the Phase 70 report. Other IMEs/devices, full suite, lint, persistence and physical operation were not checked this phase.
+
+### Next
+
+- Review the accumulated diff before a separately requested commit, or select another bounded UI task. A real-phone portrait/IME check can be scoped separately if available; do not infer it from the landscape fixture.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken safety/accessibility checks, or commit/push without a separate request. Preserve `desktop.ini`.
+
+## 2026-10-26 — Phase 69 pinned route-library search
+
+### Done
+
+- Kept the saved-route search field, Clear search and result count visible while route cards scroll in a separate bounded list. The existing route order and ID-based Open/Delete confirmations are unchanged. See [Phase 69](phase-69-report.md) and [D-069-01](DECISIONS.md#d-069-01-keep-library-search-visible-while-saved-routes-scroll).
+- Built both debug APKs. The focused search/pinned-layout test and existing enlarged-text library regression each passed `OK (1 test)` with healthy Android gates. The scrolled 320 dp / 2× screenshot was visually inspected. No repository data or hardware was used.
+
+### In progress
+
+- Phases 60–69 remain uncommitted. Preserve unrelated `desktop.ini`. Physical hardware work remains on hold by user request.
+
+### Broken or risky
+
+- Fixed search controls reduce the route-list viewport; users may scroll farther to reach a card action at 2× text. Evidence covers one synthetic English fixture at 320 dp, not very narrow/other-language devices, persistence or physical operation. No full suite or lint ran this phase.
+
+### Next
+
+- Review the accumulated diff before a separately requested commit, or select another bounded UI task. Keep physical acceptance separate from emulator results.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken safety/accessibility checks, or commit/push without a separate request. Preserve `desktop.ini`.
+
+## 2026-10-26 — Phase 68 local route-name search
+
+### Done
+
+- Added an in-dialog, case-insensitive saved-route name filter with match count, clear and no-match states. It resets on reopening and preserves entry order and stable ID-based Open/Delete confirmations. See [Phase 68](phase-68-report.md) and [D-068-01](DECISIONS.md#d-068-01-filter-local-route-library-by-name-in-the-dialog).
+- The new 320 dp / 2× emulator test and the existing large-text library regression each passed `OK (1 test)` against current APKs, with healthy Android gates. A screenshot of the filtered dialog was visually inspected. No repository data or hardware was used.
+
+### In progress
+
+- Phases 60–68 remain uncommitted. Preserve unrelated `desktop.ini`. Physical hardware work remains on hold by user request.
+
+### Broken or risky
+
+- Search controls use dialog height and route cards may require scrolling at 2× text. Evidence covers one synthetic English fixture at 320 dp, not persistence, other devices/locales or physical operation. No full suite or lint was run in this phase. The last source edit after the build was indentation only.
+
+### Next
+
+- Review the accumulated diff before a separately requested commit, or select another bounded UI task. Keep physical acceptance separate from emulator evidence.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken safety/accessibility checks, or commit/push without a separate request. Preserve `desktop.ini`.
+
+## 2026-10-26 — Phase 67 enlarged-text route library
+
+### Done
+
+- Added a focused 320 dp / 2× UI check for the local route-library dialog. A long synthetic route name wraps without truncation, dialog bounds stay in the window, scrolling reaches later entries, and Open/Delete/Close are reachable. Confirmed actions dispatch only to an in-memory callback. The screenshot was visually checked; existing layout was sufficient, so no production UI change was needed. See [Phase 67](phase-67-report.md) and [D-067-01](DECISIONS.md#d-067-01-check-local-route-library-dialog-at-enlarged-text).
+- Fresh test APK build succeeded; focused emulator test passed `OK (1 test)` with a healthy Android gate. No repository data or hardware was used.
+
+### In progress
+
+- Phases 60–67 remain uncommitted. Preserve unrelated `desktop.ini`. Physical hardware work remains on hold by user request.
+
+### Broken or risky
+
+- Evidence covers one synthetic English library at 320 dp / 2× only. The library list requires scrolling at this scale. No full suite, lint, persistence check, or physical-device check was run. Early zero-test runs used the stale repository `app/build` APK instead of the configured temp build output; later test setup failures were corrected and retained in the [Phase 67 report](phase-67-report.md). Only the final fresh-APK run counts as a pass.
+
+### Next
+
+- Choose another bounded UI check or request a separate commit. The Phase 67 test did not change production UI; hardware remains parked unless separately requested.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken safety/accessibility checks, or commit/push without a separate request. Preserve `desktop.ini`.
+
+## 2026-10-26 — Phase 66 enlarged-text waypoint row actions
+
+### Done
+
+- Added a focused 320 dp / 2× text check for the route point Edit, Remove, Up and Down controls. Each action can be scrolled into view; labels remain on one line and within the window. First/middle/last move-button states match the route boundaries. Synthetic Move and Remove callbacks stay in memory. Visually inspected the final screenshot; existing FlowRow layout was sufficient, so no production UI change was needed. See [Phase 66](phase-66-report.md) and [D-066-01](DECISIONS.md#d-066-01-check-waypoint-row-actions-at-narrow-width-and-enlarged-text).
+- Android test APK built and focused emulator test passed `OK (1 test)` with a healthy Android gate. No saved route or physical hardware was used.
+
+### In progress
+
+- Phases 60–66 remain uncommitted. Preserve unrelated `desktop.ini`. Physical hardware work remains on hold by user request.
+
+### Broken or risky
+
+- Each action requires the route list to scroll to it; this test covers one 320 dp English fixture at 2× text, not other devices/locales or route persistence. The first overlap assertion compared screen bounds across different scroll positions and failed; it was removed as invalid. The corrected focused test passed. No full suite or lint was run.
+
+### Next
+
+- The accumulated Phase 60–66 diff has been reviewed: changes stay within the listed UI, instrumentation tests and phase records; no new dependency, credential, network destination or hardware command was introduced. Select another bounded UI check or request a separate commit.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken safety/accessibility checks, or commit/push without a separate request. Preserve `desktop.ini`.
+
+## 2026-10-26 — Phase 65 enlarged-text waypoint entry
+
+### Done
+
+- Added a focused check for the Add coordinates dialog at a 320 dp window and 2× text. Both fields can be scrolled fully into view; Add and Cancel remain in the dialog, and synthetic valid coordinates dispatch only through an in-memory callback. Visually inspected the captured scrolled state. Existing dialog scrolling was sufficient, so no production UI change was needed. See [Phase 65](phase-65-report.md) and [D-065-01](DECISIONS.md#d-065-01-check-waypoint-entry-at-narrow-width-and-enlarged-text).
+- Android test APK built and the focused emulator test passed `OK (1 test)` with the Android health gate healthy. No saved route or physical hardware was used.
+
+### In progress
+
+- Phases 60–65 remain uncommitted. Preserve unrelated `desktop.ini`. Physical hardware work remains on hold by user request.
+
+### Broken or risky
+
+- Evidence covers one synthetic 320 dp English dialog at 2× text; the coordinate form requires scrolling and this check does not cover all locales, narrower displays or a physical phone. The first build hit a test API mismatch and the first emulator attempt used an uncomposed lazy item; the corrected build/test passed. Full suite and lint were not run.
+
+### Next
+
+- Review the accumulated Phase 60–65 diff before selecting another bounded UI check or requesting a separate commit.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken safety/accessibility checks, or commit/push without a separate request. Preserve `desktop.ini`.
+
+## 2026-10-26 — Phase 64 enlarged-text mission header
+
+### Done
+
+- Fixed the mission editor header at mobile widths below 680 dp when text scale is at least 1.8: File / Library and Save draft now use a wrapping action row, with the draft title and summary below at full width. The 320 dp / 2× test first reproduced the clipped title, then passed after the fix. Existing normal-text Save behavior also passed. See [Phase 64](phase-64-report.md) and [D-064-01](DECISIONS.md#d-064-01-check-route-editor-actions-at-enlarged-mobile-text).
+- Both debug APKs built successfully. The focused emulator test passed `OK (1 test)` and reported a healthy Android gate. No app persistence or vehicle command was exercised.
+
+### In progress
+
+- Phases 60–64 remain uncommitted. Preserve unrelated `desktop.ini`. Physical hardware work remains on hold by user request.
+
+### Broken or risky
+
+- Evidence covers one synthetic 320 dp English layout at 2× text and one existing normal-text save-path test. No full suite, other locales/devices, real phone or hardware acceptance ran. The first test attempt used stale APKs and reported zero tests; this was corrected by installing Gradle's temp-output APKs, and the real assertion failure is retained in the phase report.
+
+### Next
+
+- Review the accumulated Phase 60–64 diff, then continue with another bounded mobile UI layout check or ask for a separate commit request.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken safety/accessibility assertions, or commit/push without a separate request. Preserve `desktop.ini`.
+
+## 2026-10-26 — Phase 63 enlarged mobile category tabs
+
+### Done
+
+- Extended the selected-tab regression to 320 dp / 2× text. Bluetooth / HC-05, Accounts & audit and RC & PWM remained fully inside the visible strip without truncation; exit and safety shortcuts stayed visible. Existing layout passed, so app UI code did not change. See [Phase 63](phase-63-report.md) and [D-063-01](DECISIONS.md#d-063-01-check-selected-mobile-tabs-at-enlarged-text).
+- Built the Android test APK and passed the focused emulator test 1/1 with a healthy Android gate.
+
+### In progress
+
+- Physical hardware work remains on hold. Phases 60–63 remain uncommitted; Phase 63 added a test and records only.
+
+### Broken or risky
+
+- This test covers one emulator width and three English labels, not every device, language or larger accessibility scale. Phase 62 remains the last broader software-suite run.
+
+### Next
+
+- Review the Phase 60–63 worktree, then decide whether to request a focused commit or move to a distinct UI issue.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken accessibility/safety assertions, or commit/push without a separate request. Preserve `desktop.ini`.
+
+## 2026-10-26 — Phase 62 software Android regression
+
+### Done
+
+- Ran the current 35-class software Android inventory in two disjoint batches against the uncommitted Phase 60/61 debug APKs, excluding the separate physical BLE class. Results: `OK (7 tests)` and `OK (127 tests)`, both with clean Android health gates (zero new crash/ANR events, boot complete, no error window). See [Phase 62](phase-62-report.md) and [D-062-01](DECISIONS.md#d-062-01-run-the-current-software-android-inventory-before-another-ui-change).
+- The prior intermittent landscape screenshot test passed within batch two. Fresh landscape Operate and portrait Application settings screenshots were visually inspected; no new overlap was observed.
+
+### In progress
+
+- Physical hardware diagnosis remains on hold by user request. Phase 60/61 source and records remain uncommitted; Phase 62 added documentation only.
+
+### Broken or risky
+
+- The earlier screenshot timeout and emulator boot-service ANRs remain recorded. The full suite passed in two batches, not one uninterrupted run. Blank/neutral map screenshots are not evidence of live tile availability. No real phone, Cube, radio or rover acceptance was performed.
+
+### Next
+
+- Review the Phase 60/61 diff with Phase 62 JUnit/health evidence before deciding on another UI change or requesting a commit. Resume physical diagnosis only by separate user direction.
+
+### Do not touch
+
+- Do not change Cube/radio settings, send vehicle commands, weaken acceptance gates, or commit/push without a separate request. Preserve untracked `desktop.ini`.
+
+## 2026-10-26 — Phase 61 enlarged mobile workspace text
+
+### Done
+
+- Expanded the mobile-header test at 320 dp / 2× text. The header passed, but a real Operate screenshot showed Plan/Drive splitting mid-word. The narrow, large-text map toolbar now widens, calls the third destination More, and places the status card beside it. Normal text keeps the original toolbar width and Systems label. See [Phase 61](phase-61-report.md) and [D-061-01](DECISIONS.md#d-061-01-check-enlarged-mobile-workspace-text-before-changing-layout).
+- Both APKs built. The focused 2× toolbar test, 2× header test and normal portrait map/safety test each passed 1/1 with healthy Android state. Fresh JVM suite passed 389/389; lint had 0 errors and 28 warnings. Before/after emulator images were inspected and saved as ignored local evidence. Phase 60 test diagnostics remain separate uncommitted work.
+
+### In progress
+
+- Physical hardware diagnosis remains on hold by user request. The intermittent Phase 59/60 screenshot timeout remains unproven.
+
+### Broken or risky
+
+- Enlarged-text evidence is limited to this one emulator and 320 dp. The wider toolbar covers more map area; the full Android UI suite was not rerun and no physical hardware acceptance follows from these tests.
+
+### Next
+
+- Review Phase 61's UI/test/docs diff and before/after screenshots separately from Phase 60. Watch for overlay crowding on a supported narrower screen, another language or larger accessibility scale.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken UI/safety checks, or commit/push without a separate request. Preserve untracked `desktop.ini`.
+
+## 2026-10-26 — Phase 60 landscape screenshot diagnostics
+
+### Done
+
+- Added diagnostic rejection counts to the existing landscape UI screenshot timeout without changing its nonblank/settled-frame gate. See [Phase 60](phase-60-report.md) and [D-060-01](DECISIONS.md#d-060-01-diagnose-landscape-screenshot-readiness-before-changing-its-gate).
+- Built the Android test APK. The focused landscape test passed `OK (1 test)` twice; the settled disposable-emulator run also passed Android health. Visually inspected its real screenshot.
+
+### In progress
+
+- The Phase 59 timeout remains intermittent and its root cause is unproven. Physical hardware work remains on hold by user request.
+
+### Broken or risky
+
+- The first Phase 60 run failed overall because Android logged two boot-service ANRs despite a passing JUnit assertion. Its evidence is preserved. The full Android UI suite was not rerun.
+
+### Next
+
+- If the screenshot timeout recurs, inspect the new counts and Android health evidence before changing the capture gate. Review the Phase 60 test-only diff.
+
+### Do not touch
+
+- Do not change Cube/radio settings, send vehicle commands, weaken screenshot or safety checks, or commit/push without a separate request. Preserve untracked `desktop.ini`.
+
 ## 2026-10-26 — Phase 59 readable mobile header
 
 ### Done

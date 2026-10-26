@@ -108,9 +108,16 @@ private fun hasRenderedStationSurface(bitmap: Bitmap, view: View): Boolean {
 internal class StationScreenshotStability {
     private var signature: Long? = null
     private var unchangedSince = 0L
+    private var rejectedSurfaces = 0
+    private var changedSignatures = 0
+    private var waitingForSettle = 0
+
+    fun diagnostics(): String = "rejected surfaces=$rejectedSurfaces, changed signatures=$changedSignatures, " +
+        "waiting for 500 ms=$waitingForSettle"
 
     fun accepts(bitmap: Bitmap, view: View): Boolean {
         if (!hasRenderedStationSurface(bitmap, view)) {
+            rejectedSurfaces++
             signature = null
             return false
         }
@@ -122,9 +129,12 @@ internal class StationScreenshotStability {
         }
         val now = SystemClock.uptimeMillis()
         if (current != signature) {
+            changedSignatures++
             signature = current
             unchangedSince = now
         }
-        return now - unchangedSince >= 500L
+        val settled = now - unchangedSince >= 500L
+        if (!settled) waitingForSettle++
+        return settled
     }
 }
