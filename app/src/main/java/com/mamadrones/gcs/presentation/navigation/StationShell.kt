@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.mamadrones.gcs.domain.model.VehicleConnectionState
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.presentation.dashboard.forDisplay
 import com.mamadrones.gcs.presentation.components.ConsoleIcon
@@ -34,6 +35,19 @@ private val settingsPages = listOf(
     WorkspacePage("vesc-discovery", "Bluetooth / BLE"), WorkspacePage("map-settings", "Maps"),
     WorkspacePage("admin", "Accounts & audit"),
 )
+
+@Composable
+private fun ConnectionShortcut(status: VehicleConnectionState, onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = Modifier.heightIn(min = 48.dp).testTag("connection-shortcut")) {
+        Text(when (status) {
+            VehicleConnectionState.CONNECTED -> "● Connected"
+            VehicleConnectionState.CONNECTING -> "Connecting…"
+            VehicleConnectionState.DEGRADED -> "Link lost · Setup"
+            VehicleConnectionState.ERROR -> "Link error · Setup"
+            else -> "Disconnected · Connect"
+        }, style = MaterialTheme.typography.labelMedium)
+    }
+}
 
 /** A map-first shell. Configuration categories never permanently consume the operating map. */
 @Composable
@@ -67,40 +81,39 @@ fun StationShell(
         val wide = maxWidth >= 720.dp
         Column(Modifier.fillMaxSize()) {
             Surface(shadowElevation = 2.dp) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box {
-                        TextButton(onClick = { menuOpen = true }, modifier = Modifier.heightIn(min = 52.dp).testTag("station-menu")) {
-                            MamaIcon(ConsoleIcon.DASHBOARD)
-                            if (wide) Text("  MAMA GCS", style = MaterialTheme.typography.titleSmall)
-                            else Text(" Menu", style = MaterialTheme.typography.labelMedium)
-                        }
-                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            Text("ROVER GROUND STATION", Modifier.padding(16.dp), style = MaterialTheme.typography.labelSmall)
-                            listOf(
-                                WorkspacePage("dashboard", "Operate rover"), WorkspacePage("mission", "Plan route"),
-                                WorkspacePage("more", "Rover configuration"), WorkspacePage("diagnostics", "Analyze tools"),
-                                WorkspacePage("general", "Application settings"), WorkspacePage("admin", "Accounts & audit"),
-                            ).forEach { page ->
-                                DropdownMenuItem(text = { Text(page.title) }, onClick = {
-                                    menuOpen = false; onNavigate(page.route)
-                                }, modifier = Modifier.testTag("menu-${page.route}"))
+                Column {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box {
+                            TextButton(onClick = { menuOpen = true }, modifier = Modifier.heightIn(min = 52.dp).testTag("station-menu")) {
+                                MamaIcon(ConsoleIcon.DASHBOARD)
+                                if (wide) Text("  MAMA GCS", style = MaterialTheme.typography.titleSmall)
+                                else Text(" Menu", style = MaterialTheme.typography.labelMedium)
+                            }
+                            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                                Text("ROVER GROUND STATION", Modifier.padding(16.dp), style = MaterialTheme.typography.labelSmall)
+                                listOf(
+                                    WorkspacePage("dashboard", "Operate rover"), WorkspacePage("mission", "Plan route"),
+                                    WorkspacePage("more", "Rover configuration"), WorkspacePage("diagnostics", "Analyze tools"),
+                                    WorkspacePage("general", "Application settings"), WorkspacePage("admin", "Accounts & audit"),
+                                ).forEach { page ->
+                                    DropdownMenuItem(text = { Text(page.title) }, onClick = {
+                                        menuOpen = false; onNavigate(page.route)
+                                    }, modifier = Modifier.testTag("menu-${page.route}"))
+                                }
                             }
                         }
+                        if (wide) TextButton(onClick = onVehicleDetails, modifier = Modifier.testTag("vehicle-selector")) {
+                            Text(vehicle.displayName ?: vehicle.systemId?.let { "Rover · SYS $it" } ?: "No rover selected",
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        Text(workspace, Modifier.weight(1f).padding(horizontal = 8.dp).testTag("workspace-title"),
+                            style = MaterialTheme.typography.titleSmall, maxLines = if (wide) 1 else 2,
+                            overflow = TextOverflow.Ellipsis)
+                        if (wide) ConnectionShortcut(live.connectionStatus) { onNavigate("settings") }
                     }
-                    if (wide) TextButton(onClick = onVehicleDetails, modifier = Modifier.testTag("vehicle-selector")) {
-                        Text(vehicle.displayName ?: vehicle.systemId?.let { "Rover · SYS $it" } ?: "No rover selected",
-                            maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    Text(workspace, Modifier.weight(1f).padding(horizontal = 8.dp),
-                        style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    TextButton(onClick = { onNavigate("settings") }, modifier = Modifier.heightIn(min = 48.dp).testTag("connection-shortcut")) {
-                        Text(when (live.connectionStatus) {
-                            com.mamadrones.gcs.domain.model.VehicleConnectionState.CONNECTED -> "● Connected"
-                            com.mamadrones.gcs.domain.model.VehicleConnectionState.CONNECTING -> "Connecting…"
-                            com.mamadrones.gcs.domain.model.VehicleConnectionState.DEGRADED -> "Link lost · Setup"
-                            com.mamadrones.gcs.domain.model.VehicleConnectionState.ERROR -> "Link error · Setup"
-                            else -> "Disconnected · Connect"
-                        }, style = MaterialTheme.typography.labelMedium)
+                    if (!wide) Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.End) {
+                        ConnectionShortcut(live.connectionStatus) { onNavigate("settings") }
                     }
                 }
             }

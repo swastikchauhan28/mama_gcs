@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-059-01: Separate mobile workspace title from link shortcut
+
+- Date: 2026-10-26. Status: drafted before implementation under the user's UI-only next-phase request. Exact AI model/version unavailable. Baseline `3e767a05d1b6e3d20e612376cd5940fb8bc3d46b`; preserve untracked `desktop.ini`.
+- Context: on phone-width screens, the long connection shortcut competes with the workspace title in one header row. The observed “Application settings” title is ellipsized even though there is vertical space. The title, route and connection label are display-only inputs to `StationShell`; no transport or vehicle state is written by this layout.
+- Alternatives: abbreviate status words, reduce title text size, allow the entire row to wrap unpredictably, or place the existing connection shortcut on a dedicated second mobile row. Choose the second row to retain truthful status wording and a stable menu/title alignment. Keep the wide header unchanged.
+- Reason/trade-off: the mobile header becomes one touch-target row taller, reducing content height. The title should remain readable at 320–360 dp and 1.3× text size; an unusually long future label may still need another layout adjustment. Preserve one shortcut instance and its existing navigation/test tag.
+- Verification: focused Compose geometry/text-layout and shortcut-navigation test, existing software build/JVM/lint checks, and visual inspection on a disposable emulator. No physical connection or control inference follows from these checks.
+- Rollback: reverse only the header/test/documentation diff after review. There is no data, dependency, permission, schema, remote destination or hardware migration. Revisit if the extra row obscures necessary content on supported smaller screens.
+
 ## D-058-01: Reveal the selected mobile workspace tab
 
 - Date: 2026-10-26. Status: drafted before implementation under the user's UI-only request. Exact AI model/version unavailable. Baseline `f241ba13636e9a626f1973d5f7a3f75d1a520b92`; preserve untracked `desktop.ini`.

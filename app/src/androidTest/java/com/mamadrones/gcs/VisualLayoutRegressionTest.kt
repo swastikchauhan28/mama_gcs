@@ -152,6 +152,48 @@ class VisualLayoutRegressionTest {
         compose.onNodeWithTag("category-telemetry").performScrollTo().assertIsDisplayed()
     }
 
+    @Test fun mobileHeaderShowsFullWorkspaceTitleAboveConnectionShortcut() {
+        val route = mutableStateOf("diagnostics")
+        val width = mutableStateOf(320.dp)
+        val fontScale = mutableStateOf(1.3f)
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, fontScale.value)) {
+                MamaGcsTheme {
+                    Box(Modifier.width(width.value)) {
+                        StationShell(VehicleState(), route.value, onNavigate = { route.value = it }, onVehicleDetails = {}) {}
+                    }
+                }
+            }
+        }
+
+        fun assertReadableTitle(expected: String) {
+            val title = compose.onNodeWithTag("workspace-title").assertIsDisplayed()
+            title.assertTextEquals(expected)
+            val layouts = mutableListOf<TextLayoutResult>()
+            title.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            assertTrue("Workspace title must have at least one line", layouts.single().lineCount > 0)
+            repeat(layouts.single().lineCount) { line ->
+                assertFalse("Workspace title must not be ellipsized", layouts.single().isLineEllipsized(line))
+            }
+            val titleBounds = title.fetchSemanticsNode().boundsInRoot
+            val shortcut = compose.onNodeWithTag("connection-shortcut").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+            assertTrue("Connection shortcut must be below the mobile title", shortcut.top >= titleBounds.bottom - 1f)
+        }
+
+        assertReadableTitle("Analyze telemetry")
+        compose.onNodeWithTag("connection-shortcut").performClick()
+        compose.runOnIdle { assertEquals("settings", route.value) }
+        assertReadableTitle("Application settings")
+
+        compose.runOnIdle {
+            width.value = 360.dp
+            fontScale.value = 1f
+            route.value = "more"
+        }
+        assertReadableTitle("Rover configuration")
+    }
+
     private fun closeColor(a: Color, b: Color) = abs(a.red - b.red) < .02f &&
         abs(a.green - b.green) < .02f && abs(a.blue - b.blue) < .02f
 }

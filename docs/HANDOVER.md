@@ -2,6 +2,29 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-26 — Phase 59 readable mobile header
+
+### Done
+
+- The phone header gives the workspace title a full row beside Menu and places the existing connection shortcut below it. The wide header retains its single-row layout. See [Phase 59](phase-59-report.md) and [D-059-01](DECISIONS.md#d-059-01-separate-mobile-workspace-title-from-link-shortcut).
+- Fresh software checks passed 389 JVM tests, both APK builds and lint (0 errors, 28 warnings). Focused mobile-title, real-activity connection-shortcut and wide-header geometry tests each passed 1/1 with clean Android health. Normal and 1.3× text screenshots show the full Application settings title.
+
+### In progress
+
+- Physical hardware diagnosis remains on hold by user request. The Phase 59 UI change received a separate commit-and-push request after its initial review.
+
+### Broken or risky
+
+- The older screenshot-heavy landscape workspace test failed at its first screenshot stability wait before its category checks. A direct wide-header geometry test passed afterward, but the screenshot timeout remains unresolved. The taller mobile header reduces available content height. The full Android UI suite was not rerun.
+
+### Next
+
+- Review the Phase 59 UI and test diff. Investigate the separate landscape screenshot timeout if it repeats in a later targeted run; keep its failure evidence. Resume Cube/radio work only if the user requests it.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken screenshot or safety tests, or commit/push without a separate request. Preserve untracked `desktop.ini`.
+
 ## 2026-10-26 — Phase 58 mobile tab visibility
 
 ### Done

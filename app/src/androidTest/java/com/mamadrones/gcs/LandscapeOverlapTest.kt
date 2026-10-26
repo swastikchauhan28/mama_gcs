@@ -8,10 +8,29 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import kotlin.math.abs
 
 /** A regression assertion for the observed landscape defect; do not weaken it to obtain green tests. */
 class LandscapeOverlapTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+
+    @Test fun wideHeaderKeepsTitleAndConnectionOnOneRow() {
+        val previous = compose.activity.requestedOrientation
+        try {
+            compose.activityRule.scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE }
+            compose.onNodeWithTag("station-menu").performClick()
+            compose.onNodeWithTag("menu-general").performClick()
+            val title = compose.onNodeWithTag("workspace-title").assertTextEquals("Application settings")
+                .fetchSemanticsNode().boundsInRoot
+            val shortcut = compose.onNodeWithTag("connection-shortcut").assertIsDisplayed()
+                .fetchSemanticsNode().boundsInRoot
+            compose.onNodeWithTag("vehicle-selector").assertIsDisplayed()
+            val tolerance = 8 * compose.activity.resources.displayMetrics.density
+            assertTrue("Wide header title and connection must share a row", abs(title.center.y - shortcut.center.y) <= tolerance)
+        } finally { compose.activityRule.scenario.onActivity { it.requestedOrientation = previous } }
+    }
+
     @Test fun operatorToolbarMustNotCoverCenterControl() {
         val previous = compose.activity.requestedOrientation
         try {
