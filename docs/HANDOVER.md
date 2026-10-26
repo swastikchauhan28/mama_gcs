@@ -2,6 +2,29 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-26 — Phase 58 mobile tab visibility
+
+### Done
+
+- Narrow-screen workspace navigation now brings the selected tab into view when its route changes, while preserving manual horizontal scrolling and the wide-screen drawer. See [Phase 58](phase-58-report.md) and [D-058-01](DECISIONS.md#d-058-01-reveal-the-selected-mobile-workspace-tab).
+- Fresh software verification with temporary local Gradle outputs passed 389 JVM tests, both APK builds, lint (0 errors, 28 warnings), and the focused emulator UI test with a clean Android health gate. Normal and 1.3× text-size screenshots show the selected “Accounts & audit” tab fully visible.
+
+### In progress
+
+- Physical hardware diagnosis remains on hold by user request. The Phase 58 UI change received a separate commit-and-push request after its initial review.
+
+### Broken or risky
+
+- The first focused emulator run passed its UI assertion but failed the health gate because Android boot services logged four ANRs. A settled rerun was clean; both results are preserved. OneDrive cloud placeholders prevented Gradle from snapshotting generated kapt output in the normal build directory, so the complete software check used an untracked temporary build-output override. The full Android UI suite was not rerun.
+
+### Next
+
+- Review the narrow navigation diff and, during a future UI change, watch for distracting tab-strip movement or clipping on still narrower devices. Resume Cube/radio work only when the user requests it.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken tests, or commit/push without a separate request. Preserve untracked `desktop.ini`.
+
 ## 2026-10-24 — Phase 57 emulator acceptance health gate
 
 ### Done

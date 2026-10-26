@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-058-01: Reveal the selected mobile workspace tab
+
+- Date: 2026-10-26. Status: drafted before implementation under the user's UI-only request. Exact AI model/version unavailable. Baseline `f241ba13636e9a626f1973d5f7a3f75d1a520b92`; preserve untracked `desktop.ini`.
+- Context: the narrow workspace tab row remembers its horizontal offset across route changes. Opening a page from the menu or a shortcut can therefore leave its selected tab outside the visible strip. Inputs are local route changes; the selected tab is transient UI state and has no persistence or vehicle effect.
+- Alternatives: leave manual scrolling, add a separate current-page label, or scroll the existing tab strip to the selected item on route changes. Choose the last option as the smallest direct fix. Keep the wide drawer and existing tab clicks.
+- Risk/trade-off: automatic movement can surprise someone who has manually scrolled the strip. Trigger only when the selected route changes, not on every recomposition or live telemetry update. A too-wide tab may still be clipped on an unusually narrow viewport; verify normal phone widths and large text. No transport, command, permission, dependency, schema, or hardware change.
+- Verification: focused Compose geometry/navigation test on a disposable emulator; JVM test, APK/test APK build, lint and visual check where available. A UI pass cannot establish Cube or rover operation.
+- Rollback: reverse only this navigation UI, focused test and documentation diff after review. No data migration or physical rollback. Revisit if route changes produce a distracting jump or supported phone widths cannot show the selected tab.
+
 ## D-057-01: Gate emulator acceptance on JUnit and Android health
 
 - Date: 2026-10-24. User approved Phase 57. Exact AI model/version unavailable. Baseline `f467724c3801ba20b8c5374e8ed4910d6aceedde`; preserve existing documentation edits and untracked `desktop.ini`.

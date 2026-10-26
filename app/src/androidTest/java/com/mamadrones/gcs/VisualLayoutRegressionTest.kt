@@ -123,6 +123,35 @@ class VisualLayoutRegressionTest {
         }
     }
 
+    @Test fun selectedMobileWorkspaceTabIsRevealedAfterNavigation() {
+        val route = mutableStateOf("general")
+        compose.setContent {
+            MamaGcsTheme {
+                Box(Modifier.width(360.dp)) {
+                    StationShell(VehicleState(), route.value, onNavigate = { route.value = it }, onVehicleDetails = {}) {}
+                }
+            }
+        }
+
+        fun assertTabInsideStrip(tab: String) {
+            compose.waitForIdle()
+            val strip = compose.onNodeWithTag("category-strip").fetchSemanticsNode().boundsInRoot
+            val selected = compose.onNodeWithTag("category-$tab").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+            assertTrue("$tab must start inside the mobile tab strip", selected.left >= strip.left - 1f)
+            assertTrue("$tab must end inside the mobile tab strip", selected.right <= strip.right + 1f)
+        }
+
+        compose.onNodeWithTag("station-menu").performClick()
+        compose.onNodeWithTag("menu-admin").performClick()
+        assertTabInsideStrip("admin")
+
+        compose.runOnIdle { route.value = "rc-pwm" }
+        assertTabInsideStrip("rc-pwm")
+
+        // Scrolling an unselected tab remains available after automatic navigation.
+        compose.onNodeWithTag("category-telemetry").performScrollTo().assertIsDisplayed()
+    }
+
     private fun closeColor(a: Color, b: Color) = abs(a.red - b.red) < .02f &&
         abs(a.green - b.green) < .02f && abs(a.blue - b.blue) < .02f
 }

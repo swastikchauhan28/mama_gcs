@@ -2,6 +2,8 @@ package com.mamadrones.gcs.presentation.navigation
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -43,6 +45,7 @@ fun StationShell(
     content: @Composable () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    val selectedTabRequester = remember { BringIntoViewRequester() }
     val live = vehicle.forDisplay()
     val pages = when {
         vehiclePages.any { it.route == route } -> vehiclePages
@@ -105,11 +108,16 @@ fun StationShell(
                 Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = { onNavigate("dashboard") }, modifier = Modifier.heightIn(min = 48.dp).testTag("exit-workspace")) { Text("‹ Operate") }
-                        if (!wide && pages.isNotEmpty()) Row(Modifier.weight(1f).horizontalScroll(rememberScrollState())) {
-                            pages.forEach { page ->
-                                FilterChip(selected = route == page.route, onClick = { onNavigate(page.route) },
-                                    label = { Text(page.title) }, modifier = Modifier.padding(end = 6.dp).heightIn(min = 48.dp)
-                                        .testTag("category-${page.route}"))
+                        if (!wide && pages.isNotEmpty()) {
+                            // Move only when navigation selects another page; manual tab scrolling stays under the user's control.
+                            LaunchedEffect(route) { selectedTabRequester.bringIntoView() }
+                            Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()).testTag("category-strip")) {
+                                pages.forEach { page ->
+                                    FilterChip(selected = route == page.route, onClick = { onNavigate(page.route) },
+                                        label = { Text(page.title) }, modifier = Modifier.padding(end = 6.dp).heightIn(min = 48.dp)
+                                            .then(if (route == page.route) Modifier.bringIntoViewRequester(selectedTabRequester) else Modifier)
+                                            .testTag("category-${page.route}"))
+                                }
                             }
                         } else Text(if (route == "mission") "LOCAL PLAN · Not uploaded to rover" else "${pages.firstOrNull { it.route == route }?.title.orEmpty()} · Rover station",
                             style = MaterialTheme.typography.labelMedium)
