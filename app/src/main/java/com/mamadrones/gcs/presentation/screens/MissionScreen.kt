@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -18,10 +20,14 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
@@ -499,6 +505,24 @@ fun MissionScreen(
 }
 
 private const val MAX_ROUTE_FILE_CHARS = 256_000
+private const val MAX_COORDINATE_CHARS = 32
+
+private fun canToggleCoordinateSign(value: String): Boolean {
+    val text = value.trim()
+    return text.startsWith('-') || text.startsWith('+') || text.length < MAX_COORDINATE_CHARS
+}
+
+private fun toggleCoordinateSign(value: String): String {
+    val text = value.trim()
+    return when {
+        text.startsWith('-') -> text.drop(1)
+        text.startsWith('+') -> "-${text.drop(1)}"
+        text.length < MAX_COORDINATE_CHARS -> "-$text"
+        // Never discard the final character merely to insert a sign.
+        else -> text
+    }
+}
+
 private fun java.io.Reader.readBounded(maxChars: Int): String {
     val result = StringBuilder()
     val buffer = CharArray(4096)
@@ -521,17 +545,49 @@ private fun WaypointDialog(
     var longitude by rememberSaveable { mutableStateOf(initialLongitude) }
     val lat = latitude.trim().toDoubleOrNull()?.takeIf { it.isFinite() && it in -90.0..90.0 }
     val lon = longitude.trim().toDoubleOrNull()?.takeIf { it.isFinite() && it in -180.0..180.0 }
+    val latitudeInvalid = latitude.isNotBlank() && lat == null
+    val longitudeInvalid = longitude.isNotBlank() && lon == null
     AlertDialog(
         onDismissRequest = onDismiss, title = { Text(if (editing) "Edit waypoint" else "Add waypoint") },
         text = {
+            // Resolve against the dialog window that owns the focused text field.
+            val keyboardController = LocalSoftwareKeyboardController.current
+            val longitudeRequester = remember { BringIntoViewRequester() }
+            var longitudeFocused by remember { mutableStateOf(false) }
+            LaunchedEffect(longitudeInvalid, longitudeFocused) {
+                // Focus normally reveals the field, but its error text can remain under the IME.
+                if (longitudeInvalid && longitudeFocused) longitudeRequester.bringIntoView()
+            }
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("WGS84 decimal degrees. Use a decimal point and a minus sign for south/west.")
-                OutlinedTextField(value = latitude, onValueChange = { latitude = it.take(32) }, singleLine = true,
-                    label = { Text("Latitude (-90 to 90)") }, isError = latitude.isNotBlank() && lat == null,
+                Text("WGS84 decimal degrees. Use a decimal point; tap ± for south/west.")
+                OutlinedTextField(value = latitude, onValueChange = { latitude = it.take(MAX_COORDINATE_CHARS) }, singleLine = true,
+                    label = { Text("Latitude (-90 to 90)") }, isError = latitudeInvalid,
+                    supportingText = if (latitudeInvalid) {
+                        { Text("Enter a latitude from -90 to 90.") }
+                    } else null,
+                    trailingIcon = {
+                        IconButton(onClick = { latitude = toggleCoordinateSign(latitude) },
+                            enabled = canToggleCoordinateSign(latitude),
+                            modifier = Modifier.testTag("mission-latitude-sign")
+                                .semantics { contentDescription = "Toggle latitude sign" }) { Text("±") }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.testTag("mission-latitude"))
-                OutlinedTextField(value = longitude, onValueChange = { longitude = it.take(32) }, singleLine = true,
-                    label = { Text("Longitude (-180 to 180)") }, isError = longitude.isNotBlank() && lon == null,
-                    modifier = Modifier.testTag("mission-longitude"))
+                OutlinedTextField(value = longitude, onValueChange = { longitude = it.take(MAX_COORDINATE_CHARS) }, singleLine = true,
+                    label = { Text("Longitude (-180 to 180)") }, isError = longitudeInvalid,
+                    supportingText = if (longitudeInvalid) {
+                        { Text("Enter a longitude from -180 to 180.") }
+                    } else null,
+                    trailingIcon = {
+                        IconButton(onClick = { longitude = toggleCoordinateSign(longitude) },
+                            enabled = canToggleCoordinateSign(longitude),
+                            modifier = Modifier.testTag("mission-longitude-sign")
+                                .semantics { contentDescription = "Toggle longitude sign" }) { Text("±") }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                    modifier = Modifier.bringIntoViewRequester(longitudeRequester)
+                        .onFocusChanged { longitudeFocused = it.isFocused }.testTag("mission-longitude"))
             }
         },
         confirmButton = { TextButton(onClick = { if (enabled && lat != null && lon != null) onConfirm(lat, lon) },

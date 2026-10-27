@@ -2,6 +2,138 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-27 — Full non-hardware software test run
+
+### Done
+
+- Fresh Gradle build, Android test APK, 389/389 JVM tests and lint completed; lint reported 0 errors and 28 warnings. All 150 existing non-hardware Android tests passed in two batches (7 + 143) on the disposable API 34 emulator; both Android health gates passed with no new crash or ANR evidence. Online map and real Android document-picker flows were included. Representative full-display map, route-library and coordinate-keyboard captures were inspected. See [full software test report](test-report-2026-10-27-full-software.md).
+
+### In progress
+
+- Account-journey and external UDP acceptance remain open software coverage gaps. Hardware work remains on hold by user request. Preserve unrelated `desktop.ini`; check Git for the publication state of Phases 71–75 and this report.
+
+### Broken or risky
+
+- No failure remains in the existing non-hardware test inventory. Full account setup/login/logout through the real UI, a real external UDP peer, other devices/locales/IMEs, and physical Cube/radio acceptance remain unverified. Lint has 28 warnings; generated test evidence is in ignored build/temp directories.
+
+### Next
+
+- Review the combined Phase 71–75 diff and this test report. Add targeted account-journey and external UDP acceptance coverage if those integration gaps are required for release.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken validation, or commit/push without a separate request. Preserve `desktop.ini`.
+
+## 2026-10-27 — Phase 75 signed decimal coordinate entry
+
+### Done
+
+- The shared waypoint/outline coordinate dialog requests a decimal keypad and offers a labelled `±` sign control per field. Negative coordinates remain enterable without relying on a keyboard's minus key; the existing parser, range limits and confirmation gate are unchanged. Fresh build, 389/389 JVM tests, lint and 11/11 targeted Android tests passed with a healthy emulator. Portrait and narrow-landscape full-display captures were inspected. See [Phase 75](phase-75-report.md) and [D-075-01](DECISIONS.md#d-075-01-offer-a-signed-decimal-keypad-for-local-coordinates).
+
+### In progress
+
+- Phases 71–75 remain uncommitted and unpushed. Preserve unrelated `desktop.ini`. Hardware work remains on hold by user request.
+
+### Broken or risky
+
+- The first Phase 75 build failed on a missing Android-test import; the corrected build passed and the failure remains recorded. In the narrow landscape fixture the dialog footer still requires Done to reveal it. Other IMEs/locales, physical-phone input, screen-reader acceptance, the whole Android suite and physical Cube/radio acceptance remain unverified. Lint's warning-count report was up-to-date, not regenerated.
+
+### Next
+
+- Review the combined Phase 71–75 diff and evidence. If an operator phone becomes available, scope a signed-coordinate keyboard check there; keep hardware setup separate.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken coordinate or safety validation, or commit/push without a separate request. Preserve `desktop.ini`.
+
+## 2026-10-27 — Phase 74 normal-app coordinate check
+
+### Done
+
+- Added a real `MainActivity` portrait acceptance case for Mission → Add coordinates, invalid range guidance with IME open, corrected coordinates after Done, and Cancel. It passed 1/1 on the disposable Pixel emulator with a healthy Android gate. Both 1080×2220 full-display captures were inspected; saved draft and recovery copy were unchanged. See [Phase 74](phase-74-report.md) and [D-074-01](DECISIONS.md#d-074-01-verify-coordinate-guidance-in-the-real-app-window). No production app code changed in this phase.
+
+### In progress
+
+- Phases 71–74 remain uncommitted and unpushed. Preserve unrelated `desktop.ini`. Hardware work remains on hold by user request.
+
+### Broken or risky
+
+- Physical phone, other IMEs/locales, saving through the real app path, the whole Android suite, and physical Cube/radio acceptance are unverified. Phase 73's 389 JVM and lint results were not rerun in Phase 74.
+
+### Next
+
+- Review the combined Phase 71–74 diff and evidence. Scope any additional real-device check separately before release claims.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken coordinate or safety validation, or commit/push without a separate request. Preserve `desktop.ini`.
+
+## 2026-10-27 — Phase 73 invalid coordinate guidance
+
+### Done
+
+- Added range guidance below invalid latitude/longitude fields in the shared local waypoint/outline dialog. The focused longitude error now scrolls above the IME in landscape. Final targeted Android checks passed 8/8 with a healthy emulator; 389/389 JVM tests passed and lint completed. Portrait and landscape full-display captures were inspected. See [Phase 73](phase-73-report.md) and [D-073-01](DECISIONS.md#d-073-01-explain-invalid-local-coordinate-entries).
+
+### In progress
+
+- Phases 71–73 remain uncommitted and unpushed. Preserve unrelated `desktop.ini`. Hardware work remains on hold by user request.
+
+### Broken or risky
+
+- The first Phase 73 test APK failed to compile from a wrong test import, then a passing landscape test visually hid the longitude error behind the keyboard. Both failures and the corrected evidence are retained in the report. The lint XML warning count is from an up-to-date report, and physical phone/other IMEs/locales/full Android suite are unverified.
+
+### Next
+
+- Review the combined Phase 71–73 diff and evidence. Scope any physical-phone or other UI acceptance separately before release claims.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken coordinate or safety validation, or commit/push without a separate request. Preserve `desktop.ini`.
+
+## 2026-10-27 — Phase 72 portrait waypoint keyboard check
+
+### Done
+
+- Added portrait Add/Edit variants alongside the existing landscape tests, with portrait configuration and full-display dimensions asserted. All four passed on the disposable emulator; the four portrait captures measured 1080×2220 and were visually inspected. Add/Apply/Cancel and fields were visible above the IME, and Done plus exact local callbacks worked. See [Phase 72](phase-72-report.md) and [D-072-01](DECISIONS.md#d-072-01-verify-waypoint-keyboard-flow-in-portrait). No production code change this phase.
+
+### In progress
+
+- Phase 71 and Phase 72 remain uncommitted and unpushed. Preserve unrelated `desktop.ini`. Hardware remains on hold by user request.
+
+### Broken or risky
+
+- The first Phase 72 run passed two tests but captured landscape because the debug fixture is fixed landscape; it is retained as a failed portrait-evidence attempt. The corrected portrait tests passed. The runner could not identify the GPU launch option. Physical phone, other IMEs/locales and the whole Android suite remain unverified.
+
+### Next
+
+- Review the combined Phase 71–72 diff and evidence. A physical-phone portrait/IME check or other feature work should be scoped separately.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken checks, or commit/push without a separate request. Preserve `desktop.ini`.
+
+## 2026-10-26 — Phase 71 waypoint keyboard path
+
+### Done
+
+- Added an explicit Done action to the Add/Edit waypoint longitude field, with the keyboard controller resolved inside its dialog window. Done only hides the IME; existing coordinate validation and local Add/Edit actions are unchanged. The focused 2/2 Android tests, 13/13 related Android regressions, 389/389 JVM tests and lint (0 errors/28 baseline warnings) passed. Final full-display keyboard-open/after-Done captures were inspected. See [Phase 71](phase-71-report.md) and [D-071-01](DECISIONS.md#d-071-01-verify-waypoint-entry-with-the-android-keyboard).
+
+### In progress
+
+- Phase 71 is uncommitted and unpushed. Preserve unrelated `desktop.ini`. Hardware work remains on hold by user request.
+
+### Broken or risky
+
+- At 320 dp / 2× in the landscape fixture, the open IME covers the dialog footer; pressing Done reveals it. The first two failing test runs and their causes are retained in the report. Other IMEs, phones and locales, the whole Android suite, and physical acceptance were not checked this phase.
+
+### Next
+
+- Review the Phase 71 diff and evidence. A separately scoped portrait-phone/IME check would add real-device layout evidence; do not infer it from this emulator fixture.
+
+### Do not touch
+
+- Do not alter Cube/radio settings, send vehicle commands, weaken validation, or commit/push without a separate request. Preserve `desktop.ini`.
+
 ## 2026-10-26 — UI Phases 60–70 verification
 
 ### Done
@@ -22,7 +154,7 @@ Read this first, then the [project instructions](../AGENTS.md). Keep the newest 
 
 ### Do not touch
 
-- Do not alter Cube/radio settings, send vehicle commands, or weaken safety/accessibility checks. Preserve `desktop.ini`. The current user request authorizes this scoped commit and push.
+- Do not alter Cube/radio settings, send vehicle commands, or weaken safety/accessibility checks. Preserve `desktop.ini`. The earlier delivery request authorized only its scoped commit and push.
 
 ## 2026-10-26 — Phase 70 route search keyboard path
 
