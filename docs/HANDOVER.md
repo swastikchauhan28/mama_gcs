@@ -2,6 +2,119 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-27 — Phase 80 direction comparison
+
+### Done
+
+- Added an explicit local comparison of north/south and east/west coverage for the same field and tool settings, with independent cards, diagrams, pass counts, lengths, modeled-gap ranges and direction-specific errors. It does not choose or save a direction. 412 JVM tests passed; final build/lint passed and the final targeted emulator run passed 7/7. Portrait, landscape and enlarged-text captures were inspected.
+
+### In progress
+
+- Initial emulator and build failures are retained in [Phase 80 report](phase-80-report.md), including a later Compose renderer exception whose unchanged test passed on retry. Publication of Phases 76–80 was requested; check Git for the current commit and remote status. Preserve unrelated `desktop.ini`.
+
+### Broken or risky
+
+- Comparison ranges are modeled and potentially overlapping; neither turns, physical soil, GPS error nor implement behavior is validated. Narrow/large-text layouts require sideways and vertical scrolling; full-width/system-wide enlarged-text and screen-reader accessibility remain unverified. Hardware work and prior account/UDP gaps remain open.
+
+### Next
+
+- Review the comparison with representative field/implement data and plan turns/headland work separately before physical use. Future commits and pushes require a request.
+
+### Do not touch
+
+- Keep hardware on hold; do not send commands, upload comparisons, replace saved routes or modify unrelated `desktop.ini`.
+
+## 2026-10-27 — Phase 79 modeled uncertainty ranges
+
+### Done
+
+- Added separate modeled headland and unplanned-main area ranges, using conservative whole-cell classification and outward display rounding. Ranges accompany the existing sample estimates and explicitly describe modeled geometry rather than physical soil or positioning accuracy. Build/lint succeeded, 409 JVM tests and 5 targeted emulator tests passed, and the range screen was visually inspected. Tests include analytical fields and sample-center aliasing that hides a large gap; lint report was up-to-date rather than freshly regenerated.
+
+### In progress
+
+- Phases 76–79 remain uncommitted and unpushed. Preserve unrelated `desktop.ini`. See [Phase 79 report](phase-79-report.md).
+
+### Broken or risky
+
+- Ranges may be wide, depend on numerical/model assumptions and are not independently certified. They do not include boundary-survey, tracking, implement or physical soil uncertainty. Headland work/turns and prior hardware/account/UDP acceptance gaps remain open.
+
+### Next
+
+- Review modeled ranges against representative field data; separately scope independent geometry review, headland/turn plans and physical validation before field operation. Commit/push only on request.
+
+### Do not touch
+
+- Keep hardware on hold; do not send commands, upload passes, replace saved routes or modify unrelated `desktop.ini`.
+
+## 2026-10-27 — Phase 78 sampled coverage gaps
+
+### Done
+
+- Coverage preview estimates reserved headland and unplanned main area separately using a bounded 128 × 128 local grid. It displays sampling-cell dimensions and warns that estimates can be inaccurate and gaps can be missed. If no field samples are present the estimate is unavailable; zero gap samples mean none detected, not proven coverage. No saved route, networking or vehicle commands are changed.
+- Final build and lint succeeded, 406 JVM tests passed, and the final emulator run passed 5/5 with healthy Android. Two initial test-only partial-text assertion failures and their correction are retained in the [Phase 78 report](phase-78-report.md). Final estimates/warning screenshot inspected; lint report was up-to-date, not a freshly regenerated warning inventory.
+
+### In progress
+
+- Phases 76–78 remain uncommitted and unpushed; preserve unrelated `desktop.ini`.
+
+### Broken or risky
+
+- Sampling has no guaranteed error bound and may miss narrow or regularly spaced gaps; it never establishes worked soil. Headland passes, turning paths, actual implement offset and tracking, physical validation, accessibility and prior hardware/account/UDP gaps remain open.
+
+### Next
+
+- Review with representative field/implement data and scope independently verified geometry and headland/turn planning before physical operation. Commit and push only on request.
+
+### Do not touch
+
+- Keep hardware on hold; do not send commands or replace saved routes with previews. Preserve `desktop.ini`.
+
+## 2026-10-27 — Phase 77 headland preview
+
+### Done
+
+- Added a 0–100 m headland-width input to Coverage settings, defaulting to zero. A positive value reserves an amber boundary band and conservatively clips main-area working passes away from it. Invalid or too-large settings produce an error. It remains a volatile preview, not a route or headland/turn plan.
+- 403/403 JVM tests and 5/5 targeted emulator tests passed; rectangular, triangular and concave diagrams were visually inspected. The real-app regression checked route preservation and portrait/landscape with the zero default. See [Phase 77 report](phase-77-report.md) and [decision](DECISIONS.md#d-077-01-reserve-an-interior-headland-in-the-local-coverage-preview).
+
+### In progress
+
+- Build and lint passed; the lint report was up-to-date rather than a fresh warning inventory. Phases 76 and 77 remain uncommitted and unpushed; base revision `847d891`. Preserve unrelated `desktop.ini`.
+
+### Broken or risky
+
+- Reserved headland is not a turn path or worked soil; conservative clearance can leave extra gaps. Width, vehicle dimensions, tool offset, GPS accuracy and true field coverage need physical validation. Positive-headland real-app layout, system-wide large text, other devices/IMEs/locales and accessibility remain unverified. Hardware and earlier account/external UDP gaps remain open.
+
+### Next
+
+- Review with a representative field and actual implement width; separately scope headland work, safe turning and boundary gaps before any machinery use. Commit/push only on request.
+
+### Do not touch
+
+- Keep hardware work on hold; do not send commands, upload passes, replace saved routes with previews, or modify unrelated `desktop.ini`.
+
+## 2026-10-27 — Phase 76 field coverage preview
+
+### Done
+
+- Plan route → Coverage → Coverage settings now previews the current Field outline using tool working width, overlap and north/south or east/west passes. Displays spacing, field area, working length, direction arrows, ideal green tool strips and pink areas outside them. Preview is bounded, local and volatile; saved route/recovery data and vehicle commands are unaffected.
+- 400/400 JVM tests passed. Both APKs and lint completed. All 4 new coverage tests and 30 related distinct Android tests passed across targeted runs, including one unchanged-test retry after Android returned a null screenshot. Final emulator health passed; portrait/landscape and narrow enlarged-planner captures inspected. Fixed landscape keyboard obstruction and diagram clipping found during acceptance. See [Phase 76 report](phase-76-report.md) for commands, retained failures, exact run boundaries and visual evidence.
+
+### In progress
+
+- Phase 76 is uncommitted and unpushed. Baseline `847d891` contains the previously pushed Phases 71–75 and full software test report. Preserve unrelated `desktop.ini`.
+
+### Broken or risky
+
+- No outstanding failure in the targeted coverage checks. This is not complete agricultural path planning: no headlands, turning paths, obstacles, tool offset, real position/implement tracking or proof of worked soil. Pink edge/corner gaps need extra planning. System-wide enlarged-dialog text, other phones/IMEs/locales and screen-reader acceptance remain unverified. Lint's existing 28 warnings remain; final warning report was up-to-date. Hardware heartbeat delivery and prior account/external UDP acceptance gaps remain open.
+
+### Next
+
+- Review the local preview using a representative field outline and actual tool width. Scope headland/turn and boundary-gap planning separately before considering a drivable route. Commit/push only on request.
+
+### Do not touch
+
+- Keep hardware work on hold. Do not upload/execute generated passes, send vehicle commands, replace saved drafts with previews, weaken checks, or modify `desktop.ini`.
+
 ## 2026-10-27 — Full non-hardware software test run
 
 ### Done

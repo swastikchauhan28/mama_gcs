@@ -120,6 +120,16 @@ Opening a configured UDP socket starts the receive session and accepts datagrams
 
 ## Architecture
 
+Plan → Coverage provides an offline field coverage preview from the current field outline, tool working width and overlap percentage. Choose north/south or east/west passes; the diagram shows ideal tool strips and areas outside them. It is a volatile preview with bounded geometry, not a saved/uploaded route or proof of worked soil. Turns, obstacles and tool tracking are not planned. See [Phase 76](docs/phase-76-report.md) for limits and verification.
+
+An optional headland width reserves a band inside the field boundary and clips main-area passes conservatively away from it. The amber band is not itself planned or worked; no turns are generated. See [Phase 77](docs/phase-77-report.md).
+
+The preview also samples a bounded grid to estimate the reserved-headland and unplanned-main areas. Cell dimensions are shown: small gaps can be missed and the estimates do not prove physical coverage. See [Phase 78](docs/phase-78-report.md).
+
+Modeled-area ranges additionally count uncertain grid cells conservatively. They may be wide and exclude physical positioning, implement and soil uncertainties; see [Phase 79](docs/phase-79-report.md).
+
+Coverage → Compare directions presents north/south and east/west previews with the same local settings; neither option is automatically selected or saved. See [Phase 80](docs/phase-80-report.md).
+
 ```text
 presentation/    stateless Compose screens/components, navigation, design system
                 lifecycle-aware Dashboard/Settings ViewModels

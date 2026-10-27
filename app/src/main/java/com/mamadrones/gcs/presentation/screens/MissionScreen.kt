@@ -46,6 +46,11 @@ import com.mamadrones.gcs.presentation.mission.MissionPlanUiState
 import com.mamadrones.gcs.presentation.mission.MissionTimingFormat
 import com.mamadrones.gcs.presentation.mission.MissionTimingPanel
 import com.mamadrones.gcs.presentation.mission.MissionTimingLeg
+import com.mamadrones.gcs.presentation.mission.rememberFieldCoverageState
+import com.mamadrones.gcs.presentation.mission.FieldCoverageInputs
+import com.mamadrones.gcs.presentation.mission.FieldCoverageResult
+import com.mamadrones.gcs.presentation.mission.FieldCoverageComparisonHeader
+import com.mamadrones.gcs.presentation.mission.FieldCoverageComparisonCards
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -120,6 +125,7 @@ fun MissionScreen(
     var showFileActions by rememberSaveable { mutableStateOf(false) }
     var planningSpeedInput by rememberSaveable { mutableStateOf("") }
     val timingRouteAvailable = !plan.loading && !plan.loadFailed
+    val coverage = rememberFieldCoverageState(plan.draft.keepInFence, timingRouteAvailable)
     val travelEstimate = remember(plan.draft, planningSpeedInput, timingRouteAvailable) {
         if (!timingRouteAvailable) null else MissionTimingFormat.parseSpeed(planningSpeedInput)?.let {
             MissionTravelEstimate.calculate(plan.draft, it)
@@ -155,6 +161,8 @@ fun MissionScreen(
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val wide = maxWidth >= 680.dp
+        // Leave room for the local file toolbar and editor padding in a short landscape window.
+        val coverageDiagramHeight = (maxHeight - 72.dp).coerceIn(80.dp, 260.dp)
         val enlargedMobileHeader = !wide && androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.8f
         Column(Modifier.fillMaxSize()) {
             Surface(color = MaterialTheme.colorScheme.surface) {
@@ -205,7 +213,7 @@ fun MissionScreen(
             ) {
                 item {
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("Route", "Field outline", "Review").forEach { tab ->
+                        listOf("Route", "Field outline", "Coverage", "Review").forEach { tab ->
                             FilterChip(selected = editorTab == tab, onClick = { editorTab = tab }, label = { Text(tab) },
                                 modifier = Modifier.heightIn(min = 48.dp).testTag("mission-tab-$tab"))
                         }
@@ -239,7 +247,13 @@ fun MissionScreen(
                     }
                     if (plan.loadFailed) TextButton(onClick = { onAction(MissionPlanAction.RetryLoad) }) { Text("Retry loading") }
                 }
-                if (!wide) item { mapContent(Modifier.fillMaxWidth().height(280.dp)) }
+                if (!wide && editorTab != "Coverage") item { mapContent(Modifier.fillMaxWidth().height(280.dp)) }
+                if (editorTab == "Coverage") {
+                    item { FieldCoverageInputs(coverage) }
+                    item { FieldCoverageComparisonHeader(coverage.comparison) }
+                    item { FieldCoverageComparisonCards(coverage.comparison) }
+                    item { FieldCoverageResult(coverage.result, coverageDiagramHeight) }
+                }
                 if (editorTab == "Route") item {
                     Text("${plan.draft.waypoints.size} / ${MissionDraft.MAX_WAYPOINTS} waypoints · ${String.format(Locale.US, "%.0f", plan.draft.distanceMeters)} m",
                         style = MaterialTheme.typography.titleSmall)
