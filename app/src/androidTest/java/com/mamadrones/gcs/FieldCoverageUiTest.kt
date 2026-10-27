@@ -158,9 +158,19 @@ class FieldCoverageUiTest {
         capture("phase80-metrics.png")
         node("coverage-comparison-east-diagram").assertIsDisplayed()
         capture("phase80-comparison.png")
+        node("coverage-comparison-north-map").performClick()
+        node("coverage-map-status").assertTextContains("North / south preview selected", substring = true)
+        node("coverage-comparison-east-map").performClick()
+        node("coverage-map-status").assertTextContains("East / west preview selected", substring = true)
+        node("coverage-map-hide").performClick()
+        compose.onAllNodesWithTag("coverage-map-status").assertCountEquals(0)
+        node("coverage-comparison-north-map").performClick()
+        node("coverage-map-status").assertTextContains("North / south preview selected", substring = true)
         node("coverage-pass-count").assertTextEquals("5 working passes · preview only")
         node("coverage-overlap").apply { performTextReplacement("10"); performImeAction() }
         compose.onNodeWithTag("coverage-close-settings").performClick()
+        node("coverage-compare").assertIsEnabled()
+        compose.onAllNodesWithTag("coverage-map-status").assertCountEquals(0)
         compose.onAllNodesWithTag("coverage-comparison").assertCountEquals(0)
         node("coverage-empty").assertIsDisplayed()
         val shapes = listOf(coverageTestOutline(true), field(listOf(0.0 to 0.0, 12.0 to 0.0, 12.0 to 12.0, 8.0 to 12.0, 8.0 to 4.0, 4.0 to 4.0, 4.0 to 12.0, 0.0 to 12.0)))
@@ -173,6 +183,8 @@ class FieldCoverageUiTest {
             compose.waitUntil(20_000) { compose.onAllNodesWithTag("coverage-comparison").fetchSemanticsNodes().isNotEmpty() }
             node("coverage-comparison-north-passes").assertIsDisplayed()
             node("coverage-comparison-east-passes").assertIsDisplayed()
+            node("coverage-comparison-east-map").performClick()
+            node("coverage-map-status").assertTextContains("East / west preview selected", substring = true)
         }
         assertTrue(actions.isEmpty())
     }
@@ -200,7 +212,7 @@ class FieldCoverageUiTest {
             CompositionLocalProvider(LocalDensity provides Density(density, if (largeText) 2f else 1f)) {
                 MamaGcsTheme {
                     Box(if (largeText) Modifier.width(320.dp) else Modifier) {
-                        MissionScreen(VehicleState(), MissionPlanUiState(draft = draft.value, loading = false), actions::add)
+                        MissionScreen(VehicleState(), MissionPlanUiState(draft = draft.value, loading = false), actions::add, mapStyleUrl = null)
                     }
                 }
             }

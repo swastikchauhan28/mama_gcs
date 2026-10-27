@@ -51,6 +51,8 @@ import com.mamadrones.gcs.presentation.mission.FieldCoverageInputs
 import com.mamadrones.gcs.presentation.mission.FieldCoverageResult
 import com.mamadrones.gcs.presentation.mission.FieldCoverageComparisonHeader
 import com.mamadrones.gcs.presentation.mission.FieldCoverageComparisonCards
+import com.mamadrones.gcs.presentation.map.LocalBasemapStyle
+import com.mamadrones.gcs.presentation.map.MapStyleConfig
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -61,7 +63,8 @@ fun MissionScreen(
     state: VehicleState,
     plan: MissionPlanUiState,
     onAction: (MissionPlanAction) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    mapStyleUrl: String? = MapStyleConfig.styleUrlOrNull(LocalBasemapStyle.current),
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -150,6 +153,8 @@ fun MissionScreen(
         VehicleMap(
             state = state.forDisplay(), modifier = mapModifier.testTag("mission-map"),
             draftWaypoints = plan.draft.waypoints, draftFence = plan.draft.keepInFence, planningMode = true,
+            coverageLines = coverage.mapLines,
+            styleUrl = mapStyleUrl,
             onWaypointRequested = if (canAdd) { lat, lon -> openEditor(null, lat, lon) } else null,
             onWaypointSelected = if (plan.editable) { id ->
                 plan.draft.waypoints.firstOrNull { it.id == id }?.let { point ->
@@ -247,12 +252,12 @@ fun MissionScreen(
                     }
                     if (plan.loadFailed) TextButton(onClick = { onAction(MissionPlanAction.RetryLoad) }) { Text("Retry loading") }
                 }
-                if (!wide && editorTab != "Coverage") item { mapContent(Modifier.fillMaxWidth().height(280.dp)) }
+                if (!wide && (editorTab != "Coverage" || coverage.mapLines.isNotEmpty())) item(key = "planner-map") { mapContent(Modifier.fillMaxWidth().height(280.dp)) }
                 if (editorTab == "Coverage") {
-                    item { FieldCoverageInputs(coverage) }
-                    item { FieldCoverageComparisonHeader(coverage.comparison) }
-                    item { FieldCoverageComparisonCards(coverage.comparison) }
-                    item { FieldCoverageResult(coverage.result, coverageDiagramHeight) }
+                    item(key = "coverage-inputs-item") { FieldCoverageInputs(coverage) }
+                    item(key = "coverage-comparison-header-item") { FieldCoverageComparisonHeader(coverage.comparison) }
+                    item(key = "coverage-comparison-cards-item") { FieldCoverageComparisonCards(coverage.comparison, coverage.mapEastWest, coverage.mapError, coverage::showDirectionOnMap) }
+                    item(key = "coverage-result-item") { FieldCoverageResult(coverage.result, coverageDiagramHeight) }
                 }
                 if (editorTab == "Route") item {
                     Text("${plan.draft.waypoints.size} / ${MissionDraft.MAX_WAYPOINTS} waypoints · ${String.format(Locale.US, "%.0f", plan.draft.distanceMeters)} m",

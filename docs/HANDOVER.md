@@ -2,6 +2,28 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-27 — Phase 81 selected coverage map preview
+
+### Done
+
+- Added an explicitly selected cyan pass-centerline map overlay for either direction, separate from the route and cleared by input or outline changes. Build and lint succeeded (lint report up-to-date); the rebuilt JVM suite passed 414 tests, the fixed coverage/planner emulator suite passed 7/7 and the offline native map test passed 1/1. See [Phase 81 report](phase-81-report.md) for initial failures and evidence.
+
+### In progress
+
+- Phase 81 publication was requested; check Git for the current commit and remote status. Preserve unrelated `desktop.ini`.
+
+### Broken or risky
+
+- The first map screenshot was blank after a rotation-heavy test; the standalone retry passed but the earlier cause remains uncertain. Selection on a real basemap and physical field accuracy are unverified. Date-line-crossing fields cannot use this overlay; it depicts centerlines, not turns, implement footprint or actual soil coverage.
+
+### Next
+
+- Review the diff and test with representative field data; independently validate positioning, headlands, turns and implement behavior before field use. Commit and push only on request.
+
+### Do not touch
+
+- Keep hardware on hold; do not upload a preview, command a rover or modify unrelated `desktop.ini`.
+
 ## 2026-10-27 — Phase 80 direction comparison
 
 ### Done

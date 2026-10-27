@@ -18,6 +18,7 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Point
+import org.maplibre.geojson.LineString
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicBoolean
@@ -28,6 +29,92 @@ class MapLoadRecoveryTest {
     @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
     private val vehicle = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
         position = GlobalPositionState(-35.363, 149.165), headingDegrees = 90.0)
+
+    @Test fun coverageLinesRenderSwitchClearAndSurviveStyleReload() {
+        val first = File.createTempFile("coverage-style-a-", ".json", compose.activity.cacheDir)
+        val second = File.createTempFile("coverage-style-b-", ".json", compose.activity.cacheDir)
+        first.writeText(VALID_STYLE)
+        second.writeText(VALID_STYLE.replace("#12202c", "#243444"))
+        val url = mutableStateOf<String?>(Uri.fromFile(first).toString())
+        val north = CoverageMapLine(CoverageMapPoint(-35.36305, 149.165), CoverageMapPoint(-35.36295, 149.165))
+        val east = CoverageMapLine(CoverageMapPoint(-35.363, 149.16495), CoverageMapPoint(-35.363, 149.16505))
+        val lines = mutableStateOf(listOf(north))
+        val fence = listOf(DraftWaypoint("a", -35.36305, 149.16495), DraftWaypoint("b", -35.36305, 149.16505),
+            DraftWaypoint("c", -35.36295, 149.16505), DraftWaypoint("d", -35.36295, 149.16495))
+        try {
+            compose.setContent { MamaGcsTheme { VehicleMap(VehicleState(), Modifier.fillMaxSize(), planningMode = true,
+                draftFence = fence, styleUrl = url.value, coverageLines = lines.value) } }
+            val map = awaitLoaded()
+            val rendered = AtomicBoolean(false)
+            val listener = MapView.OnDidFinishRenderingFrameListener { _, _, _ -> rendered.set(true) }
+            lateinit var view: MapView
+            compose.runOnIdle {
+                view = requireNotNull(findMap(compose.activity.window.decorView))
+                view.addOnDidFinishRenderingFrameListener(listener)
+                map.cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
+                    .target(org.maplibre.android.geometry.LatLng(-35.363, 149.165)).zoom(18.0).build()
+                map.triggerRepaint()
+            }
+            try {
+                compose.waitUntil(10_000) { rendered.get() }
+                fun awaitLine(expected: CoverageMapLine?) {
+                    compose.waitUntil(15_000) {
+                        var found = false
+                        compose.runOnIdle {
+                            val features = map.style?.getSourceAs<GeoJsonSource>("mama-coverage-preview")?.querySourceFeatures(null)
+                            found = if (expected == null) features?.isEmpty() == true else features?.any { feature ->
+                                val coords = (feature.geometry() as? LineString)?.coordinates() ?: emptyList()
+                                coords.size >= 2 && coords.all { point ->
+                                    if (expected.start.longitude == expected.end.longitude) kotlin.math.abs(point.longitude() - expected.start.longitude) < 0.000001
+                                    else kotlin.math.abs(point.latitude() - expected.start.latitude) < 0.000001
+                                }
+                            } == true
+                        }
+                        found
+                    }
+                }
+                awaitLine(north)
+                compose.onNodeWithTag("coverage-map-legend").assertIsDisplayed()
+                compose.runOnIdle {
+                    assertNotNull(map.style!!.getLayer("mama-coverage-preview-layer"))
+                    assertNotNull(map.style!!.getSource("mama-draft-fence"))
+                    map.triggerRepaint()
+                }
+                compose.awaitScreenshotFrame(view)
+                val screenshot = requireNotNull(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+                try {
+                    File(compose.activity.getExternalFilesDir(null), "phase81-map-overlay.png").outputStream().use {
+                        assertTrue(screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+                    }
+                    var screenX = 0; var screenY = 0
+                    compose.runOnIdle {
+                        val center = map.projection.toScreenLocation(org.maplibre.android.geometry.LatLng(-35.363, 149.165))
+                        val offset = IntArray(2); view.getLocationOnScreen(offset)
+                        screenX = (offset[0] + center.x).roundToInt(); screenY = (offset[1] + center.y).roundToInt()
+                    }
+                    var cyan = 0
+                    for (dy in -6..6) for (dx in -6..6) {
+                        val pixel = screenshot.getPixel(screenX + dx, screenY + dy)
+                        if (android.graphics.Color.red(pixel) < 60 && android.graphics.Color.green(pixel) in 120..190 &&
+                            android.graphics.Color.blue(pixel) in 130..205) cyan++
+                    }
+                    assertTrue("Rendered pass line not visible at projected center: $cyan cyan pixels", cyan >= 3)
+                } finally { screenshot.recycle() }
+                compose.runOnIdle { lines.value = listOf(east) }
+                awaitLine(east)
+                compose.runOnIdle { url.value = Uri.fromFile(second).toString() }
+                compose.waitUntil(15_000) { var loaded = false; compose.runOnIdle { loaded = map.style?.uri == url.value && map.style?.isFullyLoaded == true }; loaded }
+                awaitLine(east)
+                compose.runOnIdle { lines.value = emptyList() }
+                awaitLine(null)
+                compose.onNodeWithTag("coverage-map-legend").assertDoesNotExist()
+            } finally { compose.runOnIdle { view.removeOnDidFinishRenderingFrameListener(listener) } }
+        } finally {
+            compose.runOnIdle { url.value = null }
+            compose.waitForIdle()
+            check(first.delete() && second.delete())
+        }
+    }
 
     @Test fun homeMarkerIsSeparateFromVehicleAndClearsWhenEvidenceExpires() {
         val file = File.createTempFile("map-home-", ".json", compose.activity.cacheDir)

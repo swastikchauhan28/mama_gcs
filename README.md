@@ -130,6 +130,8 @@ Modeled-area ranges additionally count uncertain grid cells conservatively. They
 
 Coverage → Compare directions presents north/south and east/west previews with the same local settings; neither option is automatically selected or saved. See [Phase 80](docs/phase-80-report.md).
 
+Either successful comparison can be shown as separate cyan pass centerlines on the local planning map. This transient map overlay is not a route or a guarantee of physical coverage; date-line-crossing outlines are unavailable for map overlay. See [Phase 81](docs/phase-81-report.md).
+
 ```text
 presentation/    stateless Compose screens/components, navigation, design system
                 lifecycle-aware Dashboard/Settings ViewModels

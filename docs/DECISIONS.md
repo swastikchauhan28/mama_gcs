@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-081-01: Show a selected local coverage preview on the mission map
+
+- Date: 2026-10-27. User approved a selected direction's preview overlay on the field map and emulator testing. Model: gpt-6.1-terra. Baseline `0866a224349380ee7163a87b273070dfb38d167a` matches origin/main; unrelated `desktop.ini` is untracked and must be preserved.
+- Choice: explicitly select a successful comparison card's north/south or east/west result. Convert its local metre-plane pass endpoints back using the same first-outline origin, Earth radius and longitude scale as the existing planner; render separate cyan line features in a dedicated MapLibre source/layer, labeled preview only, alongside the existing field outline. The overlay is volatile and clears on field/settings edits, recalculation or explicit hide. On narrow screens show the existing map above the Coverage controls only when a direction is selected, with a hint to scroll up and fit the draft. Failed direction has no selection action. Preserve style-reload/empty-source behavior.
+- Alternatives: replace draft waypoints (unacceptable without authorization), automatically select a direction (no basis for ranking), or draw directly into the existing route layer (misleading). Existing draft-fence rendering and fit bounds do not handle date-line-crossing fields safely; reject map selection for these fields with an explicit message rather than draw world-spanning lines. The separate diagram comparison remains available. The local projection is approximate and no survey, physical tracking, implement offset, turn or worked-area guarantee follows.
+- Verify local/geographic inverse calculations at multiple latitudes and both directions, date-line rejection, selection/clear/invalidation, source/layer update and style reload with an offline MapLibre fixture, and emulator rectangle/triangle/concave flows including saved-draft preservation. Map screenshots require actual SDK rendering, not only data-source presence. No dependency, permission, persistence, external destination, mission upload or vehicle command is added. Rollback would be a scoped source/test/docs revert to `0866a22`; no physical safety or machinery-qualified artifact is established.
+
 ## D-080-01: Compare both cardinal coverage directions
 
 - Date: 2026-10-27. User approved side-by-side north/south versus east/west previews and emulator testing. Model: gpt-6.1-terra. HEAD `847d8912af82ef8e87d95dc21abbdb940525ff77`; Phases 76–79 and unrelated `desktop.ini` are uncommitted and must be preserved.

@@ -42,6 +42,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.mamadrones.gcs.domain.model.GeoTrackPoint
 import com.mamadrones.gcs.domain.model.DraftWaypoint
+import com.mamadrones.gcs.domain.model.CoverageMapLine
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.domain.model.HomePositionEvidence
 import kotlinx.coroutines.delay
@@ -93,6 +94,7 @@ private const val HOME_SOURCE_ID = "mama-home-source"
 private const val DRAFT_POINTS_SOURCE_ID = "mama-draft-points"
 private const val DRAFT_LINE_SOURCE_ID = "mama-draft-line"
 private const val DRAFT_FENCE_SOURCE_ID = "mama-draft-fence"
+private const val COVERAGE_SOURCE_ID = "mama-coverage-preview"
 
 private const val VEHICLE_LAYER_ID = "mama-vehicle-layer"
 private const val TRACK_LAYER_ID = "mama-track-layer"
@@ -116,6 +118,7 @@ fun VehicleMap(
     onWaypointRequested: ((Double, Double) -> Unit)? = null,
     onWaypointSelected: ((String) -> Unit)? = null,
     styleUrl: String? = MapStyleConfig.styleUrlOrNull(LocalBasemapStyle.current),
+    coverageLines: List<CoverageMapLine> = emptyList(),
 ) {
     val mapView = rememberMapViewWithLifecycle()
     val clockTick by produceState(System.currentTimeMillis()) {
@@ -322,6 +325,18 @@ fun VehicleMap(
         }
     }
 
+    LaunchedEffect(style, coverageLines, planningMode) {
+        val loadedStyle = style ?: return@LaunchedEffect
+        if (!planningMode) return@LaunchedEffect
+        val features = coverageLines.map { line ->
+            Feature.fromGeometry(LineString.fromLngLats(listOf(
+                Point.fromLngLat(line.start.longitude, line.start.latitude),
+                Point.fromLngLat(line.end.longitude, line.end.latitude),
+            )))
+        }
+        loadedStyle.getSourceAs<GeoJsonSource>(COVERAGE_SOURCE_ID)?.setGeoJson(FeatureCollection.fromFeatures(features))
+    }
+
     fun fitDraft() {
         val loadedMap = map ?: return
         val targets = (draftWaypoints + draftFence).map { LatLng(it.latitude, it.longitude) }.distinct()
@@ -355,6 +370,13 @@ fun VehicleMap(
             factory = { mapView },
             modifier = Modifier.fillMaxSize(),
         )
+
+        if (planningMode && coverageLines.isNotEmpty() && style != null) {
+            Surface(modifier = Modifier.align(Alignment.TopStart).padding(8.dp).testTag("coverage-map-legend"),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f), shape = MaterialTheme.shapes.small) {
+                Text("Cyan: pass centerlines · preview only", modifier = Modifier.padding(8.dp), style = MaterialTheme.typography.labelMedium)
+            }
+        }
 
         when {
             styleUrl == null -> MapMessage(
@@ -612,9 +634,12 @@ private fun installDraftLayers(style: Style) {
     style.addSource(GeoJsonSource(DRAFT_LINE_SOURCE_ID, emptyFeatureCollection()))
     style.addSource(GeoJsonSource(DRAFT_FENCE_SOURCE_ID, emptyFeatureCollection()))
     style.addSource(GeoJsonSource(DRAFT_POINTS_SOURCE_ID, emptyFeatureCollection()))
+    style.addSource(GeoJsonSource(COVERAGE_SOURCE_ID, emptyFeatureCollection()))
     style.addLayer(FillLayer("mama-draft-fence-fill", DRAFT_FENCE_SOURCE_ID).withProperties(
         fillColor("#FFB547"), fillOpacity(0.16f), fillOutlineColor("#FFB547"),
     ))
+    style.addLayer(LineLayer("mama-coverage-preview-layer", COVERAGE_SOURCE_ID).withProperties(
+        lineColor(AndroidColor.rgb(0, 157, 170)), lineWidth(4f), lineOpacity(0.95f)))
     style.addLayer(LineLayer("mama-draft-route", DRAFT_LINE_SOURCE_ID).withProperties(
         lineColor(AndroidColor.rgb(255, 159, 67)), lineWidth(3f), lineOpacity(0.9f)))
     style.addLayer(CircleLayer("mama-draft-waypoints", DRAFT_POINTS_SOURCE_ID).withProperties(

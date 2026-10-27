@@ -48,6 +48,9 @@ internal class FieldCoverageState(
     var eastWest by mutableStateOf(false); private set
     var result by mutableStateOf<CoverageCalculation?>(null); private set
     var comparison by mutableStateOf<CoverageDirectionComparison?>(null); private set
+    var mapLines by mutableStateOf<List<CoverageMapLine>>(emptyList()); private set
+    var mapEastWest by mutableStateOf<Boolean?>(null); private set
+    var mapError by mutableStateOf<String?>(null); private set
     var busy by mutableStateOf(false); private set
     private var job: Job? = null
     val inputError: String? get() = FieldCoveragePlanner.settingsError(width.trim().toDoubleOrNull(), overlap.trim().toDoubleOrNull(), headland.trim().toDoubleOrNull())
@@ -55,7 +58,20 @@ internal class FieldCoverageState(
     fun updateOverlap(value: String) { invalidate(); overlap = value.take(16) }
     fun updateHeadland(value: String) { invalidate(); headland = value.take(16) }
     fun setDirection(value: Boolean) { invalidate(); eastWest = value }
-    fun invalidate() { job?.cancel(); job = null; busy = false; result = null; comparison = null }
+    fun invalidate() { job?.cancel(); job = null; busy = false; result = null; comparison = null; hideMap() }
+    fun hideMap() { mapLines = emptyList(); mapEastWest = null; mapError = null }
+    fun showDirectionOnMap(eastWest: Boolean) {
+        val selected = if (eastWest) comparison?.eastWest else comparison?.northSouth
+        if (selected !is CoverageCalculation.Ready || busy) return
+        when (val projected = CoverageMapProjection.project(selected.preview, outline)) {
+            is CoverageMapProjectionResult.Ready -> {
+                mapLines = projected.lines; mapEastWest = eastWest; mapError = null
+            }
+            is CoverageMapProjectionResult.Unavailable -> {
+                hideMap(); mapError = projected.reason
+            }
+        }
+    }
     fun generate() {
         if (!available || inputError != null || busy) {
             return
@@ -83,6 +99,7 @@ internal class FieldCoverageState(
         val requestedOverlap = overlap.trim().toDouble()
         val requestedHeadland = headland.trim().toDouble()
         comparison = null
+        hideMap()
         busy = true
         job = scope.launch {
             val calculated = withContext(Dispatchers.Default) {
@@ -115,6 +132,12 @@ internal fun FieldCoverageInputs(state: FieldCoverageState) {
             modifier = Modifier.testTag("coverage-settings")) { Text("Coverage settings") }
         OutlinedButton(onClick = state::compareDirections, enabled = state.available && state.inputError == null && !state.busy,
             modifier = Modifier.testTag("coverage-compare")) { Text("Compare directions") }
+        state.mapEastWest?.let { eastWest ->
+            Text("${if (eastWest) "East / west" else "North / south"} preview selected. Scroll up to the map and use Fit draft; cyan lines are not a mission.",
+                modifier = Modifier.testTag("coverage-map-status"))
+            TextButton(onClick = state::hideMap, modifier = Modifier.testTag("coverage-map-hide")) { Text("Hide map preview") }
+        }
+        state.mapError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("coverage-map-error")) }
         if (state.busy) {
             Text("Calculating…")
             LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -183,21 +206,21 @@ internal fun FieldCoverageComparisonHeader(comparison: CoverageDirectionComparis
 }
 
 @Composable
-internal fun FieldCoverageComparisonCards(comparison: CoverageDirectionComparison?) {
+internal fun FieldCoverageComparisonCards(comparison: CoverageDirectionComparison?, selected: Boolean? = null, mapError: String? = null, onShowMap: (Boolean) -> Unit = {}) {
     if (comparison == null) return
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         // At enlarged text sizes, use a full-width card to keep labels readable.
         val cardWidth = if (LocalDensity.current.fontScale >= 1.8f) maxWidth.coerceAtLeast(240.dp)
             else ((maxWidth - 8.dp) / 2).coerceAtLeast(180.dp)
         Row(Modifier.horizontalScroll(rememberScrollState()).testTag("coverage-comparison-row"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DirectionComparisonCard("North / south", "north", comparison.northSouth, cardWidth)
-            DirectionComparisonCard("East / west", "east", comparison.eastWest, cardWidth)
+            DirectionComparisonCard("North / south", "north", comparison.northSouth, cardWidth, selected == false, mapError) { onShowMap(false) }
+            DirectionComparisonCard("East / west", "east", comparison.eastWest, cardWidth, selected == true, mapError) { onShowMap(true) }
         }
     }
 }
 
 @Composable
-private fun DirectionComparisonCard(title: String, id: String, calculation: CoverageCalculation, width: Dp) {
+private fun DirectionComparisonCard(title: String, id: String, calculation: CoverageCalculation, width: Dp, selected: Boolean, mapError: String?, onShowMap: () -> Unit) {
     Surface(Modifier.width(width).testTag("coverage-comparison-$id"), tonalElevation = 2.dp, shape = MaterialTheme.shapes.medium) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall)
@@ -213,6 +236,10 @@ private fun DirectionComparisonCard(title: String, id: String, calculation: Cove
                         "Modeled unplanned range: ${coverageRange(area.mainGapMinimum, area.mainGapMaximum)} m²",
                         modifier = Modifier.testTag("coverage-comparison-$id-range"))
                     CoverageDiagram(preview, 150.dp, "coverage-comparison-$id-diagram")
+                    OutlinedButton(onClick = onShowMap, modifier = Modifier.testTag("coverage-comparison-$id-map")) {
+                        Text(if (selected) "Shown on map" else "Show on map")
+                    }
+                    mapError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 }
             }
         }

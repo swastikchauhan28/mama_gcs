@@ -35,7 +35,7 @@ sealed interface CoverageCalculation {
 /** Bounded scanline clipping. Concave fields produce separate passes, never cross-field connectors. */
 object FieldCoveragePlanner {
     const val MAX_PASSES = 500
-    private const val METERS_PER_RADIAN = 6_371_000.0
+    internal const val METERS_PER_RADIAN = 6_371_000.0
     private const val EPS = 0.000001
 
     fun settingsError(width: Double?, overlap: Double?, headland: Double? = 0.0): String? = when {
