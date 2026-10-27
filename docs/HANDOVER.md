@@ -2,6 +2,28 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-27 — Phase 82 coverage-map integration tests
+
+### Done
+
+- Added offline end-to-end coverage selection, native geometry, rendered pixel, switch and clear tests in portrait and landscape. Final emulator run passed 2/2; build and lint succeeded with JVM and lint report tasks up-to-date. See [Phase 82 report](phase-82-report.md) for both earlier failures and evidence.
+
+### In progress
+
+- Phase 82 publication was requested; check Git for current commit and remote status. No production app behavior changed.
+
+### Broken or risky
+
+- Portrait map controls obscure a small part of the field; the single-preview direction summary can differ from the comparison selected for the map. The integration test covers one synthetic rectangle and an offline style; real basemap, other shape integration and physical coverage remain unverified.
+
+### Next
+
+- Scope a UI improvement for map control obstruction and direction labeling, then validate against representative fields. Commit and push only on request.
+
+### Do not touch
+
+- Keep hardware on hold; do not upload previews, operate a rover or infer actual soil coverage from emulator tests.
+
 ## 2026-10-27 — Phase 81 selected coverage map preview
 
 ### Done

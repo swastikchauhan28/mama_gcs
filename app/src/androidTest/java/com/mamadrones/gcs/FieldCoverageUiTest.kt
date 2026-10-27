@@ -3,6 +3,9 @@ package com.mamadrones.gcs
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.net.Uri
+import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
@@ -22,6 +25,13 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
+import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.style.sources.GeoJsonSource
+import org.maplibre.geojson.LineString
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 internal fun coverageTestOutline(triangle: Boolean = false): List<DraftWaypoint> {
     val xy = if (triangle) listOf(0.0 to 0.0, 12.0 to 0.0, 0.0 to 12.0)
@@ -33,6 +43,129 @@ internal fun coverageTestOutline(triangle: Boolean = false): List<DraftWaypoint>
 class FieldCoverageUiTest {
     @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
     private val actions = mutableListOf<MissionPlanAction>()
+
+    @Test fun selectedCoverageReachesOfflineMapInPortrait() = selectedCoverageReachesOfflineMap(false)
+
+    @Test fun selectedCoverageReachesOfflineMapInLandscape() = selectedCoverageReachesOfflineMap(true)
+
+    private fun selectedCoverageReachesOfflineMap(landscape: Boolean) {
+        val style = File.createTempFile("phase82-style-", ".json", compose.activity.cacheDir)
+        style.writeText("""{"version":8,"sources":{},"layers":[{"id":"background","type":"background","paint":{"background-color":"#12202c"}}]}""")
+        // Avoid placing this tiny synthetic field exactly on a native map tile boundary.
+        val draft = mutableStateOf(MissionDraft(keepInFence = coverageTestOutline().map {
+            it.copy(latitude = it.latitude + 0.123456, longitude = it.longitude + 149.165)
+        }))
+        val original = draft.value
+        try {
+            show(draft = draft, mapStyleUrl = Uri.fromFile(style).toString(), landscape = landscape)
+            node("coverage-width").performTextReplacement("2")
+            node("coverage-overlap").apply { performTextReplacement("0"); performImeAction() }
+            compose.onNodeWithTag("coverage-close-settings").performClick()
+            node("coverage-compare").performClick()
+            compose.waitUntil(30_000) { compose.onAllNodesWithTag("coverage-comparison").fetchSemanticsNodes().isNotEmpty() }
+            node("coverage-comparison-north-map").performClick()
+            verifySelectedMap(landscape, eastWest = false, expectedCount = 5)
+            node("coverage-comparison-east-map").performClick()
+            verifySelectedMap(landscape, eastWest = true, expectedCount = 10)
+            node("coverage-overlap").apply { performTextReplacement("10"); performImeAction() }
+            compose.onNodeWithTag("coverage-close-settings").performClick()
+            compose.onAllNodesWithTag("coverage-map-status").assertCountEquals(0)
+            compose.onAllNodesWithTag("coverage-map-legend").assertCountEquals(0)
+            if (landscape) {
+                var current: MapLibreMap? = null
+                compose.runOnIdle { requireNotNull(findMap(compose.activity.window.decorView)).getMapAsync { current = it } }
+                compose.waitUntil(30_000) {
+                    var empty = false
+                    compose.runOnIdle { empty = current?.style?.getSourceAs<GeoJsonSource>("mama-coverage-preview")?.querySourceFeatures(null)?.isEmpty() == true }
+                    empty
+                }
+            } else compose.onAllNodesWithTag("mission-map").assertCountEquals(0)
+            assertEquals(original, draft.value)
+            assertTrue("Preview must not dispatch a mission action", actions.isEmpty())
+        } finally {
+            compose.runOnIdle { }
+            check(style.delete()) { "Could not remove test-owned map style" }
+        }
+    }
+
+    private fun verifySelectedMap(landscape: Boolean, eastWest: Boolean, expectedCount: Int) {
+        if (!landscape) compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-map"))
+        compose.onNodeWithTag("mission-map").assertIsDisplayed()
+        var map: MapLibreMap? = null
+        lateinit var view: MapView
+        compose.runOnIdle {
+            view = requireNotNull(findMap(compose.activity.window.decorView))
+            view.getMapAsync { map = it }
+        }
+        compose.waitUntil(30_000) { var loaded = false; compose.runOnIdle { loaded = map?.style?.isFullyLoaded == true }; loaded }
+        val rendered = AtomicBoolean(false)
+        val listener = MapView.OnDidFinishRenderingFrameListener { _, _, _ -> rendered.set(true) }
+        compose.runOnIdle { view.addOnDidFinishRenderingFrameListener(listener); map!!.triggerRepaint() }
+        try {
+            compose.waitUntil(30_000) { rendered.get() }
+            compose.onNodeWithTag("mission-fit").performClick()
+            compose.waitUntil(30_000) {
+                var zoom = 0.0
+                compose.runOnIdle { zoom = map!!.cameraPosition.zoom }
+                zoom > 18.0
+            }
+            var lines = emptyList<LineString>()
+            try {
+                compose.waitUntil(30_000) {
+                    compose.runOnIdle {
+                        lines = map!!.style?.getSourceAs<GeoJsonSource>("mama-coverage-preview")
+                            ?.querySourceFeatures(null)?.mapNotNull { it.geometry() as? LineString }?.distinct() ?: emptyList()
+                    }
+                    lines.size == expectedCount
+                }
+            } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+                throw AssertionError("Expected $expectedCount ${if (eastWest) "east/west" else "north/south"} lines; received ${lines.size}: $lines", failure)
+            }
+            val minLat = 0.123456; val minLon = 149.165
+            val maxLat = minLat + originalMetres(20.0)
+            val maxLon = minLon + originalMetres(10.0)
+            lines.forEach { line ->
+                val points = line.coordinates()
+                assertEquals(2, points.size)
+                points.forEach { point ->
+                    // Native tile geometry is quantized; allow about 1.1 cm at this latitude.
+                    assertTrue("Line must stay in the synthetic field", point.latitude() in minLat - 1e-7..maxLat + 1e-7 && point.longitude() in minLon - 1e-7..maxLon + 1e-7)
+                }
+                assertTrue("Line must match selected direction", if (eastWest) abs(points[0].latitude() - points[1].latitude()) < 1e-9 else abs(points[0].longitude() - points[1].longitude()) < 1e-9)
+            }
+            compose.onNodeWithTag("coverage-map-legend").assertIsDisplayed()
+            compose.waitForIdle()
+            compose.runOnIdle { map!!.triggerRepaint() }
+            compose.awaitScreenshotFrame(view)
+            val bitmap = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+            try {
+                File(compose.activity.getExternalFilesDir(null), "phase82-${if (landscape) "landscape" else "portrait"}-${if (eastWest) "east" else "north"}.png").outputStream().use {
+                    assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
+                }
+                val p = lines[lines.size / 2].coordinates()
+                var x = 0; var y = 0
+                compose.runOnIdle {
+                    val center = map!!.projection.toScreenLocation(org.maplibre.android.geometry.LatLng((p[0].latitude() + p[1].latitude()) / 2, (p[0].longitude() + p[1].longitude()) / 2))
+                    val offset = IntArray(2); view.getLocationOnScreen(offset)
+                    x = (offset[0] + center.x).roundToInt(); y = (offset[1] + center.y).roundToInt()
+                }
+                assertTrue("Projected line center must be visible", x in 6 until bitmap.width - 6 && y in 6 until bitmap.height - 6)
+                var cyan = 0
+                for (dy in -6..6) for (dx in -6..6) {
+                    val pixel = bitmap.getPixel(x + dx, y + dy)
+                    if (android.graphics.Color.red(pixel) < 60 && android.graphics.Color.green(pixel) in 120..190 && android.graphics.Color.blue(pixel) in 130..205) cyan++
+                }
+                assertTrue("Selected line must render at its geographic position: $cyan pixels", cyan >= 3)
+            } finally { bitmap.recycle() }
+        } finally { compose.runOnIdle { view.removeOnDidFinishRenderingFrameListener(listener) } }
+    }
+
+    private fun originalMetres(metres: Double) = Math.toDegrees(metres / 6_371_000.0)
+    private fun findMap(view: View): MapView? {
+        if (view is MapView) return view
+        if (view is ViewGroup) for (i in 0 until view.childCount) findMap(view.getChildAt(i))?.let { return it }
+        return null
+    }
 
     @Test fun settingsRegeneratePreviewAndNeverReplaceRoute() {
         show()
@@ -201,18 +334,18 @@ class FieldCoverageUiTest {
         assertTrue(actions.isEmpty())
     }
 
-    private fun show(largeText: Boolean = false, draft: MutableState<MissionDraft> = mutableStateOf(MissionDraft(keepInFence = coverageTestOutline()))) {
+    private fun show(largeText: Boolean = false, draft: MutableState<MissionDraft> = mutableStateOf(MissionDraft(keepInFence = coverageTestOutline())), mapStyleUrl: String? = null, landscape: Boolean = false) {
         compose.activityRule.scenario.onActivity {
-            it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            it.requestedOrientation = if (landscape) ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             if (largeText) it.window.setLayout((320 * it.resources.displayMetrics.density).toInt(), WindowManager.LayoutParams.MATCH_PARENT)
         }
-        compose.waitUntil(10_000) { compose.activity.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT }
+        compose.waitUntil(10_000) { compose.activity.resources.configuration.orientation == if (landscape) Configuration.ORIENTATION_LANDSCAPE else Configuration.ORIENTATION_PORTRAIT }
         compose.setContent {
             val density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, if (largeText) 2f else 1f)) {
                 MamaGcsTheme {
                     Box(if (largeText) Modifier.width(320.dp) else Modifier) {
-                        MissionScreen(VehicleState(), MissionPlanUiState(draft = draft.value, loading = false), actions::add, mapStyleUrl = null)
+                        MissionScreen(VehicleState(), MissionPlanUiState(draft = draft.value, loading = false), actions::add, mapStyleUrl = mapStyleUrl)
                     }
                 }
             }

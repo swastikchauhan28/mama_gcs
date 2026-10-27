@@ -1,5 +1,11 @@
 # Decisions and alternatives
 
+## D-082-01: Exercise coverage selection through the native map
+
+- Date: 2026-10-27. User approved the Phase 82 offline emulator integration test. Model/version: unavailable. Baseline `d18b7f00972e0f6df2bef66cc6073b1300815761`; worktree clean.
+- Choice: drive the actual MissionScreen coverage controls with a synthetic rectangular field and a local, test-owned MapLibre style; inspect the resulting geographic features and rendered pixels in portrait and landscape, switch direction, and confirm stale overlay removal on edit without dispatching mission actions. Keep the existing independent projection and map tests. The test owns only transient fixture data and files.
+- Alternatives: only inspect separate state and map units (leaves the integration gap) or use online basemap/hardware (adds dependencies and cannot establish physical accuracy). Native rendering and orientation lifecycle can be slow or fail in the emulator; record failures and investigate rather than weaken assertions. No production dependency, network destination, persistence, commands or hardware changes. Revisit actual basemap, positioning and field validation separately.
+
 ## D-081-01: Show a selected local coverage preview on the mission map
 
 - Date: 2026-10-27. User approved a selected direction's preview overlay on the field map and emulator testing. Model: gpt-6.1-terra. Baseline `0866a224349380ee7163a87b273070dfb38d167a` matches origin/main; unrelated `desktop.ini` is untracked and must be preserved.
