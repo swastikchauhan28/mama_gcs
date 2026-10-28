@@ -53,7 +53,7 @@ class MavlinkSession(
             lastSessionHeartbeatAtElapsedMillis = null
             val sessionStartedAt = epochClock()
             val sessionStartedElapsed = elapsedClock()
-            val diagnostics = MavlinkDiagnosticsAccumulator(transport.linkKind, sessionStartedAt)
+            val diagnostics = MavlinkDiagnosticsAccumulator(transport.linkKind, sessionStartedAt, sessionStartedElapsed)
             vehicleRepository.onSessionStarting(diagnostics.snapshot)
             try {
                 // Subscribe first so the first datagram received during socket startup is retained.
@@ -61,10 +61,10 @@ class MavlinkSession(
                     transport.receive().collect { bytes ->
                         val receivedAt = epochClock()
                         val receivedElapsed = elapsedClock()
-                        diagnostics.recordBytes(bytes, receivedAt)
+                        diagnostics.recordBytes(bytes, receivedAt, receivedElapsed)
                         parser.feed(bytes).forEach { result ->
                             val disposition = routeSelectedAutopilot(result, receivedAt, receivedElapsed)
-                            diagnostics.recordResult(result, disposition, receivedAt)
+                            diagnostics.recordResult(result, disposition, receivedAt, receivedElapsed)
                         }
                         vehicleRepository.onMavlinkDiagnostics(diagnostics.snapshot)
                     }

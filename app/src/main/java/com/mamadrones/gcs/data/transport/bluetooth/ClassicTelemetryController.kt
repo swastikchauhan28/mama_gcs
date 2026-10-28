@@ -89,7 +89,7 @@ class ClassicTelemetryController(
         mutableState.update { current -> current.copy(active = false,
             connection = if (current.connection.status == TransportStatus.ERROR) current.connection
             else current.connection.copy(status = TransportStatus.DISCONNECTED,
-                detail = "Bluetooth session closed. Connect manually to resume.", connectedAtEpochMillis = null)) }
+                detail = "Bluetooth session closed. Connect manually to resume.", connectedAtEpochMillis = null, connectedAtElapsedMillis = null)) }
     }
 
     override fun close() = disconnect()

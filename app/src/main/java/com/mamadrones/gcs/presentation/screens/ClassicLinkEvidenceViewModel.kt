@@ -35,9 +35,9 @@ class ClassicLinkEvidenceViewModel(private val ioDispatcher: CoroutineDispatcher
     val state = mutableState.asStateFlow()
     private val busy get() = state.value.choosingDestination || state.value.writing
 
-    fun capture(linkActive: Boolean, competingLink: Boolean, connection: ConnectionState, vehicle: VehicleState, now: Long) {
+    fun capture(linkActive: Boolean, competingLink: Boolean, connection: ConnectionState, vehicle: VehicleState, now: Long, nowElapsed: Long? = null) {
         if (!canCapture(linkActive, competingLink, connection) || busy || state.value.reviewing) return
-        val assessment = ClassicConnectionCheck.assess(linkActive, connection, vehicle, now)
+        val assessment = ClassicConnectionCheck.assess(linkActive, connection, vehicle, now, nowElapsed)
         mutableState.value = ClassicLinkEvidenceState(
             snapshot = ClassicLinkEvidenceReport.capture(assessment, connection, vehicle.mavlinkDiagnostics, now),
             message = "Classic-link evidence captured in memory. Disconnect all telemetry links, then review and save it.",

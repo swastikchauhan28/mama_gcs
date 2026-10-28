@@ -23,9 +23,13 @@ class ClassicTelemetryControllerTest {
             val heartbeat = heartbeatFrame()
             socket.offer(heartbeat.copyOfRange(0, 5))
             socket.offer(heartbeat.copyOfRange(5, heartbeat.size))
-            awaitCondition { repository.vehicleState.value.connected }
+            awaitCondition { repository.vehicleState.value.connected && repository.vehicleState.value.mavlinkDiagnostics.acceptedMessages == 1L }
             assertEquals(TelemetryLinkKind.CLASSIC, repository.vehicleState.value.mavlinkDiagnostics.linkKind)
             assertEquals(1L, repository.vehicleState.value.mavlinkDiagnostics.acceptedMessages)
+            val check = ClassicConnectionCheck.assess(true, controller.state.value.connection, repository.vehicleState.value,
+                System.currentTimeMillis(), System.nanoTime() / 1_000_000)
+            assertEquals(ClassicCheckStage.WAITING_MEASUREMENTS, check.stage)
+            assertTrue(check.freshBytes && check.freshDecodedMessage && check.freshHeartbeat)
             socket.offer(byteArrayOf())
             awaitCondition { !controller.state.value.active }
             assertEquals(TransportStatus.ERROR, controller.state.value.connection.status)
@@ -60,7 +64,7 @@ class ClassicTelemetryControllerTest {
         val gate = TelemetryLinkGate()
         var attempts = 0
         val controller = ClassicTelemetryController(
-            { BluetoothTransport({ if (attempts++ == 0) first else second }) },
+            { BluetoothTransport({ if (attempts++ == 0) first else second }, elapsedClock = { System.nanoTime() / 1_000_000 }) },
             factory(repository), this, gate,
         )
         try {
@@ -95,7 +99,7 @@ class ClassicTelemetryControllerTest {
 
     private fun controller(socket: FakeClassicSocket, repository: VehicleRepositoryImpl,
         gate: TelemetryLinkGate, scope: CoroutineScope) = ClassicTelemetryController(
-        { BluetoothTransport({ socket }) }, factory(repository), scope, gate)
+        { BluetoothTransport({ socket }, elapsedClock = { System.nanoTime() / 1_000_000 }) }, factory(repository), scope, gate)
 
     private fun factory(repository: VehicleRepositoryImpl) = MavlinkSessionFactory { transport, scope ->
         MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = scope, elapsedClock = { System.nanoTime() / 1_000_000 })

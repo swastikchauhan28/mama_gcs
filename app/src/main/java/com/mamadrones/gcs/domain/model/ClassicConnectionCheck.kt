@@ -47,28 +47,30 @@ object ClassicConnectionCheck {
     const val FRESH_FOR_MILLIS = 5_000L
 
     fun assess(active: Boolean, connection: ConnectionState, vehicle: VehicleState,
-        nowEpochMillis: Long): ClassicConnectionAssessment {
+        nowEpochMillis: Long, nowElapsedMillis: Long? = null): ClassicConnectionAssessment {
         if (connection.status == TransportStatus.ERROR) return ClassicConnectionAssessment(ClassicCheckStage.ERROR)
         if (!active) return ClassicConnectionAssessment(ClassicCheckStage.CLOSED)
         if (connection.status == TransportStatus.CONNECTING) return ClassicConnectionAssessment(ClassicCheckStage.CONNECTING)
         if (connection.status != TransportStatus.OPEN) return ClassicConnectionAssessment(ClassicCheckStage.CLOSED)
         val diagnostics = vehicle.mavlinkDiagnostics
-        val opened = connection.connectedAtEpochMillis
-        val started = diagnostics.startedAtEpochMillis
+        val openedElapsed = connection.connectedAtElapsedMillis
+        val startedElapsed = diagnostics.startedAtElapsedMillis
+        val nowElapsed = nowElapsedMillis
         if (!diagnostics.active || diagnostics.linkKind != TelemetryLinkKind.CLASSIC ||
-            started == null || opened == null || started < 0 || started > opened || opened > nowEpochMillis) {
+            startedElapsed == null || openedElapsed == null || nowElapsed == null ||
+            startedElapsed < 0 || startedElapsed > openedElapsed || openedElapsed > nowElapsed) {
             return ClassicConnectionAssessment(ClassicCheckStage.WAITING_SESSION, socketOpen = true)
         }
-        fun current(timestamp: Long?) = timestamp != null && timestamp >= opened && timestamp <= nowEpochMillis
-        fun fresh(timestamp: Long?) = current(timestamp) && nowEpochMillis - timestamp!! <= FRESH_FOR_MILLIS
-        if (diagnostics.receivedBytes <= 0 || !current(diagnostics.lastBytesAtEpochMillis)) {
+        fun currentElapsed(timestamp: Long?) = timestamp != null && timestamp >= openedElapsed && timestamp <= nowElapsed
+        fun freshElapsed(timestamp: Long?) = currentElapsed(timestamp) && nowElapsed - timestamp!! <= FRESH_FOR_MILLIS
+        if (diagnostics.receivedBytes <= 0 || !currentElapsed(diagnostics.lastBytesAtElapsedMillis)) {
             return ClassicConnectionAssessment(ClassicCheckStage.WAITING_BYTES, socketOpen = true)
         }
-        if (!fresh(diagnostics.lastBytesAtEpochMillis)) {
+        if (!freshElapsed(diagnostics.lastBytesAtElapsedMillis)) {
             return ClassicConnectionAssessment(ClassicCheckStage.BYTES_STALE, socketOpen = true)
         }
         val decoded = diagnostics.decodedMessages > 0 && diagnostics.messageObservations.any {
-            it.decoded > 0 && fresh(it.lastDecodedAtEpochMillis)
+            it.decoded > 0 && freshElapsed(it.lastDecodedAtElapsedMillis)
         }
         if (!decoded) {
             return ClassicConnectionAssessment(ClassicCheckStage.WAITING_MAVLINK,
@@ -77,12 +79,19 @@ object ClassicConnectionCheck {
         }
         val acceptedHeartbeat = diagnostics.messageObservations.any {
             it.type == ObservedMavlinkMessage.HEARTBEAT && it.accepted > 0 &&
-                fresh(it.lastAcceptedAtEpochMillis)
+                freshElapsed(it.lastAcceptedAtElapsedMillis)
         }
-        if (!vehicle.connected || !fresh(vehicle.lastHeartbeatAtEpochMillis) || !acceptedHeartbeat) {
+        if (!vehicle.connected || !freshElapsed(vehicle.lastHeartbeatAtElapsedMillis) || !acceptedHeartbeat) {
             return ClassicConnectionAssessment(ClassicCheckStage.WAITING_HEARTBEAT,
                 socketOpen = true, freshBytes = true, freshDecodedMessage = true)
         }
+        // Measurement/RC evidence still uses calendar timestamps; do not borrow an invalid epoch boundary.
+        val openedEpoch = connection.connectedAtEpochMillis
+        val startedEpoch = diagnostics.startedAtEpochMillis
+        fun fresh(timestamp: Long?): Boolean = openedEpoch != null && startedEpoch != null &&
+            startedEpoch >= 0 && startedEpoch <= openedEpoch && openedEpoch <= nowEpochMillis &&
+            timestamp != null && timestamp >= openedEpoch && timestamp <= nowEpochMillis &&
+            nowEpochMillis - timestamp <= FRESH_FOR_MILLIS
         // Receipt is distinct from sensor validity: a GPS message can report NO_FIX.
         val messages = listOf(
             "GPS" to vehicle.gps.lastUpdatedAtEpochMillis,

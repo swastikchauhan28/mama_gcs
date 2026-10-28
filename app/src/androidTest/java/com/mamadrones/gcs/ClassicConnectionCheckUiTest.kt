@@ -74,7 +74,7 @@ class ClassicConnectionCheckUiTest {
         compose.onNodeWithTag("classic-check-guidance").assertTextContains("SBUS into RCIN alone", substring = true)
         compose.onNodeWithTag("classic-check-rc-status").assertTextContains("NOT CONFIRMED", substring = true)
         capture("phase46-check-light-top")
-        compose.onNodeWithText("5-second display window · receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.")
+        compose.onNodeWithText("5-second display window. Bytes and heartbeat use elapsed time; measurement and RC checks use calendar time and may be affected by clock changes. Receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.")
             .performScrollTo().assertIsDisplayed()
         capture("phase46-check-light-bottom")
         compose.runOnIdle {
@@ -104,7 +104,7 @@ class ClassicConnectionCheckUiTest {
         compose.onNodeWithTag("classic-check-guidance").assertTextContains("does not independently prove", substring = true)
         compose.onNodeWithTag("classic-check-status").performScrollTo().assertIsDisplayed()
         capture("phase46-check-dark-top")
-        compose.onNodeWithText("5-second display window · receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.")
+        compose.onNodeWithText("5-second display window. Bytes and heartbeat use elapsed time; measurement and RC checks use calendar time and may be affected by clock changes. Receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.")
             .performScrollTo().assertIsDisplayed()
         capture("phase46-check-dark-bottom")
     }
@@ -122,8 +122,9 @@ class ClassicConnectionCheckUiTest {
     @Test fun screenExpiresEvidenceWithoutIncomingUpdatesAndDisconnectClearsIt() {
         val peer = ClassicBluetoothPeer("00:11:22:33:44:55", "Synthetic HC-05")
         val opened = System.currentTimeMillis()
+        val openedElapsed = android.os.SystemClock.elapsedRealtime()
         val link = mutableStateOf(ClassicBluetoothUiState(link = ClassicLinkState(peer, true,
-            ConnectionState(TransportStatus.OPEN, connectedAtEpochMillis = opened))))
+            ConnectionState(TransportStatus.OPEN, connectedAtEpochMillis = opened, connectedAtElapsedMillis = openedElapsed))))
         val vehicle = mutableStateOf(VehicleState())
         compose.setContent { MamaGcsTheme {
             ClassicBluetoothScreen(link.value, {}, {}, {}, {}, false, vehicle.value)
@@ -131,16 +132,20 @@ class ClassicConnectionCheckUiTest {
         compose.onNodeWithTag("classic-check-status").performScrollTo()
         compose.runOnIdle {
             val now = System.currentTimeMillis()
+            val elapsed = android.os.SystemClock.elapsedRealtime()
             vehicle.value = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
-                lastHeartbeatAtEpochMillis = now, attitude = AttitudeState(lastUpdatedAtEpochMillis = now),
+                lastHeartbeatAtEpochMillis = now, lastHeartbeatAtElapsedMillis = elapsed, attitude = AttitudeState(lastUpdatedAtEpochMillis = now),
                 mavlinkDiagnostics = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,
-                    startedAtEpochMillis = opened, receivedBytes = 100, lastBytesAtEpochMillis = now,
+                    startedAtEpochMillis = opened, startedAtElapsedMillis = openedElapsed, receivedBytes = 100, lastBytesAtEpochMillis = now, lastBytesAtElapsedMillis = elapsed,
                     decodedMessages = 1, messageObservations = listOf(MavlinkMessageObservation(
                         ObservedMavlinkMessage.HEARTBEAT, decodedV2 = 1, accepted = 1,
-                        lastDecodedAtEpochMillis = now, lastAcceptedAtEpochMillis = now))))
+                        lastDecodedAtEpochMillis = now, lastAcceptedAtEpochMillis = now,
+                        lastDecodedAtElapsedMillis = elapsed, lastAcceptedAtElapsedMillis = elapsed))))
         }
         compose.waitUntil(5_000) { compose.onAllNodesWithText("LIVE RECEIVE EVIDENCE").fetchSemanticsNodes().isNotEmpty() }
         compose.waitUntil(8_000) { compose.onAllNodesWithText("BYTE STREAM STALE").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("measurement and RC checks use calendar time", substring = true).performScrollTo().assertIsDisplayed()
+        capture("phase97-classic-clock-limits")
         compose.runOnIdle { link.value = link.value.copy(link = link.value.link.copy(active = false)) }
         compose.onNodeWithTag("classic-check-status").assertTextEquals("SESSION CLOSED")
         compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: NOT CONFIRMED")

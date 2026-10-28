@@ -9,11 +9,11 @@ import com.mamadrones.gcs.domain.model.RadioStatusObservation
 enum class MessageDisposition { ACCEPTED, BEFORE_AUTOPILOT_HEARTBEAT, OTHER_SOURCE }
 
 /** Owned by one receive coroutine. No packet contents, unbounded history, or device identifiers. */
-class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long) {
-    var snapshot = MavlinkDiagnostics(active = true, linkKind = kind, startedAtEpochMillis = startedAt)
+class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long, startedAtElapsed: Long? = null) {
+    var snapshot = MavlinkDiagnostics(active = true, linkKind = kind, startedAtEpochMillis = startedAt, startedAtElapsedMillis = startedAtElapsed)
         private set
 
-    fun recordBytes(bytes: ByteArray, receivedAt: Long) {
+    fun recordBytes(bytes: ByteArray, receivedAt: Long, receivedAtElapsed: Long? = null) {
         if (bytes.isEmpty()) return
         val v1Starts = bytes.count { it == 0xFE.toByte() }
         val v2Starts = bytes.count { it == 0xFD.toByte() }
@@ -21,10 +21,10 @@ class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long) {
             receivedBytes = snapshot.receivedBytes + bytes.size,
             mavlinkV1StartBytes = snapshot.mavlinkV1StartBytes + v1Starts,
             mavlinkV2StartBytes = snapshot.mavlinkV2StartBytes + v2Starts,
-            lastBytesAtEpochMillis = receivedAt)
+            lastBytesAtEpochMillis = receivedAt, lastBytesAtElapsedMillis = receivedAtElapsed)
     }
 
-    fun recordResult(result: MavlinkParseResult, disposition: MessageDisposition?, receivedAt: Long) {
+    fun recordResult(result: MavlinkParseResult, disposition: MessageDisposition?, receivedAt: Long, receivedAtElapsed: Long? = null) {
         val current = snapshot
         snapshot = when (result) {
             is MavlinkParseResult.RadioStatus -> current.copy(
@@ -47,6 +47,8 @@ class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long) {
                     beforeHeartbeat = previous.beforeHeartbeat + if (admission == MessageDisposition.BEFORE_AUTOPILOT_HEARTBEAT) 1 else 0,
                     otherSource = previous.otherSource + if (admission == MessageDisposition.OTHER_SOURCE) 1 else 0,
                     lastDecodedAtEpochMillis = receivedAt,
+                    lastDecodedAtElapsedMillis = receivedAtElapsed,
+                    lastAcceptedAtElapsedMillis = if (admission == MessageDisposition.ACCEPTED) receivedAtElapsed else previous.lastAcceptedAtElapsedMillis,
                     lastAcceptedAtEpochMillis = if (admission == MessageDisposition.ACCEPTED) receivedAt else previous.lastAcceptedAtEpochMillis,
                 )
                 val decoded = current.copy(decodedMessages = current.decodedMessages + 1,

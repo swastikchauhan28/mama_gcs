@@ -5,19 +5,21 @@ import org.junit.Test
 
 class ClassicConnectionCheckTest {
     private val now = 20_000L
-    private val connection = ConnectionState(TransportStatus.OPEN, connectedAtEpochMillis = 10_000L)
+    private val connection = ConnectionState(TransportStatus.OPEN, connectedAtEpochMillis = 10_000L, connectedAtElapsedMillis = 10_000L)
     private val heartbeat = MavlinkMessageObservation(ObservedMavlinkMessage.HEARTBEAT,
-        decodedV2 = 1, accepted = 1, lastDecodedAtEpochMillis = now, lastAcceptedAtEpochMillis = now)
+        decodedV2 = 1, accepted = 1, lastDecodedAtEpochMillis = now, lastAcceptedAtEpochMillis = now,
+        lastDecodedAtElapsedMillis = now, lastAcceptedAtElapsedMillis = now)
     private val rcObservation = MavlinkMessageObservation(ObservedMavlinkMessage.RC_CHANNELS,
-        decodedV2 = 1, accepted = 1, lastDecodedAtEpochMillis = now, lastAcceptedAtEpochMillis = now)
+        decodedV2 = 1, accepted = 1, lastDecodedAtEpochMillis = now, lastAcceptedAtEpochMillis = now,
+        lastDecodedAtElapsedMillis = now, lastAcceptedAtElapsedMillis = now)
     private val diagnostics = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,
-        startedAtEpochMillis = 9_000L, receivedBytes = 100, lastBytesAtEpochMillis = now,
+        startedAtEpochMillis = 9_000L, startedAtElapsedMillis = 9_000L, receivedBytes = 100, lastBytesAtEpochMillis = now, lastBytesAtElapsedMillis = now,
         decodedMessages = 1, messageObservations = listOf(heartbeat))
     private val vehicle = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
-        lastHeartbeatAtEpochMillis = now, mavlinkDiagnostics = diagnostics,
+        lastHeartbeatAtEpochMillis = now, lastHeartbeatAtElapsedMillis = now, mavlinkDiagnostics = diagnostics,
         attitude = AttitudeState(lastUpdatedAtEpochMillis = now))
     private fun assess(state: VehicleState = vehicle, link: ConnectionState = connection,
-        active: Boolean = true, time: Long = now) = ClassicConnectionCheck.assess(active, link, state, time)
+        active: Boolean = true, time: Long = now) = ClassicConnectionCheck.assess(active, link, state, time, time)
 
     @Test fun freshSessionProvidesReceiveEvidenceOnly() {
         val result = assess()
@@ -47,29 +49,29 @@ class ClassicConnectionCheckTest {
     @Test fun invalidSessionBoundariesDoNotProvideEvidence() {
         listOf(null, -1L, 10_001L, Long.MAX_VALUE).forEach {
             assertEquals(ClassicCheckStage.WAITING_SESSION,
-                assess(vehicle.copy(mavlinkDiagnostics = diagnostics.copy(startedAtEpochMillis = it))).stage)
+                assess(vehicle.copy(mavlinkDiagnostics = diagnostics.copy(startedAtElapsedMillis = it))).stage)
         }
         listOf(null, -1L, 8_999L, now + 1).forEach {
-            assertEquals(ClassicCheckStage.WAITING_SESSION, assess(link = connection.copy(connectedAtEpochMillis = it)).stage)
+            assertEquals(ClassicCheckStage.WAITING_SESSION, assess(link = connection.copy(connectedAtElapsedMillis = it)).stage)
         }
     }
     @Test fun byteCountAndCurrentReceiptAreBothRequired() {
         listOf(null, -1L, 9_999L, now + 1).forEach {
             assertEquals(ClassicCheckStage.WAITING_BYTES,
-                assess(vehicle.copy(mavlinkDiagnostics = diagnostics.copy(lastBytesAtEpochMillis = it))).stage)
+                assess(vehicle.copy(mavlinkDiagnostics = diagnostics.copy(lastBytesAtElapsedMillis = it))).stage)
         }
         assertEquals(ClassicCheckStage.WAITING_BYTES,
             assess(vehicle.copy(mavlinkDiagnostics = diagnostics.copy(receivedBytes = 0))).stage)
     }
     @Test fun staleBytesDoNotLeaveFreshHeartbeatClaim() {
-        val result = assess(vehicle.copy(mavlinkDiagnostics = diagnostics.copy(lastBytesAtEpochMillis = now - 5_001)))
+        val result = assess(vehicle.copy(mavlinkDiagnostics = diagnostics.copy(lastBytesAtElapsedMillis = now - 5_001)))
         assertEquals(ClassicCheckStage.BYTES_STALE, result.stage)
         assertFalse(result.freshHeartbeat)
         assertTrue(result.measurementMessages.isEmpty())
     }
     @Test fun freshBytesDoNotSubstituteForHeartbeat() {
         listOf(null, -1L, 9_999L, now - 5_001, now + 1).forEach {
-            assertEquals(ClassicCheckStage.WAITING_HEARTBEAT, assess(vehicle.copy(lastHeartbeatAtEpochMillis = it)).stage)
+            assertEquals(ClassicCheckStage.WAITING_HEARTBEAT, assess(vehicle.copy(lastHeartbeatAtElapsedMillis = it)).stage)
         }
         VehicleConnectionState.entries.filter { it != VehicleConnectionState.CONNECTED }.forEach {
             assertEquals(ClassicCheckStage.WAITING_HEARTBEAT, assess(vehicle.copy(connectionStatus = it)).stage)
@@ -108,7 +110,7 @@ class ClassicConnectionCheckTest {
     @Test fun staleOrOutOfSessionDecodeDoesNotBecomeCurrentMavlinkEvidence() {
         listOf(null, 9_999L, now - 5_001, now + 1).forEach { time ->
             val result = assess(vehicle.copy(mavlinkDiagnostics = diagnostics.copy(
-                messageObservations = listOf(heartbeat.copy(lastDecodedAtEpochMillis = time)))))
+                messageObservations = listOf(heartbeat.copy(lastDecodedAtElapsedMillis = time)))))
             assertEquals(ClassicCheckStage.WAITING_MAVLINK, result.stage)
         }
         assertEquals(ClassicCheckStage.WAITING_MAVLINK,
@@ -132,15 +134,15 @@ class ClassicConnectionCheckTest {
         }
     }
     @Test fun fiveSecondBoundaryAndTimeAloneExpiry() {
-        val sample = vehicle.copy(lastHeartbeatAtEpochMillis = now - 5_000,
+        val sample = vehicle.copy(lastHeartbeatAtElapsedMillis = now - 5_000,
             attitude = AttitudeState(lastUpdatedAtEpochMillis = now - 5_000),
-            mavlinkDiagnostics = diagnostics.copy(lastBytesAtEpochMillis = now - 5_000))
+            mavlinkDiagnostics = diagnostics.copy(lastBytesAtElapsedMillis = now - 5_000))
         assertEquals(ClassicCheckStage.RECEIVING, assess(sample).stage)
         assertEquals(ClassicCheckStage.BYTES_STALE, assess(sample, time = now + 1).stage)
     }
     @Test fun reconnectCannotReuseSamplesBeforeNewSocketOpened() {
         assertEquals(ClassicCheckStage.WAITING_BYTES,
-            assess(link = connection.copy(connectedAtEpochMillis = now + 1), time = now + 2).stage)
+            assess(link = connection.copy(connectedAtElapsedMillis = now + 1), time = now + 2).stage)
     }
     @Test fun listsOnlyFreshGroupsAndDoesNotClaimValidSensorValues() {
         val result = assess(vehicle.copy(gps = GpsState(fix = GpsFix.NO_FIX, lastUpdatedAtEpochMillis = now),
@@ -164,8 +166,35 @@ class ClassicConnectionCheckTest {
             assertFalse(assess(current.copy(mavlinkDiagnostics = diagnostics.copy(
                 messageObservations = listOf(heartbeat, rcObservation.copy(lastAcceptedAtEpochMillis = time))))).freshRcChannels)
         }
-        assertFalse(assess(current.copy(lastHeartbeatAtEpochMillis = now - 5_001)).freshRcChannels)
+        assertFalse(assess(current.copy(lastHeartbeatAtElapsedMillis = now - 5_001)).freshRcChannels)
         assertFalse(assess(current, active = false).freshRcChannels)
-        assertFalse(assess(current, link = connection.copy(connectedAtEpochMillis = now + 1), time = now + 2).freshRcChannels)
+        assertFalse(assess(current, link = connection.copy(connectedAtElapsedMillis = now + 1), time = now + 2).freshRcChannels)
     }
+    @Test fun calendarClockJumpsDoNotChangeByteDecodeOrHeartbeatEvidence() {
+        for (epoch in listOf(1L, Long.MAX_VALUE)) {
+            val result = ClassicConnectionCheck.assess(true, connection, vehicle, epoch, now)
+            assertTrue(result.freshBytes)
+            assertTrue(result.freshDecodedMessage)
+            assertTrue(result.freshHeartbeat)
+            assertEquals(ClassicCheckStage.WAITING_MEASUREMENTS, result.stage)
+        }
+    }
+    @Test fun missingElapsedNeverFallsBackToCalendarAndNewReceiptRecovers() {
+        assertEquals(ClassicCheckStage.WAITING_SESSION, ClassicConnectionCheck.assess(true, connection, vehicle, now, null).stage)
+        assertEquals(ClassicCheckStage.WAITING_HEARTBEAT,
+            assess(vehicle.copy(lastHeartbeatAtElapsedMillis = null)).stage)
+        assertEquals(ClassicCheckStage.WAITING_MAVLINK, assess(vehicle.copy(mavlinkDiagnostics = diagnostics.copy(
+            messageObservations = listOf(heartbeat.copy(lastDecodedAtElapsedMillis = null))))).stage)
+        val stale = vehicle.copy(mavlinkDiagnostics = diagnostics.copy(lastBytesAtElapsedMillis = now - 5_001))
+        assertEquals(ClassicCheckStage.BYTES_STALE, assess(stale).stage)
+        assertEquals(ClassicCheckStage.RECEIVING, assess(stale.copy(mavlinkDiagnostics = diagnostics)).stage)
+    }
+    @Test fun heartbeatRequiresCurrentAcceptedElapsedObservation() {
+        for (time in listOf(null, -1L, 9_999L, now - 5_001, now + 1)) {
+            val state = vehicle.copy(mavlinkDiagnostics = diagnostics.copy(
+                messageObservations = listOf(heartbeat.copy(lastAcceptedAtElapsedMillis = time))))
+            assertEquals(ClassicCheckStage.WAITING_HEARTBEAT, assess(state).stage)
+        }
+    }
+
 }

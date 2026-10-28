@@ -8,7 +8,9 @@ data class ConnectionState(
     val status: TransportStatus = TransportStatus.DISCONNECTED,
     val detail: String? = null,
     val connectedAtEpochMillis: Long? = null,
-    val packetStatistics: PacketStatistics = PacketStatistics()
+    val packetStatistics: PacketStatistics = PacketStatistics(),
+    // In-memory elapsed socket-open time, valid only for this session.
+    val connectedAtElapsedMillis: Long? = null
 )
 
 enum class TransportStatus { DISCONNECTED, CONNECTING, OPEN, ERROR }

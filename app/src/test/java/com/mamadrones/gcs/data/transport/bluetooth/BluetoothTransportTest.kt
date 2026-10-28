@@ -15,7 +15,7 @@ import org.junit.Test
 class BluetoothTransportTest {
     @Test fun `receives ordered independent chunks and counts reads without writing`() = runBlocking {
         val socket = FakeClassicSocket()
-        val transport = BluetoothTransport({ socket })
+        val transport = BluetoothTransport({ socket }, elapsedClock = { System.nanoTime() / 1_000_000 })
         val chunks = Channel<ByteArray>(Channel.UNLIMITED)
         val collector = launch(start = CoroutineStart.UNDISPATCHED) { transport.receive().collect { chunks.send(it) } }
         try {
@@ -33,9 +33,19 @@ class BluetoothTransportTest {
         assertEquals(TransportStatus.DISCONNECTED, transport.connectionState.value.status)
     }
 
+    @Test fun `elapsed socket open time is recorded and cleared when closed`() = runBlocking {
+        val socket = FakeClassicSocket()
+        val transport = BluetoothTransport({ socket }, elapsedClock = { 1234L })
+        try {
+            transport.connect()
+            assertEquals(1234L, transport.connectionState.value.connectedAtElapsedMillis)
+        } finally { transport.close() }
+        assertNull(transport.connectionState.value.connectedAtElapsedMillis)
+    }
+
     @Test fun `remote EOF closes socket and reports error`() = runBlocking {
         val socket = FakeClassicSocket()
-        val transport = BluetoothTransport({ socket })
+        val transport = BluetoothTransport({ socket }, elapsedClock = { System.nanoTime() / 1_000_000 })
         try {
             transport.connect()
             socket.offer(byteArrayOf())
@@ -47,7 +57,7 @@ class BluetoothTransportTest {
 
     @Test fun `cancel aborts blocking connect and cannot reopen the closed transport`() = runBlocking {
         val socket = FakeClassicSocket(blockConnect = true)
-        val transport = BluetoothTransport({ socket })
+        val transport = BluetoothTransport({ socket }, elapsedClock = { System.nanoTime() / 1_000_000 })
         val connecting = launch { transport.connect() }
         awaitCondition { socket.connects.get() == 1 }
         connecting.cancelAndJoin()
@@ -59,7 +69,7 @@ class BluetoothTransportTest {
 
     @Test fun `timeout aborts blocking connect`() = runBlocking {
         val socket = FakeClassicSocket(blockConnect = true)
-        val transport = BluetoothTransport({ socket }, connectTimeoutMillis = 100)
+        val transport = BluetoothTransport({ socket }, connectTimeoutMillis = 100, elapsedClock = { System.nanoTime() / 1_000_000 })
         try { transport.connect(); fail("Expected timeout") }
         catch (_: IOException) { }
         finally { transport.close() }
@@ -79,7 +89,7 @@ class BluetoothTransportTest {
 
     @Test fun `data without a subscriber fails instead of silently discarding telemetry`() = runBlocking {
         val socket = FakeClassicSocket()
-        val transport = BluetoothTransport({ socket })
+        val transport = BluetoothTransport({ socket }, elapsedClock = { System.nanoTime() / 1_000_000 })
         try {
             transport.connect()
             socket.offer(byteArrayOf(42))
@@ -90,7 +100,7 @@ class BluetoothTransportTest {
 
     @Test fun `blocked consumer overflow fails and releases the socket`() = runBlocking {
         val socket = FakeClassicSocket()
-        val transport = BluetoothTransport({ socket })
+        val transport = BluetoothTransport({ socket }, elapsedClock = { System.nanoTime() / 1_000_000 })
         val collector = launch(start = CoroutineStart.UNDISPATCHED) { transport.receive().collect { awaitCancellation() } }
         try {
             transport.connect()

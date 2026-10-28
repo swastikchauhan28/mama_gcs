@@ -43,6 +43,13 @@ class MavlinkSessionTest {
             assertTrue(repository.vehicleState.value.connected)
             assertEquals(1_000_000L, repository.vehicleState.value.position.lastUpdatedAtEpochMillis)
             assertEquals(0L, repository.vehicleState.value.position.lastUpdatedAtElapsedMillis)
+            assertEquals(0L, repository.vehicleState.value.lastHeartbeatAtElapsedMillis)
+            val diagnostics = repository.vehicleState.value.mavlinkDiagnostics
+            assertEquals(0L, diagnostics.startedAtElapsedMillis)
+            assertEquals(0L, diagnostics.lastBytesAtElapsedMillis)
+            val heartbeat = diagnostics.messageObservations.first { it.type.messageId == 0 }
+            assertEquals(0L, heartbeat.lastDecodedAtElapsedMillis)
+            assertEquals(0L, heartbeat.lastAcceptedAtElapsedMillis)
             wallTime = 1L
             advanceTimeBy(90); runCurrent()
             assertTrue("backward calendar jump must not expire heartbeat", repository.vehicleState.value.connected)
@@ -56,9 +63,14 @@ class MavlinkSessionTest {
             assertTrue(repository.vehicleState.value.connected)
             assertEquals(9_000_000L, repository.vehicleState.value.position.lastUpdatedAtEpochMillis)
             assertEquals(110L, repository.vehicleState.value.position.lastUpdatedAtElapsedMillis)
+            assertEquals(110L, repository.vehicleState.value.lastHeartbeatAtElapsedMillis)
+            assertEquals(110L, repository.vehicleState.value.mavlinkDiagnostics.lastBytesAtElapsedMillis)
             session.stop()
             session.start()
             assertNull("new session must clear previous elapsed position", repository.vehicleState.value.position.lastUpdatedAtElapsedMillis)
+            assertNull(repository.vehicleState.value.lastHeartbeatAtElapsedMillis)
+            assertNull(repository.vehicleState.value.mavlinkDiagnostics.lastBytesAtElapsedMillis)
+            assertTrue(repository.vehicleState.value.mavlinkDiagnostics.messageObservations.isEmpty())
         } finally { session.stop(); session.close() }
     }
     @Test fun `radio status is observed without selecting autopilot or refreshing heartbeat and resets next session`() = runBlocking {

@@ -56,12 +56,13 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
         }
     }
 
-    fun onHeartbeat(heartbeat: MavlinkMessage.Heartbeat, receivedAtEpochMillis: Long) {
+    fun onHeartbeat(heartbeat: MavlinkMessage.Heartbeat, receivedAtEpochMillis: Long, receivedAtElapsedMillis: Long? = null) {
         _vehicleState.value = _vehicleState.value.copy(
             systemId = heartbeat.systemId,
             componentId = heartbeat.componentId,
             connectionStatus = VehicleConnectionState.CONNECTED,
             lastHeartbeatAtEpochMillis = receivedAtEpochMillis,
+            lastHeartbeatAtElapsedMillis = receivedAtElapsedMillis,
             vehicleType = heartbeat.vehicleType,
             autopilotType = heartbeat.autopilotType,
             armed = heartbeat.isArmed,

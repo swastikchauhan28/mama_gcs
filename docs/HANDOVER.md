@@ -2,6 +2,28 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-28 — Phase 97 Classic elapsed receive evidence
+
+### Done
+
+- Classic session, byte, decoded-message and selected-heartbeat checks now use volatile elapsed receipt times, including the Classic evidence capture. Measurement and RC freshness remain calendar-based and are labeled accordingly. See [Phase 97](phase-97-report.md).
+
+### In progress
+
+- Fresh JVM run passed 447/447; build and lint passed. After a test-only addition, the targeted Classic controller suite passed 4/4. Emulator retry passed 3/3 after an outdated exact-text expectation was corrected; the initial 2/3 run remains in the phase report. Changes are uncommitted.
+
+### Broken or risky
+
+- Five seconds is an unverified diagnostic window. Millisecond timing is not a unique session identity, authentication, vehicle health or physical-safety proof. Measurement and RC freshness, other reports, hardware telemetry and device sleep/wake remain unverified or clock-dependent.
+
+### Next
+
+- Review the phase report and outstanding hardware evidence before field use; consider separately migrating measurement and RC freshness from calendar time.
+
+### Do not touch
+
+- Physical operation, Cube/radio settings, command paths, persistent user data and unrelated work remain outside this phase.
+
 ## 2026-10-28 — Phase 96 battery report freshness
 
 ### Done

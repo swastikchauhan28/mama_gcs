@@ -57,6 +57,7 @@ object ClassicLinkEvidenceReport {
         appendLine(stageGuidance(assessment.stage))
         appendLine("Expected receive route is Cube -> R12 -> T12 / HC-05 -> phone. This report cannot detect, authenticate or prove each hop.")
         appendLine("Start-byte counts are raw byte patterns, not checksum-validated MAVLink frames; unrelated data may contain them.")
+        appendLine("Bytes and heartbeat use elapsed time; measurement and RC freshness use calendar time and may change if the phone clock changes.")
         appendLine("RC receipt does not prove stick movement, SBUS wiring, neutral position or safe control.")
         appendLine("It does not prove vehicle identity, sensor accuracy, VESC data, command capability, stopping behaviour or speed enforcement.")
         appendLine("Paired device name/address, MAVLink bytes and payloads, coordinates, account data and vehicle commands are excluded.")

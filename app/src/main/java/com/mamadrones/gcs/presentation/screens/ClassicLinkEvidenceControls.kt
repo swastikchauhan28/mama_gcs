@@ -33,7 +33,7 @@ fun ClassicLinkEvidenceControls(
         state = state,
         canCapture = model.canCapture(linkActive, competingLink, connection),
         canExport = model.canExport(linkActive, competingLink),
-        onCapture = { model.capture(linkActive, competingLink, connection, vehicle, System.currentTimeMillis()) },
+        onCapture = { model.capture(linkActive, competingLink, connection, vehicle, System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime()) },
         onReview = { model.review(linkActive, competingLink) },
         onClose = model::closePreview,
         onDiscard = model::discard,

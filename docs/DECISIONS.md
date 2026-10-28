@@ -1,5 +1,11 @@
 # Decisions and alternatives
 
+## D-097-01: Use elapsed time for Classic session, bytes and heartbeat evidence
+
+- Date: 2026-10-28. User approved Phase 97 and emulator tests. Model/version unavailable. Baseline `7921c5d90b410a077540b776efe8a265a279bf95`, clean.
+- Choice: capture volatile elapsed socket-open and decoder-session start, bytes, decoded/accepted message and selected heartbeat receipt times through the existing Classic transport and MAVLink session. Classic receive stages require valid ordered current-session elapsed evidence and fail closed for missing, invalid, future or pre-open times. Keep calendar times for existing reports and measurement/RC groups; label those groups as clock-dependent. Do not change parser validation, source selection, transport ownership, command behavior or persistence. The capture/export view uses the same assessment.
+- Alternatives: continuing wall-clock comparisons can misstate receipt after clock changes; switching all measurement groups in one phase expands risk and needs separately reviewed data paths. The existing five-second window and display ticks are diagnostics, not safety limits. Test elapsed/epoch independence, session boundaries, malformed and old evidence, expiry/recovery, transport/session path and offline emulator; no hardware commands. Source authenticity and physical acceptance remain unverified. Scoped reversal is an unexecuted recovery option.
+
 ## D-096-01: Include bounded battery receipt freshness in telemetry snapshots
 
 - Date: 2026-10-28. Phase 96 approved by user; model/version unavailable. Baseline `a0556cd2e482f92ffd51218cbbe6a5d7fdb72e59`, clean worktree.

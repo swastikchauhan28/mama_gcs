@@ -37,6 +37,9 @@ data class MavlinkDiagnostics(
     val lastBytesAtEpochMillis: Long? = null,
     val lastAcceptedAtEpochMillis: Long? = null,
     val messageObservations: List<MavlinkMessageObservation> = emptyList(),
+    // Elapsed values are volatile current-session receipt evidence, never persisted.
+    val startedAtElapsedMillis: Long? = null,
+    val lastBytesAtElapsedMillis: Long? = null,
 ) {
     val parserErrors: Long get() = checksumFailures + malformedPayloads
 }

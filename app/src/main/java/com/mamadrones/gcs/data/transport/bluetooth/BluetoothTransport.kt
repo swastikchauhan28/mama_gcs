@@ -19,6 +19,7 @@ interface ClassicSerialSocket : AutoCloseable {
 class BluetoothTransport(
     private val socketFactory: () -> ClassicSerialSocket,
     private val connectTimeoutMillis: Long = 20_000L,
+    private val elapsedClock: () -> Long = { android.os.SystemClock.elapsedRealtime() },
 ) : VehicleTransport, AutoCloseable {
     override val linkKind = TelemetryLinkKind.CLASSIC
     private val lock = Any()
@@ -57,7 +58,8 @@ class BluetoothTransport(
                     synchronized(lock) {
                         if (closed) return@launch
                         mutableConnection.value = ConnectionState(TransportStatus.OPEN,
-                            "Serial link open; waiting for MAVLink heartbeat", System.currentTimeMillis())
+                            "Serial link open; waiting for MAVLink heartbeat", System.currentTimeMillis(),
+                            connectedAtElapsedMillis = elapsedClock())
                         ready.complete(Unit)
                     }
                     val buffer = ByteArray(4096)
@@ -111,7 +113,7 @@ class BluetoothTransport(
             mutableConnection.update { it.copy(
                 status = if (error == null) TransportStatus.DISCONNECTED else TransportStatus.ERROR,
                 detail = error ?: "Bluetooth session closed",
-                connectedAtEpochMillis = null,
+                connectedAtEpochMillis = null, connectedAtElapsedMillis = null,
             ) }
             ready.completeExceptionally(IOException(error ?: "Bluetooth session closed"))
             socket.also { socket = null }

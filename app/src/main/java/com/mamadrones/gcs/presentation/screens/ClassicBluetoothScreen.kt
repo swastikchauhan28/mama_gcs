@@ -42,7 +42,10 @@ fun ClassicBluetoothScreen(
     val now by produceState(System.currentTimeMillis()) {
         while (true) { delay(1_000L); value = System.currentTimeMillis() }
     }
-    val check = ClassicConnectionCheck.assess(state.link.active, state.link.connection, vehicle, now)
+    val nowElapsed by produceState(android.os.SystemClock.elapsedRealtime()) {
+        while (true) { delay(1_000L); value = android.os.SystemClock.elapsedRealtime() }
+    }
+    val check = ClassicConnectionCheck.assess(state.link.active, state.link.connection, vehicle, now, nowElapsed)
     ScreenBody {
         ScreenHeader("Bluetooth Classic / HC-05", "Paired serial radio · MAVLink receive only")
         Notice("CONNECT YOUR REMOTE", "Pair the identified HC-05 in Android Bluetooth settings, return here and refresh. Select its name and address. The Flipsky NRF51 module uses a separate BLE connection.")

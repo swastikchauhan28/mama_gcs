@@ -24,6 +24,19 @@ class MavlinkMessageObservationTest {
         assertEquals(120L, row.lastAcceptedAtEpochMillis)
     }
 
+    @Test fun elapsedDecodedAndAcceptedTimesRemainIndependentForOtherSources() {
+        val accumulator = MavlinkDiagnosticsAccumulator(TelemetryLinkKind.CLASSIC, 100, 10)
+        val heartbeat = MavlinkParser().feed(heartbeatFrame()).single()
+        accumulator.recordBytes(byteArrayOf(1), 110, 20)
+        accumulator.recordResult(heartbeat, MessageDisposition.ACCEPTED, 110, 20)
+        accumulator.recordResult(heartbeat, MessageDisposition.OTHER_SOURCE, 1, 30)
+        val snapshot = accumulator.snapshot
+        assertEquals(10L, snapshot.startedAtElapsedMillis)
+        assertEquals(20L, snapshot.lastBytesAtElapsedMillis)
+        assertEquals(30L, snapshot.messageObservations.single().lastDecodedAtElapsedMillis)
+        assertEquals(20L, snapshot.messageObservations.single().lastAcceptedAtElapsedMillis)
+    }
+
     @Test fun everySupportedWireIdMapsToItsOwnRow() {
         val accumulator = MavlinkDiagnosticsAccumulator(TelemetryLinkKind.UDP, 100)
         // ID, base payload size, CRC extra: exercised through the real frame decoder.

@@ -17,6 +17,8 @@ data class MavlinkMessageObservation(
     val otherSource: Long = 0,
     val lastDecodedAtEpochMillis: Long? = null,
     val lastAcceptedAtEpochMillis: Long? = null,
+    val lastDecodedAtElapsedMillis: Long? = null,
+    val lastAcceptedAtElapsedMillis: Long? = null,
 ) {
     val decoded: Long get() = decodedV1 + decodedV2
 }
