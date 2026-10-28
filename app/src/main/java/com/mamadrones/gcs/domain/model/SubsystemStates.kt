@@ -31,7 +31,9 @@ data class GlobalPositionState(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val altitudeMetersMsl: Double? = null,
-    val lastUpdatedAtEpochMillis: Long? = null
+    val lastUpdatedAtEpochMillis: Long? = null,
+    // In-memory elapsedRealtime receipt time; never persisted across sessions or reboots.
+    val lastUpdatedAtElapsedMillis: Long? = null
 )
 
 /** Geographic point retained for the current telemetry session's displayed trail. */

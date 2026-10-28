@@ -1,6 +1,6 @@
 # Security foundation and boundaries
 
-Map position has an independent five-second diagnostic freshness check. Stale, missing, future-dated, invalid or disconnected positions are not shown as live markers; this does not establish positioning accuracy, other measurement freshness, vehicle identity or physical safety. Receive timestamps still use wall-clock time and may be affected by clock changes. See [Phase 92](phase-92-report.md).
+Map position has an independent five-second diagnostic freshness check. Stale, missing, future-dated, invalid or disconnected positions are not shown as live markers; this does not establish positioning accuracy, other measurement freshness, vehicle identity or physical safety. Heartbeat and map-position expiry use in-memory elapsed time; other telemetry freshness and age displays still use wall-clock timestamps and may be affected by clock changes. See [Phase 92](phase-92-report.md) and [Phase 93](phase-93-report.md).
 
 The optional minimum-overlap calculation uses volatile user assumptions and gives advisory ideal spacing only; it neither changes the overlap setting nor proves physical coverage. See [Phase 91](phase-91-report.md).
 

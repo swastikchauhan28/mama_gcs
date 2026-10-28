@@ -86,7 +86,7 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
         )
     }
 
-    fun onGlobalPositionInt(message: MavlinkMessage.GlobalPositionInt, receivedAtEpochMillis: Long) {
+    fun onGlobalPositionInt(message: MavlinkMessage.GlobalPositionInt, receivedAtEpochMillis: Long, receivedAtElapsedMillis: Long? = null) {
         val latitude = message.latitudeE7 / DEGREES_E7
         val longitude = message.longitudeE7 / DEGREES_E7
         val validCoordinates = latitude in -90.0..90.0 && longitude in -180.0..180.0
@@ -107,7 +107,8 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
                 latitude = latitude.takeIf { validCoordinates },
                 longitude = longitude.takeIf { validCoordinates },
                 altitudeMetersMsl = message.altitudeMillimetersMsl / MILLIMETERS_PER_METER,
-                lastUpdatedAtEpochMillis = receivedAtEpochMillis
+                lastUpdatedAtEpochMillis = receivedAtEpochMillis,
+                lastUpdatedAtElapsedMillis = receivedAtElapsedMillis
             ),
             positionTrack = nextTrack,
             speedMetersPerSecond = speed.takeIf(Double::isFinite),

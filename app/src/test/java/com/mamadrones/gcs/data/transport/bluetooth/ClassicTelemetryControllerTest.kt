@@ -98,6 +98,6 @@ class ClassicTelemetryControllerTest {
         { BluetoothTransport({ socket }) }, factory(repository), scope, gate)
 
     private fun factory(repository: VehicleRepositoryImpl) = MavlinkSessionFactory { transport, scope ->
-        MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = scope)
+        MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = scope, elapsedClock = { System.nanoTime() / 1_000_000 })
     }
 }

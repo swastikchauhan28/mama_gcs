@@ -22,7 +22,7 @@ class UdpMavlinkIntegrationTest {
                 val transport = UdpTransport(UdpTransportConfig("127.0.0.1", peer.localPort, localPort))
                 val repository = VehicleRepositoryImpl()
                 val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository,
-                    heartbeatTimeoutMillis = 60_000)
+                    heartbeatTimeoutMillis = 60_000, elapsedClock = { System.nanoTime() / 1_000_000 })
                 fun send(socket: DatagramSocket, bytes: ByteArray) = socket.send(
                     DatagramPacket(bytes, bytes.size, InetSocketAddress("127.0.0.1", localPort)))
                 try {

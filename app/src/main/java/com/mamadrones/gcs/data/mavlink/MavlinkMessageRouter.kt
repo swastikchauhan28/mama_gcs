@@ -13,7 +13,7 @@ class MavlinkMessageRouter @Inject constructor(
 
     fun reset() = statusTextAssembler.reset()
 
-    fun route(result: MavlinkParseResult, receivedAtEpochMillis: Long) {
+    fun route(result: MavlinkParseResult, receivedAtEpochMillis: Long, receivedAtElapsedMillis: Long? = null) {
         val message = (result as? MavlinkParseResult.Message)?.message ?: return
         when (message) {
             is MavlinkMessage.HomePosition -> vehicleRepository.onHomePosition(message, receivedAtEpochMillis)
@@ -22,7 +22,7 @@ class MavlinkMessageRouter @Inject constructor(
             is MavlinkMessage.ServoOutputRaw -> vehicleRepository.onServoOutputRaw(message, receivedAtEpochMillis)
             is MavlinkMessage.Heartbeat -> vehicleRepository.onHeartbeat(message, receivedAtEpochMillis)
             is MavlinkMessage.GpsRawInt -> vehicleRepository.onGpsRawInt(message, receivedAtEpochMillis)
-            is MavlinkMessage.GlobalPositionInt -> vehicleRepository.onGlobalPositionInt(message, receivedAtEpochMillis)
+            is MavlinkMessage.GlobalPositionInt -> vehicleRepository.onGlobalPositionInt(message, receivedAtEpochMillis, receivedAtElapsedMillis)
             is MavlinkMessage.Attitude -> vehicleRepository.onAttitude(message, receivedAtEpochMillis)
             is MavlinkMessage.VfrHud -> vehicleRepository.onVfrHud(message, receivedAtEpochMillis)
             is MavlinkMessage.SystemStatus -> vehicleRepository.onSystemStatus(message, receivedAtEpochMillis)

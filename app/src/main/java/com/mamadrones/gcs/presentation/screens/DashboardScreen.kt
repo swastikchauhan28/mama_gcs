@@ -158,10 +158,10 @@ fun MapWorkspace(
 ) {
     val live = state.forDisplay()
     val position = live.position
-    val clockTick by produceState(System.currentTimeMillis()) {
-        while (true) { delay(1_000); value = System.currentTimeMillis() }
+    val clockTick by produceState(android.os.SystemClock.elapsedRealtime()) {
+        while (true) { delay(1_000); value = android.os.SystemClock.elapsedRealtime() }
     }
-    val positionStatus = remember(clockTick, live) { MapPositionEvidence.status(live, System.currentTimeMillis()) }
+    val positionStatus = remember(clockTick, live) { MapPositionEvidence.status(live, android.os.SystemClock.elapsedRealtime()) }
     BoxWithConstraints(modifier.testTag("operation-map")) {
         val largeTextOnPhone = showOperatorTools && maxWidth < 600.dp && LocalDensity.current.fontScale >= 1.8f
         val toolbarWidth = if (largeTextOnPhone) 120.dp else 72.dp

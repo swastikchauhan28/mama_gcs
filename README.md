@@ -120,7 +120,7 @@ Opening a configured UDP socket starts the receive session and accepts datagrams
 
 ## Architecture
 
-The map hides the rover marker, heading and track when position is missing or older than the app's five-second diagnostic window, even while heartbeats continue; the operation map labels stale position. This window is not a validated hardware rate or safety threshold, and existing wall-clock timing remains a limitation. See [Phase 92](docs/phase-92-report.md).
+The map hides the rover marker, heading and track when position is missing or older than the app's five-second diagnostic window, even while heartbeats continue; the operation map labels stale position. This window is not a validated hardware rate or safety threshold. Heartbeat and map-position expiry use monotonic elapsed time; other age displays may still use wall-clock timestamps. See [Phase 92](docs/phase-92-report.md) and [Phase 93](docs/phase-93-report.md).
 
 Plan → Coverage provides an offline field coverage preview from the current field outline, tool working width and overlap percentage. Choose north/south or east/west passes; the diagram shows ideal tool strips and areas outside them. It is a volatile preview with bounded geometry, not a saved/uploaded route or proof of worked soil. Turns, obstacles and tool tracking are not planned. See [Phase 76](docs/phase-76-report.md) for limits and verification.
 

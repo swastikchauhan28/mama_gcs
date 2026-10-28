@@ -27,12 +27,14 @@ class MavlinkSession(
     private val vehicleRepository: VehicleRepositoryImpl,
     private val heartbeatTimeoutMillis: Long = DEFAULT_HEARTBEAT_TIMEOUT_MILLIS,
     private val heartbeatCheckIntervalMillis: Long = HEARTBEAT_CHECK_INTERVAL_MILLIS,
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val elapsedClock: () -> Long = { android.os.SystemClock.elapsedRealtime() },
+    private val epochClock: () -> Long = { System.currentTimeMillis() }
 ) : VehicleMavlinkSession {
     private val lifecycleMutex = Mutex()
     private var receiverJob: Job? = null
     private var timeoutJob: Job? = null
-    @Volatile private var lastSessionHeartbeatAtEpochMillis: Long? = null
+    @Volatile private var lastSessionHeartbeatAtElapsedMillis: Long? = null
     private var selectedAutopilot: Pair<Int, Int>? = null
     @Volatile private var closed = false
 
@@ -48,18 +50,20 @@ class MavlinkSession(
             parser.reset()
             router.reset()
             selectedAutopilot = null
-            lastSessionHeartbeatAtEpochMillis = null
-            val sessionStartedAt = System.currentTimeMillis()
+            lastSessionHeartbeatAtElapsedMillis = null
+            val sessionStartedAt = epochClock()
+            val sessionStartedElapsed = elapsedClock()
             val diagnostics = MavlinkDiagnosticsAccumulator(transport.linkKind, sessionStartedAt)
             vehicleRepository.onSessionStarting(diagnostics.snapshot)
             try {
                 // Subscribe first so the first datagram received during socket startup is retained.
                 receiverJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
                     transport.receive().collect { bytes ->
-                        val receivedAt = System.currentTimeMillis()
+                        val receivedAt = epochClock()
+                        val receivedElapsed = elapsedClock()
                         diagnostics.recordBytes(bytes, receivedAt)
                         parser.feed(bytes).forEach { result ->
-                            val disposition = routeSelectedAutopilot(result, receivedAt)
+                            val disposition = routeSelectedAutopilot(result, receivedAt, receivedElapsed)
                             diagnostics.recordResult(result, disposition, receivedAt)
                         }
                         vehicleRepository.onMavlinkDiagnostics(diagnostics.snapshot)
@@ -69,8 +73,9 @@ class MavlinkSession(
                 timeoutJob = scope.launch {
                     while (isActive) {
                         delay(heartbeatCheckIntervalMillis)
-                        val lastHeartbeat = lastSessionHeartbeatAtEpochMillis ?: sessionStartedAt
-                        if (System.currentTimeMillis() - lastHeartbeat > heartbeatTimeoutMillis) {
+                        val lastHeartbeat = lastSessionHeartbeatAtElapsedMillis ?: sessionStartedElapsed
+                        val nowElapsed = elapsedClock()
+                        if (lastHeartbeat < 0 || nowElapsed < lastHeartbeat || nowElapsed - lastHeartbeat > heartbeatTimeoutMillis) {
                             vehicleRepository.onHeartbeatTimeout()
                         }
                     }
@@ -121,7 +126,7 @@ class MavlinkSession(
         vehicleRepository.onSessionStopped()
     }
 
-    private fun routeSelectedAutopilot(result: MavlinkParseResult, receivedAtEpochMillis: Long): MessageDisposition? {
+    private fun routeSelectedAutopilot(result: MavlinkParseResult, receivedAtEpochMillis: Long, receivedAtElapsedMillis: Long): MessageDisposition? {
         val message = (result as? MavlinkParseResult.Message)?.message ?: return null
         val source = message.sourceIdentity() ?: return MessageDisposition.BEFORE_AUTOPILOT_HEARTBEAT
         val currentSelection = selectedAutopilot
@@ -134,8 +139,8 @@ class MavlinkSession(
         } else if (currentSelection != source) {
             return MessageDisposition.OTHER_SOURCE
         }
-        if (message is MavlinkMessage.Heartbeat) lastSessionHeartbeatAtEpochMillis = receivedAtEpochMillis
-        router.route(result, receivedAtEpochMillis)
+        if (message is MavlinkMessage.Heartbeat) lastSessionHeartbeatAtElapsedMillis = receivedAtElapsedMillis
+        router.route(result, receivedAtEpochMillis, receivedAtElapsedMillis)
         return MessageDisposition.ACCEPTED
     }
 

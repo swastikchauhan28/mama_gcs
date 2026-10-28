@@ -2,6 +2,27 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-28 — Phase 93 monotonic heartbeat and map position
+
+### Done
+
+- Heartbeat expiry and map-position freshness now use Android elapsedRealtime; calendar timestamps remain for display. Missing/future elapsed position evidence fails closed, and new sessions clear old position. Fresh JVM run passed 428 tests; build/lint succeeded and targeted offline emulator checks passed 3/3. See [Phase 93 report](phase-93-report.md).
+
+### In progress
+
+- Phase 93 publication was requested; check Git for the current commit and remote status.
+
+### Broken or risky
+
+- Other telemetry, HOME_POSITION and report age policies still use wall-clock timestamps. Five-second windows and scheduling delays are diagnostics, not validated telemetry rates or safety limits. Real device sleep/wake, physical position, hardware telemetry and authenticated peer identity remain unverified; the earlier Compose crash remains unexplained.
+
+### Next
+
+- Review the elapsed-clock data flow and tests. Consider separately scoped freshness work for other measurements; validate actual rates and link behavior with the hardware team before field use.
+
+### Do not touch
+
+- Keep hardware on hold; do not infer physical safety, device identity or worked soil from timing or modeled coverage.
 ## 2026-10-28 — Phase 92 independent map position freshness
 
 ### Done

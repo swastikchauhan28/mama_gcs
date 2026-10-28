@@ -130,8 +130,8 @@ fun VehicleMap(
 ) {
     val mapView = rememberMapViewWithLifecycle()
     var controlsExpanded by remember(compactPlanningControls) { mutableStateOf(!compactPlanningControls) }
-    val clockTick by produceState(System.currentTimeMillis()) {
-        while (true) { delay(1_000); value = System.currentTimeMillis() }
+    val clockTick by produceState(android.os.SystemClock.elapsedRealtime()) {
+        while (true) { delay(1_000); value = android.os.SystemClock.elapsedRealtime() }
     }
     // New telemetry may arrive between ticks; never compare it with an older cached clock.
     val now = remember(clockTick, state) { System.currentTimeMillis() }
@@ -250,7 +250,7 @@ fun VehicleMap(
 
     val latitude = state.position.latitude
     val longitude = state.position.longitude
-    val hasPosition = MapPositionEvidence.status(state, now) == MapPositionStatus.FRESH
+    val hasPosition = MapPositionEvidence.status(state, android.os.SystemClock.elapsedRealtime()) == MapPositionStatus.FRESH
     val vehicleTarget = if (hasPosition) LatLng(latitude!!, longitude!!) else null
 
     LaunchedEffect(style, reportedHome) {

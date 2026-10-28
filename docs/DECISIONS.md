@@ -1,5 +1,10 @@
 # Decisions and alternatives
 
+## D-093-01: Use elapsed time for heartbeat and map-position expiry
+
+- Date: 2026-10-28. User approved Phase 93 and emulator testing. Model/version unavailable. Baseline `80496b26ae764e180453a692cb85f74c7efbd0b8`, clean worktree.
+- Choice: record an in-memory Android elapsed-realtime receipt timestamp alongside the existing calendar position timestamp; pass both through the selected-source MAVLink route. Use elapsed time for heartbeat expiry and map-position eligibility, including startup, timeout and restoration; reject missing, negative or future elapsed timestamps. Keep epoch timestamps for existing display/report consumers. A fresh session resets position and timing state; elapsed values are neither persisted nor reused across reboot. Inject clocks for deterministic unit tests, while production uses Android elapsedRealtime (including device sleep).
+- Alternatives: wall time can jump and extend or shorten freshness; silently substituting epoch time for missing elapsed evidence can show stale positions. This targeted change does not authenticate telemetry, set vehicle rates, change other telemetry freshness policies, alter commands, persistence, network or permissions. Test forward/backward calendar jumps, missing/future elapsed values, expiry, recovery and session reset, plus offline emulator map behavior. Five-second thresholds remain diagnostic and UI tick/scheduler delay remains. The earlier Compose crash remains unresolved. Reviewed scoped reversal to baseline is recovery, not a validated physical release.
 ## D-092-01: Independently expire displayed rover position
 
 - Date: 2026-10-28. User approved Phase 92 and emulator tests. Model/version unavailable. Baseline `17fa7b37f62068496911f787b1b72c960198ded0`, clean worktree.

@@ -18,6 +18,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.advanceTimeBy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -25,10 +28,43 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MavlinkSessionTest {
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun `calendar clock jumps do not alter elapsed heartbeat timeout or position receipt`() = runTest {
+        val transport = FakeTransport()
+        val repository = VehicleRepositoryImpl()
+        var wallTime = 1_000_000L
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository,
+            heartbeatTimeoutMillis = 100, heartbeatCheckIntervalMillis = 10, scope = this,
+            elapsedClock = { testScheduler.currentTime }, epochClock = { wallTime })
+        try {
+            session.start()
+            transport.emit(heartbeatFrame(systemId = 42) + globalPositionFrame(42, -353_632_621))
+            runCurrent()
+            assertTrue(repository.vehicleState.value.connected)
+            assertEquals(1_000_000L, repository.vehicleState.value.position.lastUpdatedAtEpochMillis)
+            assertEquals(0L, repository.vehicleState.value.position.lastUpdatedAtElapsedMillis)
+            wallTime = 1L
+            advanceTimeBy(90); runCurrent()
+            assertTrue("backward calendar jump must not expire heartbeat", repository.vehicleState.value.connected)
+            wallTime = 9_000_000L
+            runCurrent()
+            assertTrue("forward calendar jump must not expire heartbeat", repository.vehicleState.value.connected)
+            advanceTimeBy(20); runCurrent()
+            assertEquals(VehicleConnectionState.DEGRADED, repository.vehicleState.value.connectionStatus)
+            transport.emit(heartbeatFrame(systemId = 42) + globalPositionFrame(42, -353_632_621))
+            runCurrent()
+            assertTrue(repository.vehicleState.value.connected)
+            assertEquals(9_000_000L, repository.vehicleState.value.position.lastUpdatedAtEpochMillis)
+            assertEquals(110L, repository.vehicleState.value.position.lastUpdatedAtElapsedMillis)
+            session.stop()
+            session.start()
+            assertNull("new session must clear previous elapsed position", repository.vehicleState.value.position.lastUpdatedAtElapsedMillis)
+        } finally { session.stop(); session.close() }
+    }
     @Test fun `radio status is observed without selecting autopilot or refreshing heartbeat and resets next session`() = runBlocking {
         val transport = FakeTransport()
         val repository = VehicleRepositoryImpl()
-        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = this)
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = this, elapsedClock = { System.nanoTime() / 1_000_000 })
         val radio = mavlink1TestFrame(109, ByteArray(9).apply {
             putUInt16(0, 3); putUInt16(2, 4); this[4] = 95.toByte()
         }, 185, systemId = 68, componentId = 68)
@@ -61,7 +97,7 @@ class MavlinkSessionTest {
             override suspend fun send(data: ByteArray) { sends++ }
         }
         val repository = VehicleRepositoryImpl()
-        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = this)
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = this, elapsedClock = { System.nanoTime() / 1_000_000 })
         fun home(system: Int = 42, component: Int = 1, lat: Long = -353632621) =
             mavlinkTestFrame(242, ByteArray(52).apply { putUInt32(0, lat); putUInt32(4, 1491652374) }, 104, system, component)
         try {
@@ -90,7 +126,7 @@ class MavlinkSessionTest {
             override suspend fun send(data: ByteArray) { sends++ }
         }
         val repository = VehicleRepositoryImpl()
-        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = this)
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = this, elapsedClock = { System.nanoTime() / 1_000_000 })
         fun version(system: Int = 42, component: Int = 1, value: Long = 0x040700FF) =
             mavlinkTestFrame(148, ByteArray(60).apply { putUInt32(16, value) }, 178, system, component)
         try {
@@ -118,7 +154,7 @@ class MavlinkSessionTest {
         }
         val repository = VehicleRepositoryImpl()
         val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository,
-            scope = this)
+            scope = this, elapsedClock = { System.nanoTime() / 1_000_000 })
         fun rc(system: Int, component: Int = 1, value: Int = 1500): ByteArray {
             val payload = ByteArray(42).apply { putUInt16(4, value); this[40] = 1; this[41] = 255.toByte() }
             return mavlinkTestFrame(65, payload, 118, system, component)
@@ -194,9 +230,9 @@ class MavlinkSessionTest {
         val stalled = object : VehicleTransport by FakeTransport() {
             override suspend fun connect(): Unit = awaitCancellation()
         }
-        val old = MavlinkSession(stalled, MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = this)
+        val old = MavlinkSession(stalled, MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = this, elapsedClock = { System.nanoTime() / 1_000_000 })
         val pending = launch(start = CoroutineStart.UNDISPATCHED) { old.start() }
-        val replacement = MavlinkSession(FakeTransport(), MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = this)
+        val replacement = MavlinkSession(FakeTransport(), MavlinkParser(), MavlinkMessageRouter(repository), repository, scope = this, elapsedClock = { System.nanoTime() / 1_000_000 })
         try {
             // Queue cancellation, then start the replacement before the old catch block runs.
             pending.cancel()
@@ -387,7 +423,8 @@ class MavlinkSessionTest {
         vehicleRepository = repository,
         heartbeatTimeoutMillis = timeoutMillis,
         heartbeatCheckIntervalMillis = checkIntervalMillis,
-        scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+        elapsedClock = { System.nanoTime() / 1_000_000 }
     )
 
     private suspend fun waitUntil(predicate: () -> Boolean) {
