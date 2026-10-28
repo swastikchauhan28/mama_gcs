@@ -29,6 +29,8 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.LineString
+import org.maplibre.geojson.Point
+import org.maplibre.geojson.MultiPoint
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -80,7 +82,7 @@ class FieldCoverageUiTest {
                     assertTrue("Concave fixture must contain split passes", preview.passes.groupBy { (it.start.y * 1000).roundToInt() }.values.any { it.size > 1 })
                 }
                 node(if (eastWest) "coverage-comparison-east-map" else "coverage-comparison-north-map").performClick()
-                verifyIrregularMap(projected.lines, concave, eastWest, largeText)
+                verifyIrregularMap(projected.lines, projected.gapSamples, concave, eastWest, largeText)
             }
             node("coverage-overlap").apply { performTextReplacement("10"); performImeAction() }
             compose.onNodeWithTag("coverage-close-settings").performClick()
@@ -95,7 +97,7 @@ class FieldCoverageUiTest {
         }
     }
 
-    private fun verifyIrregularMap(expected: List<CoverageMapLine>, concave: Boolean, eastWest: Boolean, largeText: Boolean) {
+    private fun verifyIrregularMap(expected: List<CoverageMapLine>, expectedGaps: List<CoverageMapPoint>?, concave: Boolean, eastWest: Boolean, largeText: Boolean) {
         compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-map"))
         compose.onNodeWithTag("mission-map").assertIsDisplayed()
         var map: MapLibreMap? = null
@@ -139,7 +141,30 @@ class FieldCoverageUiTest {
                         if (concave) !(x > 4.02 && x < 7.98 && y > 4.02) else x + y <= 12.02)
                 }
             }
-            compose.onNodeWithTag("coverage-map-legend").performScrollTo().assertIsDisplayed()
+            val gapProbe = expectedGaps?.let { if (it.isEmpty()) null else it[it.size / 2] }
+            if (gapProbe != null) {
+                compose.waitUntil(30_000) {
+                    var found = false
+                    compose.runOnIdle {
+                        val geometries = map!!.style?.getSourceAs<GeoJsonSource>("mama-coverage-gap-samples")?.querySourceFeatures(null).orEmpty()
+                        found = geometries.any { feature ->
+                            val points = when (val geometry = feature.geometry()) {
+                                is Point -> listOf(geometry)
+                                is MultiPoint -> geometry.coordinates()
+                                else -> emptyList()
+                            }
+                            points.any { abs(it.latitude() - gapProbe.latitude) < 0.000001 && abs(it.longitude() - gapProbe.longitude) < 0.000001 }
+                        }
+                    }
+                    found
+                }
+                compose.onNodeWithTag("coverage-map-legend").performScrollTo().assertTextContains("magenta: sampled gap centers", substring = true)
+                compose.onNodeWithTag("coverage-map-legend").assertTextContains("Dots can merge or extend past the outline", substring = true)
+            } else {
+                compose.onNodeWithTag("coverage-map-legend").performScrollTo().assertTextContains(if (expectedGaps == null) "Gap estimate unavailable" else "No sampled gaps detected", substring = true)
+            }
+            compose.onNodeWithTag("coverage-map-legend").assertTextContains("Gaps can be missed", substring = true)
+            compose.onNodeWithTag("coverage-map-legend").assertIsDisplayed()
             compose.runOnIdle { map!!.triggerRepaint() }
             compose.awaitScreenshotFrame(view)
             val bitmap = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
@@ -158,6 +183,20 @@ class FieldCoverageUiTest {
                     if (android.graphics.Color.red(color) < 60 && android.graphics.Color.green(color) in 120..190 && android.graphics.Color.blue(color) in 130..205) cyan++
                 }
                 assertTrue("A planned segment must render at its projected midpoint: $cyan cyan pixels", cyan >= 3)
+                if (gapProbe != null) {
+                    var gx = 0; var gy = 0
+                    compose.runOnIdle {
+                        val point = map!!.projection.toScreenLocation(org.maplibre.android.geometry.LatLng(gapProbe.latitude, gapProbe.longitude))
+                        val offset = IntArray(2); view.getLocationOnScreen(offset); gx = (offset[0] + point.x).roundToInt(); gy = (offset[1] + point.y).roundToInt()
+                    }
+                    assertTrue("Sample must be on screen", gx in 6 until bitmap.width - 6 && gy in 6 until bitmap.height - 6)
+                    var magenta = 0
+                    for (dy in -6..6) for (dx in -6..6) {
+                        val color = bitmap.getPixel(gx + dx, gy + dy)
+                        if (android.graphics.Color.red(color) >= 150 && android.graphics.Color.green(color) < 90 && android.graphics.Color.blue(color) >= 90) magenta++
+                    }
+                    assertTrue("Sampled gap should be visible in magenta: $magenta pixels", magenta >= 1)
+                }
             } finally { bitmap.recycle() }
         } finally { compose.runOnIdle { view.removeOnDidFinishRenderingFrameListener(listener) } }
     }
@@ -260,6 +299,8 @@ class FieldCoverageUiTest {
             }
             if (!landscape) compose.onNodeWithTag("coverage-map-legend").performScrollTo().assertIsDisplayed()
             else compose.onNodeWithTag("coverage-map-legend").assertIsDisplayed()
+            compose.onNodeWithText("No sampled gaps detected", substring = true).assertIsDisplayed()
+            compose.onNodeWithText("Gaps can be missed", substring = true).assertIsDisplayed()
             compose.waitForIdle()
             compose.runOnIdle { map!!.triggerRepaint() }
             compose.awaitScreenshotFrame(view)
@@ -292,6 +333,7 @@ class FieldCoverageUiTest {
         val controls = compose.onNodeWithTag("coverage-map-controls").getUnclippedBoundsInRoot()
         assertTrue("Preview legend must be above map canvas: $legend / $canvas", legend.bottom <= canvas.top)
         assertTrue("Collapsed controls must be below map canvas: $controls / $canvas", controls.top >= canvas.bottom)
+        assertTrue("Map canvas must remain usable with the longer gap legend: $canvas", canvas.bottom - canvas.top >= 200.dp)
     }
 
     private fun originalMetres(metres: Double) = Math.toDegrees(metres / 6_371_000.0)

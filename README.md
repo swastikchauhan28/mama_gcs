@@ -136,6 +136,8 @@ On the portrait coverage map, open **Map controls** to fit or navigate, then hid
 
 The portrait preview places its legend and collapsed control button outside the map, including at enlarged text sizes. See [Phase 85](docs/phase-85-report.md).
 
+The selected coverage map also marks sampled main-field gap centers in magenta. Dots can merge or extend past the outline. They are grid samples, not exact gap boundaries or proof of worked soil; narrow gaps can be missed. See [Phase 86](docs/phase-86-report.md).
+
 ```text
 presentation/    stateless Compose screens/components, navigation, design system
                 lifecycle-aware Dashboard/Settings ViewModels

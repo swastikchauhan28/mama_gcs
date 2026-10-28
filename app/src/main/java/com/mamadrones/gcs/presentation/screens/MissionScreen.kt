@@ -154,6 +154,7 @@ fun MissionScreen(
             state = state.forDisplay(), modifier = mapModifier.testTag("mission-map"),
             draftWaypoints = plan.draft.waypoints, draftFence = plan.draft.keepInFence, planningMode = true,
             coverageLines = coverage.mapLines,
+            coverageGapSamples = coverage.mapGapSamples,
             compactPlanningControls = compactControls,
             styleUrl = mapStyleUrl,
             onWaypointRequested = if (canAdd) { lat, lon -> openEditor(null, lat, lon) } else null,
@@ -255,7 +256,8 @@ fun MissionScreen(
                 }
                 if (!wide && (editorTab != "Coverage" || coverage.mapLines.isNotEmpty())) item(key = "planner-map") {
                     val compactCoverage = editorTab == "Coverage"
-                    val mapHeight = if (!compactCoverage) 280.dp else if (enlargedMobileHeader) 440.dp else 360.dp
+                    // Leave a usable map canvas beneath the sampled-gap legend at larger text sizes.
+                    val mapHeight = if (!compactCoverage) 280.dp else if (enlargedMobileHeader) 600.dp else 400.dp
                     mapContent(Modifier.fillMaxWidth().height(mapHeight), compactCoverage)
                 }
                 if (editorTab == "Coverage") {

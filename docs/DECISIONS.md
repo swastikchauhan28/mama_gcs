@@ -1,5 +1,11 @@
 # Decisions and alternatives
 
+## D-086-01: Display sampled main-area gap centers on the selected coverage map
+
+- Date: 2026-10-28. User approved Phase 86 and emulator tests. Model/version unavailable. Baseline `ed8a2bb6b4fd5d8e5693181fc251f5d9ddf1b5fa`, clean worktree.
+- Choice: retain the existing deterministic 128×128 estimator's uncovered main-field cell centers alongside its counts, project them with the selected preview into one bounded GeoJSON MultiPoint, and render magenta dots in a distinct layer. Dots identify sampled centers only, not complete cells, exact boundaries, headland or actual worked soil. Distinguish no detected samples from estimate unavailable and state that narrow gaps can be missed. The screen-space markers may merge or overrun outlines; explicitly say so. Increase portrait preview height to retain a usable map beneath the longer legend, trading additional scrolling for legibility. Clear state and source on changes, hiding or selection changes; existing map projection rejection remains. No mission or hardware action.
+- Alternatives: painting entire sample cells may visually imply exact coverage outside the field, and a second independent sampling algorithm could disagree with the numeric estimate. Retaining up to 16,384 points per preview adds bounded memory and projection/render cost; compare both directions sequentially and test representative cases. Data is volatile and not uploaded or persisted. Verify sample counts and locations against estimator logic, zero/unavailable, selected-direction switch/clearing, map layer, rendering and offline emulator fixtures for rectangle, triangle and concave outlines. Real basemap, positioning, implement, physical coverage and screen-reader acceptance remain open. A reviewed scoped reversal to the baseline is recovery, not a physical release.
+
 ## D-085-01: Keep compact coverage map labels outside the map
 
 - Date: 2026-10-28. User approved Phase 85 and emulator testing. Model/version unavailable. Baseline `84ac7a373bfdab26b9ee5bd57bdc57edda5aedc5`, clean worktree.

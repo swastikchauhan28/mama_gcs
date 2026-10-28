@@ -2,6 +2,28 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-28 — Phase 86 sampled coverage gaps
+
+### Done
+
+- Selected coverage maps show bounded magenta main-field gap sample centers from the existing estimator; the legend distinguishes zero and unavailable and warns about missed gaps and marker appearance. A fresh JVM run passed 416 tests. Final build/lint succeeded with the JVM task and lint report up-to-date; targeted emulator runs passed 3/3 and 2/2 for layout, sample rendering and clearing. See [Phase 86 report](phase-86-report.md) for the interrupted run, failed selector and failed compilations.
+
+### In progress
+
+- Phase 86 publication was requested; check Git for current commit and remote status.
+
+### Broken or risky
+
+- Samples are not exact gap boundaries or actual worked soil; small gaps can be missed, dots can merge or extend past the outline, and reserved headland is excluded. Maximum 16,384-point renderer load, real basemap, screen readers, actual positioning and physical coverage remain unverified. The first emulator run ended without a result during low host memory; its cause was not established. The longer legend requires extra scrolling.
+
+### Next
+
+- Review sampled-gap visualization with representative fields and device performance; independently validate geometry and physical hardware before field use. Commit/push only on request.
+
+### Do not touch
+
+- Keep hardware on hold; do not upload coverage previews or infer physical work from sampled data.
+
 ## 2026-10-28 — Phase 85 enlarged-text coverage map layout
 
 ### Done

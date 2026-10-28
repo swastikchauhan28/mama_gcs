@@ -17,6 +17,8 @@ data class CoverageAreaEstimate(
     val headlandPossiblyCells: Int,
     val mainGapDefinitelyCells: Int,
     val mainGapPossiblyCells: Int,
+    // At most GRID_SIDE² volatile cell centers; not the footprint of a gap.
+    val gapSampleCenters: List<CoveragePoint>,
 ) {
     val headlandSquareMeters: Double get() = headlandSamples * cellWidthMeters * cellHeightMeters
     val unplannedMainSquareMeters: Double get() = unplannedMainSamples * cellWidthMeters * cellHeightMeters
@@ -40,6 +42,7 @@ object CoverageAreaEstimator {
         val minY = polygon.minOf { it.y }; val maxY = polygon.maxOf { it.y }
         val dx = (maxX - minX) / GRID_SIDE; val dy = (maxY - minY) / GRID_SIDE
         var inside = 0; var headland = 0; var gap = 0
+        val gapCenters = mutableListOf<CoveragePoint>()
         var headMin = 0; var headMax = 0; var gapMin = 0; var gapMax = 0
         val halfWidth = preview.toolWidthMeters / 2
         val radius = hypot(dx, dy) / 2 + MARGIN_METERS
@@ -78,11 +81,11 @@ object CoverageAreaEstimator {
             if (centerInside) {
                 inside++
                 if (preview.headlandMeters > 0 && distance < preview.headlandMeters) headland++
-                else if (!centerCovered) gap++
+                else if (!centerCovered) { gap++; gapCenters.add(CoveragePoint(x, y)) }
             }
         }
         if (inside == 0) return null
-        return CoverageAreaEstimate(dx, dy, inside, headland, gap, headMin, headMax, gapMin, gapMax)
+        return CoverageAreaEstimate(dx, dy, inside, headland, gap, headMin, headMax, gapMin, gapMax, gapCenters.toList())
     }
 
     private fun insidePolygon(x: Double, y: Double, polygon: List<CoveragePoint>): Boolean {

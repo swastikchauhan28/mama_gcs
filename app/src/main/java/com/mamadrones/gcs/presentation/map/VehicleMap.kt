@@ -44,6 +44,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.mamadrones.gcs.domain.model.GeoTrackPoint
 import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.CoverageMapLine
+import com.mamadrones.gcs.domain.model.CoverageMapPoint
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.domain.model.HomePositionEvidence
 import kotlinx.coroutines.delay
@@ -83,6 +84,7 @@ import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
+import org.maplibre.geojson.MultiPoint
 import org.maplibre.geojson.Point
 import org.maplibre.geojson.Polygon
 import kotlin.math.cos
@@ -96,6 +98,7 @@ private const val DRAFT_POINTS_SOURCE_ID = "mama-draft-points"
 private const val DRAFT_LINE_SOURCE_ID = "mama-draft-line"
 private const val DRAFT_FENCE_SOURCE_ID = "mama-draft-fence"
 private const val COVERAGE_SOURCE_ID = "mama-coverage-preview"
+private const val COVERAGE_GAPS_SOURCE_ID = "mama-coverage-gap-samples"
 
 private const val VEHICLE_LAYER_ID = "mama-vehicle-layer"
 private const val TRACK_LAYER_ID = "mama-track-layer"
@@ -121,6 +124,7 @@ fun VehicleMap(
     styleUrl: String? = MapStyleConfig.styleUrlOrNull(LocalBasemapStyle.current),
     coverageLines: List<CoverageMapLine> = emptyList(),
     compactPlanningControls: Boolean = false,
+    coverageGapSamples: List<CoverageMapPoint>? = null,
 ) {
     val mapView = rememberMapViewWithLifecycle()
     var controlsExpanded by remember(compactPlanningControls) { mutableStateOf(!compactPlanningControls) }
@@ -340,6 +344,15 @@ fun VehicleMap(
         loadedStyle.getSourceAs<GeoJsonSource>(COVERAGE_SOURCE_ID)?.setGeoJson(FeatureCollection.fromFeatures(features))
     }
 
+    LaunchedEffect(style, coverageGapSamples, planningMode) {
+        val loadedStyle = style ?: return@LaunchedEffect
+        if (!planningMode) return@LaunchedEffect
+        val points = coverageGapSamples.orEmpty().map { Point.fromLngLat(it.longitude, it.latitude) }
+        val features = if (points.isEmpty()) emptyFeatureCollection() else
+            FeatureCollection.fromFeatures(arrayOf(Feature.fromGeometry(MultiPoint.fromLngLats(points))))
+        loadedStyle.getSourceAs<GeoJsonSource>(COVERAGE_GAPS_SOURCE_ID)?.setGeoJson(features)
+    }
+
     fun fitDraft() {
         val loadedMap = map ?: return
         val targets = (draftWaypoints + draftFence).map { LatLng(it.latitude, it.longitude) }.distinct()
@@ -369,8 +382,13 @@ fun VehicleMap(
             disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
         )
+        val coverageLegend = when {
+            coverageGapSamples == null -> "Preview only · cyan: passes. Gap estimate unavailable. Gaps can be missed."
+            coverageGapSamples.isEmpty() -> "Preview only · cyan: passes. No sampled gaps detected in main area. Gaps can be missed."
+            else -> "Preview only · cyan: passes; magenta: sampled gap centers (main area only). Gaps can be missed. Dots can merge or extend past the outline."
+        }
         if (compactPlanningControls && planningMode && coverageLines.isNotEmpty() && style != null) {
-            Text("Cyan: pass centerlines · preview only", modifier = Modifier.padding(8.dp).testTag("coverage-map-legend"), style = MaterialTheme.typography.labelMedium)
+            Text(coverageLegend, modifier = Modifier.padding(8.dp).testTag("coverage-map-legend"), style = MaterialTheme.typography.labelMedium)
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
         AndroidView(
@@ -381,7 +399,7 @@ fun VehicleMap(
         if (!compactPlanningControls && planningMode && coverageLines.isNotEmpty() && style != null) {
             Surface(modifier = Modifier.align(Alignment.TopStart).padding(8.dp).testTag("coverage-map-legend"),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f), shape = MaterialTheme.shapes.small) {
-                Text("Cyan: pass centerlines · preview only", modifier = Modifier.padding(8.dp), style = MaterialTheme.typography.labelMedium)
+                Text(coverageLegend, modifier = Modifier.padding(8.dp), style = MaterialTheme.typography.labelMedium)
             }
         }
 
@@ -649,9 +667,12 @@ private fun installDraftLayers(style: Style) {
     style.addSource(GeoJsonSource(DRAFT_FENCE_SOURCE_ID, emptyFeatureCollection()))
     style.addSource(GeoJsonSource(DRAFT_POINTS_SOURCE_ID, emptyFeatureCollection()))
     style.addSource(GeoJsonSource(COVERAGE_SOURCE_ID, emptyFeatureCollection()))
+    style.addSource(GeoJsonSource(COVERAGE_GAPS_SOURCE_ID, emptyFeatureCollection()))
     style.addLayer(FillLayer("mama-draft-fence-fill", DRAFT_FENCE_SOURCE_ID).withProperties(
         fillColor("#FFB547"), fillOpacity(0.16f), fillOutlineColor("#FFB547"),
     ))
+    style.addLayer(CircleLayer("mama-coverage-gap-samples-layer", COVERAGE_GAPS_SOURCE_ID).withProperties(
+        circleColor(AndroidColor.rgb(205, 35, 140)), circleRadius(2.5f)))
     style.addLayer(LineLayer("mama-coverage-preview-layer", COVERAGE_SOURCE_ID).withProperties(
         lineColor(AndroidColor.rgb(0, 157, 170)), lineWidth(4f), lineOpacity(0.95f)))
     style.addLayer(LineLayer("mama-draft-route", DRAFT_LINE_SOURCE_ID).withProperties(

@@ -19,6 +19,7 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Point
 import org.maplibre.geojson.LineString
+import org.maplibre.geojson.MultiPoint
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicBoolean
@@ -29,6 +30,64 @@ class MapLoadRecoveryTest {
     @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
     private val vehicle = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
         position = GlobalPositionState(-35.363, 149.165), headingDegrees = 90.0)
+
+    @Test fun sampledGapSourceSwitchesClearsAndReloads() {
+        val first = File.createTempFile("phase86-a-", ".json", compose.activity.cacheDir)
+        val second = File.createTempFile("phase86-b-", ".json", compose.activity.cacheDir)
+        first.writeText(VALID_STYLE); second.writeText(VALID_STYLE.replace("#12202c", "#243444"))
+        val url = mutableStateOf<String?>(Uri.fromFile(first).toString())
+        val samples = mutableStateOf<List<CoverageMapPoint>?>(listOf(CoverageMapPoint(-35.363, 149.165)))
+        val lines = listOf(CoverageMapLine(CoverageMapPoint(-35.36305, 149.165), CoverageMapPoint(-35.36295, 149.165)))
+        try {
+            compose.setContent { MamaGcsTheme { VehicleMap(VehicleState(), Modifier.fillMaxSize(), planningMode = true,
+                styleUrl = url.value, coverageLines = lines, coverageGapSamples = samples.value) } }
+            val map = awaitLoaded()
+            val frame = AtomicBoolean(false)
+            val listener = MapView.OnDidFinishRenderingFrameListener { _, _, _ -> frame.set(true) }
+            lateinit var view: MapView
+            compose.runOnIdle {
+                view = requireNotNull(findMap(compose.activity.window.decorView)); view.addOnDidFinishRenderingFrameListener(listener)
+                map.cameraPosition = org.maplibre.android.camera.CameraPosition.Builder().target(org.maplibre.android.geometry.LatLng(-35.363, 149.165)).zoom(18.0).build()
+                map.triggerRepaint()
+            }
+            try {
+                compose.waitUntil(15_000) { frame.get() }
+                fun awaitSample(expected: CoverageMapPoint?) {
+                    compose.waitUntil(20_000) {
+                        var valid = false
+                        compose.runOnIdle {
+                            val features = map.style?.getSourceAs<GeoJsonSource>("mama-coverage-gap-samples")?.querySourceFeatures(null)
+                            val points = features?.flatMap { feature -> when (val geometry = feature.geometry()) {
+                                is Point -> listOf(geometry)
+                                is MultiPoint -> geometry.coordinates()
+                                else -> emptyList()
+                            } }
+                            valid = if (expected == null) points?.isEmpty() == true else points?.isNotEmpty() == true && points.all {
+                                kotlin.math.abs(it.latitude() - expected.latitude) < 0.000001 && kotlin.math.abs(it.longitude() - expected.longitude) < 0.000001
+                            }
+                        }
+                        valid
+                    }
+                }
+                awaitSample(samples.value!!.first())
+                compose.onNodeWithText("magenta: sampled gap centers", substring = true).assertIsDisplayed()
+                compose.runOnIdle { samples.value = listOf(CoverageMapPoint(-35.36302, 149.16502)) }
+                awaitSample(samples.value!!.first())
+                compose.runOnIdle { url.value = Uri.fromFile(second).toString() }
+                compose.waitUntil(20_000) { var loaded = false; compose.runOnIdle { loaded = map.style?.uri == url.value && map.style?.isFullyLoaded == true }; loaded }
+                awaitSample(samples.value!!.first())
+                compose.runOnIdle { samples.value = emptyList() }
+                awaitSample(null)
+                compose.onNodeWithText("No sampled gaps detected", substring = true).assertIsDisplayed()
+                compose.runOnIdle { samples.value = null }
+                awaitSample(null)
+                compose.onNodeWithText("Gap estimate unavailable", substring = true).assertIsDisplayed()
+            } finally { compose.runOnIdle { view.removeOnDidFinishRenderingFrameListener(listener) } }
+        } finally {
+            compose.runOnIdle { url.value = null }; compose.waitForIdle()
+            check(first.delete() && second.delete())
+        }
+    }
 
     @Test fun coverageLinesRenderSwitchClearAndSurviveStyleReload() {
         val first = File.createTempFile("coverage-style-a-", ".json", compose.activity.cacheDir)

@@ -147,6 +147,15 @@ class FieldCoveragePlannerTest {
         assertEquals(16.0, estimate.unplannedMainSquareMeters, 2.0)
         assertTrue(estimate.headlandSamples > 0 && estimate.unplannedMainSamples > 0)
         assertEquals(10.0 / 128, estimate.cellWidthMeters, 0.00001)
+        assertEquals(estimate.unplannedMainSamples, estimate.gapSampleCenters.size)
+        assertTrue(estimate.gapSampleCenters.size <= CoverageAreaEstimator.GRID_SIDE * CoverageAreaEstimator.GRID_SIDE)
+        estimate.gapSampleCenters.forEach { center ->
+            assertTrue("gap samples exclude the reserved headland", center.x >= 1.0 && center.x <= 9.0 && center.y >= 1.0 && center.y <= 19.0)
+            assertTrue("gap samples are outside every ideal strip", p.passes.none { pass ->
+                abs(center.x - pass.start.x) <= p.toolWidthMeters / 2 && center.y >= minOf(pass.start.y, pass.end.y) && center.y <= maxOf(pass.start.y, pass.end.y)
+            })
+        }
+        assertTrue(full.gapSampleCenters.isEmpty())
     }
 
     @Test fun sampledTriangleFindsExpectedIdealStripGapsAndConcaveEstimatesStayBounded() {
@@ -199,8 +208,17 @@ class FieldCoveragePlannerTest {
         val p = FieldCoveragePreview(outline, passes, 0.5, 0.0, 1.0, 16384.0)
         val estimate = CoverageAreaEstimator.estimate(p)!!
         assertEquals(0, estimate.unplannedMainSamples)
+        assertTrue(estimate.gapSampleCenters.isEmpty())
         // Half of the rectangle lies between the 0.5 m strips despite every center landing on one.
         assertTrue(estimate.mainGapMinimum <= 8192.0 && estimate.mainGapMaximum >= 8192.0)
+    }
+
+    @Test fun gapSampleStorageIsBoundedEvenWhenEveryGridCenterIsUncovered() {
+        val outline = listOf(CoveragePoint(0.0, 0.0), CoveragePoint(128.0, 0.0), CoveragePoint(128.0, 128.0), CoveragePoint(0.0, 128.0))
+        val p = FieldCoveragePreview(outline, emptyList(), 1.0, 0.0, 1.0, 16384.0)
+        val estimate = CoverageAreaEstimator.estimate(p)!!
+        assertEquals(CoverageAreaEstimator.GRID_SIDE * CoverageAreaEstimator.GRID_SIDE, estimate.gapSampleCenters.size)
+        assertEquals(estimate.unplannedMainSamples, estimate.gapSampleCenters.size)
     }
 
     private fun assertClearance(preview: FieldCoveragePreview, clearance: Double) {

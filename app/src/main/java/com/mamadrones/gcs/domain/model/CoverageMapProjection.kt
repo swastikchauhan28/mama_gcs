@@ -7,7 +7,7 @@ data class CoverageMapPoint(val latitude: Double, val longitude: Double)
 data class CoverageMapLine(val start: CoverageMapPoint, val end: CoverageMapPoint)
 
 sealed interface CoverageMapProjectionResult {
-    data class Ready(val lines: List<CoverageMapLine>) : CoverageMapProjectionResult
+    data class Ready(val lines: List<CoverageMapLine>, val gapSamples: List<CoverageMapPoint>?) : CoverageMapProjectionResult
     data class Unavailable(val reason: String) : CoverageMapProjectionResult
 }
 
@@ -24,9 +24,11 @@ object CoverageMapProjection {
             origin.longitude + Math.toDegrees(point.x / (FieldCoveragePlanner.METERS_PER_RADIAN * scale)),
         )
         val lines = preview.passes.map { CoverageMapLine(toGeographic(it.start), toGeographic(it.end)) }
-        if (lines.any { line -> listOf(line.start, line.end).any { point ->
+        val gaps = preview.areaEstimate?.gapSampleCenters?.map(::toGeographic)
+        fun invalid(point: CoverageMapPoint) =
             !point.latitude.isFinite() || !point.longitude.isFinite() || point.latitude !in -90.0..90.0 || point.longitude !in -180.0..180.0
-        } }) return CoverageMapProjectionResult.Unavailable("Map preview coordinates are outside supported map bounds.")
-        return CoverageMapProjectionResult.Ready(lines)
+        if (lines.any { invalid(it.start) || invalid(it.end) } || gaps?.any(::invalid) == true)
+            return CoverageMapProjectionResult.Unavailable("Map preview coordinates are outside supported map bounds.")
+        return CoverageMapProjectionResult.Ready(lines, gaps)
     }
 }

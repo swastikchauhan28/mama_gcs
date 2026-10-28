@@ -49,6 +49,7 @@ internal class FieldCoverageState(
     var result by mutableStateOf<CoverageCalculation?>(null); private set
     var comparison by mutableStateOf<CoverageDirectionComparison?>(null); private set
     var mapLines by mutableStateOf<List<CoverageMapLine>>(emptyList()); private set
+    var mapGapSamples by mutableStateOf<List<CoverageMapPoint>?>(null); private set
     var mapEastWest by mutableStateOf<Boolean?>(null); private set
     var mapError by mutableStateOf<String?>(null); private set
     var busy by mutableStateOf(false); private set
@@ -59,13 +60,13 @@ internal class FieldCoverageState(
     fun updateHeadland(value: String) { invalidate(); headland = value.take(16) }
     fun setDirection(value: Boolean) { invalidate(); eastWest = value }
     fun invalidate() { job?.cancel(); job = null; busy = false; result = null; comparison = null; hideMap() }
-    fun hideMap() { mapLines = emptyList(); mapEastWest = null; mapError = null }
+    fun hideMap() { mapLines = emptyList(); mapGapSamples = null; mapEastWest = null; mapError = null }
     fun showDirectionOnMap(eastWest: Boolean) {
         val selected = if (eastWest) comparison?.eastWest else comparison?.northSouth
         if (selected !is CoverageCalculation.Ready || busy) return
         when (val projected = CoverageMapProjection.project(selected.preview, outline)) {
             is CoverageMapProjectionResult.Ready -> {
-                mapLines = projected.lines; mapEastWest = eastWest; mapError = null
+                mapLines = projected.lines; mapGapSamples = projected.gapSamples; mapEastWest = eastWest; mapError = null
             }
             is CoverageMapProjectionResult.Unavailable -> {
                 hideMap(); mapError = projected.reason

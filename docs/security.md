@@ -1,5 +1,7 @@
 # Security foundation and boundaries
 
+The local coverage estimate can retain up to 16,384 gap sample centers per preview and render them on the existing map; they are volatile and neither a mission nor an observation of worked soil. Map styles can still contact the already configured provider. See [Phase 86](phase-86-report.md).
+
 ## Implemented
 
 - `AuthorizationPolicy` is deny-by-default for missing, blank, disabled or expired sessions. Its role matrix is policy groundwork; only local account administration and saved UDP peer configuration currently consume the policy. It does not grant a vehicle-control capability.

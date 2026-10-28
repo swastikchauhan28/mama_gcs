@@ -21,6 +21,12 @@ class CoverageMapProjectionTest {
             val preview = (FieldCoveragePlanner.calculate(outline, 1.0, 10.0, eastWest, 0.5) as CoverageCalculation.Ready).preview
             val projected = CoverageMapProjection.project(preview, outline) as CoverageMapProjectionResult.Ready
             assertEquals(preview.passes.size, projected.lines.size)
+            val localGaps = preview.areaEstimate!!.gapSampleCenters
+            assertEquals(localGaps.size, projected.gapSamples!!.size)
+            localGaps.zip(projected.gapSamples).forEach { (local, geo) ->
+                assertEquals(local.x, Math.toRadians(geo.longitude - outline.first().longitude) * 6_371_000.0 * cos(Math.toRadians(latitude)), 0.00001)
+                assertEquals(local.y, Math.toRadians(geo.latitude - outline.first().latitude) * 6_371_000.0, 0.00001)
+            }
             preview.passes.zip(projected.lines).forEach { (pass, line) ->
                 for ((local, geo) in listOf(pass.start to line.start, pass.end to line.end)) {
                     val x = Math.toRadians(geo.longitude - outline.first().longitude) * 6_371_000.0 * cos(Math.toRadians(latitude))
@@ -30,6 +36,13 @@ class CoverageMapProjectionTest {
                 }
             }
         }
+    }
+
+    @Test fun unavailableEstimateDoesNotBecomeZeroDetectedGaps() {
+        val outline = field(0.0, 77.0, 0.0 to 0.0, 10.0 to 0.0, 10.0 to 20.0, 0.0 to 20.0)
+        val preview = (FieldCoveragePlanner.calculate(outline, 2.0, 0.0) as CoverageCalculation.Ready).preview
+        assertTrue((CoverageMapProjection.project(preview, outline) as CoverageMapProjectionResult.Ready).gapSamples!!.isEmpty())
+        assertNull((CoverageMapProjection.project(preview.copy(areaEstimate = null), outline) as CoverageMapProjectionResult.Ready).gapSamples)
     }
 
     @Test fun crossingDateLineIsRejectedWithoutWorldSpanningSegments() {
