@@ -2,6 +2,28 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-28 — Phase 84 irregular coverage map tests
+
+### Done
+
+- Added offline triangle and concave U-field UI-to-map checks in both directions, including split concave segments, bounded geometric comparison, rendering, clearing and unchanged draft. An enlarged-text triangle verifies control access. The targeted emulator run passed 3/3; build and lint succeeded, with JVM test and lint report tasks up-to-date. See [Phase 84 report](phase-84-report.md).
+
+### In progress
+
+- Phase 84 publication was requested; check Git for current commit and remote status. No production app behavior changed.
+
+### Broken or risky
+
+- The enlarged-text screenshot shows the legend and controls covering a significant portion of the field. The fixture uses local font scaling and a synthetic field, not system-wide accessibility settings, a screen reader, a real map or physical equipment. Landscape irregular-field integration remains unverified.
+
+### Next
+
+- Scope an enlarged-text map layout improvement and verify it visually; independently validate field geometry and hardware before any field use. Commit/push only when requested.
+
+### Do not touch
+
+- Keep hardware on hold; do not upload coverage previews or infer physical soil coverage from emulator tests.
+
 ## 2026-10-28 — Phase 83 coverage map controls and direction labels
 
 ### Done

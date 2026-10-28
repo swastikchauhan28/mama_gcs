@@ -48,6 +48,116 @@ class FieldCoverageUiTest {
 
     @Test fun selectedCoverageReachesOfflineMapInLandscape() = selectedCoverageReachesOfflineMap(true)
 
+    @Test fun triangleCoverageReachesOfflineMap() = verifyIrregularCoverage(false, false)
+
+    @Test fun concaveCoverageReachesOfflineMap() = verifyIrregularCoverage(true, false)
+
+    @Test fun enlargedTextCoverageMapControlsRemainUsable() = verifyIrregularCoverage(false, true)
+
+    private fun verifyIrregularCoverage(concave: Boolean, largeText: Boolean) {
+        val style = File.createTempFile("phase84-style-", ".json", compose.activity.cacheDir)
+        style.writeText("""{"version":8,"sources":{},"layers":[{"id":"background","type":"background","paint":{"background-color":"#12202c"}}]}""")
+        val xy = if (concave) listOf(0.0 to 0.0, 12.0 to 0.0, 12.0 to 12.0, 8.0 to 12.0, 8.0 to 4.0, 4.0 to 4.0, 4.0 to 12.0, 0.0 to 12.0)
+            else listOf(0.0 to 0.0, 12.0 to 0.0, 0.0 to 12.0)
+        val outline = xy.mapIndexed { i, (x, y) -> DraftWaypoint("phase84-$i", 0.123456 + originalMetres(y), 149.165 + originalMetres(x)) }
+        val draft = mutableStateOf(MissionDraft(keepInFence = outline))
+        val original = draft.value
+        try {
+            show(largeText = largeText, draft = draft, mapStyleUrl = Uri.fromFile(style).toString())
+            node("coverage-width").performTextReplacement("2")
+            node("coverage-overlap").apply { performTextReplacement("0"); performImeAction() }
+            compose.onNodeWithTag("coverage-close-settings").performClick()
+            node("coverage-compare").performClick()
+            compose.waitUntil(30_000) { compose.onAllNodesWithTag("coverage-comparison").fetchSemanticsNodes().isNotEmpty() }
+            for (eastWest in listOf(false, true)) {
+                val calculation = FieldCoveragePlanner.calculate(outline, 2.0, 0.0, eastWest)
+                assertTrue("Synthetic field should yield a preview: $calculation", calculation is CoverageCalculation.Ready)
+                val preview = (calculation as CoverageCalculation.Ready).preview
+                val projected = CoverageMapProjection.project(preview, outline) as CoverageMapProjectionResult.Ready
+                if (concave && eastWest) {
+                    assertTrue("Concave fixture must contain split passes", preview.passes.groupBy { (it.start.y * 1000).roundToInt() }.values.any { it.size > 1 })
+                }
+                node(if (eastWest) "coverage-comparison-east-map" else "coverage-comparison-north-map").performClick()
+                verifyIrregularMap(projected.lines, concave, eastWest, largeText)
+            }
+            node("coverage-overlap").apply { performTextReplacement("10"); performImeAction() }
+            compose.onNodeWithTag("coverage-close-settings").performClick()
+            compose.onAllNodesWithTag("coverage-map-status").assertCountEquals(0)
+            compose.onAllNodesWithTag("coverage-map-legend").assertCountEquals(0)
+            compose.onAllNodesWithTag("mission-map").assertCountEquals(0)
+            assertEquals(original, draft.value)
+            assertTrue("Coverage preview must not dispatch a mission action", actions.isEmpty())
+        } finally {
+            compose.runOnIdle { }
+            check(style.delete()) { "Could not remove test-owned map style" }
+        }
+    }
+
+    private fun verifyIrregularMap(expected: List<CoverageMapLine>, concave: Boolean, eastWest: Boolean, largeText: Boolean) {
+        compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-map"))
+        compose.onNodeWithTag("mission-map").assertIsDisplayed()
+        var map: MapLibreMap? = null
+        lateinit var view: MapView
+        compose.runOnIdle { view = requireNotNull(findMap(compose.activity.window.decorView)); view.getMapAsync { map = it } }
+        compose.waitUntil(30_000) { var loaded = false; compose.runOnIdle { loaded = map?.style?.isFullyLoaded == true }; loaded }
+        val rendered = AtomicBoolean(false)
+        val listener = MapView.OnDidFinishRenderingFrameListener { _, _, _ -> rendered.set(true) }
+        compose.runOnIdle { view.addOnDidFinishRenderingFrameListener(listener); map!!.triggerRepaint() }
+        try {
+            compose.waitUntil(30_000) { rendered.get() }
+            compose.onNodeWithTag("coverage-map-controls").assertIsDisplayed().performClick()
+            compose.onNodeWithTag("mission-fit").assertIsDisplayed().assertIsEnabled().performClick()
+            compose.waitUntil(30_000) { var zoom = 0.0; compose.runOnIdle { zoom = map!!.cameraPosition.zoom }; zoom > 18.0 }
+            compose.onNodeWithTag("coverage-map-controls").assertIsDisplayed().performClick()
+            compose.onAllNodesWithTag("mission-fit").assertCountEquals(0)
+            var lines = emptyList<LineString>()
+            try {
+                compose.waitUntil(30_000) {
+                    compose.runOnIdle { lines = map!!.style?.getSourceAs<GeoJsonSource>("mama-coverage-preview")?.querySourceFeatures(null)?.mapNotNull { it.geometry() as? LineString }?.distinct() ?: emptyList() }
+                    lines.size == expected.size
+                }
+            } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+                throw AssertionError("Expected ${expected.size} unique segments, observed ${lines.size}: $lines", failure)
+            }
+            val tolerance = 1e-7 // About 1.1 cm at this latitude, for native tile quantization.
+            fun close(a: Double, b: Double) = abs(a - b) <= tolerance
+            lines.forEach { line ->
+                val p = line.coordinates(); assertEquals(2, p.size)
+                assertTrue("Map segment must match a planned segment", expected.any { e ->
+                    (close(p[0].latitude(), e.start.latitude) && close(p[0].longitude(), e.start.longitude) && close(p[1].latitude(), e.end.latitude) && close(p[1].longitude(), e.end.longitude)) ||
+                    (close(p[1].latitude(), e.start.latitude) && close(p[1].longitude(), e.start.longitude) && close(p[0].latitude(), e.end.latitude) && close(p[0].longitude(), e.end.longitude))
+                })
+                for (step in 0..10) {
+                    val t = step / 10.0
+                    val x = Math.toRadians(p[0].longitude() * (1 - t) + p[1].longitude() * t - 149.165) * 6_371_000.0
+                    val y = Math.toRadians(p[0].latitude() * (1 - t) + p[1].latitude() * t - 0.123456) * 6_371_000.0
+                    assertTrue("Segment must remain in the synthetic field: $x,$y", x >= -0.02 && y >= -0.02 && x <= 12.02 && y <= 12.02 &&
+                        if (concave) !(x > 4.02 && x < 7.98 && y > 4.02) else x + y <= 12.02)
+                }
+            }
+            compose.onNodeWithTag("coverage-map-legend").assertIsDisplayed()
+            compose.runOnIdle { map!!.triggerRepaint() }
+            compose.awaitScreenshotFrame(view)
+            val bitmap = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+            try {
+                val name = "phase84-${if (largeText) "large" else if (concave) "concave" else "triangle"}-${if (eastWest) "east" else "north"}.png"
+                File(compose.activity.getExternalFilesDir(null), name).outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+                val p = lines[lines.size / 2].coordinates(); var x = 0; var y = 0
+                compose.runOnIdle {
+                    val center = map!!.projection.toScreenLocation(org.maplibre.android.geometry.LatLng((p[0].latitude() + p[1].latitude()) / 2, (p[0].longitude() + p[1].longitude()) / 2))
+                    val offset = IntArray(2); view.getLocationOnScreen(offset); x = (offset[0] + center.x).roundToInt(); y = (offset[1] + center.y).roundToInt()
+                }
+                assertTrue("Projected segment midpoint must be on screen", x in 6 until bitmap.width - 6 && y in 6 until bitmap.height - 6)
+                var cyan = 0
+                for (dy in -6..6) for (dx in -6..6) {
+                    val color = bitmap.getPixel(x + dx, y + dy)
+                    if (android.graphics.Color.red(color) < 60 && android.graphics.Color.green(color) in 120..190 && android.graphics.Color.blue(color) in 130..205) cyan++
+                }
+                assertTrue("A planned segment must render at its projected midpoint: $cyan cyan pixels", cyan >= 3)
+            } finally { bitmap.recycle() }
+        } finally { compose.runOnIdle { view.removeOnDidFinishRenderingFrameListener(listener) } }
+    }
+
     private fun selectedCoverageReachesOfflineMap(landscape: Boolean) {
         val style = File.createTempFile("phase82-style-", ".json", compose.activity.cacheDir)
         style.writeText("""{"version":8,"sources":{},"layers":[{"id":"background","type":"background","paint":{"background-color":"#12202c"}}]}""")

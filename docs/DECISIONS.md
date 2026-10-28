@@ -1,5 +1,11 @@
 # Decisions and alternatives
 
+## D-084-01: Verify irregular coverage on the offline map
+
+- Date: 2026-10-28. User approved Phase 84 and emulator testing. Model/version unavailable. Baseline `2cd804d2e9e010be5e0e8f08f80617a2b237af0f`, clean worktree.
+- Choice: test triangle and concave U-shaped fields through the actual coverage UI and offline MapLibre layer in both directions, including separate concave segments, checking projected segments against the planner and against the known field shape. Check switching, clear and unchanged in-memory draft; use an enlarged-text fixture to check compact controls. Preserve rectangular tests and retain failed evidence.
+- Alternatives: only geometry unit tests miss the map/UI integration; an online map or vehicle would introduce external dependencies and cannot validate physical coverage here. Renderer quantization and map tile duplication require bounded endpoint tolerance and exact unique-geometry matching. Synthetic fixtures test model behavior, not surveyed boundaries, implement footprints, tracking or worked soil. No production dependency, external destination, persistence or vehicle commands are authorized. Recover with a reviewed scoped source/test/docs reversal of the Phase 84 diff, not a qualified release.
+
 ## D-083-01: Clarify coverage directions and compact portrait map controls
 
 - Date: 2026-10-28. User approved Phase 83 and emulator testing. Model/version unavailable. Baseline `af2c05d46f250dedc83d64a6701e8a27dc06a169`; worktree clean.
