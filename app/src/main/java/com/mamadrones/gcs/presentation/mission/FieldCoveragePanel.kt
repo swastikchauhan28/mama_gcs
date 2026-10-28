@@ -45,6 +45,7 @@ internal class FieldCoverageState(
     var width by mutableStateOf(""); private set
     var overlap by mutableStateOf("10"); private set
     var headland by mutableStateOf("0"); private set
+    var sidewaysError by mutableStateOf(""); private set
     var eastWest by mutableStateOf(false); private set
     var result by mutableStateOf<CoverageCalculation?>(null); private set
     var comparison by mutableStateOf<CoverageDirectionComparison?>(null); private set
@@ -54,10 +55,19 @@ internal class FieldCoverageState(
     var mapError by mutableStateOf<String?>(null); private set
     var busy by mutableStateOf(false); private set
     private var job: Job? = null
-    val inputError: String? get() = FieldCoveragePlanner.settingsError(width.trim().toDoubleOrNull(), overlap.trim().toDoubleOrNull(), headland.trim().toDoubleOrNull())
+    val inputError: String? get() {
+        val settings = FieldCoveragePlanner.settingsError(width.trim().toDoubleOrNull(), overlap.trim().toDoubleOrNull(), headland.trim().toDoubleOrNull())
+        if (settings != null) return settings
+        if (sidewaysError.isBlank()) return null
+        val error = sidewaysError.trim().toDoubleOrNull()
+        return if (error == null || !error.isFinite() || error !in 0.0..50.0) "Enter a sideways error from 0 to 50 metres, or leave it blank." else null
+    }
+    val sidewaysEstimate: SidewaysOverlapEstimate? get() = SidewaysOverlapEstimator.calculate(
+        width.trim().toDoubleOrNull(), overlap.trim().toDoubleOrNull(), sidewaysError.trim().toDoubleOrNull())
     fun updateWidth(value: String) { invalidate(); width = value.take(16) }
     fun updateOverlap(value: String) { invalidate(); overlap = value.take(16) }
     fun updateHeadland(value: String) { invalidate(); headland = value.take(16) }
+    fun updateSidewaysError(value: String) { invalidate(); sidewaysError = value.take(16) }
     fun setDirection(value: Boolean) { invalidate(); eastWest = value }
     fun invalidate() { job?.cancel(); job = null; busy = false; result = null; comparison = null; hideMap() }
     fun hideMap() { mapLines = emptyList(); mapGapSamples = null; mapEastWest = null; mapError = null }
@@ -167,6 +177,11 @@ internal fun FieldCoverageInputs(state: FieldCoverageState) {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { keyboard?.hide() }),
             modifier = Modifier.fillMaxWidth().testTag("coverage-headland"))
+        OutlinedTextField(state.sidewaysError, state::updateSidewaysError, label = { Text("Assumed sideways error per pass (m)") },
+            supportingText = { Text("Optional · blank means unknown · 0–50 m") }, singleLine = true, enabled = state.available,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { keyboard?.hide() }),
+            modifier = Modifier.fillMaxWidth().testTag("coverage-sideways-error"))
         Text("Pass direction", style = MaterialTheme.typography.labelLarge)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             FilterChip(!state.eastWest, { state.setDirection(false) }, { Text("North / south") },
@@ -195,13 +210,25 @@ internal fun FieldCoverageComparisonPanel(comparison: CoverageDirectionCompariso
 }
 
 @Composable
-internal fun FieldCoverageComparisonHeader(comparison: CoverageDirectionComparison?) {
+internal fun FieldCoverageComparisonHeader(comparison: CoverageDirectionComparison?, sidewaysEstimate: SidewaysOverlapEstimate? = null) {
     if (comparison == null) return
     Column(Modifier.fillMaxWidth().testTag("coverage-comparison"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Compare directions · preview only", style = MaterialTheme.typography.titleMedium)
         Text("Same field and settings. Swipe sideways to see both cards. No direction is selected automatically.")
         Text("Working length excludes turns. Ranges describe modeled gaps, not actual soil or positioning accuracy. Overlapping ranges do not show which direction has fewer gaps.",
             style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("coverage-comparison-warning"))
+        Text(if (sidewaysEstimate == null) "Sideways error assumption: not provided. No error margin calculated." else {
+            val margin = sidewaysEstimate.marginMeters
+            val amount = if (kotlin.math.abs(margin) < 0.0005 && margin != 0.0) "less than 0.001 m" else String.format(Locale.US, "%.3f m", kotlin.math.abs(margin))
+            val outcome = when {
+                margin > 0.0 -> "Remaining ideal overlap margin: $amount"
+                margin < 0.0 -> "Potential ideal spacing gap: $amount"
+                else -> "No ideal overlap margin remains"
+            }
+            "Assumed per-pass error: ${String.format(Locale.US, "%.3f m", sidewaysEstimate.perPassErrorMeters)} · Nominal overlap: ${String.format(Locale.US, "%.3f m", sidewaysEstimate.nominalMeters)} · $outcome. Values rounded to 0.001 m."
+        }, modifier = Modifier.testTag("coverage-sideways-result"))
+        Text("Applies to both directions: assumes two neighboring straight passes drift away from each other by the entered per-pass amount. This is not a coverage guarantee; turns, boundaries, implement movement and actual positioning are not checked.",
+            style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("coverage-sideways-warning"))
         Text("Diagrams: green is planned strips, pink is unplanned area, amber is reserved headland.", style = MaterialTheme.typography.bodySmall)
     }
 }

@@ -1,5 +1,7 @@
 # Security foundation and boundaries
 
+The optional sideways-error margin uses volatile user-entered assumptions only; it is not a sensor measurement, safety check or physical coverage guarantee. It does not change missions, network behavior or hardware commands. See [Phase 89](phase-89-report.md).
+
 The local coverage estimate can retain up to 16,384 gap sample centers per preview and render them on the existing map; they are volatile and neither a mission nor an observation of worked soil. Map styles can still contact the already configured provider. See [Phase 86](phase-86-report.md).
 
 ## Implemented

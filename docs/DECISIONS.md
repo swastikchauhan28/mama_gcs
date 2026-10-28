@@ -1,5 +1,10 @@
 # Decisions and alternatives
 
+## D-089-01: Show an optional assumed sideways-error overlap margin
+
+- Date: 2026-10-28. User approved Phase 89 and emulator checks. Model/version unavailable. Baseline `71c1790eb29d14d549cd5e216c9f1c206ea3ce6d`, clean worktree.
+- Choice: an optional volatile 0–50 m per-pass sideways-error assumption is blank by default (unknown, never silently zero). When valid, comparison shows a shared ideal spacing margin: tool width × overlap percentage − twice the assumed error. Positive, zero and negative values respectively describe modeled overlap margin, no margin or modeled spacing gap under opposing bounded pass errors. A last closer pass, clipped segments, turns, boundaries, implement behavior, error correlation, GNSS, soil and actual work are not assessed. This does not change route/preview geometry, sampled areas, data storage or vehicle behavior. Invalid input must block comparison/preview, and input edits invalidate stale comparison/map results.
+- Alternatives: assuming zero without asking creates false confidence; estimating actual coverage from a single error number is not defensible. Shared comparison avoids implying this spacing-only calculation distinguishes directions. Limit inputs, reject nonfinite values, label units and limitations, and test positive/zero/negative, invalid, cancellation and UI rendering. Physical measurements and field acceptance remain unverified. No new dependency, permission, persistence, destination or hardware command; scoped reversal against baseline is recovery, not a qualified release.
 ## D-088-01: Exercise map responsiveness with dense gap samples
 
 - Date: 2026-10-28. User approved Phase 88 and emulator testing. Model/version unavailable. Baseline `bda9b907b788780d0bbe9f9c09679bf18bcddb5d`, clean worktree.

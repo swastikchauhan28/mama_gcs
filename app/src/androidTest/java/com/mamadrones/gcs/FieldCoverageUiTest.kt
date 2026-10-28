@@ -509,6 +509,44 @@ class FieldCoverageUiTest {
         assertTrue(actions.isEmpty())
     }
 
+    @Test fun sidewaysErrorComparisonShowsAssumptionsAndInvalidatesOldResults() {
+        show()
+        node("coverage-width").performTextReplacement("2")
+        node("coverage-overlap").apply { performTextReplacement("10"); performImeAction() }
+        compose.onNodeWithTag("coverage-close-settings").performClick()
+        fun compare() {
+            node("coverage-compare").performClick()
+            compose.waitUntil(30_000) { compose.onAllNodesWithTag("coverage-comparison").fetchSemanticsNodes().isNotEmpty() }
+        }
+        fun setError(value: String) {
+            node("coverage-sideways-error").apply { performTextReplacement(value); performImeAction() }
+        }
+        compare()
+        node("coverage-sideways-result").assertTextContains("not provided", substring = true)
+        setError("0.05")
+        compose.onNodeWithTag("coverage-close-settings").performClick()
+        compose.onAllNodesWithTag("coverage-comparison").assertCountEquals(0)
+        compare()
+        node("coverage-sideways-result").assertTextContains("Assumed per-pass error: 0.050 m", substring = true)
+            .assertTextContains("Remaining ideal overlap margin: 0.100 m", substring = true)
+        node("coverage-sideways-warning").assertTextContains("not a coverage guarantee", substring = true)
+        capture("phase89-positive.png")
+        setError("0.1")
+        compose.onNodeWithTag("coverage-close-settings").performClick()
+        compare()
+        node("coverage-sideways-result").assertTextContains("No ideal overlap margin remains", substring = true)
+        setError("0.15")
+        compose.onNodeWithTag("coverage-close-settings").performClick()
+        compare()
+        node("coverage-sideways-result").assertTextContains("Potential ideal spacing gap: 0.100 m", substring = true)
+        setError("51")
+        node("coverage-generate").assertIsNotEnabled()
+        node("coverage-input-error").assertTextContains("sideways error", substring = true)
+        compose.onNodeWithTag("coverage-close-settings").performClick()
+        node("coverage-compare").assertIsNotEnabled()
+        compose.onAllNodesWithTag("coverage-comparison").assertCountEquals(0)
+        assertTrue("Local comparison must not dispatch mission actions", actions.isEmpty())
+    }
     @Test fun comparisonShowsIndependentDirectionErrors() {
         compose.setContent {
             MamaGcsTheme {
@@ -541,7 +579,7 @@ class FieldCoverageUiTest {
     }
 
     private fun node(tag: String): SemanticsNodeInteraction {
-        if (tag in setOf("coverage-width", "coverage-overlap", "coverage-headland", "coverage-generate", "coverage-input-error", "coverage-east-west", "coverage-north-south")) {
+        if (tag in setOf("coverage-width", "coverage-overlap", "coverage-headland", "coverage-sideways-error", "coverage-generate", "coverage-input-error", "coverage-east-west", "coverage-north-south")) {
             if (compose.onAllNodesWithTag("coverage-generate").fetchSemanticsNodes().isEmpty()) node("coverage-settings").performClick()
             val target = compose.onNodeWithTag(tag)
             return if (tag == "coverage-generate") target else target.performScrollTo()

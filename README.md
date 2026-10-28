@@ -132,6 +132,8 @@ Coverage → Compare directions presents north/south and east/west previews with
 
 Either successful comparison can be shown as separate cyan pass centerlines on the local planning map. This transient map overlay is not a route or a guarantee of physical coverage; date-line-crossing outlines are unavailable for map overlay. See [Phase 81](docs/phase-81-report.md).
 
+An optional assumed sideways error per pass adds an ideal-spacing overlap margin to the direction comparison. Blank means unknown. The margin assumes neighboring passes drift apart by the entered amount each; it does not change the preview or guarantee physical coverage, and it does not assess turns, edges or implement behavior. See [Phase 89](docs/phase-89-report.md).
+
 On the portrait coverage map, open **Map controls** to fit or navigate, then hide them to see more of the field. The single-preview setting and comparison direction selected for the map are labeled separately. See [Phase 83](docs/phase-83-report.md).
 
 The portrait preview places its legend and collapsed control button outside the map, including at enlarged text sizes. See [Phase 85](docs/phase-85-report.md).

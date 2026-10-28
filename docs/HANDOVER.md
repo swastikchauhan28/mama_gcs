@@ -2,6 +2,27 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-28 — Phase 89 assumed sideways-error margin
+
+### Done
+
+- Added optional blank-by-default per-pass sideways error and an ideal overlap/spacing-gap margin shared by direction comparisons. A fresh JVM run passed 419 tests, build and lint succeeded, and the new emulator test plus existing comparison regression passed separately. See [Phase 89 report](phase-89-report.md).
+
+### In progress
+
+- Phase 89 publication was requested; check Git for the current commit and remote status.
+
+### Broken or risky
+
+- Initial combined emulator run crashed during activity destruction with a Compose lifecycle exception; independent retry passed but root cause remains unknown. Input changes during an in-flight comparison were not independently exercised. Estimates cannot guarantee worked soil or real positioning accuracy; actual implement behavior, turns, boundaries and hardware telemetry remain unresolved.
+
+### Next
+
+- Review the calculation, input validation, labels and scoped test diff. Validate accessibility and use independently measured tracking and implement data before any physical field decisions.
+
+### Do not touch
+
+- Keep hardware on hold; do not upload previews or infer worked soil from the margin or samples.
 ## 2026-10-28 — Phase 88 dense map interactions
 
 ### Done
