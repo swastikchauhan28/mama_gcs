@@ -150,26 +150,59 @@ class ClassicConnectionCheckTest {
             battery = BatteryState(lastUpdatedAtEpochMillis = now),
             roverHud = RoverHudState(lastUpdatedAtEpochMillis = now),
             systemStatus = AutopilotSystemStatus(lastUpdatedAtEpochMillis = now),
-            rcInput = RcInputState(lastUpdatedAtEpochMillis = now)))
-        assertEquals(listOf("GPS", "Position", "Attitude", "Battery", "Rover HUD", "System status", "RC input"),
+            rcInput = RcInputState(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now)))
+        assertEquals(listOf("GPS", "Position", "Attitude", "Battery", "Rover HUD", "System status"),
             result.measurementMessages)
         assertFalse(result.freshRcChannels) // A state timestamp alone is not selected-source evidence.
     }
     @Test fun rcReceiptRequiresFreshAcceptedObservationAndStateInCurrentClassicSession() {
-        val current = vehicle.copy(rcInput = RcInputState(lastUpdatedAtEpochMillis = now),
+        val current = vehicle.copy(rcInput = RcInputState(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now),
             mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(heartbeat, rcObservation)))
         assertTrue(assess(current).freshRcChannels)
         assertFalse(assess(current.copy(mavlinkDiagnostics = diagnostics.copy(
             messageObservations = listOf(heartbeat, rcObservation.copy(accepted = 0, otherSource = 1))))).freshRcChannels)
         listOf(null, 9_999L, now - 5_001, now + 1).forEach { time ->
-            assertFalse(assess(current.copy(rcInput = RcInputState(lastUpdatedAtEpochMillis = time))).freshRcChannels)
+            assertFalse(assess(current.copy(rcInput = RcInputState(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = time))).freshRcChannels)
             assertFalse(assess(current.copy(mavlinkDiagnostics = diagnostics.copy(
-                messageObservations = listOf(heartbeat, rcObservation.copy(lastAcceptedAtEpochMillis = time))))).freshRcChannels)
+                messageObservations = listOf(heartbeat, rcObservation.copy(lastAcceptedAtElapsedMillis = time))))).freshRcChannels)
         }
         assertFalse(assess(current.copy(lastHeartbeatAtElapsedMillis = now - 5_001)).freshRcChannels)
         assertFalse(assess(current, active = false).freshRcChannels)
         assertFalse(assess(current, link = connection.copy(connectedAtElapsedMillis = now + 1), time = now + 2).freshRcChannels)
     }
+    @Test fun rcFreshnessUsesElapsedEvenWhenCalendarClockJumps() {
+        val current = vehicle.copy(attitude = AttitudeState(),
+            rcInput = RcInputState(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now),
+            mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(heartbeat, rcObservation)))
+        for (epoch in listOf(1L, Long.MAX_VALUE)) {
+            val result = ClassicConnectionCheck.assess(true, connection, current, epoch, now)
+            assertTrue(result.freshRcChannels)
+            assertEquals(listOf("RC input"), result.measurementMessages)
+            assertEquals(ClassicCheckStage.RECEIVING, result.stage)
+        }
+    }
+    @Test fun rcRequiresBothElapsedReceiptsAndRecoversAfterExpiry() {
+        val current = vehicle.copy(rcInput = RcInputState(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now),
+            mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(heartbeat, rcObservation)))
+        for (time in listOf(null, -1L, 9_999L, now - 5_001, now + 1)) {
+            val missingSample = current.copy(rcInput = current.rcInput.copy(lastUpdatedAtElapsedMillis = time))
+            assertFalse(assess(missingSample).freshRcChannels)
+            assertFalse(assess(missingSample).measurementMessages.contains("RC input"))
+            val missingAcceptance = current.copy(mavlinkDiagnostics = diagnostics.copy(
+                messageObservations = listOf(heartbeat, rcObservation.copy(lastAcceptedAtElapsedMillis = time))))
+            assertFalse(assess(missingAcceptance).freshRcChannels)
+            assertFalse(assess(missingAcceptance).measurementMessages.contains("RC input"))
+        }
+        val boundary = current.copy(rcInput = current.rcInput.copy(lastUpdatedAtElapsedMillis = now - 5_000),
+            mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(heartbeat,
+                rcObservation.copy(lastAcceptedAtElapsedMillis = now - 5_000))))
+        assertTrue(assess(boundary).freshRcChannels)
+        assertFalse(assess(boundary, time = now + 1).freshRcChannels)
+        assertTrue(assess(current).freshRcChannels)
+        assertTrue(assess(current).measurementMessages.contains("RC input"))
+        assertFalse(assess(current.copy(connectionStatus = VehicleConnectionState.DISCONNECTED)).freshRcChannels)
+    }
+
     @Test fun calendarClockJumpsDoNotChangeByteDecodeOrHeartbeatEvidence() {
         for (epoch in listOf(1L, Long.MAX_VALUE)) {
             val result = ClassicConnectionCheck.assess(true, connection, vehicle, epoch, now)

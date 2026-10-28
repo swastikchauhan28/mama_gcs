@@ -187,6 +187,8 @@ class MavlinkSessionTest {
             val observed = state.mavlinkDiagnostics.messageObservations.associateBy { it.type.messageId }
             assertEquals(1L, observed.getValue(0).accepted)
             assertEquals(1L, observed.getValue(65).accepted)
+            assertTrue(state.rcInput.lastUpdatedAtElapsedMillis != null)
+            assertEquals(state.rcInput.lastUpdatedAtElapsedMillis, observed.getValue(65).lastAcceptedAtElapsedMillis)
             assertEquals(1L, observed.getValue(65).beforeHeartbeat)
             assertEquals(2L, observed.getValue(65).otherSource)
             assertEquals(1L, observed.getValue(36).accepted)
@@ -197,6 +199,7 @@ class MavlinkSessionTest {
                 repository.vehicleState.value.mavlinkDiagnostics.messageObservations)
             session.start()
             assertTrue(repository.vehicleState.value.mavlinkDiagnostics.messageObservations.isEmpty())
+            assertNull(repository.vehicleState.value.rcInput.lastUpdatedAtElapsedMillis)
             assertEquals(0, sends)
         } finally { session.stop(); session.close() }
     }

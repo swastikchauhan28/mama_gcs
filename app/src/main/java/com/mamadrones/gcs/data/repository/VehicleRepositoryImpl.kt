@@ -32,7 +32,7 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
         )) }
     }
 
-    fun onRcChannels(message: MavlinkMessage.RcChannels, receivedAtEpochMillis: Long) {
+    fun onRcChannels(message: MavlinkMessage.RcChannels, receivedAtEpochMillis: Long, receivedAtElapsedMillis: Long? = null) {
         _vehicleState.update { current -> current.copy(rcInput = RcInputState(
             channelCount = message.channelCount,
             channelsMicroseconds = List(18) { index ->
@@ -41,6 +41,7 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
             },
             rssiRaw = message.rssi.takeIf { it in 0..254 },
             lastUpdatedAtEpochMillis = receivedAtEpochMillis,
+            lastUpdatedAtElapsedMillis = receivedAtElapsedMillis,
         )) }
     }
 

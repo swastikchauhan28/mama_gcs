@@ -85,13 +85,19 @@ object ClassicConnectionCheck {
             return ClassicConnectionAssessment(ClassicCheckStage.WAITING_HEARTBEAT,
                 socketOpen = true, freshBytes = true, freshDecodedMessage = true)
         }
-        // Measurement/RC evidence still uses calendar timestamps; do not borrow an invalid epoch boundary.
+        // Other measurement evidence still uses calendar timestamps; do not borrow an invalid epoch boundary.
         val openedEpoch = connection.connectedAtEpochMillis
         val startedEpoch = diagnostics.startedAtEpochMillis
         fun fresh(timestamp: Long?): Boolean = openedEpoch != null && startedEpoch != null &&
             startedEpoch >= 0 && startedEpoch <= openedEpoch && openedEpoch <= nowEpochMillis &&
             timestamp != null && timestamp >= openedEpoch && timestamp <= nowEpochMillis &&
             nowEpochMillis - timestamp <= FRESH_FOR_MILLIS
+        // Both elapsed receipts must be current and accepted from the selected autopilot.
+        val freshRcChannels = freshElapsed(vehicle.rcInput.lastUpdatedAtElapsedMillis) &&
+            diagnostics.messageObservations.any {
+                it.type == ObservedMavlinkMessage.RC_CHANNELS && it.accepted > 0 &&
+                    freshElapsed(it.lastAcceptedAtElapsedMillis)
+            }
         // Receipt is distinct from sensor validity: a GPS message can report NO_FIX.
         val messages = listOf(
             "GPS" to vehicle.gps.lastUpdatedAtEpochMillis,
@@ -100,14 +106,7 @@ object ClassicConnectionCheck {
             "Battery" to vehicle.battery.lastUpdatedAtEpochMillis,
             "Rover HUD" to vehicle.roverHud.lastUpdatedAtEpochMillis,
             "System status" to vehicle.systemStatus.lastUpdatedAtEpochMillis,
-            "RC input" to vehicle.rcInput.lastUpdatedAtEpochMillis,
-        ).filter { fresh(it.second) }.map { it.first }
-        // Both timestamps must belong to this socket session: a previous/foreign RC state is not receipt evidence.
-        val freshRcChannels = fresh(vehicle.rcInput.lastUpdatedAtEpochMillis) &&
-            diagnostics.messageObservations.any {
-                it.type == ObservedMavlinkMessage.RC_CHANNELS && it.accepted > 0 &&
-                    fresh(it.lastAcceptedAtEpochMillis)
-            }
+        ).filter { fresh(it.second) }.map { it.first } + if (freshRcChannels) listOf("RC input") else emptyList()
         return ClassicConnectionAssessment(
             if (messages.isEmpty()) ClassicCheckStage.WAITING_MEASUREMENTS else ClassicCheckStage.RECEIVING,
             socketOpen = true, freshBytes = true, freshHeartbeat = true,

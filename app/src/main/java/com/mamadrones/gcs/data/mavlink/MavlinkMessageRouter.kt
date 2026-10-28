@@ -18,7 +18,7 @@ class MavlinkMessageRouter @Inject constructor(
         when (message) {
             is MavlinkMessage.HomePosition -> vehicleRepository.onHomePosition(message, receivedAtEpochMillis)
             is MavlinkMessage.AutopilotVersion -> vehicleRepository.onAutopilotVersion(message, receivedAtEpochMillis)
-            is MavlinkMessage.RcChannels -> vehicleRepository.onRcChannels(message, receivedAtEpochMillis)
+            is MavlinkMessage.RcChannels -> vehicleRepository.onRcChannels(message, receivedAtEpochMillis, receivedAtElapsedMillis)
             is MavlinkMessage.ServoOutputRaw -> vehicleRepository.onServoOutputRaw(message, receivedAtEpochMillis)
             is MavlinkMessage.Heartbeat -> vehicleRepository.onHeartbeat(message, receivedAtEpochMillis, receivedAtElapsedMillis)
             is MavlinkMessage.GpsRawInt -> vehicleRepository.onGpsRawInt(message, receivedAtEpochMillis)

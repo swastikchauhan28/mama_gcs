@@ -2,6 +2,28 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-28 — Phase 98 Classic RC receipt timing
+
+### Done
+
+- Classic RC_CHANNELS receipt requires independent current-session elapsed times for the RC sample and accepted selected-autopilot observation. The RC input measurement label uses the same evidence. Other Classic measurement groups remain calendar-based. See [Phase 98](phase-98-report.md).
+
+### In progress
+
+- Phase 97 and 98 publication was requested; check Git for current commit and remote status. Fresh JVM run passed 449/449; debug builds and lint passed; offline emulator passed 4/4. Phase 97 was uncommitted when Phase 98 began; its temporary recovery copy is identified in the phase report.
+
+### Broken or risky
+
+- Five seconds is an unverified diagnostic threshold. Fresh RC receipt does not establish stick movement, SBUS wiring, calibration, physical safety or trusted identity. Other Classic measurement groups and separate RC/PWM screens retain calendar-time behavior; hardware and sleep/wake remain unverified.
+
+### Next
+
+- Review both uncommitted phases and outstanding hardware evidence before field use.
+
+### Do not touch
+
+- Physical operation, Cube/radio settings, command paths, persistent user data and unrelated work remain outside this phase.
+
 ## 2026-10-28 — Phase 97 Classic elapsed receive evidence
 
 ### Done

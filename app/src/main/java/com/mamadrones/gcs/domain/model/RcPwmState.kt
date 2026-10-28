@@ -6,6 +6,8 @@ data class RcInputState(
     val channelsMicroseconds: List<Int?> = emptyList(),
     val rssiRaw: Int? = null,
     val lastUpdatedAtEpochMillis: Long? = null,
+    // Volatile current-session receipt time, not a control or safety signal.
+    val lastUpdatedAtElapsedMillis: Long? = null,
 )
 
 data class PwmOutputState(

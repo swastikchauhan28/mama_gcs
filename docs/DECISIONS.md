@@ -1,5 +1,11 @@
 # Decisions and alternatives
 
+## D-098-01: Use elapsed receipt time for Classic RC_CHANNELS
+
+- Date: 2026-10-28. User approved Phase 98 and offline emulator testing. Model/version unavailable. Git HEAD `7921c5d90b410a077540b776efe8a265a279bf95` with the uncommitted Phase 97 change set documented in the Phase 97 report and handover. Tracked baseline diff and untracked Phase 97 report copied to temporary `mama-phase98-baseline-20261028-173135` for recovery; not a verified release.
+- Choice: retain an in-memory elapsed receipt time for selected-source RC_CHANNELS next to the existing calendar timestamp. Classic RC receipt requires fresh, current-session elapsed times for both the retained RC sample and its accepted selected-source observation. Include RC input in the measurement list only when that same check succeeds; other measurement groups retain existing calendar-time behavior and warning. Missing, future, pre-open, stale, unselected or disconnected evidence fails closed. No change to source filtering, RC values, RC/PWM screen policy, commands, persistence, permissions or dependencies.
+- Alternatives: using calendar time can misstate receipt after a clock jump; using only a sample without accepted observation can misattribute a source. Session timestamp comparisons are not authentication or a globally unique session token. Five seconds is an unverified display threshold, and fresh RC receipt does not prove stick movement, wiring or physical safety. Test independent clock jumps, both receipt timestamps, invalid data, source selection, reconnect/reset, expiry/recovery and offline emulator. Preserve Phase 97 work during any scoped reversal.
+
 ## D-097-01: Use elapsed time for Classic session, bytes and heartbeat evidence
 
 - Date: 2026-10-28. User approved Phase 97 and emulator tests. Model/version unavailable. Baseline `7921c5d90b410a077540b776efe8a265a279bf95`, clean.

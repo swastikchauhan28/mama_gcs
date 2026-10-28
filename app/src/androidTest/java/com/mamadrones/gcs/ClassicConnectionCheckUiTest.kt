@@ -74,7 +74,7 @@ class ClassicConnectionCheckUiTest {
         compose.onNodeWithTag("classic-check-guidance").assertTextContains("SBUS into RCIN alone", substring = true)
         compose.onNodeWithTag("classic-check-rc-status").assertTextContains("NOT CONFIRMED", substring = true)
         capture("phase46-check-light-top")
-        compose.onNodeWithText("5-second display window. Bytes and heartbeat use elapsed time; measurement and RC checks use calendar time and may be affected by clock changes. Receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.")
+        compose.onNodeWithText("5-second display window. Bytes, heartbeat and RC checks use elapsed time; other measurement checks use calendar time and may be affected by clock changes. Receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.")
             .performScrollTo().assertIsDisplayed()
         capture("phase46-check-light-bottom")
         compose.runOnIdle {
@@ -104,7 +104,7 @@ class ClassicConnectionCheckUiTest {
         compose.onNodeWithTag("classic-check-guidance").assertTextContains("does not independently prove", substring = true)
         compose.onNodeWithTag("classic-check-status").performScrollTo().assertIsDisplayed()
         capture("phase46-check-dark-top")
-        compose.onNodeWithText("5-second display window. Bytes and heartbeat use elapsed time; measurement and RC checks use calendar time and may be affected by clock changes. Receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.")
+        compose.onNodeWithText("5-second display window. Bytes, heartbeat and RC checks use elapsed time; other measurement checks use calendar time and may be affected by clock changes. Receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.")
             .performScrollTo().assertIsDisplayed()
         capture("phase46-check-dark-bottom")
     }
@@ -144,12 +144,48 @@ class ClassicConnectionCheckUiTest {
         }
         compose.waitUntil(5_000) { compose.onAllNodesWithText("LIVE RECEIVE EVIDENCE").fetchSemanticsNodes().isNotEmpty() }
         compose.waitUntil(8_000) { compose.onAllNodesWithText("BYTE STREAM STALE").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("measurement and RC checks use calendar time", substring = true).performScrollTo().assertIsDisplayed()
-        capture("phase97-classic-clock-limits")
+        compose.onNodeWithText("other measurement checks use calendar time", substring = true).performScrollTo().assertIsDisplayed()
+        capture("phase98-classic-clock-limits")
         compose.runOnIdle { link.value = link.value.copy(link = link.value.link.copy(active = false)) }
         compose.onNodeWithTag("classic-check-status").assertTextEquals("SESSION CLOSED")
         compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: NOT CONFIRMED")
         compose.onNodeWithTag("classic-check-rc-status").assertTextEquals("6. RC_CHANNELS from selected autopilot: NOT CONFIRMED")
+    }
+
+    @Test fun rcReceiptExpiresIndependentlyAndRecovers() {
+        val peer = ClassicBluetoothPeer("00:11:22:33:44:55", "Synthetic HC-05")
+        val opened = System.currentTimeMillis() - 10_000L
+        val openedElapsed = android.os.SystemClock.elapsedRealtime() - 10_000L
+        val link = ClassicBluetoothUiState(link = ClassicLinkState(peer, true,
+            ConnectionState(TransportStatus.OPEN, connectedAtEpochMillis = opened, connectedAtElapsedMillis = openedElapsed)))
+        val vehicle = mutableStateOf(VehicleState())
+        compose.setContent { MamaGcsTheme { ClassicBluetoothScreen(link, {}, {}, {}, {}, false, vehicle.value) } }
+        compose.onNodeWithTag("classic-check-status").performScrollTo()
+        fun sample(rcAge: Long): VehicleState {
+            val wall = System.currentTimeMillis()
+            val elapsed = android.os.SystemClock.elapsedRealtime()
+            val rcTime = elapsed - rcAge
+            return VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
+                lastHeartbeatAtEpochMillis = wall, lastHeartbeatAtElapsedMillis = elapsed,
+                rcInput = RcInputState(lastUpdatedAtEpochMillis = wall, lastUpdatedAtElapsedMillis = rcTime),
+                mavlinkDiagnostics = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,
+                    startedAtEpochMillis = opened, startedAtElapsedMillis = openedElapsed,
+                    receivedBytes = 100, lastBytesAtElapsedMillis = elapsed, decodedMessages = 2,
+                    messageObservations = listOf(
+                        MavlinkMessageObservation(ObservedMavlinkMessage.HEARTBEAT, decodedV2 = 1, accepted = 1,
+                            lastDecodedAtElapsedMillis = elapsed, lastAcceptedAtElapsedMillis = elapsed),
+                        MavlinkMessageObservation(ObservedMavlinkMessage.RC_CHANNELS, decodedV2 = 1, accepted = 1,
+                            lastDecodedAtElapsedMillis = rcTime, lastAcceptedAtElapsedMillis = rcTime))))
+        }
+        compose.runOnIdle { vehicle.value = sample(2_000L) }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("6. RC_CHANNELS from selected autopilot: FRESH").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: RC input")
+        compose.waitUntil(6_000) { compose.onAllNodesWithText("6. RC_CHANNELS from selected autopilot: NOT CONFIRMED").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("classic-check-rc-status").performScrollTo().assertIsDisplayed()
+        capture("phase98-rc-expired")
+        compose.runOnIdle { vehicle.value = sample(0L) }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("6. RC_CHANNELS from selected autopilot: FRESH").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: RC input")
     }
 
     private fun capture(name: String) {
