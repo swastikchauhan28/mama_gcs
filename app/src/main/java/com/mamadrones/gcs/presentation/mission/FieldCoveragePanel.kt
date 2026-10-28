@@ -126,14 +126,14 @@ internal fun FieldCoverageInputs(state: FieldCoverageState) {
     Column(Modifier.fillMaxWidth().testTag("coverage-inputs"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("Field coverage preview", style = MaterialTheme.typography.titleMedium)
         Text("Uses your Field outline. Enter the tool's working width to preview separate passes. This preview is not saved as a route.")
-        if (state.inputError == null) Text("Tool: ${state.width} m · Overlap: ${state.overlap}% · Headland: ${state.headland} m · ${if (state.eastWest) "East / west" else "North / south"}")
+        if (state.inputError == null) Text("Tool: ${state.width} m · Overlap: ${state.overlap}% · Headland: ${state.headland} m · Single preview direction: ${if (state.eastWest) "East / west" else "North / south"}", modifier = Modifier.testTag("coverage-settings-summary"))
         if (!state.available) Text("Wait for the field draft to load before previewing coverage.")
         Button(onClick = { showSettings = true }, enabled = state.available && !state.busy,
             modifier = Modifier.testTag("coverage-settings")) { Text("Coverage settings") }
         OutlinedButton(onClick = state::compareDirections, enabled = state.available && state.inputError == null && !state.busy,
             modifier = Modifier.testTag("coverage-compare")) { Text("Compare directions") }
         state.mapEastWest?.let { eastWest ->
-            Text("${if (eastWest) "East / west" else "North / south"} preview selected. Scroll up to the map and use Fit draft; cyan lines are not a mission.",
+            Text("${if (eastWest) "East / west" else "North / south"} preview selected for the map. On a small screen, open Map controls to use Fit draft; cyan lines are not a mission.",
                 modifier = Modifier.testTag("coverage-map-status"))
             TextButton(onClick = state::hideMap, modifier = Modifier.testTag("coverage-map-hide")) { Text("Hide map preview") }
         }

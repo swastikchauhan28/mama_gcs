@@ -119,8 +119,10 @@ fun VehicleMap(
     onWaypointSelected: ((String) -> Unit)? = null,
     styleUrl: String? = MapStyleConfig.styleUrlOrNull(LocalBasemapStyle.current),
     coverageLines: List<CoverageMapLine> = emptyList(),
+    compactPlanningControls: Boolean = false,
 ) {
     val mapView = rememberMapViewWithLifecycle()
+    var controlsExpanded by remember(compactPlanningControls) { mutableStateOf(!compactPlanningControls) }
     val clockTick by produceState(System.currentTimeMillis()) {
         while (true) { delay(1_000); value = System.currentTimeMillis() }
     }
@@ -406,6 +408,11 @@ fun VehicleMap(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.End,
         ) {
+            if (compactPlanningControls) FilledTonalButton(
+                onClick = { controlsExpanded = !controlsExpanded }, colors = mapButtonColors,
+                modifier = Modifier.heightIn(min = 48.dp).testTag("coverage-map-controls"),
+            ) { Text(if (controlsExpanded) "Hide controls" else "Map controls") }
+            if (controlsExpanded) {
             if (planningMode) FilledTonalButton(onClick = ::fitDraft,
                 enabled = (draftWaypoints.isNotEmpty() || draftFence.size >= 3) && style != null, colors = mapButtonColors,
                 modifier = Modifier.heightIn(min = 48.dp).testTag("mission-fit")) { Text("Fit draft") }
@@ -433,6 +440,7 @@ fun VehicleMap(
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
             ) {
                 Text(if (followVehicle && vehicleTarget != null && style != null) "Following" else "Follow")
+            }
             }
             }
         }

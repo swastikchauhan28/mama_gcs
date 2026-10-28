@@ -2,6 +2,28 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-28 — Phase 83 coverage map controls and direction labels
+
+### Done
+
+- Portrait coverage map controls now collapse; the single-preview setting and the comparison shown on the map are labeled separately. Build and lint succeeded (lint report up-to-date); 414 JVM tests passed. Targeted portrait, landscape and native-map checks passed, and a comparison regression passed on retry after Android returned a null screenshot. See [Phase 83 report](phase-83-report.md).
+
+### In progress
+
+- Phase 83 publication was requested; check Git for current commit and remote status.
+
+### Broken or risky
+
+- The collapsed map control still overlaps a small portion of the sample field; expanded controls occupy more space. The real basemap, other field layouts, accessibility at large font sizes and physical coverage remain unverified. Earlier screenshot failure is recorded.
+
+### Next
+
+- Review UI and test evidence with representative fields; scope physical validation separately. Commit/push only when requested.
+
+### Do not touch
+
+- Keep hardware on hold; do not upload previews, operate a rover or infer physical coverage from emulator checks.
+
 ## 2026-10-27 — Phase 82 coverage-map integration tests
 
 ### Done

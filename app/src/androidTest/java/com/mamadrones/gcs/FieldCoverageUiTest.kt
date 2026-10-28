@@ -66,6 +66,8 @@ class FieldCoverageUiTest {
             node("coverage-comparison-north-map").performClick()
             verifySelectedMap(landscape, eastWest = false, expectedCount = 5)
             node("coverage-comparison-east-map").performClick()
+            node("coverage-settings-summary").assertTextContains("Single preview direction: North / south", substring = true)
+            node("coverage-map-status").assertTextContains("East / west preview selected for the map", substring = true)
             verifySelectedMap(landscape, eastWest = true, expectedCount = 10)
             node("coverage-overlap").apply { performTextReplacement("10"); performImeAction() }
             compose.onNodeWithTag("coverage-close-settings").performClick()
@@ -103,11 +105,18 @@ class FieldCoverageUiTest {
         compose.runOnIdle { view.addOnDidFinishRenderingFrameListener(listener); map!!.triggerRepaint() }
         try {
             compose.waitUntil(30_000) { rendered.get() }
-            compose.onNodeWithTag("mission-fit").performClick()
+            if (!landscape) {
+                compose.onNodeWithTag("coverage-map-controls").assertTextContains("Map controls").performClick()
+            }
+            compose.onNodeWithTag("mission-fit").assertIsEnabled().performClick()
             compose.waitUntil(30_000) {
                 var zoom = 0.0
                 compose.runOnIdle { zoom = map!!.cameraPosition.zoom }
                 zoom > 18.0
+            }
+            if (!landscape) {
+                compose.onNodeWithTag("coverage-map-controls").assertTextContains("Hide controls").performClick()
+                compose.onAllNodesWithTag("mission-fit").assertCountEquals(0)
             }
             var lines = emptyList<LineString>()
             try {
@@ -139,7 +148,7 @@ class FieldCoverageUiTest {
             compose.awaitScreenshotFrame(view)
             val bitmap = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
             try {
-                File(compose.activity.getExternalFilesDir(null), "phase82-${if (landscape) "landscape" else "portrait"}-${if (eastWest) "east" else "north"}.png").outputStream().use {
+                File(compose.activity.getExternalFilesDir(null), "phase83-${if (landscape) "landscape" else "portrait"}-${if (eastWest) "east" else "north"}.png").outputStream().use {
                     assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
                 }
                 val p = lines[lines.size / 2].coordinates()

@@ -1,5 +1,11 @@
 # Decisions and alternatives
 
+## D-083-01: Clarify coverage directions and compact portrait map controls
+
+- Date: 2026-10-28. User approved Phase 83 and emulator testing. Model/version unavailable. Baseline `af2c05d46f250dedc83d64a6701e8a27dc06a169`; worktree clean.
+- Choice: label the existing independently configured direction as the single-preview direction, retain the explicit selected-map direction, and collapse the portrait coverage map's controls behind an accessible button by default. Expand to fit, zoom, center or follow, and collapse afterwards. Other maps and wide layouts retain their controls. The visible button occupies some map space and fitting takes an extra tap; no geometry, draft, command or persistence behavior changes.
+- Alternatives: remove controls (loses functionality) or shift the camera around controls (fragile with changing map size, accessibility text and field shape). Verify selection/switch/clear, direction labels, control access and rendered map in portrait and landscape using offline fixtures, plus build/lint and focused regression checks. Real basemap, physical accuracy and release acceptance remain unverified. Recovery is a reviewed scoped source/test/docs reversal against the baseline, not a verified physical deployment.
+
 ## D-082-01: Exercise coverage selection through the native map
 
 - Date: 2026-10-27. User approved the Phase 82 offline emulator integration test. Model/version: unavailable. Baseline `d18b7f00972e0f6df2bef66cc6073b1300815761`; worktree clean.

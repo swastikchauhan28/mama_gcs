@@ -149,11 +149,12 @@ fun MissionScreen(
         showFenceEditor = true
     }
 
-    val mapContent: @Composable (Modifier) -> Unit = { mapModifier ->
+    val mapContent: @Composable (Modifier, Boolean) -> Unit = { mapModifier, compactControls ->
         VehicleMap(
             state = state.forDisplay(), modifier = mapModifier.testTag("mission-map"),
             draftWaypoints = plan.draft.waypoints, draftFence = plan.draft.keepInFence, planningMode = true,
             coverageLines = coverage.mapLines,
+            compactPlanningControls = compactControls,
             styleUrl = mapStyleUrl,
             onWaypointRequested = if (canAdd) { lat, lon -> openEditor(null, lat, lon) } else null,
             onWaypointSelected = if (plan.editable) { id ->
@@ -207,7 +208,7 @@ fun MissionScreen(
                 }
             }
         Row(Modifier.weight(1f).fillMaxWidth()) {
-            if (wide) mapContent(Modifier.weight(1f).fillMaxHeight())
+            if (wide) mapContent(Modifier.weight(1f).fillMaxHeight(), false)
             Surface(
                 modifier = if (wide) Modifier.width(352.dp).fillMaxHeight() else Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface,
@@ -252,7 +253,7 @@ fun MissionScreen(
                     }
                     if (plan.loadFailed) TextButton(onClick = { onAction(MissionPlanAction.RetryLoad) }) { Text("Retry loading") }
                 }
-                if (!wide && (editorTab != "Coverage" || coverage.mapLines.isNotEmpty())) item(key = "planner-map") { mapContent(Modifier.fillMaxWidth().height(280.dp)) }
+                if (!wide && (editorTab != "Coverage" || coverage.mapLines.isNotEmpty())) item(key = "planner-map") { mapContent(Modifier.fillMaxWidth().height(280.dp), editorTab == "Coverage") }
                 if (editorTab == "Coverage") {
                     item(key = "coverage-inputs-item") { FieldCoverageInputs(coverage) }
                     item(key = "coverage-comparison-header-item") { FieldCoverageComparisonHeader(coverage.comparison) }

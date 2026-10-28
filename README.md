@@ -132,6 +132,8 @@ Coverage → Compare directions presents north/south and east/west previews with
 
 Either successful comparison can be shown as separate cyan pass centerlines on the local planning map. This transient map overlay is not a route or a guarantee of physical coverage; date-line-crossing outlines are unavailable for map overlay. See [Phase 81](docs/phase-81-report.md).
 
+On the portrait coverage map, open **Map controls** to fit or navigate, then hide them to see more of the field. The single-preview setting and comparison direction selected for the map are labeled separately. See [Phase 83](docs/phase-83-report.md).
+
 ```text
 presentation/    stateless Compose screens/components, navigation, design system
                 lifecycle-aware Dashboard/Settings ViewModels
