@@ -28,9 +28,9 @@ class TelemetryReportViewModel(private val ioDispatcher: CoroutineDispatcher) : 
     private val mutableState = MutableStateFlow(TelemetryReportState())
     val state = mutableState.asStateFlow()
 
-    fun prepare(vehicle: VehicleState, now: Long) {
+    fun prepare(vehicle: VehicleState, now: Long, elapsedNow: Long? = null) {
         if (state.value.writing || state.value.choosingDestination) return
-        mutableState.value = TelemetryReportState(preview = TelemetryEvidenceReport.capture(vehicle, now))
+        mutableState.value = TelemetryReportState(preview = TelemetryEvidenceReport.capture(vehicle, now, elapsedNow))
     }
 
     fun dismiss() {

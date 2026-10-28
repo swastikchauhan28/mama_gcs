@@ -1,5 +1,6 @@
 package com.mamadrones.gcs.core.diagnostics
 
+import com.mamadrones.gcs.domain.model.BatteryEvidence
 import com.mamadrones.gcs.domain.model.VehicleState
 import java.io.OutputStream
 import java.time.Instant
@@ -7,8 +8,9 @@ import java.time.Instant
 /** Fixed allowlist: never serialize VehicleState, endpoint settings or raw messages wholesale. */
 object TelemetryEvidenceReport {
     const val MAX_BYTES = 16 * 1024
+    private const val MAX_BATTERY_PACKS = 16
 
-    fun capture(vehicle: VehicleState, capturedAt: Long): String = buildString {
+    fun capture(vehicle: VehicleState, capturedAt: Long, capturedAtElapsedMillis: Long? = null): String = buildString {
         val d = vehicle.mavlinkDiagnostics
         val started = d.startedAtEpochMillis
         fun count(value: Long) = if (started == null) "NOT RECORDED" else value.toString()
@@ -22,6 +24,21 @@ object TelemetryEvidenceReport {
         appendLine("Captured UTC: ${Instant.ofEpochMilli(capturedAt)}")
         appendLine("Frozen snapshot; not a live feed or a complete flight/rover log.")
         appendLine("Not authentication, a health verdict, safety approval or proof of control.")
+        appendLine()
+        appendLine("BATTERY RECEIPT FRESHNESS AT CAPTURE")
+        appendLine("10-second diagnostic window; recent receipt does not establish battery health.")
+        val batterySessionCurrent = vehicle.connected && d.active && started != null && started >= 0
+        val elapsedAtCapture = capturedAtElapsedMillis ?: -1L
+        appendLine("System summary (SYS_STATUS): ${BatteryEvidence.freshness(vehicle.battery, batterySessionCurrent, elapsedAtCapture)}")
+        vehicle.batteries.take(MAX_BATTERY_PACKS).forEach { sample ->
+            val id = sample.batteryId?.takeIf { it in 0..255 }?.toString() ?: "UNKNOWN"
+            appendLine("Pack $id (BATTERY_STATUS): ${BatteryEvidence.freshness(sample, batterySessionCurrent, elapsedAtCapture)}")
+        }
+        if (vehicle.batteries.size > MAX_BATTERY_PACKS) appendLine("Additional pack records omitted.")
+        appendLine("Pack IDs are protocol identifiers, not authenticated physical identities.")
+        appendLine("Freshness is frozen at capture and is not a fault history.")
+        appendLine()
+        appendLine("Calendar-based receipt ages below can shift when the device clock changes.")
         appendLine()
         appendLine("SESSION")
         appendLine("State: ${when { started == null -> "NO SESSION"; d.active -> "ACTIVE AT CAPTURE"; else -> "LAST SESSION - CLOSED" }}")
@@ -69,7 +86,7 @@ object TelemetryEvidenceReport {
         appendLine("LIMITATIONS / PRIVACY")
         appendLine("No GPS coordinates, track, device names/addresses, network endpoints, account data,")
         appendLine("parameter contents or STATUSTEXT/raw packet payloads are included.")
-        appendLine("RC/PWM values are excluded; only their sample receipt times are included.")
+        appendLine("RC/PWM and battery values are excluded; only receipt timing and pack IDs are included.")
         appendLine("Firmware, wiring, remote interface and physical stop behavior are not verified by this report.")
         appendLine("Vehicle commands and app emergency stop remain unavailable. Use the physical safety system.")
         appendLine("Opening the save picker can close foreground-only telemetry; reconnect manually if needed.")

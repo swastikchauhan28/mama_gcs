@@ -23,7 +23,7 @@ fun TelemetryReportControls(vehicle: VehicleState, model: TelemetryReportViewMod
         else model.save { context.contentResolver.openOutputStream(uri, "wt") }
     }
     TelemetryReportActions(state,
-        onPrepare = { model.prepare(vehicle, System.currentTimeMillis()) },
+        onPrepare = { model.prepare(vehicle, System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime()) },
         onDismiss = model::dismiss,
         onSave = {
             if (model.chooseDestination()) {

@@ -1,5 +1,11 @@
 # Decisions and alternatives
 
+## D-096-01: Include bounded battery receipt freshness in telemetry snapshots
+
+- Date: 2026-10-28. Phase 96 approved by user; model/version unavailable. Baseline `a0556cd2e482f92ffd51218cbbe6a5d7fdb72e59`, clean worktree.
+- Choice: freeze Android elapsedRealtime alongside calendar capture time when the operator prepares a report. Include the SYS_STATUS aggregate and at most 16 BATTERY_STATUS pack IDs (validated 0–255) and their independent Phase 94 FRESH/STALE/UNAVAILABLE receipt status. Require active session, known session start, connected state and valid elapsed timing; absent evidence fails closed. The status means receipt only and freezes at capture. Keep existing calendar timestamps, clearly noting that their ages are wall-clock based and can shift after a clock change. No battery values, new network destination, background export, hardware commands, permission, dependency or persistent schema changes. Existing 16 KiB write bound and privacy exclusions remain.
+- Alternatives: deriving freshness from calendar timestamps is vulnerable to clock jumps; using one newest pack hides stale packs; adding detailed values or raw data widens disclosure. Risks: pack IDs are protocol identifiers, not physical identity; an active recent message is not authenticated or proof of health; timing and session lifecycle assumptions remain. Test missing/future timing, clock changes, multiple packs, closed sessions, bounds/privacy and frozen preview on emulator. Scoped reversal is an unexecuted recovery option, not a validated release.
+
 ## D-095-01: Separate retained battery evidence from current receipt freshness
 
 - Date: 2026-10-28. Phase 95 approved by user. Model/version unavailable. Baseline `64f0d7cd8f62a49c5fb66c085f02e4ee434ba5bf`, clean worktree.

@@ -1,6 +1,6 @@
 package com.mamadrones.gcs.presentation.screens
 
-import com.mamadrones.gcs.domain.model.VehicleState
+import com.mamadrones.gcs.domain.model.*
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +36,19 @@ class TelemetryReportViewModelTest {
         assertNull(model.state.value.preview)
         assertFalse(model.state.value.writing)
         assertTrue(model.state.value.message!!.contains("saved"))
+    }
+
+    @Test fun frozenPreviewUsesCapturedElapsedTime() = runTest(dispatcher) {
+        val model = TelemetryReportViewModel(dispatcher)
+        val vehicle = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
+            battery = BatteryState(lastUpdatedAtElapsedMillis = 10_000),
+            mavlinkDiagnostics = MavlinkDiagnostics(active = true, startedAtEpochMillis = 1_000))
+        model.prepare(vehicle, 2_000, 20_000)
+        val frozen = model.state.value.preview!!
+        assertTrue(frozen.contains("System summary (SYS_STATUS): FRESH"))
+        assertTrue(model.chooseDestination())
+        model.prepare(vehicle, 3_000, 40_000)
+        assertEquals(frozen, model.state.value.preview)
     }
 
     @Test fun cancellationRetainsPreviewWithoutWriting() = runTest(dispatcher) {

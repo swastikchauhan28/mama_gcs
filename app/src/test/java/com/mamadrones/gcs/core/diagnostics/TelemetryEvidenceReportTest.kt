@@ -84,6 +84,59 @@ class TelemetryEvidenceReportTest {
         assertTrue(text.toByteArray().size < TelemetryEvidenceReport.MAX_BYTES)
     }
 
+    @Test fun batteryFreshnessIsIndependentAndFrozenWithoutExportingValues() {
+        val sample = vehicle.copy(battery = BatteryState(percentage = 67, lastUpdatedAtElapsedMillis = 19_000),
+            batteries = listOf(BatteryState(batteryId = 1, percentage = 83, voltage = 24.6, lastUpdatedAtElapsedMillis = 10_000),
+                BatteryState(batteryId = 2, percentage = 42, lastUpdatedAtElapsedMillis = 19_000)))
+        val text = TelemetryEvidenceReport.capture(sample, 2_000, 20_001)
+        assertTrue(text.contains("System summary (SYS_STATUS): FRESH"))
+        assertTrue(text.contains("Pack 1 (BATTERY_STATUS): STALE"))
+        assertTrue(text.contains("Pack 2 (BATTERY_STATUS): FRESH"))
+        assertTrue(text.contains("Freshness is frozen at capture"))
+        assertTrue(text.contains("Calendar-based receipt ages"))
+        assertFalse(text.contains("24.6"))
+        assertFalse(text.contains("83 %"))
+        assertFalse(text.contains("67 %"))
+    }
+
+    @Test fun invalidElapsedTimeAndClosedOrMissingSessionAreUnavailable() {
+        val sample = vehicle.copy(battery = BatteryState(lastUpdatedAtElapsedMillis = 10_000),
+            batteries = listOf(BatteryState(batteryId = 1, lastUpdatedAtElapsedMillis = 20_001)))
+        for (elapsed in listOf(null, -1L, 20_000L)) {
+            val text = TelemetryEvidenceReport.capture(sample, 2_000, elapsed)
+            assertTrue(text.contains("Pack 1 (BATTERY_STATUS): UNAVAILABLE"))
+        }
+        val disconnected = sample.copy(connectionStatus = VehicleConnectionState.DISCONNECTED)
+        val closed = sample.copy(mavlinkDiagnostics = sample.mavlinkDiagnostics.copy(active = false))
+        val noStart = sample.copy(mavlinkDiagnostics = sample.mavlinkDiagnostics.copy(startedAtEpochMillis = null))
+        val invalidStart = sample.copy(mavlinkDiagnostics = sample.mavlinkDiagnostics.copy(startedAtEpochMillis = -1))
+        for (state in listOf(disconnected, closed, noStart, invalidStart)) {
+            val text = TelemetryEvidenceReport.capture(state, 2_000, 20_000)
+            assertTrue(text.contains("System summary (SYS_STATUS): UNAVAILABLE"))
+        }
+    }
+
+    @Test fun clockJumpDoesNotChangeElapsedBatteryFreshness() {
+        val sample = vehicle.copy(battery = BatteryState(lastUpdatedAtEpochMillis = 1_500, lastUpdatedAtElapsedMillis = 10_000))
+        for (calendar in listOf(1L, 200_000L)) {
+            val text = TelemetryEvidenceReport.capture(sample, calendar, 20_001)
+            assertTrue(text.contains("System summary (SYS_STATUS): STALE"))
+        }
+    }
+
+    @Test fun packCountAndIdentifierAreBounded() {
+        val sample = vehicle.copy(batteries = (0..20).map { BatteryState(batteryId = it, lastUpdatedAtElapsedMillis = 100) } +
+            BatteryState(batteryId = 999, lastUpdatedAtElapsedMillis = 100))
+        val text = TelemetryEvidenceReport.capture(sample, 2_000, 100)
+        assertTrue(text.contains("Pack 15 (BATTERY_STATUS): FRESH"))
+        assertFalse(text.contains("Pack 16 (BATTERY_STATUS)"))
+        assertTrue(text.contains("Additional pack records omitted."))
+        assertTrue(text.toByteArray(Charsets.UTF_8).size < TelemetryEvidenceReport.MAX_BYTES)
+        val invalid = TelemetryEvidenceReport.capture(vehicle.copy(batteries = listOf(BatteryState(batteryId = 999, lastUpdatedAtElapsedMillis = 100))), 2_000, 100)
+        assertTrue(invalid.contains("Pack UNKNOWN (BATTERY_STATUS): FRESH"))
+        assertFalse(invalid.contains("Pack 999"))
+    }
+
     @Test fun streamWriterWritesExactUtf8AndCloses() {
         var closed = false
         val output = object : ByteArrayOutputStream() { override fun close() { closed = true; super.close() } }

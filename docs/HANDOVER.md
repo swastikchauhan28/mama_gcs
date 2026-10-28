@@ -2,6 +2,28 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-28 — Phase 96 battery report freshness
+
+### Done
+
+- Telemetry report snapshots include elapsed-based system-summary and bounded per-pack receipt freshness; no battery values are exported. Existing calendar ages are labeled as clock-dependent. See [Phase 96](phase-96-report.md).
+
+### In progress
+
+- Phase 96 publication was requested; check Git for current commit and remote status. Fresh JVM run passed 442/442; build and lint passed; offline emulator passed 3/3. See the phase report for exact commands and evidence.
+
+### Broken or risky
+
+- Ten seconds remains an unverified diagnostic window. Fresh receipt and protocol pack ID do not establish sensor health, physical safety or identity. Existing report calendar ages and Classic checks remain wall-clock based; hardware and device sleep/wake behavior remain unverified.
+
+### Next
+
+- Review the report and outstanding hardware integration evidence before field use.
+
+### Do not touch
+
+- Physical operation, Cube/radio settings, command paths, persistent user data and unrelated work remain outside this phase.
+
 ## 2026-10-28 — Phase 95 battery health evidence
 
 ### Done
