@@ -253,7 +253,11 @@ fun MissionScreen(
                     }
                     if (plan.loadFailed) TextButton(onClick = { onAction(MissionPlanAction.RetryLoad) }) { Text("Retry loading") }
                 }
-                if (!wide && (editorTab != "Coverage" || coverage.mapLines.isNotEmpty())) item(key = "planner-map") { mapContent(Modifier.fillMaxWidth().height(280.dp), editorTab == "Coverage") }
+                if (!wide && (editorTab != "Coverage" || coverage.mapLines.isNotEmpty())) item(key = "planner-map") {
+                    val compactCoverage = editorTab == "Coverage"
+                    val mapHeight = if (!compactCoverage) 280.dp else if (enlargedMobileHeader) 440.dp else 360.dp
+                    mapContent(Modifier.fillMaxWidth().height(mapHeight), compactCoverage)
+                }
                 if (editorTab == "Coverage") {
                     item(key = "coverage-inputs-item") { FieldCoverageInputs(coverage) }
                     item(key = "coverage-comparison-header-item") { FieldCoverageComparisonHeader(coverage.comparison) }

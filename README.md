@@ -134,6 +134,8 @@ Either successful comparison can be shown as separate cyan pass centerlines on t
 
 On the portrait coverage map, open **Map controls** to fit or navigate, then hide them to see more of the field. The single-preview setting and comparison direction selected for the map are labeled separately. See [Phase 83](docs/phase-83-report.md).
 
+The portrait preview places its legend and collapsed control button outside the map, including at enlarged text sizes. See [Phase 85](docs/phase-85-report.md).
+
 ```text
 presentation/    stateless Compose screens/components, navigation, design system
                 lifecycle-aware Dashboard/Settings ViewModels

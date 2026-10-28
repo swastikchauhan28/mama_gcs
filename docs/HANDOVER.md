@@ -2,6 +2,28 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-28 — Phase 85 enlarged-text coverage map layout
+
+### Done
+
+- Moved the compact portrait coverage legend and collapsed control toggle outside the map, with more height for enlarged text. Emulator checks exercised triangle and concave fields at normal and enlarged local font scale; the initial suite had two failures that passed on independent retries. Build and lint succeeded, and a fresh initial JVM run passed 414 tests. See [Phase 85 report](phase-85-report.md).
+
+### In progress
+
+- Phase 85 publication was requested; check Git for current commit and remote status.
+
+### Broken or risky
+
+- Expanded controls temporarily cover the map, and the taller layout requires scrolling. Initial Compose layout and blank map-capture failures remain unexplained despite retries. System-wide accessibility, screen readers, actual basemap, physical coverage and hardware are not validated.
+
+### Next
+
+- Review screenshots and test with representative devices, especially system-wide font scaling; scope physical validation separately. Commit/push only on request.
+
+### Do not touch
+
+- Keep hardware on hold; do not upload previews, operate the rover or infer physical coverage from emulator results.
+
 ## 2026-10-28 — Phase 84 irregular coverage map tests
 
 ### Done

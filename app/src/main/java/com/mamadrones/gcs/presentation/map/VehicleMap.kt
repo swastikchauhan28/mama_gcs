@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FilledTonalButton
@@ -360,7 +361,7 @@ fun VehicleMap(
         )
     }
 
-    Box(modifier = modifier) {
+    Column(modifier = modifier) {
         // Opaque controls remain legible over both bright and dark map tiles.
         val mapButtonColors = ButtonDefaults.filledTonalButtonColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -368,12 +369,16 @@ fun VehicleMap(
             disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
         )
+        if (compactPlanningControls && planningMode && coverageLines.isNotEmpty() && style != null) {
+            Text("Cyan: pass centerlines · preview only", modifier = Modifier.padding(8.dp).testTag("coverage-map-legend"), style = MaterialTheme.typography.labelMedium)
+        }
+        Box(Modifier.weight(1f).fillMaxWidth()) {
         AndroidView(
             factory = { mapView },
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().testTag("coverage-map-canvas"),
         )
 
-        if (planningMode && coverageLines.isNotEmpty() && style != null) {
+        if (!compactPlanningControls && planningMode && coverageLines.isNotEmpty() && style != null) {
             Surface(modifier = Modifier.align(Alignment.TopStart).padding(8.dp).testTag("coverage-map-legend"),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f), shape = MaterialTheme.shapes.small) {
                 Text("Cyan: pass centerlines · preview only", modifier = Modifier.padding(8.dp), style = MaterialTheme.typography.labelMedium)
@@ -408,10 +413,6 @@ fun VehicleMap(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.End,
         ) {
-            if (compactPlanningControls) FilledTonalButton(
-                onClick = { controlsExpanded = !controlsExpanded }, colors = mapButtonColors,
-                modifier = Modifier.heightIn(min = 48.dp).testTag("coverage-map-controls"),
-            ) { Text(if (controlsExpanded) "Hide controls" else "Map controls") }
             if (controlsExpanded) {
             if (planningMode) FilledTonalButton(onClick = ::fitDraft,
                 enabled = (draftWaypoints.isNotEmpty() || draftFence.size >= 3) && style != null, colors = mapButtonColors,
@@ -444,6 +445,11 @@ fun VehicleMap(
             }
             }
         }
+        }
+        if (compactPlanningControls) FilledTonalButton(
+            onClick = { controlsExpanded = !controlsExpanded }, colors = mapButtonColors,
+            modifier = Modifier.heightIn(min = 48.dp).testTag("coverage-map-controls"),
+        ) { Text(if (controlsExpanded) "Hide controls" else "Map controls") }
     }
 }
 

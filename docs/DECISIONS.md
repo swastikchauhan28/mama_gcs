@@ -1,5 +1,11 @@
 # Decisions and alternatives
 
+## D-085-01: Keep compact coverage map labels outside the map
+
+- Date: 2026-10-28. User approved Phase 85 and emulator testing. Model/version unavailable. Baseline `84ac7a373bfdab26b9ee5bd57bdc57edda5aedc5`, clean worktree.
+- Choice: place the compact portrait coverage legend and control toggle outside the native map, and increase its allocated height for enlarged text to preserve a useful map viewport. The expanded controls remain temporarily over the map and may still obscure it; collapse restores the view. Preserve noncompact map layouts, readable scaled text, map gestures and existing map/draft semantics.
+- Alternatives: shrinking scaled text violates accessibility intent; moving only the field camera cannot guarantee visibility across shapes and fonts. More vertical space and scrolling are the cost. Verify no overlap between the compact map canvas, label and toggle at normal and enlarged local font scale, triangle and concave previews, direction switching and clearing, and visually inspect emulator images. No hardware, persistence, dependencies, external destinations or mission commands change. Real field, real basemap, system-wide font scaling and screen-reader behavior remain separately unverified. Recovery is a reviewed scoped reversal against the baseline, not a qualified physical release.
+
 ## D-084-01: Verify irregular coverage on the offline map
 
 - Date: 2026-10-28. User approved Phase 84 and emulator testing. Model/version unavailable. Baseline `2cd804d2e9e010be5e0e8f08f80617a2b237af0f`, clean worktree.

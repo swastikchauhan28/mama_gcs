@@ -54,6 +54,8 @@ class FieldCoverageUiTest {
 
     @Test fun enlargedTextCoverageMapControlsRemainUsable() = verifyIrregularCoverage(false, true)
 
+    @Test fun enlargedTextConcaveCoverageMapControlsRemainUsable() = verifyIrregularCoverage(true, true)
+
     private fun verifyIrregularCoverage(concave: Boolean, largeText: Boolean) {
         val style = File.createTempFile("phase84-style-", ".json", compose.activity.cacheDir)
         style.writeText("""{"version":8,"sources":{},"layers":[{"id":"background","type":"background","paint":{"background-color":"#12202c"}}]}""")
@@ -105,11 +107,13 @@ class FieldCoverageUiTest {
         compose.runOnIdle { view.addOnDidFinishRenderingFrameListener(listener); map!!.triggerRepaint() }
         try {
             compose.waitUntil(30_000) { rendered.get() }
-            compose.onNodeWithTag("coverage-map-controls").assertIsDisplayed().performClick()
+            assertCompactMapLayout()
+            compose.onNodeWithTag("coverage-map-controls").performScrollTo().assertIsDisplayed().performClick()
             compose.onNodeWithTag("mission-fit").assertIsDisplayed().assertIsEnabled().performClick()
             compose.waitUntil(30_000) { var zoom = 0.0; compose.runOnIdle { zoom = map!!.cameraPosition.zoom }; zoom > 18.0 }
-            compose.onNodeWithTag("coverage-map-controls").assertIsDisplayed().performClick()
+            compose.onNodeWithTag("coverage-map-controls").performScrollTo().assertIsDisplayed().performClick()
             compose.onAllNodesWithTag("mission-fit").assertCountEquals(0)
+            assertCompactMapLayout()
             var lines = emptyList<LineString>()
             try {
                 compose.waitUntil(30_000) {
@@ -135,12 +139,12 @@ class FieldCoverageUiTest {
                         if (concave) !(x > 4.02 && x < 7.98 && y > 4.02) else x + y <= 12.02)
                 }
             }
-            compose.onNodeWithTag("coverage-map-legend").assertIsDisplayed()
+            compose.onNodeWithTag("coverage-map-legend").performScrollTo().assertIsDisplayed()
             compose.runOnIdle { map!!.triggerRepaint() }
             compose.awaitScreenshotFrame(view)
             val bitmap = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
             try {
-                val name = "phase84-${if (largeText) "large" else if (concave) "concave" else "triangle"}-${if (eastWest) "east" else "north"}.png"
+                val name = "${if (largeText && concave) "phase85-large-concave" else "phase84-${if (largeText) "large" else if (concave) "concave" else "triangle"}"}-${if (eastWest) "east" else "north"}.png"
                 File(compose.activity.getExternalFilesDir(null), name).outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
                 val p = lines[lines.size / 2].coordinates(); var x = 0; var y = 0
                 compose.runOnIdle {
@@ -216,7 +220,8 @@ class FieldCoverageUiTest {
         try {
             compose.waitUntil(30_000) { rendered.get() }
             if (!landscape) {
-                compose.onNodeWithTag("coverage-map-controls").assertTextContains("Map controls").performClick()
+                assertCompactMapLayout()
+                compose.onNodeWithTag("coverage-map-controls").performScrollTo().assertTextContains("Map controls").performClick()
             }
             compose.onNodeWithTag("mission-fit").assertIsEnabled().performClick()
             compose.waitUntil(30_000) {
@@ -225,8 +230,9 @@ class FieldCoverageUiTest {
                 zoom > 18.0
             }
             if (!landscape) {
-                compose.onNodeWithTag("coverage-map-controls").assertTextContains("Hide controls").performClick()
+                compose.onNodeWithTag("coverage-map-controls").performScrollTo().assertTextContains("Hide controls").performClick()
                 compose.onAllNodesWithTag("mission-fit").assertCountEquals(0)
+                assertCompactMapLayout()
             }
             var lines = emptyList<LineString>()
             try {
@@ -252,7 +258,8 @@ class FieldCoverageUiTest {
                 }
                 assertTrue("Line must match selected direction", if (eastWest) abs(points[0].latitude() - points[1].latitude()) < 1e-9 else abs(points[0].longitude() - points[1].longitude()) < 1e-9)
             }
-            compose.onNodeWithTag("coverage-map-legend").assertIsDisplayed()
+            if (!landscape) compose.onNodeWithTag("coverage-map-legend").performScrollTo().assertIsDisplayed()
+            else compose.onNodeWithTag("coverage-map-legend").assertIsDisplayed()
             compose.waitForIdle()
             compose.runOnIdle { map!!.triggerRepaint() }
             compose.awaitScreenshotFrame(view)
@@ -277,6 +284,14 @@ class FieldCoverageUiTest {
                 assertTrue("Selected line must render at its geographic position: $cyan pixels", cyan >= 3)
             } finally { bitmap.recycle() }
         } finally { compose.runOnIdle { view.removeOnDidFinishRenderingFrameListener(listener) } }
+    }
+
+    private fun assertCompactMapLayout() {
+        val legend = compose.onNodeWithTag("coverage-map-legend").getUnclippedBoundsInRoot()
+        val canvas = compose.onNodeWithTag("coverage-map-canvas").getUnclippedBoundsInRoot()
+        val controls = compose.onNodeWithTag("coverage-map-controls").getUnclippedBoundsInRoot()
+        assertTrue("Preview legend must be above map canvas: $legend / $canvas", legend.bottom <= canvas.top)
+        assertTrue("Collapsed controls must be below map canvas: $controls / $canvas", controls.top >= canvas.bottom)
     }
 
     private fun originalMetres(metres: Double) = Math.toDegrees(metres / 6_371_000.0)
