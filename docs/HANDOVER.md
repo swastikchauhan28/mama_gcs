@@ -2,6 +2,27 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-28 — Phase 91 advisory minimum overlap
+
+### Done
+
+- Added the Phase 91 advisory minimum-overlap estimate and repaired the audit-discovered silent input truncation. Overlength entries produce an error and cannot be calculated as a shortened valid value. Fresh JVM run passed 424 tests; build/lint succeeded and targeted emulator checks passed 2/2. See [Phase 91 report](phase-91-report.md).
+
+### In progress
+
+- Phase 91 publication was requested; check Git for the current commit and remote status.
+
+### Broken or risky
+
+- The result is an ideal-spacing estimate, not verified soil coverage. Real tracking error, implement behavior, field boundaries, turns and hardware telemetry remain unverified. The earlier Compose lifecycle crash did not recur in this run; its cause is unknown. The longer comparison requires scrolling.
+
+### Next
+
+- Review the correction and combined Phase 91 diff; validate representative devices, accessibility and physical assumptions independently before field decisions.
+
+### Do not touch
+
+- Keep hardware on hold; do not upload previews or infer worked soil from the advisory calculation.
 ## 2026-10-28 — Phase 90 cancellation and enlarged-text checks
 
 ### Done

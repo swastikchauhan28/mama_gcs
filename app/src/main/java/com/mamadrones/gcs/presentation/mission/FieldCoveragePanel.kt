@@ -35,6 +35,8 @@ import kotlin.math.min
 import kotlin.math.ceil
 import kotlin.math.floor
 
+private const val COVERAGE_INPUT_MAX_LENGTH = 16
+
 /** Volatile preview only. Input/outline changes cancel work and hide its old result immediately. */
 @Stable
 internal class FieldCoverageState(
@@ -50,6 +52,7 @@ internal class FieldCoverageState(
     var overlap by mutableStateOf("10"); private set
     var headland by mutableStateOf("0"); private set
     var sidewaysError by mutableStateOf(""); private set
+    var desiredMargin by mutableStateOf(""); private set
     var eastWest by mutableStateOf(false); private set
     var result by mutableStateOf<CoverageCalculation?>(null); private set
     var comparison by mutableStateOf<CoverageDirectionComparison?>(null); private set
@@ -60,18 +63,29 @@ internal class FieldCoverageState(
     var busy by mutableStateOf(false); private set
     private var job: Job? = null
     val inputError: String? get() {
+        if (listOf(width, overlap, headland, sidewaysError, desiredMargin).any { it.length > COVERAGE_INPUT_MAX_LENGTH })
+            return "Input too long. Replace it with at most 16 characters."
         val settings = FieldCoveragePlanner.settingsError(width.trim().toDoubleOrNull(), overlap.trim().toDoubleOrNull(), headland.trim().toDoubleOrNull())
         if (settings != null) return settings
-        if (sidewaysError.isBlank()) return null
-        val error = sidewaysError.trim().toDoubleOrNull()
-        return if (error == null || !error.isFinite() || error !in 0.0..50.0) "Enter a sideways error from 0 to 50 metres, or leave it blank." else null
+        if (sidewaysError.isNotBlank()) {
+            val error = sidewaysError.trim().toDoubleOrNull()
+            if (error == null || !error.isFinite() || error !in 0.0..50.0) return "Enter a sideways error from 0 to 50 metres, or leave it blank."
+        }
+        if (desiredMargin.isNotBlank()) {
+            val margin = desiredMargin.trim().toDoubleOrNull()
+            if (margin == null || !margin.isFinite() || margin !in 0.0..50.0) return "Enter a desired margin from 0 to 50 metres, or leave it blank."
+        }
+        return null
     }
-    val sidewaysEstimate: SidewaysOverlapEstimate? get() = SidewaysOverlapEstimator.calculate(
+    val sidewaysEstimate: SidewaysOverlapEstimate? get() = if (inputError != null) null else SidewaysOverlapEstimator.calculate(
         width.trim().toDoubleOrNull(), overlap.trim().toDoubleOrNull(), sidewaysError.trim().toDoubleOrNull())
-    fun updateWidth(value: String) { invalidate(); width = value.take(16) }
-    fun updateOverlap(value: String) { invalidate(); overlap = value.take(16) }
-    fun updateHeadland(value: String) { invalidate(); headland = value.take(16) }
-    fun updateSidewaysError(value: String) { invalidate(); sidewaysError = value.take(16) }
+    val requiredOverlap: RequiredOverlapEstimate? get() = if (inputError != null) null else RequiredOverlapEstimator.calculate(
+        width.trim().toDoubleOrNull(), sidewaysError.trim().toDoubleOrNull(), desiredMargin.trim().toDoubleOrNull())
+    fun updateWidth(value: String) { invalidate(); width = value.take(COVERAGE_INPUT_MAX_LENGTH + 1) }
+    fun updateOverlap(value: String) { invalidate(); overlap = value.take(COVERAGE_INPUT_MAX_LENGTH + 1) }
+    fun updateHeadland(value: String) { invalidate(); headland = value.take(COVERAGE_INPUT_MAX_LENGTH + 1) }
+    fun updateSidewaysError(value: String) { invalidate(); sidewaysError = value.take(COVERAGE_INPUT_MAX_LENGTH + 1) }
+    fun updateDesiredMargin(value: String) { invalidate(); desiredMargin = value.take(COVERAGE_INPUT_MAX_LENGTH + 1) }
     fun setDirection(value: Boolean) { invalidate(); eastWest = value }
     fun invalidate() { job?.cancel(); job = null; busy = false; result = null; comparison = null; hideMap() }
     fun hideMap() { mapLines = emptyList(); mapGapSamples = null; mapEastWest = null; mapError = null }
@@ -184,6 +198,11 @@ internal fun FieldCoverageInputs(state: FieldCoverageState) {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { keyboard?.hide() }),
             modifier = Modifier.fillMaxWidth().testTag("coverage-sideways-error"))
+        OutlinedTextField(state.desiredMargin, state::updateDesiredMargin, label = { Text("Desired extra margin (m)") },
+            supportingText = { Text("Optional · blank means unknown · 0–50 m") }, singleLine = true, enabled = state.available,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { keyboard?.hide() }),
+            modifier = Modifier.fillMaxWidth().testTag("coverage-desired-margin"))
         Text("Pass direction", style = MaterialTheme.typography.labelLarge)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             FilterChip(!state.eastWest, { state.setDirection(false) }, { Text("North / south") },
@@ -212,7 +231,7 @@ internal fun FieldCoverageComparisonPanel(comparison: CoverageDirectionCompariso
 }
 
 @Composable
-internal fun FieldCoverageComparisonHeader(comparison: CoverageDirectionComparison?, sidewaysEstimate: SidewaysOverlapEstimate? = null) {
+internal fun FieldCoverageComparisonHeader(comparison: CoverageDirectionComparison?, sidewaysEstimate: SidewaysOverlapEstimate? = null, requiredOverlap: RequiredOverlapEstimate? = null) {
     if (comparison == null) return
     Column(Modifier.fillMaxWidth().testTag("coverage-comparison"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Compare directions · preview only", style = MaterialTheme.typography.titleMedium)
@@ -229,6 +248,10 @@ internal fun FieldCoverageComparisonHeader(comparison: CoverageDirectionComparis
             }
             "Assumed per-pass error: ${String.format(Locale.US, "%.3f m", sidewaysEstimate.perPassErrorMeters)} · Nominal overlap: ${String.format(Locale.US, "%.3f m", sidewaysEstimate.nominalMeters)} · $outcome. Values rounded to 0.001 m."
         }, modifier = Modifier.testTag("coverage-sideways-result"))
+        Text(if (requiredOverlap == null) "Minimum overlap: enter both assumed error and desired margin to calculate." else
+            "For a desired extra margin of ${String.format(Locale.US, "%.3f m", requiredOverlap.targetMarginMeters)}, ideal minimum overlap: ${requiredOverlap.percentRoundedUp.toPlainString()}% (rounded up to 0.01%). " +
+                if (requiredOverlap.exceedsPlannerLimit) "Exceeds this planner's 80% overlap limit." else "Advisory only; overlap setting is unchanged.",
+            modifier = Modifier.testTag("coverage-required-overlap"))
         Text("Applies to both directions: assumes two neighboring straight passes drift away from each other by the entered per-pass amount. This is not a coverage guarantee; turns, boundaries, implement movement and actual positioning are not checked.",
             style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("coverage-sideways-warning"))
         Text("Diagrams: green is planned strips, pink is unplanned area, amber is reserved headland.", style = MaterialTheme.typography.bodySmall)

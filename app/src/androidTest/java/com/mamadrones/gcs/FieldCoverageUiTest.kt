@@ -566,6 +566,60 @@ class FieldCoverageUiTest {
         node("coverage-sideways-result").assertIsDisplayed().assertTextContains("not provided", substring = true)
         assertTrue("Local comparison must not dispatch mission actions", actions.isEmpty())
     }
+    @Test fun advisoryMinimumOverlapIsOptionalAndDoesNotChangeSettings() {
+        show()
+        node("coverage-width").performTextReplacement("2")
+        node("coverage-overlap").performTextReplacement("10")
+        node("coverage-sideways-error").apply { performTextReplacement("0.05"); performImeAction() }
+        compose.onNodeWithTag("coverage-close-settings").performClick()
+        fun compare() {
+            node("coverage-compare").performClick()
+            compose.waitUntil(30_000) { compose.onAllNodesWithTag("coverage-comparison").fetchSemanticsNodes().isNotEmpty() }
+        }
+        compare()
+        node("coverage-required-overlap").assertTextContains("enter both", substring = true)
+        node("coverage-desired-margin").apply { performTextReplacement("0.1"); performImeAction() }
+        compose.onNodeWithTag("coverage-close-settings").performClick()
+        compose.onAllNodesWithTag("coverage-comparison").assertCountEquals(0)
+        compare()
+        node("coverage-required-overlap").assertTextContains("ideal minimum overlap: 10.00%", substring = true)
+            .assertTextContains("overlap setting is unchanged", substring = true)
+        node("coverage-settings-summary").assertTextContains("Overlap: 10%", substring = true)
+        capture("phase91-minimum.png")
+        node("coverage-sideways-error").apply { performTextReplacement("0.8"); performImeAction() }
+        compose.onNodeWithTag("coverage-close-settings").performClick()
+        compare()
+        node("coverage-required-overlap").assertTextContains("85.00%", substring = true)
+            .assertTextContains("80% overlap limit", substring = true)
+        node("coverage-desired-margin").apply { performTextReplacement("51"); performImeAction() }
+        node("coverage-input-error").assertTextContains("desired margin", substring = true)
+        node("coverage-generate").assertIsNotEnabled()
+        compose.onNodeWithTag("coverage-close-settings").performClick()
+        node("coverage-compare").assertIsNotEnabled()
+        assertTrue("Advisory calculation must not dispatch mission actions", actions.isEmpty())
+    }
+    @Test fun overlengthMarginShowsErrorAndClearsOldComparison() {
+        show()
+        node("coverage-width").performTextReplacement("2")
+        node("coverage-sideways-error").performTextReplacement("0.05")
+        node("coverage-desired-margin").apply { performTextReplacement("0.1"); performImeAction() }
+        compose.onNodeWithTag("coverage-close-settings").performClick()
+        node("coverage-compare").performClick()
+        compose.waitUntil(30_000) { compose.onAllNodesWithTag("coverage-comparison").fetchSemanticsNodes().isNotEmpty() }
+        node("coverage-required-overlap").assertTextContains("10.00%", substring = true)
+        node("coverage-desired-margin").apply { performTextReplacement("000000000000000010"); performImeAction() }
+        node("coverage-input-error").assertTextContains("Input too long", substring = true)
+        node("coverage-generate").assertIsNotEnabled()
+        compose.onNodeWithTag("coverage-close-settings").performClick()
+        node("coverage-compare").assertIsNotEnabled()
+        compose.onAllNodesWithTag("coverage-comparison").assertCountEquals(0)
+        node("coverage-desired-margin").apply { performTextReplacement("0.1"); performImeAction() }
+        compose.onNodeWithTag("coverage-close-settings").performClick()
+        node("coverage-compare").assertIsEnabled().performClick()
+        compose.waitUntil(30_000) { compose.onAllNodesWithTag("coverage-comparison").fetchSemanticsNodes().isNotEmpty() }
+        node("coverage-required-overlap").assertTextContains("10.00%", substring = true)
+        assertTrue("Coverage preview must not dispatch mission actions", actions.isEmpty())
+    }
     @Test fun comparisonShowsIndependentDirectionErrors() {
         compose.setContent {
             MamaGcsTheme {
@@ -598,7 +652,7 @@ class FieldCoverageUiTest {
     }
 
     private fun node(tag: String): SemanticsNodeInteraction {
-        if (tag in setOf("coverage-width", "coverage-overlap", "coverage-headland", "coverage-sideways-error", "coverage-generate", "coverage-input-error", "coverage-east-west", "coverage-north-south")) {
+        if (tag in setOf("coverage-width", "coverage-overlap", "coverage-headland", "coverage-sideways-error", "coverage-desired-margin", "coverage-generate", "coverage-input-error", "coverage-east-west", "coverage-north-south")) {
             if (compose.onAllNodesWithTag("coverage-generate").fetchSemanticsNodes().isEmpty()) node("coverage-settings").performClick()
             val target = compose.onNodeWithTag(tag)
             return if (tag == "coverage-generate") target else target.performScrollTo()

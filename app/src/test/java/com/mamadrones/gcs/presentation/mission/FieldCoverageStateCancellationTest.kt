@@ -11,6 +11,38 @@ import org.junit.Test
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class FieldCoverageStateCancellationTest {
+    @Test fun overlengthCoverageInputsRejectTruncationAndClearPriorPreview() = runTest {
+        val vertices = listOf(DraftWaypoint("a", 0.0, 0.0), DraftWaypoint("b", 0.0, 0.0001),
+            DraftWaypoint("c", 0.0001, 0.0001), DraftWaypoint("d", 0.0001, 0.0))
+        val result = CoverageDirectionComparisonPlanner.calculate(vertices, 2.0, 10.0, 0.0)
+        val inputs: List<Triple<(FieldCoverageState, String) -> Unit, (FieldCoverageState) -> String, String>> = listOf(
+            Triple({ s, v -> s.updateWidth(v) }, { it.width }, "2"),
+            Triple({ s, v -> s.updateOverlap(v) }, { it.overlap }, "10"),
+            Triple({ s, v -> s.updateHeadland(v) }, { it.headland }, "0"),
+            Triple({ s, v -> s.updateSidewaysError(v) }, { it.sidewaysError }, "0.05"),
+            Triple({ s, v -> s.updateDesiredMargin(v) }, { it.desiredMargin }, "0.1"),
+        )
+        inputs.forEach { (set, get, valid) ->
+            val state = FieldCoverageState(this, vertices, true) { _, _, _, _ -> result }
+            state.updateWidth("2"); state.updateSidewaysError("0.05"); state.updateDesiredMargin("0.1")
+            state.compareDirections(); runCurrent()
+            state.showDirectionOnMap(false)
+            assertTrue(state.mapLines.isNotEmpty())
+            set(state, "000000000000000010") // 10 before trimming; the old 16-character prefix is zero.
+            assertEquals(17, get(state).length)
+            assertEquals("Input too long. Replace it with at most 16 characters.", state.inputError)
+            assertNull(state.comparison); assertTrue(state.mapLines.isEmpty()); assertNull(state.mapEastWest)
+            assertNull(state.sidewaysEstimate); assertNull(state.requiredOverlap)
+            state.compareDirections(); runCurrent(); assertNull(state.comparison)
+            set(state, valid)
+            assertNull(state.inputError)
+            state.compareDirections(); runCurrent(); assertSame(result, state.comparison)
+        }
+        val state = FieldCoverageState(this, vertices, true)
+        state.updateWidth("0000000000000010") // Exactly 16 characters, interpreted as 10.
+        assertNull(state.inputError)
+        assertEquals(10.0, state.width.toDouble(), 0.0)
+    }
     @Test fun assumptionChangesAndClearsCannotPublishAnOlderComparison() = runTest {
         val vertices = listOf(DraftWaypoint("a", 0.0, 0.0), DraftWaypoint("b", 0.0, 0.0001),
             DraftWaypoint("c", 0.0001, 0.0001), DraftWaypoint("d", 0.0001, 0.0))

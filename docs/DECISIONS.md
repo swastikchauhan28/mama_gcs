@@ -1,5 +1,15 @@
 # Decisions and alternatives
 
+## D-091-02: Reject overlength coverage inputs
+
+- Date: 2026-10-28. User authorized the Phase 91 audit repair and tests. Model/version unavailable. Baseline Git revision `d91bcafdf496d8ef6d124b8dcde9d8974de25c6f` with pre-existing uncommitted Phase 91 work, preserved.
+- Issue: silently retaining 16 characters can change a pasted numeric value into a different valid number. Choice: retain at most 17 characters as a bounded overlength sentinel, explicitly display that the input is too long and must be replaced with a value of at most 16 characters, reject calculation/preview, and invalidate existing comparison/map. Once the input is corrected to at most 16 characters, existing numeric validation applies. Guard derived estimates while any input is invalid. Tests cover all five fields, including a pasted value whose first 16 characters are zero, invalidation, recovery and emulator UI.
+- Alternatives: retaining unlimited input is unbounded; silently discarding characters or ignoring a paste can leave a valid but misleading value. The visible error and extra sentinel character avoid accepting truncation; text beyond 17 characters is not retained and the message instructs replacement. No hardware, mission, dependency, persistence or network changes. Scoped rollback must preserve pre-existing Phase 91 work, which is not a verified release.
+## D-091-01: Show an advisory minimum overlap from assumed error and margin
+
+- Date: 2026-10-28. User approved Phase 91 and emulator testing. Model/version unavailable. Baseline `d91bcafdf496d8ef6d124b8dcde9d8974de25c6f`, clean worktree.
+- Choice: offer an optional, blank-by-default desired extra margin (0–50 m) alongside the existing optional per-pass sideways error. When both are entered, compute (2 × error + desired margin) / tool width × 100 and round upward to 0.01 percentage point using decimal arithmetic. Show a warning when the result exceeds the planner's 80% overlap limit. Do not automatically change settings, preview geometry, saved data or vehicle state. Blank means unknown; reject invalid/nonfinite values. Changing inputs invalidates the prior comparison and map.
+- Alternatives: auto-selecting a setting or treating unknown as zero could create false confidence; rounding down could understate the modeled minimum. The model assumes bounded opposing pass errors and ideal strips; it cannot guarantee actual coverage, positioning, implement behavior, turns, boundaries or obstacles. Values and calculations are volatile and bounded; no dependencies, persistence, hardware commands, permissions or external destinations change. Test decimal rounding, bounds, unknown inputs, warning and UI on emulator. Reviewed scoped reversal against baseline is recovery, not a qualified release.
 ## D-090-01: Verify cancellation and enlarged-text sideways-error flow
 
 - Date: 2026-10-28. User approved Phase 90 and emulator testing. Model/version unavailable. Baseline `3af5056a10f92a04b0a7a8fcd6f4a5e8ecdceb2e`, clean worktree.

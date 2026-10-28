@@ -262,7 +262,7 @@ fun MissionScreen(
                 }
                 if (editorTab == "Coverage") {
                     item(key = "coverage-inputs-item") { FieldCoverageInputs(coverage) }
-                    item(key = "coverage-comparison-header-item") { FieldCoverageComparisonHeader(coverage.comparison, coverage.sidewaysEstimate) }
+                    item(key = "coverage-comparison-header-item") { FieldCoverageComparisonHeader(coverage.comparison, coverage.sidewaysEstimate, coverage.requiredOverlap) }
                     item(key = "coverage-comparison-cards-item") { FieldCoverageComparisonCards(coverage.comparison, coverage.mapEastWest, coverage.mapError, coverage::showDirectionOnMap) }
                     item(key = "coverage-result-item") { FieldCoverageResult(coverage.result, coverageDiagramHeight) }
                 }
