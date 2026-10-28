@@ -21,6 +21,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mamadrones.gcs.domain.model.VehicleState
+import com.mamadrones.gcs.domain.model.MapPositionEvidence
+import com.mamadrones.gcs.domain.model.MapPositionStatus
+import kotlinx.coroutines.delay
 import com.mamadrones.gcs.presentation.components.*
 import com.mamadrones.gcs.presentation.dashboard.ConsolePanels
 import com.mamadrones.gcs.presentation.dashboard.forDisplay
@@ -151,13 +154,18 @@ fun MapWorkspace(
     modifier: Modifier = Modifier,
     onNavigate: (String) -> Unit = {},
     showOperatorTools: Boolean = false,
+    mapStyleUrl: String? = com.mamadrones.gcs.presentation.map.MapStyleConfig.styleUrlOrNull(com.mamadrones.gcs.presentation.map.LocalBasemapStyle.current),
 ) {
     val live = state.forDisplay()
     val position = live.position
+    val clockTick by produceState(System.currentTimeMillis()) {
+        while (true) { delay(1_000); value = System.currentTimeMillis() }
+    }
+    val positionStatus = remember(clockTick, live) { MapPositionEvidence.status(live, System.currentTimeMillis()) }
     BoxWithConstraints(modifier.testTag("operation-map")) {
         val largeTextOnPhone = showOperatorTools && maxWidth < 600.dp && LocalDensity.current.fontScale >= 1.8f
         val toolbarWidth = if (largeTextOnPhone) 120.dp else 72.dp
-        VehicleMap(live, Modifier.fillMaxSize().testTag("operation-map-viewport"))
+        VehicleMap(live, Modifier.fillMaxSize().testTag("operation-map-viewport"), styleUrl = mapStyleUrl)
         if (showOperatorTools) Surface(
             Modifier.align(Alignment.TopStart).padding(8.dp).width(toolbarWidth).testTag("operation-toolbar"),
             shape = MaterialTheme.shapes.small, shadowElevation = 2.dp,
@@ -181,8 +189,11 @@ fun MapWorkspace(
             Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
                 Text("${live.mode ?: "MODE UNKNOWN"} · ${live.armed?.let { if (it) "ARMED" else "DISARMED" } ?: "ARMING UNKNOWN"}",
                     style = MaterialTheme.typography.labelMedium)
-                Text(if (position.latitude != null && position.longitude != null)
-                    String.format(Locale.US, "%.7f, %.7f", position.latitude, position.longitude) else "Position unavailable",
+                Text(when (positionStatus) {
+                    MapPositionStatus.FRESH -> String.format(Locale.US, "%.7f, %.7f", position.latitude, position.longitude)
+                    MapPositionStatus.STALE -> "Position stale · no update within 5 s"
+                    MapPositionStatus.UNAVAILABLE -> "Position unavailable"
+                }, modifier = Modifier.testTag("operation-position-status"),
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

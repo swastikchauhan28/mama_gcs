@@ -29,7 +29,7 @@ import kotlin.math.roundToInt
 class MapLoadRecoveryTest {
     @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
     private val vehicle = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
-        position = GlobalPositionState(-35.363, 149.165), headingDegrees = 90.0)
+        position = GlobalPositionState(-35.363, 149.165, lastUpdatedAtEpochMillis = System.currentTimeMillis()), headingDegrees = 90.0)
 
     @Test fun denseOverlayRemainsResponsiveDuringRepeatedMapInteractions() {
         val style = File.createTempFile("phase88-style-", ".json", compose.activity.cacheDir)
@@ -331,13 +331,73 @@ class MapLoadRecoveryTest {
         }
     }
 
+    @Test fun mapWorkspaceLabelsStaleAndFreshPosition() {
+        val now = System.currentTimeMillis()
+        val state = mutableStateOf(VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
+            lastHeartbeatAtEpochMillis = now,
+            position = GlobalPositionState(-35.363, 149.165, lastUpdatedAtEpochMillis = now - 10_000)))
+        compose.setContent { MamaGcsTheme {
+            com.mamadrones.gcs.presentation.screens.MapWorkspace(state.value, Modifier.fillMaxSize(), mapStyleUrl = null)
+        } }
+        compose.onNodeWithTag("operation-position-status").assertTextContains("Position stale", substring = true)
+        val screenshot = requireNotNull(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+        try {
+            File(compose.activity.getExternalFilesDir(null), "phase92-stale.png").outputStream().use {
+                assertTrue(screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+            }
+        } finally { screenshot.recycle() }
+        compose.runOnIdle { state.value = state.value.copy(position = state.value.position.copy(lastUpdatedAtEpochMillis = System.currentTimeMillis())) }
+        compose.onNodeWithTag("operation-position-status").assertTextContains("-35.3630000", substring = true)
+        compose.runOnIdle { state.value = state.value.copy(connectionStatus = VehicleConnectionState.DISCONNECTED) }
+        compose.onNodeWithTag("operation-position-status").assertTextContains("Position unavailable", substring = true)
+    }
+    @Test fun stalePositionClearsMapDespiteOngoingHeartbeatAndReturnsWhenUpdated() {
+        val file = File.createTempFile("phase92-style-", ".json", compose.activity.cacheDir)
+        file.writeText(VALID_STYLE)
+        val url = mutableStateOf<String?>(Uri.fromFile(file).toString())
+        val now = System.currentTimeMillis()
+        val state = mutableStateOf(VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
+            lastHeartbeatAtEpochMillis = now, headingDegrees = 90.0,
+            position = GlobalPositionState(-35.363, 149.165, lastUpdatedAtEpochMillis = now),
+            positionTrack = listOf(GeoTrackPoint(-35.363, 149.165, now), GeoTrackPoint(-35.36301, 149.16501, now))))
+        try {
+            compose.setContent { MamaGcsTheme { VehicleMap(state.value, Modifier.fillMaxSize(), styleUrl = url.value) } }
+            val map = awaitLoaded()
+            compose.runOnIdle { state.value = state.value.copy(position = state.value.position.copy(lastUpdatedAtEpochMillis = System.currentTimeMillis())) }
+            awaitPosition(map, -35.363)
+            compose.onNodeWithTag("map-center").assertIsEnabled()
+            compose.waitUntil(15_000) {
+                compose.mainClock.advanceTimeBy(1_000)
+                var cleared = false
+                compose.runOnIdle {
+                    state.value = state.value.copy(lastHeartbeatAtEpochMillis = System.currentTimeMillis())
+                    cleared = listOf("mama-vehicle-source", "mama-heading-source", "mama-track-source").all { id ->
+                        map.style?.getSourceAs<GeoJsonSource>(id)?.querySourceFeatures(null)?.isEmpty() == true
+                    }
+                }
+                cleared
+            }
+            compose.onNodeWithTag("map-center").assertIsNotEnabled()
+            compose.onNodeWithTag("map-follow").assertIsNotEnabled()
+            compose.runOnIdle {
+                val fresh = System.currentTimeMillis()
+                state.value = state.value.copy(lastHeartbeatAtEpochMillis = fresh,
+                    position = GlobalPositionState(-35.364, 149.166, lastUpdatedAtEpochMillis = fresh))
+            }
+            awaitPosition(map, -35.364)
+            compose.onNodeWithTag("map-center").assertIsEnabled()
+        } finally {
+            compose.runOnIdle { url.value = null }; compose.waitForIdle()
+            check(file.delete())
+        }
+    }
     @Test fun homeMarkerIsSeparateFromVehicleAndClearsWhenEvidenceExpires() {
         val file = File.createTempFile("map-home-", ".json", compose.activity.cacheDir)
         file.writeText(VALID_STYLE)
         val url = mutableStateOf<String?>(Uri.fromFile(file).toString())
         fun liveState(): VehicleState {
             val now = System.currentTimeMillis()
-            return vehicle.copy(lastHeartbeatAtEpochMillis = now,
+            return vehicle.copy(position = vehicle.position.copy(lastUpdatedAtEpochMillis = now), lastHeartbeatAtEpochMillis = now,
                 mavlinkDiagnostics = MavlinkDiagnostics(active = true, startedAtEpochMillis = now - 100_000),
                 homePosition = HomePositionState(-35.3631, 149.1651, 584.0, now - 90_000))
         }
@@ -518,7 +578,7 @@ class MapLoadRecoveryTest {
                 assertNotNull(map.style!!.getLayer("mama-vehicle-layer"))
                 assertNotNull(map.style!!.getLayer("mama-track-layer"))
                 assertNotNull(map.style!!.getLayer("mama-heading-layer"))
-                state.value = vehicle.copy(position = GlobalPositionState(-35.364, 149.166))
+                state.value = vehicle.copy(position = GlobalPositionState(-35.364, 149.166, lastUpdatedAtEpochMillis = System.currentTimeMillis()))
             }
             awaitPosition(map, -35.364)
 

@@ -242,11 +242,12 @@ class MapAcceptanceTest {
 
     @Test fun liveMapZoomPanCenterAndFollowRespondToSyntheticTelemetry() {
         val vehicle = mutableStateOf(VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
-            position = GlobalPositionState(-35.3632621, 149.1652374), headingDegrees = 90.0))
+            position = GlobalPositionState(-35.3632621, 149.1652374, lastUpdatedAtEpochMillis = System.currentTimeMillis()), headingDegrees = 90.0))
         compose.setContent { MamaGcsTheme(ThemeMode.DARK) {
             VehicleMap(vehicle.value, Modifier.fillMaxSize().testTag("test-map"))
         } }
         val map = loadedMap()
+        compose.runOnIdle { vehicle.value = vehicle.value.copy(position = vehicle.value.position.copy(lastUpdatedAtEpochMillis = System.currentTimeMillis())) }
         near(map, -35.3632621)
         compose.onNodeWithTag("map-center").assertIsEnabled()
         compose.onNodeWithText("Following").assertIsDisplayed()
@@ -261,11 +262,11 @@ class MapAcceptanceTest {
         val size = mapSize()
         nativeGesture(Offset(size.x * 0.3f, size.y * 0.4f), Offset(size.x * 0.65f, size.y * 0.4f), 600)
         compose.onNodeWithText("Follow", substring = false).assertIsDisplayed()
-        compose.runOnIdle { vehicle.value = vehicle.value.copy(position = GlobalPositionState(-35.364, 149.166)) }
+        compose.runOnIdle { vehicle.value = vehicle.value.copy(position = GlobalPositionState(-35.364, 149.166, lastUpdatedAtEpochMillis = System.currentTimeMillis())) }
         compose.onNodeWithTag("map-center").performClick()
         near(map, -35.364)
         compose.onNodeWithText("Follow", substring = false).performClick()
-        compose.runOnIdle { vehicle.value = vehicle.value.copy(position = GlobalPositionState(-35.365, 149.167)) }
+        compose.runOnIdle { vehicle.value = vehicle.value.copy(position = GlobalPositionState(-35.365, 149.167, lastUpdatedAtEpochMillis = System.currentTimeMillis())) }
         near(map, -35.365)
         compose.runOnIdle { vehicle.value = VehicleState() }
         compose.onNodeWithTag("map-center").assertIsNotEnabled()

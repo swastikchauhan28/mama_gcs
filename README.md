@@ -120,6 +120,8 @@ Opening a configured UDP socket starts the receive session and accepts datagrams
 
 ## Architecture
 
+The map hides the rover marker, heading and track when position is missing or older than the app's five-second diagnostic window, even while heartbeats continue; the operation map labels stale position. This window is not a validated hardware rate or safety threshold, and existing wall-clock timing remains a limitation. See [Phase 92](docs/phase-92-report.md).
+
 Plan → Coverage provides an offline field coverage preview from the current field outline, tool working width and overlap percentage. Choose north/south or east/west passes; the diagram shows ideal tool strips and areas outside them. It is a volatile preview with bounded geometry, not a saved/uploaded route or proof of worked soil. Turns, obstacles and tool tracking are not planned. See [Phase 76](docs/phase-76-report.md) for limits and verification.
 
 An optional headland width reserves a band inside the field boundary and clips main-area passes conservatively away from it. The amber band is not itself planned or worked; no turns are generated. See [Phase 77](docs/phase-77-report.md).

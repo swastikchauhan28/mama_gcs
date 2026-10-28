@@ -2,6 +2,27 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-28 — Phase 92 independent map position freshness
+
+### Done
+
+- Added a five-second app diagnostic position window independent of heartbeat. Stale/unavailable position clears map marker, heading and track and disables center/follow; the operation workspace labels stale position and fresh updates restore it. Fresh JVM run passed 426 tests; build/lint succeeded, focused emulator checks passed 2/2 and map regressions 4/4. Screenshot-enabled label retry passed 1/1; lint predates that test-only screenshot addition. See [Phase 92 report](phase-92-report.md).
+
+### In progress
+
+- Phase 92 publication was requested; check Git for the current commit and remote status.
+
+### Broken or risky
+
+- The five-second window is not validated against actual telemetry rates or physical safety; a one-second tick and UI scheduling add delay. Existing wall-clock timestamps can be affected by clock changes; other telemetry freshness and source authentication remain unresolved. Real basemap, representative devices, physical positioning and hardware telemetry are unverified.
+
+### Next
+
+- Review the position policy and scope; consider a separately approved monotonic freshness design and validate real telemetry rates with the hardware team.
+
+### Do not touch
+
+- Keep hardware on hold; do not infer physical safety or worked soil from map freshness or coverage estimates.
 ## 2026-10-28 — Phase 91 advisory minimum overlap
 
 ### Done

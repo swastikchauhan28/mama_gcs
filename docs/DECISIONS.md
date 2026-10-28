@@ -1,5 +1,10 @@
 # Decisions and alternatives
 
+## D-092-01: Independently expire displayed rover position
+
+- Date: 2026-10-28. User approved Phase 92 and emulator tests. Model/version unavailable. Baseline `17fa7b37f62068496911f787b1b72c960198ded0`, clean worktree.
+- Choice: evaluate connected-state and valid GLOBAL_POSITION coordinates with their receive timestamp against a 5-second app diagnostic window. Missing, invalid, future-dated, disconnected or expired observations do not produce a live marker, heading/track overlay, center/follow target or current coordinate in the map workspace. Refresh once per second even with no new telemetry and restore when a new position arrives. A stale status is visible independently of heartbeat. Five seconds aligns with existing UI diagnostics but is not a provisioned or verified hardware rate or operational safety threshold.
+- Alternatives: assuming heartbeat means position freshness displays an old position; inventing a vehicle-specific limit or retaining an unlabeled stale marker creates false confidence. Existing model records epoch receipt times, so a clock jump can still alter age decisions; reject future timestamps and explicitly retain monotonic timing as future work. This is a display-only diagnostic, no new position, sensor-health, track-history, command authority, hardware, persistence, network or permission change. Test boundary, missing/invalid/future/disconnected, independent heartbeat, timer-driven expiry and restoration via local MapLibre fixtures; review effects on existing map tests. Scoped source reversal against the baseline is recovery, not a physically validated release.
 ## D-091-02: Reject overlength coverage inputs
 
 - Date: 2026-10-28. User authorized the Phase 91 audit repair and tests. Model/version unavailable. Baseline Git revision `d91bcafdf496d8ef6d124b8dcde9d8974de25c6f` with pre-existing uncommitted Phase 91 work, preserved.

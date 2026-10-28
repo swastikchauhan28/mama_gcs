@@ -1,5 +1,7 @@
 # Security foundation and boundaries
 
+Map position has an independent five-second diagnostic freshness check. Stale, missing, future-dated, invalid or disconnected positions are not shown as live markers; this does not establish positioning accuracy, other measurement freshness, vehicle identity or physical safety. Receive timestamps still use wall-clock time and may be affected by clock changes. See [Phase 92](phase-92-report.md).
+
 The optional minimum-overlap calculation uses volatile user assumptions and gives advisory ideal spacing only; it neither changes the overlap setting nor proves physical coverage. See [Phase 91](phase-91-report.md).
 
 The optional sideways-error margin uses volatile user-entered assumptions only; it is not a sensor measurement, safety check or physical coverage guarantee. It does not change missions, network behavior or hardware commands. See [Phase 89](phase-89-report.md).

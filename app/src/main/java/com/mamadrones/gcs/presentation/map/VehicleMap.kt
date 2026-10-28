@@ -47,6 +47,8 @@ import com.mamadrones.gcs.domain.model.CoverageMapLine
 import com.mamadrones.gcs.domain.model.CoverageMapPoint
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.domain.model.HomePositionEvidence
+import com.mamadrones.gcs.domain.model.MapPositionEvidence
+import com.mamadrones.gcs.domain.model.MapPositionStatus
 import kotlinx.coroutines.delay
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -248,9 +250,7 @@ fun VehicleMap(
 
     val latitude = state.position.latitude
     val longitude = state.position.longitude
-    val hasPosition = latitude != null && longitude != null &&
-        latitude.isFinite() && longitude.isFinite() &&
-        latitude in -90.0..90.0 && longitude in -180.0..180.0
+    val hasPosition = MapPositionEvidence.status(state, now) == MapPositionStatus.FRESH
     val vehicleTarget = if (hasPosition) LatLng(latitude!!, longitude!!) else null
 
     LaunchedEffect(style, reportedHome) {
@@ -266,6 +266,7 @@ fun VehicleMap(
         style,
         latitude,
         longitude,
+        hasPosition,
         state.positionTrack,
         state.headingDegrees,
     ) {
