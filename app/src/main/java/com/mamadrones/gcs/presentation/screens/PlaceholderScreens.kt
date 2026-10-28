@@ -113,7 +113,7 @@ private fun SafetyGatePanel(checks: List<com.mamadrones.gcs.core.security.DriveS
 fun HealthScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
     val batteryClock = rememberBatteryClock()
     ScreenHeader("Vehicle health", "Telemetry evidence and readiness gate")
-    CardGrid(listOf(ConsolePanels.health(state), ConsolePanels.healthBlockers(state), ConsolePanels.gps(state), ConsolePanels.battery(state, batteryClock), ConsolePanels.systemStatus(state)))
+    CardGrid(listOf(ConsolePanels.health(state, batteryClock), ConsolePanels.healthBlockers(state), ConsolePanels.gps(state), ConsolePanels.battery(state, batteryClock), ConsolePanels.systemStatus(state)))
     Notice("READINESS NOT ASSESSED", "Received MAVLink data is shown as evidence only. Hardware-specific limits, expected telemetry rates, and validated subsystem routes are required before health or safety readiness can be assessed.")
 }
 

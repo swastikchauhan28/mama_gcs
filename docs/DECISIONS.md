@@ -1,5 +1,11 @@
 # Decisions and alternatives
 
+## D-095-01: Separate retained battery evidence from current receipt freshness
+
+- Date: 2026-10-28. Phase 95 approved by user. Model/version unavailable. Baseline `64f0d7cd8f62a49c5fb66c085f02e4ee434ba5bf`, clean worktree.
+- Choice: health screen labels the evaluator's battery result as latest retained evidence, including after disconnection, and shows independently timed SYS_STATUS and pack freshness using Phase 94's elapsed-time evidence and existing one-second ticker. Keep a reported issue from a retained latest sample visible even when stale or disconnected, explicitly as past evidence, not a current diagnosis. Newer samples replace older samples and session reset clears all; this is not a fault history. Health evaluator, issue rules and readiness remain unchanged. No commands, persistence, permissions, external destinations or dependencies change.
+- Alternatives: showing a single recent source could hide a stale pack; dropping issues on timeout hides prior evidence; retaining a permanent history would need a separate bounded event model and privacy/retention decisions. Risk: a fresh receipt proves neither battery health nor authentic source. Ten seconds is an unverified display threshold. Test independent freshness, clock changes, missing/future time, link loss, recovery and latest-sample replacement; verify offline emulator and inspect UI. Scoped reversal is an unexecuted recovery option, not a validated release.
+
 ## D-094-01: Track battery samples independently with elapsed time
 
 - Date: 2026-10-28. Phase 94 approved; model/version unavailable. Baseline `fee357ab7aa23b313be563fb7d6a05fab4271bb9`, clean worktree.

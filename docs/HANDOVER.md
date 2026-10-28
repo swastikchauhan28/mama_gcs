@@ -2,6 +2,28 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-28 — Phase 95 battery health evidence
+
+### Done
+
+- The health screen distinguishes latest retained battery evidence from independent aggregate and per-pack receipt freshness, and retains a reported issue as historical evidence through link loss. Later samples overwrite earlier ones; a new session clears the data. See [Phase 95](phase-95-report.md).
+
+### In progress
+
+- Phase 95 publication was requested; check Git for the current commit and remote status. Fresh JVM run passed 437/437; debug builds and lint passed; offline emulator passed 3/3. See the phase report for exact commands and evidence.
+
+### Broken or risky
+
+- Freshness is a ten-second diagnostic assumption, not proof of battery health, physical safety or source identity. Retained evidence is not a fault history. Hardware reporting rates, device sleep/wake, and physical integration remain unverified; other health evidence and report-age behavior are outside this change.
+
+### Next
+
+- Review the phase report and outstanding hardware integration evidence before field use.
+
+### Do not touch
+
+- Physical operation, Cube/radio settings, command paths, persistent user data and unrelated work remain outside this phase.
+
 ## 2026-10-28 — Phase 94 independent battery freshness
 
 ### Done

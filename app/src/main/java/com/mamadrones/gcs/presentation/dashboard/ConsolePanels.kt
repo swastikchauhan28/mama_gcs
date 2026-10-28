@@ -178,16 +178,23 @@ object ConsolePanels {
         "Pressure" to s.pressureBar.reading("bar"), "Temperature" to s.temperatureCelsius.reading("°C"),
         "Fault" to (s.fault ?: "UNKNOWN")
     )) }
-    fun health(state: VehicleState): PanelSpec {
-        val displayed = state.forDisplay()
-        val assessment = HealthAssessmentEvaluator.evaluate(displayed)
+    fun health(state: VehicleState, nowElapsedMillis: Long): PanelSpec {
+        val assessment = HealthAssessmentEvaluator.evaluate(state.forDisplay())
+        // Unlike live measurements, retained evidence remains explicitly historical after link loss.
+        val retainedBatteryEvidence = HealthAssessmentEvaluator.evaluate(state).battery
+        val batteryFreshnessRows = listOf(
+            "System battery summary freshness" to BatteryEvidence.freshness(state.battery, state.connected, nowElapsedMillis).name
+        ) + state.batteries.map { sample ->
+            "Battery pack ${sample.batteryId} freshness" to BatteryEvidence.freshness(sample, state.connected, nowElapsedMillis).name
+        }
         return PanelSpec("Operational readiness", assessment.readiness.name.replace('_', ' '), listOf(
             "Health profile" to assessment.healthProfile.name.replace('_', ' '),
             "MAVLink heartbeat" to assessment.communication.name.replace('_', ' '),
             "GPS telemetry" to assessment.gps.name.replace('_', ' '),
-            "Battery telemetry" to assessment.battery.name.replace('_', ' '),
+            "Battery evidence (latest retained)" to retainedBatteryEvidence.name.replace('_', ' '),
+        ) + batteryFreshnessRows + listOf(
             "Autopilot sensors" to assessment.autopilotSensors.name.replace('_', ' ')
-        ), "Telemetry evidence is not a health or machine-safety verdict.")
+        ), "Battery evidence is from the latest retained samples, not a fault history or current diagnosis. Freshness means recent receipt only; no health or machine-safety verdict is provided.")
     }
 
     fun healthBlockers(state: VehicleState): PanelSpec {
