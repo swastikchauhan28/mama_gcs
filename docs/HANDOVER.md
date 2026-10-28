@@ -2,6 +2,27 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-28 — Phase 88 dense map interactions
+
+### Done
+
+- Added an offline emulator test for three cycles of pan, zoom and switching a 16,384-point sampled-gap source, then clearing it. Screen-level native gestures passed with healthy Android; build and lint succeeded with JVM tests and lint report up-to-date. See [Phase 88 report](phase-88-report.md) for timings and the first failed gesture attempt.
+
+### In progress
+
+- Phase 88 publication was requested; check Git for the current commit and remote status.
+
+### Broken or risky
+
+- The initial Compose swipe timed out; native screen-level input succeeded, so the exact first failure cause remains unproven. Emulator timings and source queries do not establish all markers, sustained frame rate, real-device performance or physical field accuracy. Hardware telemetry remains unresolved.
+
+### Next
+
+- Review the scoped test and documentation diff; validate representative phones and independently verify field geometry and positioning before physical use.
+
+### Do not touch
+
+- Keep hardware on hold; do not upload previews or infer worked soil from sampled data.
 ## 2026-10-28 — Phase 87 dense sampled-gap tests
 
 ### Done

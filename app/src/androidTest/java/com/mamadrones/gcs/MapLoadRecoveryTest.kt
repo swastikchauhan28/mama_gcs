@@ -31,6 +31,111 @@ class MapLoadRecoveryTest {
     private val vehicle = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
         position = GlobalPositionState(-35.363, 149.165), headingDegrees = 90.0)
 
+    @Test fun denseOverlayRemainsResponsiveDuringRepeatedMapInteractions() {
+        val style = File.createTempFile("phase88-style-", ".json", compose.activity.cacheDir)
+        style.writeText(VALID_STYLE)
+        val url = mutableStateOf<String?>(Uri.fromFile(style).toString())
+        fun grid(baseLatitude: Double) = List(128 * 128) { index ->
+            CoverageMapPoint(baseLatitude + (index / 128) * 0.0000005, 149.165 + (index % 128) * 0.0000005)
+        }
+        val samples = mutableStateOf<List<CoverageMapPoint>?>(grid(-35.363))
+        val lines = listOf(CoverageMapLine(CoverageMapPoint(-35.363, 149.165), CoverageMapPoint(-35.3625, 149.165)))
+        try {
+            compose.setContent { MamaGcsTheme { VehicleMap(VehicleState(), Modifier.fillMaxSize(), planningMode = true,
+                styleUrl = url.value, coverageLines = lines, coverageGapSamples = samples.value) } }
+            val map = awaitLoaded()
+            lateinit var view: MapView
+            compose.runOnIdle {
+                view = requireNotNull(findMap(compose.activity.window.decorView))
+                map.cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
+                    .target(org.maplibre.android.geometry.LatLng(-35.3627, 149.165)).zoom(17.0).build()
+            }
+            fun waitForRegion(min: Double?, max: Double?) {
+                compose.waitUntil(30_000) {
+                    var valid = false
+                    compose.runOnIdle {
+                        val features = map.style?.getSourceAs<GeoJsonSource>("mama-coverage-gap-samples")?.querySourceFeatures(null)
+                        val points = features?.flatMap { feature -> when (val geometry = feature.geometry()) {
+                            is Point -> listOf(geometry)
+                            is MultiPoint -> geometry.coordinates()
+                            else -> emptyList()
+                        } }
+                        valid = if (min == null || max == null) points?.isEmpty() == true
+                            else points?.isNotEmpty() == true && points.all { it.latitude() in min..max }
+                    }
+                    valid
+                }
+            }
+            fun timed(label: String, action: () -> Unit) {
+                val start = android.os.SystemClock.elapsedRealtime()
+                action()
+                println("Phase88 $label ms=${android.os.SystemClock.elapsedRealtime() - start}")
+            }
+            waitForRegion(-35.36301, -35.36292)
+            repeat(3) { cycle ->
+                timed("zoom-in-$cycle") {
+                    var before = 0.0
+                    compose.runOnIdle { before = map.cameraPosition.zoom }
+                    compose.onNodeWithContentDescription("Zoom in").assertIsEnabled().performClick()
+                    compose.waitUntil(20_000) { var zoom = before; compose.runOnIdle { zoom = map.cameraPosition.zoom }; zoom > before + 0.5 }
+                }
+                timed("pan-$cycle") {
+                    var before = 0.0
+                    compose.runOnIdle { before = map.cameraPosition.target!!.longitude }
+                    // MapLibre is a native AndroidView; inject screen-level events into its view hierarchy.
+                    val location = IntArray(2)
+                    var startX = 0f; var y = 0f; var distance = 0f
+                    compose.runOnIdle {
+                        view.getLocationOnScreen(location)
+                        startX = location[0] + view.width * 0.35f
+                        y = location[1] + view.height * 0.5f
+                        distance = view.width * 0.12f
+                    }
+                    val instrumentation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+                    val downTime = android.os.SystemClock.uptimeMillis()
+                    fun send(action: Int, x: Float) {
+                        val event = android.view.MotionEvent.obtain(downTime, android.os.SystemClock.uptimeMillis(), action, x, y, 0)
+                        try { instrumentation.sendPointerSync(event) } finally { event.recycle() }
+                    }
+                    send(android.view.MotionEvent.ACTION_DOWN, startX)
+                    for (step in 1..8) {
+                        android.os.SystemClock.sleep(35)
+                        send(android.view.MotionEvent.ACTION_MOVE, startX + distance * step / 8)
+                    }
+                    send(android.view.MotionEvent.ACTION_UP, startX + distance)
+                    compose.waitUntil(20_000) { var longitude = before; compose.runOnIdle { longitude = map.cameraPosition.target!!.longitude }; kotlin.math.abs(longitude - before) > 0.000001 }
+                }
+                timed("zoom-out-$cycle") {
+                    var before = 0.0
+                    compose.runOnIdle { before = map.cameraPosition.zoom }
+                    compose.onNodeWithContentDescription("Zoom out").assertIsEnabled().performClick()
+                    compose.waitUntil(20_000) { var zoom = before; compose.runOnIdle { zoom = map.cameraPosition.zoom }; zoom < before - 0.5 }
+                }
+                val first = cycle % 2 == 1
+                timed("switch-$cycle") {
+                    compose.runOnIdle { samples.value = grid(if (first) -35.363 else -35.3625) }
+                    if (first) waitForRegion(-35.36301, -35.36292) else waitForRegion(-35.36251, -35.36242)
+                }
+            }
+            compose.awaitScreenshotFrame(view)
+            val screenshot = requireNotNull(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+            try {
+                File(compose.activity.getExternalFilesDir(null), "phase88-dense-map.png").outputStream().use {
+                    assertTrue(screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+                }
+            } finally { screenshot.recycle() }
+            timed("clear") {
+                compose.runOnIdle { samples.value = emptyList() }
+                waitForRegion(null, null)
+                compose.onNodeWithText("No sampled gaps detected", substring = true).assertIsDisplayed()
+            }
+            compose.onNodeWithContentDescription("Zoom in").assertIsEnabled()
+            compose.onNodeWithContentDescription("Zoom out").assertIsEnabled()
+        } finally {
+            compose.runOnIdle { url.value = null }; compose.waitForIdle()
+            check(style.delete())
+        }
+    }
     @Test fun denseSampledGapSourceSwitchesAndClears() {
         val style = File.createTempFile("phase87-style-", ".json", compose.activity.cacheDir)
         style.writeText(VALID_STYLE)

@@ -1,5 +1,10 @@
 # Decisions and alternatives
 
+## D-088-01: Exercise map responsiveness with dense gap samples
+
+- Date: 2026-10-28. User approved Phase 88 and emulator testing. Model/version unavailable. Baseline `bda9b907b788780d0bbe9f9c09679bf18bcddb5d`, clean worktree.
+- Choice: test repeated swipe and zoom interactions with a synthetic 16,384-point overlay, alternating two point regions and clearing the source using an offline local map style. Measure elapsed wall time to observable camera/source outcomes, with bounded waits and Android health checks. Include an emulator image for visual review. Preserve the actual map behavior unless a reproducible issue requires a scoped fix.
+- Alternatives: source-only checks miss interaction stalls; online basemaps, phone data and live hardware add unrelated dependencies. Emulator interaction times include test synchronization and are not frame-rate or physical-device performance guarantees. Native tile source queries can clip or duplicate points and cannot establish per-point rendering. Fixtures are volatile, no mission actions, new dependencies, data persistence or destinations. A reviewed scoped reversal against baseline is the recovery path; baseline is not a qualified physical release.
 ## D-087-01: Stress-test bounded sampled-gap overlays
 
 - Date: 2026-10-28. User approved Phase 87 and emulator checks. Model/version unavailable. Baseline `74d0580e31421041b4c0bbbe538437ae0dc9a085`, clean worktree.
