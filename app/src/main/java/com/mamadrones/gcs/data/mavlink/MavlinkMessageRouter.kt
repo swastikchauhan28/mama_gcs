@@ -25,8 +25,8 @@ class MavlinkMessageRouter @Inject constructor(
             is MavlinkMessage.GlobalPositionInt -> vehicleRepository.onGlobalPositionInt(message, receivedAtEpochMillis, receivedAtElapsedMillis)
             is MavlinkMessage.Attitude -> vehicleRepository.onAttitude(message, receivedAtEpochMillis)
             is MavlinkMessage.VfrHud -> vehicleRepository.onVfrHud(message, receivedAtEpochMillis)
-            is MavlinkMessage.SystemStatus -> vehicleRepository.onSystemStatus(message, receivedAtEpochMillis)
-            is MavlinkMessage.BatteryStatus -> vehicleRepository.onBatteryStatus(message, receivedAtEpochMillis)
+            is MavlinkMessage.SystemStatus -> vehicleRepository.onSystemStatus(message, receivedAtEpochMillis, receivedAtElapsedMillis)
+            is MavlinkMessage.BatteryStatus -> vehicleRepository.onBatteryStatus(message, receivedAtEpochMillis, receivedAtElapsedMillis)
             is MavlinkMessage.StatusText -> statusTextAssembler.append(message, receivedAtEpochMillis)?.let {
                 vehicleRepository.onStatusText(it.severity, it.text, receivedAtEpochMillis)
             }

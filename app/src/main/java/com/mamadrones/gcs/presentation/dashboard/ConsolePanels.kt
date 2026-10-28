@@ -104,33 +104,26 @@ object ConsolePanels {
         "Latitude" to s.latitude.coordinateReading(), "Longitude" to s.longitude.coordinateReading(),
         "Altitude MSL" to s.altitudeMetersMsl.reading("m")
     ), sampleAge(s.lastUpdatedAtEpochMillis)) }
-    fun battery(state: VehicleState): PanelSpec {
+    fun battery(state: VehicleState, nowElapsedMillis: Long): PanelSpec {
         val displayed = state.forDisplay()
-        val packs = displayed.batteries
-        if (packs.size > 1) return PanelSpec(
-            "Battery packs", "${packs.size} REPORTED",
-            packs.flatMap { pack ->
-                listOf(
-                    "Pack ${pack.batteryId} remaining" to (pack.percentage?.let { "$it %" } ?: "UNKNOWN"),
-                    "Pack ${pack.batteryId} voltage" to pack.voltage.reading("V"),
-                    "Pack ${pack.batteryId} current" to pack.currentAmps.reading("A"),
-                    "Pack ${pack.batteryId} temperature" to pack.temperatureCelsius.reading("°C"),
-                    "Pack ${pack.batteryId} charge state" to chargeStateName(pack.chargeState)
-                )
-            },
-            "Per-pack values from BATTERY_STATUS; ${sampleAge(packs.mapNotNull { it.lastUpdatedAtEpochMillis }.maxOrNull())}."
-        )
-        val sample = packs.singleOrNull() ?: displayed.battery
-        val source = if (packs.isEmpty()) "SYS_STATUS system summary" else "BATTERY_STATUS pack ${sample.batteryId}"
+        fun status(sample: BatteryState) = BatteryEvidence.freshness(sample, state.connected, nowElapsedMillis)
+        fun rows(label: String, sample: BatteryState): List<Pair<String, String>> {
+            val freshness = status(sample)
+            val current = freshness == BatteryFreshness.FRESH
+            return listOf(
+                "$label freshness" to freshness.name,
+                "$label remaining" to (if (current) sample.percentage?.let { "$it %" } ?: "UNKNOWN" else "UNKNOWN"),
+                "$label voltage" to (if (current) sample.voltage.reading("V") else "UNKNOWN"),
+                "$label current" to (if (current) sample.currentAmps.reading("A") else "UNKNOWN"),
+                "$label temperature" to (if (current) sample.temperatureCelsius.reading("°C") else "UNKNOWN"),
+                "$label charge state" to (if (current) chargeStateName(sample.chargeState) else "UNKNOWN")
+            )
+        }
         return PanelSpec(
-            if (sample.batteryId == null) "Battery" else "Battery ${sample.batteryId}",
-            sample.percentage?.let { "$it %" } ?: "UNKNOWN",
-            listOf(
-                "Voltage" to sample.voltage.reading("V"), "Current" to sample.currentAmps.reading("A"),
-                "Temperature" to sample.temperatureCelsius.reading("°C"),
-                "Charge state" to chargeStateName(sample.chargeState)
-            ),
-            "$source · ${sampleAge(sample.lastUpdatedAtEpochMillis)}${if (packs.isEmpty()) " · SYS_STATUS is aggregate and may be ambiguous on multi-battery systems" else ""}"
+            "Battery telemetry", "${displayed.batteries.size} PACKS REPORTED",
+            rows("System summary (SYS_STATUS)", displayed.battery) +
+                displayed.batteries.flatMap { rows("Pack ${it.batteryId} (BATTERY_STATUS)", it) },
+            "Each source expires independently after 10 seconds without receipt. This diagnostic window is not a battery-health or safety assessment; SYS_STATUS is an aggregate and may be ambiguous."
         )
     }
     fun attitude(state: VehicleState): PanelSpec {

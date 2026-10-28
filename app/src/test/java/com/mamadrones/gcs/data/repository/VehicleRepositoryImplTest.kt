@@ -164,6 +164,19 @@ class VehicleRepositoryImplTest {
     }
 
     @Test
+    fun `battery receipt times stay independent across packs and aggregate`() {
+        val repository = VehicleRepositoryImpl()
+        repository.onSystemStatus(MavlinkMessage.SystemStatus(1, 1, 7, 3, 1, 765, 24_600, -1, 70, 250, 4), 50_000L, 1_000L)
+        repository.onBatteryStatus(MavlinkMessage.BatteryStatus(1, 1, 1, 2_500, listOf(12_000), 325, 81), 40_000L, 2_000L)
+        repository.onBatteryStatus(MavlinkMessage.BatteryStatus(1, 1, 2, 2_500, listOf(12_000), 325, 70), 60_000L, 3_000L)
+        val state = repository.vehicleState.value
+        assertEquals(1_000L, state.battery.lastUpdatedAtElapsedMillis)
+        assertEquals(listOf(2_000L, 3_000L), state.batteries.map { it.lastUpdatedAtElapsedMillis })
+        repository.onBatteryStatus(MavlinkMessage.BatteryStatus(1, 1, 2, 2_500, listOf(12_000), 325, 70), 1L, 4_000L)
+        assertEquals(listOf(2_000L, 4_000L), repository.vehicleState.value.batteries.map { it.lastUpdatedAtElapsedMillis })
+    }
+
+    @Test
     fun `invalid attitude floats remain unknown and status text is bounded`() {
         val repository = VehicleRepositoryImpl()
         repository.onAttitude(MavlinkMessage.Attitude(1, 1, 0.1f, Float.NaN, 4.0f, 0f, Float.POSITIVE_INFINITY, 0f), 7L)

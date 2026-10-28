@@ -20,6 +20,8 @@ import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.mamadrones.gcs.domain.model.BatteryEvidence
+import com.mamadrones.gcs.domain.model.BatteryFreshness
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.domain.model.MapPositionEvidence
 import com.mamadrones.gcs.domain.model.MapPositionStatus
@@ -31,10 +33,24 @@ import com.mamadrones.gcs.presentation.dashboard.reading
 import com.mamadrones.gcs.presentation.map.VehicleMap
 import java.util.Locale
 
+@Composable
+internal fun rememberBatteryClock(): Long {
+    val now by produceState(android.os.SystemClock.elapsedRealtime()) {
+        while (true) { delay(1_000L); value = android.os.SystemClock.elapsedRealtime() }
+    }
+    return now
+}
+
+private fun aggregateBatteryText(state: VehicleState, now: Long): String =
+    if (BatteryEvidence.freshness(state.battery, state.connected, now) == BatteryFreshness.FRESH)
+        state.battery.percentage?.let { "$it %" } ?: "UNKNOWN"
+    else "UNKNOWN"
+
 /** Map-first operation. Instruments have measured space, leaving attribution unobstructed. */
 @Composable
 fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier: Modifier = Modifier) {
     val live = state.forDisplay()
+    val batteryClock = rememberBatteryClock()
     var showInstruments by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxSize()) {
         MapWorkspace(state, Modifier.weight(1f).fillMaxWidth(), onNavigate, showOperatorTools = true)
@@ -48,7 +64,7 @@ fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier:
                 TelemetryRow("Mode", live.mode ?: "UNKNOWN")
                 TelemetryRow("Arming", live.armed?.let { if (it) "ARMED" else "DISARMED" } ?: "UNKNOWN")
                 TelemetryRow("Heading", live.headingDegrees.reading("°"))
-                TelemetryRow("Battery", live.battery.percentage?.let { "$it %" } ?: "UNKNOWN")
+                TelemetryRow("Battery (system summary)", aggregateBatteryText(state, batteryClock))
                 TelemetryRow("GPS fix", live.gps.fix.name.replace('_', ' '))
                 TelemetryRow("Direction", live.direction.name)
                 TelemetryRow("Satellites", live.gps.satellites?.toString() ?: "UNKNOWN")
@@ -67,6 +83,7 @@ fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier:
 @Composable
 internal fun RoverInstrumentBar(state: VehicleState, onShowInstruments: () -> Unit) {
     val live = state.forDisplay()
+    val batteryClock = rememberBatteryClock()
     Surface(shadowElevation = 2.dp) {
         BoxWithConstraints(Modifier.fillMaxWidth().testTag("rover-instrument-bar")) {
             if (maxWidth < 600.dp) {
@@ -86,7 +103,7 @@ internal fun RoverInstrumentBar(state: VehicleState, onShowInstruments: () -> Un
                     Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         RoverSpeedMonitorPanel(state, compact = true)
                         Instrument("HEADING", live.headingDegrees.reading("°"), Modifier.testTag("rover-heading-reading"))
-                        Instrument("BATTERY", live.battery.percentage?.let { "$it %" } ?: "UNKNOWN")
+                        Instrument("BATTERY (SYS)", aggregateBatteryText(state, batteryClock))
                         Instrument("GPS", live.gps.fix.name.replace('_', ' '))
                         Instrument("DIRECTION", live.direction.name)
                     }
@@ -214,12 +231,13 @@ private fun MapAction(label: String, icon: ConsoleIcon, onClick: () -> Unit) {
 
 @Composable
 fun TelemetryScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
+    val batteryClock = rememberBatteryClock()
     ScreenHeader("Telemetry", "Vehicle measurements and receive ages")
     RoverSpeedMonitorPanel(state)
     com.mamadrones.gcs.presentation.dashboard.HomePositionCard(state)
     CardGrid(listOf(
         ConsolePanels.vehicle(state), ConsolePanels.gps(state), ConsolePanels.position(state),
-        ConsolePanels.battery(state), ConsolePanels.attitude(state), ConsolePanels.systemStatus(state),
+        ConsolePanels.battery(state, batteryClock), ConsolePanels.attitude(state), ConsolePanels.systemStatus(state),
         ConsolePanels.spray(state), ConsolePanels.hydraulic(state), ConsolePanels.motors(state),
     ))
 }

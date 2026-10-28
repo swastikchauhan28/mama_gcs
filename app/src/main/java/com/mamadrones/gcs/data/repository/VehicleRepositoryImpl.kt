@@ -147,7 +147,7 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
         )
     }
 
-    fun onSystemStatus(message: MavlinkMessage.SystemStatus, receivedAtEpochMillis: Long) {
+    fun onSystemStatus(message: MavlinkMessage.SystemStatus, receivedAtEpochMillis: Long, receivedAtElapsedMillis: Long? = null) {
         _vehicleState.value = _vehicleState.value.copy(
             battery = BatteryState(
                 percentage = message.batteryRemainingPercent.takeIf { it in 0..100 },
@@ -155,7 +155,8 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
                     ?.div(MILLIVOLTS_PER_VOLT),
                 currentAmps = message.currentCentiamps.takeUnless { it == CURRENT_UNKNOWN }
                     ?.div(CENTIAMPS_PER_AMP),
-                lastUpdatedAtEpochMillis = receivedAtEpochMillis
+                lastUpdatedAtEpochMillis = receivedAtEpochMillis,
+                lastUpdatedAtElapsedMillis = receivedAtElapsedMillis
             ),
             systemStatus = AutopilotSystemStatus(
                 sensorsPresent = message.sensorsPresent,
@@ -172,7 +173,7 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
         )
     }
 
-    fun onBatteryStatus(message: MavlinkMessage.BatteryStatus, receivedAtEpochMillis: Long) {
+    fun onBatteryStatus(message: MavlinkMessage.BatteryStatus, receivedAtEpochMillis: Long, receivedAtElapsedMillis: Long? = null) {
         val currentState = _vehicleState.value
         if (currentState.batteries.none { it.batteryId == message.batteryId } &&
             currentState.batteries.size >= MAX_BATTERY_INSTANCES
@@ -187,7 +188,8 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
                 .takeUnless { it == INT16_UNKNOWN }?.div(CENTIDEGREES_PER_DEGREE),
             chargeState = message.chargeState,
             batteryId = message.batteryId,
-            lastUpdatedAtEpochMillis = receivedAtEpochMillis
+            lastUpdatedAtEpochMillis = receivedAtEpochMillis,
+            lastUpdatedAtElapsedMillis = receivedAtElapsedMillis
         )
         _vehicleState.value = currentState.copy(
             batteries = (currentState.batteries.filterNot { it.batteryId == message.batteryId } + battery)

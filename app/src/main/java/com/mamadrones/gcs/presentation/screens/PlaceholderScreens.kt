@@ -111,8 +111,9 @@ private fun SafetyGatePanel(checks: List<com.mamadrones.gcs.core.security.DriveS
 
 @Composable
 fun HealthScreen(state: VehicleState, modifier: Modifier = Modifier) = ScreenBody(modifier) {
+    val batteryClock = rememberBatteryClock()
     ScreenHeader("Vehicle health", "Telemetry evidence and readiness gate")
-    CardGrid(listOf(ConsolePanels.health(state), ConsolePanels.healthBlockers(state), ConsolePanels.gps(state), ConsolePanels.battery(state), ConsolePanels.systemStatus(state)))
+    CardGrid(listOf(ConsolePanels.health(state), ConsolePanels.healthBlockers(state), ConsolePanels.gps(state), ConsolePanels.battery(state, batteryClock), ConsolePanels.systemStatus(state)))
     Notice("READINESS NOT ASSESSED", "Received MAVLink data is shown as evidence only. Hardware-specific limits, expected telemetry rates, and validated subsystem routes are required before health or safety readiness can be assessed.")
 }
 
@@ -144,6 +145,7 @@ fun HydraulicScreen(state: VehicleState, modifier: Modifier = Modifier) = Screen
 @Composable
 fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connection: ConnectionUiState = ConnectionUiState(),
     reportControls: @Composable () -> Unit = {}) = ScreenBody(modifier) {
+    val batteryClock = rememberBatteryClock()
     val now by produceState(System.currentTimeMillis()) {
         while (true) {
             kotlinx.coroutines.delay(1_000L)
@@ -163,7 +165,7 @@ fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connec
             "Transport" to if (connection.savedEndpoint != null) "UDP" else "UNCONFIGURED",
         ), note = "UDP only; BLE raw counters are on the BLE MAVLink screen. Shared decoder counters are shown above. Socket counts do not prove vehicle liveness or command capability."),
         ConsolePanels.vehicle(state), ConsolePanels.gps(state), ConsolePanels.position(state),
-        ConsolePanels.battery(state), ConsolePanels.attitude(state), ConsolePanels.systemStatus(state),
+        ConsolePanels.battery(state, batteryClock), ConsolePanels.attitude(state), ConsolePanels.systemStatus(state),
         ConsolePanels.statusTexts(state)
     ))
     Notice("PERSISTENT LOGGING NOT IMPLEMENTED", "The latest in-memory STATUSTEXT messages and telemetry receive ages are shown above. They are not saved or exported, and do not constitute a health assessment.")

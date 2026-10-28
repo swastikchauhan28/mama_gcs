@@ -1,5 +1,11 @@
 # Decisions and alternatives
 
+## D-094-01: Track battery samples independently with elapsed time
+
+- Date: 2026-10-28. Phase 94 approved; model/version unavailable. Baseline `fee357ab7aa23b313be563fb7d6a05fab4271bb9`, clean worktree.
+- Choice: retain in-memory elapsed receipt time separately for each BATTERY_STATUS pack and the SYS_STATUS aggregate, alongside existing calendar time. Show only fresh values, with independent explicit stale/unavailable labels and a one-second display tick. Use a ten-second app diagnostic window, not a validated device rate or safety threshold; missing, future or disconnected evidence fails closed. Keep pack and aggregate sources distinct. No persistence, network, protocol, hardware or command changes.
+- Alternatives: shared age masks stale packs; wall-clock age changes when the clock changes; discarding stale data entirely loses diagnostic context. Risk: scheduling delays and unverified device rates; revisit threshold with physical measurements. Test clock jumps, independent expiry/recovery and offline emulator UI. Scoped reversal to baseline is a recovery option, not a verified release.
+
 ## D-093-01: Use elapsed time for heartbeat and map-position expiry
 
 - Date: 2026-10-28. User approved Phase 93 and emulator testing. Model/version unavailable. Baseline `80496b26ae764e180453a692cb85f74c7efbd0b8`, clean worktree.

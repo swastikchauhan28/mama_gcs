@@ -24,7 +24,9 @@ data class BatteryState(
     val temperatureCelsius: Double? = null,
     val chargeState: Int? = null,
     val batteryId: Int? = null,
-    val lastUpdatedAtEpochMillis: Long? = null
+    val lastUpdatedAtEpochMillis: Long? = null,
+    // Volatile receipt time, valid only in the current boot/session.
+    val lastUpdatedAtElapsedMillis: Long? = null
 )
 
 data class GlobalPositionState(

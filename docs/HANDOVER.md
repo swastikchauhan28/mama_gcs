@@ -2,6 +2,28 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-28 — Phase 94 independent battery freshness
+
+### Done
+
+- Per-pack BATTERY_STATUS and aggregate SYS_STATUS now retain independent in-memory elapsed receipt times; stale/unavailable values are hidden in battery panels and aggregate dashboard instruments. A one-second UI ticker expires readings even when no data arrives. See [Phase 94](phase-94-report.md) and D-094-01.
+
+### In progress
+
+- Phase 94 publication was requested; check Git for current commit and remote status. Final-source JVM tests passed 433/433; build and lint passed. Corrected emulator fixture passed 2/2; the initial failed attempt is retained in the phase report.
+
+### Broken or risky
+
+- Ten seconds is an unverified display diagnostic, not a battery-health or operational safety limit. Physical reporting rates, sleep/wake and actual multi-pack behavior remain unverified. General health evidence can be historical; Classic check and report ages still use wall time. Other telemetry freshness is outside this phase.
+
+### Next
+
+- Review the phase report and changes, then address outstanding hardware integration evidence before any field use.
+
+### Do not touch
+
+- Physical operation, Cube/radio settings, command paths, persistent user data and unrelated work remain outside this phase.
+
 ## 2026-10-28 — Phase 93 monotonic heartbeat and map position
 
 ### Done
