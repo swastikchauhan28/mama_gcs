@@ -52,13 +52,15 @@ class FieldCoverageUiTest {
 
     @Test fun triangleCoverageReachesOfflineMap() = verifyIrregularCoverage(false, false)
 
+    @Test fun editingFieldClearsSelectedCoverage() = verifyIrregularCoverage(false, false, editField = true)
+
     @Test fun concaveCoverageReachesOfflineMap() = verifyIrregularCoverage(true, false)
 
     @Test fun enlargedTextCoverageMapControlsRemainUsable() = verifyIrregularCoverage(false, true)
 
     @Test fun enlargedTextConcaveCoverageMapControlsRemainUsable() = verifyIrregularCoverage(true, true)
 
-    private fun verifyIrregularCoverage(concave: Boolean, largeText: Boolean) {
+    private fun verifyIrregularCoverage(concave: Boolean, largeText: Boolean, editField: Boolean = false) {
         val style = File.createTempFile("phase84-style-", ".json", compose.activity.cacheDir)
         style.writeText("""{"version":8,"sources":{},"layers":[{"id":"background","type":"background","paint":{"background-color":"#12202c"}}]}""")
         val xy = if (concave) listOf(0.0 to 0.0, 12.0 to 0.0, 12.0 to 12.0, 8.0 to 12.0, 8.0 to 4.0, 4.0 to 4.0, 4.0 to 12.0, 0.0 to 12.0)
@@ -83,6 +85,15 @@ class FieldCoverageUiTest {
                 }
                 node(if (eastWest) "coverage-comparison-east-map" else "coverage-comparison-north-map").performClick()
                 verifyIrregularMap(projected.lines, projected.gapSamples, concave, eastWest, largeText)
+            }
+            if (editField) {
+                compose.runOnIdle { draft.value = original.copy(keepInFence = outline.dropLast(1)) }
+                compose.onAllNodesWithTag("coverage-map-status").assertCountEquals(0)
+                compose.onAllNodesWithTag("coverage-map-legend").assertCountEquals(0)
+                compose.onAllNodesWithTag("mission-map").assertCountEquals(0)
+                assertEquals(outline.dropLast(1), draft.value.keepInFence)
+                assertTrue("Coverage preview must not dispatch a mission action", actions.isEmpty())
+                return
             }
             node("coverage-overlap").apply { performTextReplacement("10"); performImeAction() }
             compose.onNodeWithTag("coverage-close-settings").performClick()

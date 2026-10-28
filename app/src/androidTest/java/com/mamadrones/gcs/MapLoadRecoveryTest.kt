@@ -31,6 +31,57 @@ class MapLoadRecoveryTest {
     private val vehicle = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
         position = GlobalPositionState(-35.363, 149.165), headingDegrees = 90.0)
 
+    @Test fun denseSampledGapSourceSwitchesAndClears() {
+        val style = File.createTempFile("phase87-style-", ".json", compose.activity.cacheDir)
+        style.writeText(VALID_STYLE)
+        val url = mutableStateOf<String?>(Uri.fromFile(style).toString())
+        fun grid(baseLatitude: Double) = List(128 * 128) { index ->
+            CoverageMapPoint(baseLatitude + (index / 128) * 0.0000005, 149.165 + (index % 128) * 0.0000005)
+        }
+        val samples = mutableStateOf<List<CoverageMapPoint>?>(grid(-35.363))
+        val lines = listOf(CoverageMapLine(CoverageMapPoint(-35.363, 149.165), CoverageMapPoint(-35.3625, 149.165)))
+        try {
+            compose.setContent { MamaGcsTheme { VehicleMap(VehicleState(), Modifier.fillMaxSize(), planningMode = true,
+                styleUrl = url.value, coverageLines = lines, coverageGapSamples = samples.value) } }
+            val map = awaitLoaded()
+            compose.runOnIdle {
+                map.cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
+                    .target(org.maplibre.android.geometry.LatLng(-35.3627, 149.165)).zoom(16.0).build()
+                map.triggerRepaint()
+            }
+            fun awaitGrid(minLatitude: Double?, maxLatitude: Double?) {
+                val started = android.os.SystemClock.elapsedRealtime()
+                compose.waitUntil(30_000) {
+                    var valid = false
+                    compose.runOnIdle {
+                        val features = map.style?.getSourceAs<GeoJsonSource>("mama-coverage-gap-samples")?.querySourceFeatures(null)
+                        val points = features?.flatMap { feature -> when (val geometry = feature.geometry()) {
+                            is Point -> listOf(geometry)
+                            is MultiPoint -> geometry.coordinates()
+                            else -> emptyList()
+                        } }
+                        valid = if (minLatitude == null || maxLatitude == null) points?.isEmpty() == true
+                            else points?.isNotEmpty() == true && points.all { it.latitude() in minLatitude..maxLatitude }
+                    }
+                    valid
+                }
+                println("Phase87 source update ms=${android.os.SystemClock.elapsedRealtime() - started} target=$minLatitude")
+            }
+            awaitGrid(-35.36301, -35.36292)
+            compose.onNodeWithText("magenta: sampled gap centers", substring = true).assertIsDisplayed()
+            compose.runOnIdle { samples.value = grid(-35.3625) }
+            awaitGrid(-35.36251, -35.36242)
+            compose.runOnIdle { samples.value = emptyList() }
+            awaitGrid(null, null)
+            compose.onNodeWithText("No sampled gaps detected", substring = true).assertIsDisplayed()
+            compose.runOnIdle { samples.value = null }
+            awaitGrid(null, null)
+            compose.onNodeWithText("Gap estimate unavailable", substring = true).assertIsDisplayed()
+        } finally {
+            compose.runOnIdle { url.value = null }; compose.waitForIdle()
+            check(style.delete())
+        }
+    }
     @Test fun sampledGapSourceSwitchesClearsAndReloads() {
         val first = File.createTempFile("phase86-a-", ".json", compose.activity.cacheDir)
         val second = File.createTempFile("phase86-b-", ".json", compose.activity.cacheDir)

@@ -2,6 +2,27 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-28 — Phase 87 dense sampled-gap tests
+
+### Done
+
+- Added offline emulator tests for a 16,384-point map source switch and clearing, and for an in-memory field edit clearing its selected triangle preview. Both passed, including both triangle directions; build and lint succeeded with unit tests and lint report up-to-date. Timings, screenshot and limitations are in [Phase 87 report](phase-87-report.md).
+
+### In progress
+
+- Phase 87 publication was requested; check Git for the current commit and remote status.
+
+### Broken or risky
+
+- Source queries do not establish that every marker rendered, and the checks do not measure sustained responsiveness, real-device behavior or physical coverage. Hardware telemetry remains unresolved. See earlier failed-run evidence in Phase 86.
+
+### Next
+
+- Review the test diff; validate on representative devices and independently verify field geometry, positioning and physical coverage before real use.
+
+### Do not touch
+
+- Keep hardware on hold; do not upload coverage previews or infer physical work from sampled data.
 ## 2026-10-28 — Phase 86 sampled coverage gaps
 
 ### Done

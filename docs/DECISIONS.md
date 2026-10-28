@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-087-01: Stress-test bounded sampled-gap overlays
+
+- Date: 2026-10-28. User approved Phase 87 and emulator checks. Model/version unavailable. Baseline `74d0580e31421041b4c0bbbe538437ae0dc9a085`, clean worktree.
+- Choice: use a disposable local map style and synthetic maximum-size 128×128 point fixture to exercise the actual MapLibre source, switch the data, clear it, and check a real field edit removes the selected preview. Compare with existing smaller direction-switch and rendering tests. Report timings and failures without treating an emulator threshold as a device performance guarantee.
+- Alternatives: checking only estimator unit tests misses native rendering; live maps or a vehicle introduce unrelated dependencies. Native tile duplication and coordinate quantization limit exact source counts; check geographic membership instead. This adds test load only, no production dependencies, data retention, external destinations or hardware commands. If a reproducible issue requires a production change, record its trade-offs. Physical coverage, positioning and representative-device performance remain unverified. Recovery is a reviewed reversal of this scoped test/docs change against the baseline; the baseline is not a qualified release.
+
+
 ## D-086-01: Display sampled main-area gap centers on the selected coverage map
 
 - Date: 2026-10-28. User approved Phase 86 and emulator tests. Model/version unavailable. Baseline `ed8a2bb6b4fd5d8e5693181fc251f5d9ddf1b5fa`, clean worktree.
