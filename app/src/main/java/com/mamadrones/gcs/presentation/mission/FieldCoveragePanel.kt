@@ -41,6 +41,10 @@ internal class FieldCoverageState(
     private val scope: CoroutineScope,
     private val outline: List<DraftWaypoint>,
     val available: Boolean,
+    private val comparisonCalculator: suspend (List<DraftWaypoint>, Double, Double, Double) -> CoverageDirectionComparison =
+        { vertices, width, overlap, headland ->
+            withContext(Dispatchers.Default) { CoverageDirectionComparisonPlanner.calculate(vertices, width, overlap, headland) }
+        },
 ) {
     var width by mutableStateOf(""); private set
     var overlap by mutableStateOf("10"); private set
@@ -113,9 +117,7 @@ internal class FieldCoverageState(
         hideMap()
         busy = true
         job = scope.launch {
-            val calculated = withContext(Dispatchers.Default) {
-                CoverageDirectionComparisonPlanner.calculate(outline, requestedWidth, requestedOverlap, requestedHeadland)
-            }
+            val calculated = comparisonCalculator(outline, requestedWidth, requestedOverlap, requestedHeadland)
             ensureActive()
             comparison = calculated
             busy = false

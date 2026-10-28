@@ -2,6 +2,27 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-28 — Phase 90 cancellation and enlarged-text checks
+
+### Done
+
+- Added a deterministic state test holding an older non-cooperative comparison while the sideways assumption changes, then checking the newer result survives. The default calculator still runs the existing planner off the main thread. Fresh JVM run passed 420 tests; build and lint succeeded. Enlarged-text emulator test passed 1/1 and the former combined scenario passed 2/2, with Android health gates passing. See [Phase 90 report](phase-90-report.md).
+
+### In progress
+
+- Phase 90 publication was requested; check Git for the current commit and remote status.
+
+### Broken or risky
+
+- The Phase 89 Compose lifecycle crash did not recur, but its cause is unknown. The direct-state test simulates a setting change while busy; the current UI disables its settings dialog during calculation. Enlarged local font testing is not full accessibility validation. Actual positioning, implement behavior, coverage and hardware telemetry remain unverified.
+
+### Next
+
+- Review the internal test seam and evidence. Independently validate representative devices, accessibility and real positioning/implement assumptions before physical field decisions.
+
+### Do not touch
+
+- Keep hardware on hold; do not upload previews or infer worked soil from modeled results.
 ## 2026-10-28 — Phase 89 assumed sideways-error margin
 
 ### Done

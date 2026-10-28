@@ -1,5 +1,10 @@
 # Decisions and alternatives
 
+## D-090-01: Verify cancellation and enlarged-text sideways-error flow
+
+- Date: 2026-10-28. User approved Phase 90 and emulator testing. Model/version unavailable. Baseline `3af5056a10f92a04b0a7a8fcd6f4a5e8ecdceb2e`, clean worktree.
+- Choice: inject an internal suspend comparison calculator into the coverage state with the existing Dispatchers.Default implementation as its default. Deterministic JVM tests can hold a non-cooperative older calculation, change or clear the assumption, start a new comparison, then release the old calculation to verify cancellation prevents stale publication. Emulator tests exercise the real calculator and enlarged-text controls, and repeat the prior combined scenario; preserve failed attempts. The input-change path already cancels the job, clears previews, and checks cancellation before publishing.
+- Alternatives: timing a fast real calculation cannot guarantee an in-flight edit; arbitrary sleeps and a fake that cooperates immediately would miss a stale completion. The internal test seam changes no user-visible behavior, storage, dependencies, permissions, destinations or hardware commands. Synthetic results cannot establish physical positioning or coverage; enlarged local font scale is not full accessibility acceptance. Record failures and fixes; do not weaken assertions. A reviewed scoped reversal to baseline is recovery, not a verified release.
 ## D-089-01: Show an optional assumed sideways-error overlap margin
 
 - Date: 2026-10-28. User approved Phase 89 and emulator checks. Model/version unavailable. Baseline `71c1790eb29d14d549cd5e216c9f1c206ea3ce6d`, clean worktree.

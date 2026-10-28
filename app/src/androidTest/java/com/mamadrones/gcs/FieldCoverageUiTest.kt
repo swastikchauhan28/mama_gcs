@@ -547,6 +547,25 @@ class FieldCoverageUiTest {
         compose.onAllNodesWithTag("coverage-comparison").assertCountEquals(0)
         assertTrue("Local comparison must not dispatch mission actions", actions.isEmpty())
     }
+    @Test fun enlargedTextSidewaysAssumptionRemainsUsable() {
+        show(largeText = true)
+        node("coverage-width").performTextReplacement("2")
+        node("coverage-overlap").performTextReplacement("10")
+        node("coverage-sideways-error").assertIsDisplayed().apply { performTextReplacement("0.05"); performImeAction() }
+        compose.onNodeWithTag("coverage-close-settings").performClick()
+        node("coverage-compare").assertIsEnabled().performClick()
+        compose.waitUntil(30_000) { compose.onAllNodesWithTag("coverage-comparison").fetchSemanticsNodes().isNotEmpty() }
+        node("coverage-sideways-result").assertIsDisplayed().assertTextContains("Remaining ideal overlap margin: 0.100 m", substring = true)
+        node("coverage-sideways-warning").assertIsDisplayed().assertTextContains("not a coverage guarantee", substring = true)
+        capture("phase90-large-sideways.png")
+        node("coverage-sideways-error").apply { performTextReplacement(""); performImeAction() }
+        compose.onNodeWithTag("coverage-close-settings").performClick()
+        compose.onAllNodesWithTag("coverage-comparison").assertCountEquals(0)
+        node("coverage-compare").performClick()
+        compose.waitUntil(30_000) { compose.onAllNodesWithTag("coverage-comparison").fetchSemanticsNodes().isNotEmpty() }
+        node("coverage-sideways-result").assertIsDisplayed().assertTextContains("not provided", substring = true)
+        assertTrue("Local comparison must not dispatch mission actions", actions.isEmpty())
+    }
     @Test fun comparisonShowsIndependentDirectionErrors() {
         compose.setContent {
             MamaGcsTheme {
