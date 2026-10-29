@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-102-01: Use elapsed selected-source position receipt in Classic checks
+
+- Date: 2026-10-29. User approved Phase 102 and offline emulator testing. Baseline `6be569b64258a6fe82d6e34caad55ef266a72134`, clean; model/version unavailable.
+- Choice: require the existing position sample and accepted GLOBAL_POSITION_INT observation to be fresh in the current Classic session using elapsed timestamps. No calendar fallback; preserve the ordering of measurement labels, and leave other measurement groups unchanged. Update the clock-limit copy to explain the distinction. No decoding, source filtering, hardware controls, persistence, dependencies or permissions are changed.
+- Alternative: calendar-time freshness can jump; sample time alone can be attributed without selected-source acceptance. Elapsed receipt is not authentication, GPS fix, accuracy or physical safety. Five seconds is an unverified display window, not a hardware failsafe. Verify missing/future/pre-session/stale evidence, independent expiry, calendar jumps, recovery, selected-source routing and offline emulator UI. Recovery to baseline is unexecuted, not a qualified release.
+
+
 ## D-101-01: Use elapsed receipt evidence per PWM port
 
 - Date: 2026-10-29. User approved Phase 101 and offline emulator tests. Baseline `cd41b87a6f609855c4ea3ad4c057f7f8278a06e5`, clean; model/version unavailable.

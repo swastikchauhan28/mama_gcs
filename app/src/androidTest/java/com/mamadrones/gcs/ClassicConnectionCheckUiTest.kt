@@ -74,7 +74,7 @@ class ClassicConnectionCheckUiTest {
         compose.onNodeWithTag("classic-check-guidance").assertTextContains("SBUS into RCIN alone", substring = true)
         compose.onNodeWithTag("classic-check-rc-status").assertTextContains("NOT CONFIRMED", substring = true)
         capture("phase46-check-light-top")
-        compose.onNodeWithText("5-second display window. Bytes, heartbeat and RC checks use elapsed time; other measurement checks use calendar time and may be affected by clock changes. Receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.")
+        compose.onNodeWithText("5-second display window. Bytes, heartbeat, RC and position checks use elapsed time; other measurement checks use calendar time and may be affected by clock changes. Receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.")
             .performScrollTo().assertIsDisplayed()
         capture("phase46-check-light-bottom")
         compose.runOnIdle {
@@ -104,7 +104,7 @@ class ClassicConnectionCheckUiTest {
         compose.onNodeWithTag("classic-check-guidance").assertTextContains("does not independently prove", substring = true)
         compose.onNodeWithTag("classic-check-status").performScrollTo().assertIsDisplayed()
         capture("phase46-check-dark-top")
-        compose.onNodeWithText("5-second display window. Bytes, heartbeat and RC checks use elapsed time; other measurement checks use calendar time and may be affected by clock changes. Receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.")
+        compose.onNodeWithText("5-second display window. Bytes, heartbeat, RC and position checks use elapsed time; other measurement checks use calendar time and may be affected by clock changes. Receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.")
             .performScrollTo().assertIsDisplayed()
         capture("phase46-check-dark-bottom")
     }
@@ -186,6 +186,43 @@ class ClassicConnectionCheckUiTest {
         compose.runOnIdle { vehicle.value = sample(0L) }
         compose.waitUntil(5_000) { compose.onAllNodesWithText("6. RC_CHANNELS from selected autopilot: FRESH").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: RC input")
+    }
+
+    @Test fun positionReceiptUsesElapsedTimeAndExpiresIndependently() {
+        val wall = mutableStateOf(20_000L)
+        val elapsed = mutableStateOf(20_000L)
+        val link = ConnectionState(TransportStatus.OPEN, connectedAtEpochMillis = 10_000, connectedAtElapsedMillis = 10_000)
+        val heartbeat = MavlinkMessageObservation(ObservedMavlinkMessage.HEARTBEAT, decodedV2 = 1, accepted = 1,
+            lastDecodedAtElapsedMillis = 20_000, lastAcceptedAtElapsedMillis = 20_000)
+        val position = MavlinkMessageObservation(ObservedMavlinkMessage.GLOBAL_POSITION_INT, decodedV2 = 1, accepted = 1,
+            lastDecodedAtElapsedMillis = 20_000, lastAcceptedAtElapsedMillis = 20_000)
+        val state = mutableStateOf(VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
+            lastHeartbeatAtElapsedMillis = 20_000,
+            position = GlobalPositionState(lastUpdatedAtEpochMillis = 20_000, lastUpdatedAtElapsedMillis = 20_000),
+            mavlinkDiagnostics = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,
+                startedAtEpochMillis = 9_000, startedAtElapsedMillis = 9_000, receivedBytes = 10,
+                lastBytesAtElapsedMillis = 20_000, decodedMessages = 2, messageObservations = listOf(heartbeat, position))))
+        compose.setContent { MamaGcsTheme { Surface(Modifier.verticalScroll(rememberScrollState())) {
+            ClassicConnectionCheckPanel(ClassicConnectionCheck.assess(true, link, state.value, wall.value, elapsed.value))
+        } } }
+        compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: Position")
+        compose.runOnIdle { wall.value = Long.MAX_VALUE }
+        compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: Position")
+        compose.runOnIdle {
+            elapsed.value = 25_001
+            state.value = state.value.copy(lastHeartbeatAtElapsedMillis = 25_001,
+                mavlinkDiagnostics = state.value.mavlinkDiagnostics.copy(lastBytesAtElapsedMillis = 25_001,
+                    messageObservations = listOf(heartbeat.copy(lastDecodedAtElapsedMillis = 25_001, lastAcceptedAtElapsedMillis = 25_001), position)))
+        }
+        compose.onNodeWithTag("classic-check-measurements").performScrollTo().assertTextEquals("5. Measurement messages: NOT CONFIRMED")
+        capture("phase102-position-stale")
+        compose.runOnIdle {
+            state.value = state.value.copy(position = state.value.position.copy(lastUpdatedAtElapsedMillis = 25_001),
+                mavlinkDiagnostics = state.value.mavlinkDiagnostics.copy(messageObservations = listOf(
+                    heartbeat.copy(lastDecodedAtElapsedMillis = 25_001, lastAcceptedAtElapsedMillis = 25_001),
+                    position.copy(lastDecodedAtElapsedMillis = 25_001, lastAcceptedAtElapsedMillis = 25_001))))
+        }
+        compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: Position")
     }
 
     private fun capture(name: String) {

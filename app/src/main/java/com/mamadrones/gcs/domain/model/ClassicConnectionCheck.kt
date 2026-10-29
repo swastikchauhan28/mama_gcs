@@ -98,15 +98,21 @@ object ClassicConnectionCheck {
                 it.type == ObservedMavlinkMessage.RC_CHANNELS && it.accepted > 0 &&
                     freshElapsed(it.lastAcceptedAtElapsedMillis)
             }
+        // Receipt is distinct from position validity or a GPS fix.
+        val freshPosition = freshElapsed(vehicle.position.lastUpdatedAtElapsedMillis) &&
+            diagnostics.messageObservations.any {
+                it.type == ObservedMavlinkMessage.GLOBAL_POSITION_INT && it.accepted > 0 &&
+                    freshElapsed(it.lastAcceptedAtElapsedMillis)
+            }
         // Receipt is distinct from sensor validity: a GPS message can report NO_FIX.
         val messages = listOf(
-            "GPS" to vehicle.gps.lastUpdatedAtEpochMillis,
-            "Position" to vehicle.position.lastUpdatedAtEpochMillis,
-            "Attitude" to vehicle.attitude.lastUpdatedAtEpochMillis,
-            "Battery" to vehicle.battery.lastUpdatedAtEpochMillis,
-            "Rover HUD" to vehicle.roverHud.lastUpdatedAtEpochMillis,
-            "System status" to vehicle.systemStatus.lastUpdatedAtEpochMillis,
-        ).filter { fresh(it.second) }.map { it.first } + if (freshRcChannels) listOf("RC input") else emptyList()
+            "GPS" to fresh(vehicle.gps.lastUpdatedAtEpochMillis),
+            "Position" to freshPosition,
+            "Attitude" to fresh(vehicle.attitude.lastUpdatedAtEpochMillis),
+            "Battery" to fresh(vehicle.battery.lastUpdatedAtEpochMillis),
+            "Rover HUD" to fresh(vehicle.roverHud.lastUpdatedAtEpochMillis),
+            "System status" to fresh(vehicle.systemStatus.lastUpdatedAtEpochMillis),
+        ).filter { it.second }.map { it.first } + if (freshRcChannels) listOf("RC input") else emptyList()
         return ClassicConnectionAssessment(
             if (messages.isEmpty()) ClassicCheckStage.WAITING_MEASUREMENTS else ClassicCheckStage.RECEIVING,
             socketOpen = true, freshBytes = true, freshHeartbeat = true,

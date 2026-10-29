@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-10-29 — Phase 102 Classic position receipt timing
+
+- Done: the Classic connection check uses elapsed current-session position and accepted GLOBAL_POSITION_INT receipt evidence. Other measurement groups retain calendar-time checks. See [Phase 102](phase-102-report.md) and D-102-01.
+- Verification: 458 JVM tests passed; both debug APKs built. First emulator run passed 8/9; the existing RC freshness test timed out waiting for initial FRESH, while the new position test passed. The exact RC test passed 1/1 on retry with Android healthy; lint passed (report task up-to-date).
+- Broken or risky: the five-second window is a diagnostic, not a failsafe. Receipt does not verify GPS fix, position accuracy, source identity or hardware behavior.
+- Next: review the diff and investigate the separate Cube-to-phone heartbeat path with the hardware team when available.
+- Do not touch: hardware, live parameters, command paths, persistent user data or unrelated work. Commit/push only when requested.
+
+
 ## 2026-10-29 — Phase 101 PWM output timing
 
 - Done: PWM display uses elapsed selected-source heartbeat and per-port receipt evidence; stale, missing or inconsistent timing hides values. See [Phase 101](phase-101-report.md) and D-101-01.

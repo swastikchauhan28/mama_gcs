@@ -12,6 +12,8 @@ class ClassicConnectionCheckTest {
     private val rcObservation = MavlinkMessageObservation(ObservedMavlinkMessage.RC_CHANNELS,
         decodedV2 = 1, accepted = 1, lastDecodedAtEpochMillis = now, lastAcceptedAtEpochMillis = now,
         lastDecodedAtElapsedMillis = now, lastAcceptedAtElapsedMillis = now)
+    private val positionObservation = MavlinkMessageObservation(ObservedMavlinkMessage.GLOBAL_POSITION_INT,
+        decodedV2 = 1, accepted = 1, lastDecodedAtElapsedMillis = now, lastAcceptedAtElapsedMillis = now)
     private val diagnostics = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,
         startedAtEpochMillis = 9_000L, startedAtElapsedMillis = 9_000L, receivedBytes = 100, lastBytesAtEpochMillis = now, lastBytesAtElapsedMillis = now,
         decodedMessages = 1, messageObservations = listOf(heartbeat))
@@ -146,7 +148,8 @@ class ClassicConnectionCheckTest {
     }
     @Test fun listsOnlyFreshGroupsAndDoesNotClaimValidSensorValues() {
         val result = assess(vehicle.copy(gps = GpsState(fix = GpsFix.NO_FIX, lastUpdatedAtEpochMillis = now),
-            position = GlobalPositionState(lastUpdatedAtEpochMillis = now),
+            position = GlobalPositionState(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now),
+            mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(heartbeat, positionObservation)),
             battery = BatteryState(lastUpdatedAtEpochMillis = now),
             roverHud = RoverHudState(lastUpdatedAtEpochMillis = now),
             systemStatus = AutopilotSystemStatus(lastUpdatedAtEpochMillis = now),
@@ -228,6 +231,44 @@ class ClassicConnectionCheckTest {
                 messageObservations = listOf(heartbeat.copy(lastAcceptedAtElapsedMillis = time))))
             assertEquals(ClassicCheckStage.WAITING_HEARTBEAT, assess(state).stage)
         }
+    }
+
+    @Test fun positionRequiresCurrentSampleAndAcceptedSelectedSourceEvidence() {
+        val current = vehicle.copy(attitude = AttitudeState(),
+            position = GlobalPositionState(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now),
+            mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(heartbeat, positionObservation)))
+        assertEquals(listOf("Position"), assess(current).measurementMessages)
+        for (time in listOf(null, -1L, 9_999L, now - 5_001, now + 1)) {
+            val sample = current.copy(position = current.position.copy(lastUpdatedAtElapsedMillis = time))
+            val accepted = current.copy(mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(
+                heartbeat, positionObservation.copy(lastAcceptedAtElapsedMillis = time))))
+            assertFalse(assess(sample).measurementMessages.contains("Position"))
+            assertFalse(assess(accepted).measurementMessages.contains("Position"))
+        }
+        val other = current.copy(mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(
+            heartbeat, positionObservation.copy(accepted = 0, otherSource = 1))))
+        assertFalse(assess(other).measurementMessages.contains("Position"))
+        assertFalse(assess(current.copy(mavlinkDiagnostics = diagnostics)).measurementMessages.contains("Position"))
+        assertFalse(assess(current.copy(connectionStatus = VehicleConnectionState.DISCONNECTED)).measurementMessages.contains("Position"))
+        assertFalse(assess(current, active = false).measurementMessages.contains("Position"))
+    }
+
+    @Test fun positionSurvivesWallClockJumpsExpiresAndRecovers() {
+        val current = vehicle.copy(attitude = AttitudeState(),
+            position = GlobalPositionState(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now),
+            mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(heartbeat, positionObservation)))
+        for (wall in listOf(1L, Long.MAX_VALUE)) {
+            val result = ClassicConnectionCheck.assess(true, connection, current, wall, now)
+            assertEquals(listOf("Position"), result.measurementMessages)
+            assertEquals(ClassicCheckStage.RECEIVING, result.stage)
+        }
+        val boundary = current.copy(position = current.position.copy(lastUpdatedAtElapsedMillis = now - 5_000),
+            mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(heartbeat,
+                positionObservation.copy(lastAcceptedAtElapsedMillis = now - 5_000))))
+        assertTrue(assess(boundary).measurementMessages.contains("Position"))
+        assertFalse(assess(boundary, time = now + 1).measurementMessages.contains("Position"))
+        assertEquals(listOf("Position"), assess(current).measurementMessages)
+        assertFalse(assess(current, link = connection.copy(connectedAtElapsedMillis = now + 1), time = now + 2).measurementMessages.contains("Position"))
     }
 
 }
