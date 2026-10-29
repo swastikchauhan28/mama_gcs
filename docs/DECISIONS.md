@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-106-01: Use elapsed selected-source system-status receipt in Classic checks
+
+- Date: 2026-10-29. User approved Phase 106 and offline emulator tests. Baseline `dd63885e2022d3e36268d1c4defb157a9fd1395a`, clean; model/version unavailable.
+- Choice: retain the existing session elapsed receipt timestamp separately in volatile system-status state and require fresh current-Classic-session system-status sample and accepted SYS_STATUS evidence, without calendar fallback. Keep calendar timestamps for existing reports, and leave the separate battery check and other measurement policies unchanged. No source filtering, transport, command, persistence, dependency or permission changes.
+- Alternatives: calendar-time freshness can jump; sample time alone cannot establish selected-source acceptance. Receipt does not authenticate the source or prove sensors are healthy or physical safety; the five-second window is not a failsafe. Verify missing, stale, future, pre-session and other-source evidence, calendar jumps, recovery, independent battery behavior, and offline emulator UI. Baseline recovery is unexecuted and not a qualified release.
+
+
 ## D-105-01: Use elapsed selected-source Rover HUD receipt in Classic checks
 
 - Date: 2026-10-29. User approved Phase 105 and offline emulator tests. Baseline `eeca1cb273935fdbb51823f26cdb9cba65c5e906`, clean; model/version unavailable.

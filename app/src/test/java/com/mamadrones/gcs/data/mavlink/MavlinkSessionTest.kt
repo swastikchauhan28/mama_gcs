@@ -151,6 +151,32 @@ class MavlinkSessionTest {
         } finally { session.stop(); session.close() }
     }
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun `system status elapsed receipt belongs to selected source and clears on reconnect`() = runTest {
+        val transport = FakeTransport()
+        val repository = VehicleRepositoryImpl()
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository,
+            scope = this, elapsedClock = { testScheduler.currentTime }, epochClock = { 1_000_000L })
+        fun system(system: Int) = mavlinkTestFrame(1, ByteArray(31), 124, system, 1)
+        try {
+            session.start()
+            transport.emit(system(42) + heartbeatFrame(systemId = 42) + system(42))
+            runCurrent()
+            val first = repository.vehicleState.value
+            assertEquals(0L, first.systemStatus.lastUpdatedAtElapsedMillis)
+            val observation = first.mavlinkDiagnostics.messageObservations.first { it.type.messageId == 1 }
+            assertEquals(1L, observation.accepted)
+            assertEquals(1L, observation.beforeHeartbeat)
+            assertEquals(first.systemStatus.lastUpdatedAtElapsedMillis, observation.lastAcceptedAtElapsedMillis)
+            advanceTimeBy(10); runCurrent()
+            transport.emit(system(99)); runCurrent()
+            assertEquals(0L, repository.vehicleState.value.systemStatus.lastUpdatedAtElapsedMillis)
+            assertEquals(1L, repository.vehicleState.value.mavlinkDiagnostics.messageObservations.first { it.type.messageId == 1 }.otherSource)
+            session.stop(); session.start()
+            assertNull(repository.vehicleState.value.systemStatus.lastUpdatedAtElapsedMillis)
+        } finally { session.stop(); session.close() }
+    }
+
     @Test fun `radio status is observed without selecting autopilot or refreshing heartbeat and resets next session`() = runBlocking {
         val transport = FakeTransport()
         val repository = VehicleRepositoryImpl()

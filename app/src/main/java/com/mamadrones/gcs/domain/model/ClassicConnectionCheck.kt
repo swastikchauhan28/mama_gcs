@@ -85,7 +85,7 @@ object ClassicConnectionCheck {
             return ClassicConnectionAssessment(ClassicCheckStage.WAITING_HEARTBEAT,
                 socketOpen = true, freshBytes = true, freshDecodedMessage = true)
         }
-        // Other measurement evidence still uses calendar timestamps; do not borrow an invalid epoch boundary.
+        // Battery receipt still uses calendar timestamps; do not borrow an invalid epoch boundary.
         val openedEpoch = connection.connectedAtEpochMillis
         val startedEpoch = diagnostics.startedAtEpochMillis
         fun fresh(timestamp: Long?): Boolean = openedEpoch != null && startedEpoch != null &&
@@ -122,13 +122,19 @@ object ClassicConnectionCheck {
                 it.type == ObservedMavlinkMessage.VFR_HUD && it.accepted > 0 &&
                     freshElapsed(it.lastAcceptedAtElapsedMillis)
             }
+        // A received system-status message does not establish sensor health.
+        val freshSystemStatus = freshElapsed(vehicle.systemStatus.lastUpdatedAtElapsedMillis) &&
+            diagnostics.messageObservations.any {
+                it.type == ObservedMavlinkMessage.SYS_STATUS && it.accepted > 0 &&
+                    freshElapsed(it.lastAcceptedAtElapsedMillis)
+            }
         val messages = listOf(
             "GPS" to freshGps,
             "Position" to freshPosition,
             "Attitude" to freshAttitude,
             "Battery" to fresh(vehicle.battery.lastUpdatedAtEpochMillis),
             "Rover HUD" to freshRoverHud,
-            "System status" to fresh(vehicle.systemStatus.lastUpdatedAtEpochMillis),
+            "System status" to freshSystemStatus,
         ).filter { it.second }.map { it.first } + if (freshRcChannels) listOf("RC input") else emptyList()
         return ClassicConnectionAssessment(
             if (messages.isEmpty()) ClassicCheckStage.WAITING_MEASUREMENTS else ClassicCheckStage.RECEIVING,

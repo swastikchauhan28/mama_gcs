@@ -79,7 +79,9 @@ data class AutopilotSystemStatus(
     val cpuLoadPercent: Double? = null,
     val communicationDropPercent: Double? = null,
     val communicationErrors: Int? = null,
-    val lastUpdatedAtEpochMillis: Long? = null
+    val lastUpdatedAtEpochMillis: Long? = null,
+    // Volatile selected-source receipt time; not proof of sensor health.
+    val lastUpdatedAtElapsedMillis: Long? = null
 )
 
 data class VehicleStatusText(

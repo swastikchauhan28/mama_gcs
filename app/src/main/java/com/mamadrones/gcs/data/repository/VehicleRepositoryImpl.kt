@@ -173,7 +173,8 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
                     .takeIf { it in 0..MAX_DROP_CENTIPERCENT }
                     ?.div(CENTIPERCENT_PER_PERCENT),
                 communicationErrors = message.communicationErrors,
-                lastUpdatedAtEpochMillis = receivedAtEpochMillis
+                lastUpdatedAtEpochMillis = receivedAtEpochMillis,
+                lastUpdatedAtElapsedMillis = receivedAtElapsedMillis
             )
         )
     }
