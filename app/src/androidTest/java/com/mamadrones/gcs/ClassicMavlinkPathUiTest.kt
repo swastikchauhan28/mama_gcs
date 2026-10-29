@@ -178,6 +178,76 @@ class ClassicMavlinkPathUiTest {
         }
     }
 
+    @Test fun independentRadioOnlyAndMixedStreamsStayDistinct() {
+        fun load(name: String) = InstrumentationRegistry.getInstrumentation().context.assets.open(name).bufferedReader().useLines { lines ->
+            lines.filter { it.isNotBlank() && !it.startsWith("#") }.associate { line ->
+                val parts = line.split('=', limit = 2)
+                parts[0] to parts[1].chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+            }
+        }
+        val radios = load("phase110-vectors.txt")
+        val vehicles = load("phase109-vectors.txt")
+        val clock = AtomicLong(1_000)
+        val displayTime = mutableLongStateOf(1_000)
+        val transport = MemoryClassicTransport()
+        val repository = VehicleRepositoryImpl()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository,
+            heartbeatTimeoutMillis = 30_000, scope = scope, elapsedClock = { clock.get() }, epochClock = { 1_000_000L })
+        val link = mutableStateOf(ConnectionState(TransportStatus.OPEN, connectedAtEpochMillis = 1_000_000,
+            connectedAtElapsedMillis = 1_000))
+        fun emit(bytes: ByteArray) = runBlocking { transport.emit(bytes) }
+        fun waitText(text: String) = compose.waitUntil(10_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
+        try {
+            runBlocking { session.start() }
+            compose.setContent { MamaGcsTheme {
+                val vehicle by repository.vehicleState.collectAsState()
+                Surface(Modifier.verticalScroll(rememberScrollState())) {
+                    ClassicConnectionCheckPanel(ClassicConnectionCheck.assess(true, link.value, vehicle, 1_000_000, displayTime.longValue))
+                }
+            } }
+            for ((index, prefix) in listOf("v1", "v2").withIndex()) {
+                if (index > 0) {
+                    runBlocking { session.stop() }
+                    clock.set(2_000)
+                    runBlocking { session.start() }
+                    compose.runOnIdle { displayTime.longValue = 2_000; link.value = link.value.copy(connectedAtElapsedMillis = 2_000) }
+                    waitText("SOCKET OPEN · WAITING FOR BYTES")
+                    assertEquals(0L, repository.vehicleState.value.mavlinkDiagnostics.validatedRadioStatusFrames)
+                }
+                val radio = radios.getValue("${prefix}_radio_status")
+                val bad = radio.copyOf().apply { this[lastIndex] = (last().toInt() xor 1).toByte() }
+                emit(bad)
+                compose.waitUntil(10_000) { repository.vehicleState.value.mavlinkDiagnostics.checksumFailures > 0 }
+                assertEquals(0L, repository.vehicleState.value.mavlinkDiagnostics.validatedRadioStatusFrames)
+                emit(radio.copyOfRange(0, 5))
+                emit(radio.copyOfRange(5, radio.size))
+                compose.waitUntil(10_000) { repository.vehicleState.value.mavlinkDiagnostics.validatedRadioStatusFrames == 1L }
+                waitText("VALIDATED RADIO STATUS ONLY")
+                compose.onNodeWithText("4. Autopilot heartbeat: NOT CONFIRMED").assertExists()
+                assertEquals(0L, repository.vehicleState.value.mavlinkDiagnostics.decodedMessages)
+                assertEquals(0L, repository.vehicleState.value.mavlinkDiagnostics.acceptedMessages)
+                assertEquals(false, repository.vehicleState.value.connected)
+                assertEquals(95, repository.vehicleState.value.mavlinkDiagnostics.latestRadioStatus?.rssi)
+                capture("phase110-radio-only-$prefix")
+                emit(radios.getValue("${prefix}_radio_status") + vehicles.getValue("${prefix}_heartbeat"))
+                compose.waitUntil(10_000) { repository.vehicleState.value.mavlinkDiagnostics.acceptedMessages == 1L }
+                waitText("HEARTBEAT RECEIVED · WAITING FOR MEASUREMENTS")
+                compose.onNodeWithText("4. Autopilot heartbeat: FRESH").assertExists()
+                assertEquals(2L, repository.vehicleState.value.mavlinkDiagnostics.validatedRadioStatusFrames)
+                assertEquals(1L, repository.vehicleState.value.mavlinkDiagnostics.decodedMessages)
+                assertEquals(42, repository.vehicleState.value.systemId)
+                compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: NOT CONFIRMED")
+                capture("phase110-mixed-$prefix")
+            }
+            assertEquals(0, transport.sendCount.get())
+        } finally {
+            runBlocking { session.stop() }
+            session.close()
+            scope.cancel()
+        }
+    }
+
     private fun frame(id: Int, length: Int, crc: Int, system: Int = 42, payload: ByteArray = ByteArray(length)): ByteArray {
         val body = byteArrayOf(0xfd.toByte(), payload.size.toByte(), 0, 0, 7, system.toByte(), 1,
             id.toByte(), (id shr 8).toByte(), (id shr 16).toByte()) + payload

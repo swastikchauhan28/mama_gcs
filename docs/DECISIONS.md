@@ -1,5 +1,11 @@
 # Decisions and alternatives
 
+## D-110-01: Independently verify radio-only and mixed Classic streams
+
+- Date: 2026-10-29. User approved Phase 110 and emulator tests; baseline `700e45f4871327ba2c70c7d9ad5c8e122a116ef3`, clean. Model/version unavailable.
+- Choice: generate fixed synthetic MAVLink 1/2 RADIO_STATUS with the previously verified PyMAVLink 2.4.49 wheel, and test parsing plus the in-memory Classic session and actual panel alongside Phase 109 heartbeat frames. Exercise radio-only, corrupt radio, mixed radio/heartbeat, per-session reset and no sends; preserve all production behavior and dependencies.
+- Alternatives: app-generated test frames share its checksum implementation; hardware tracing requires the hardware team and separate authorization. Independent synthetic examples improve interoperability evidence but do not prove physical forwarding, authenticity, vehicle health, exhaustive conformance or safe control. Revisit if real captures or a verified hardware path become available. Baseline is an unexecuted recovery reference, not a release.
+
 ## D-109-01: Validate fixed MAVLink frames from an independent implementation
 
 - Date: 2026-10-29. User approved Phase 109 and offline emulator tests. Baseline `c500ba2d4f97e3b6e9dceefa21ecf7e8e9ea26cc`, clean; model/version unavailable.

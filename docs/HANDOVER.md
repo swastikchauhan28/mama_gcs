@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-10-29 — Phase 110 independent radio status checks
+
+- Done: added independent MAVLink 1/2 radio fixtures and parser/Classic-path tests distinguishing radio-only evidence from a separately received vehicle heartbeat. See [Phase 110](phase-110-report.md) and D-110-01.
+- Verification: 477 JVM tests passed; Android test APK built; 14 targeted emulator tests passed with Android healthy and four synthetic panels visually reviewed. Production debug assembly up-to-date; lint passed (report task up-to-date).
+- In progress: none in this phase.
+- Broken or risky: synthetic fixtures do not confirm physical Cube-to-phone forwarding or trusted identity. The hardware team is investigating the missing Cube heartbeat.
+- Next: review the test and documentation diff; resume read-only hardware localization when the team has evidence.
+- Do not touch: physical hardware, live parameters, outbound commands, user data or unrelated work. Commit/push only when requested.
+
 ## 2026-10-29 — Phase 109 independent MAVLink fixtures
 
 - Done: added synthetic PyMAVLink 2.4.49 MAVLink 1/2 golden vectors and parser/Classic-path tests for heartbeat, RC, system status, truncation and corruption. See [Phase 109](phase-109-report.md) and D-109-01.
