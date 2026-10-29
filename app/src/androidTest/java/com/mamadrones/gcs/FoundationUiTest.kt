@@ -4,6 +4,9 @@ import android.graphics.Bitmap
 import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mamadrones.gcs.domain.model.*
 import com.mamadrones.gcs.presentation.navigation.MamaGcsApp
@@ -142,6 +145,24 @@ class FoundationUiTest {
             captured.recycle()
         }
     }
+    private fun captureWithAppSystemBars(name: String) {
+        val window = compose.activity.window
+        val decor = window.decorView
+        val statusBars = WindowInsetsCompat.Type.statusBars()
+        val wasVisible = ViewCompat.getRootWindowInsets(decor)?.isVisible(statusBars) == true
+        try {
+            // MainActivity hides system bars; match it without changing the fixture globally.
+            compose.runOnUiThread { WindowCompat.getInsetsController(window, decor).hide(statusBars) }
+            compose.waitUntil(10_000) {
+                ViewCompat.getRootWindowInsets(decor)?.isVisible(statusBars) == false
+            }
+            capture(name)
+        } finally {
+            if (wasVisible) compose.runOnUiThread {
+                WindowCompat.getInsetsController(window, decor).show(statusBars)
+            }
+        }
+    }
     private fun launch(vehicle: VehicleState = VehicleState(), connection: ConnectionUiState = ConnectionUiState()) {
         compose.setContent {
             var theme by remember { mutableStateOf(ThemeMode.DARK) }
@@ -230,7 +251,7 @@ class FoundationUiTest {
         compose.onNodeWithText("Light").performScrollTo().performClick()
         compose.waitUntil(10_000) { compose.onAllNodes(hasText("Light") and isSelected()).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Light").assertIsSelected()
-        capture("settings-light")
+        captureWithAppSystemBars("settings-light")
         compose.onNodeWithText("Dark").performScrollTo().performClick()
         compose.waitUntil(10_000) { compose.onAllNodes(hasText("Dark") and isSelected()).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Dark").assertIsSelected()

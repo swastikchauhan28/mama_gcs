@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-114-01: Diagnose the synthetic header against actual system-bar state
+
+- Date: 2026-10-29. User approved Phase 114 and phone tests; baseline `e04fb57d53d5f2d6ca960e347a1ab8489e0d364b`, clean; model/version unavailable.
+- Context: the live dark landscape settings screen appeared clean while the synthetic light landscape screenshot showed white shapes consistent with Android status icons; the empty debug fixture host does not enter MainActivity's immersive mode. This is a hypothesis until explicit insets and screenshot comparison confirm it.
+- Choice: add a narrow synthetic test that compares the same header with system bars shown and hidden, in both themes and orientations, capturing test-only screenshots and checking actual insets and readable title semantics. If confirmed, scope any screenshot correction to this test workflow rather than changing the production status-bar policy or all fixture activities. No saved settings, routes, hardware or commands.
+- Alternatives: change production colors without reproducing the fault (could conceal a test-window issue) or hide bars globally in all test fixtures (unnecessarily affects keyboard and inset tests). Risk: appearance and Android compositor differ across devices; synthetic screenshots do not establish every live display or safe operation. Revisit if live immersive evidence shows the artifact. Baseline is an unexecuted recovery reference, not a verified release.
+
+
 ## D-113-01: Repair phone UI layout and test synchronization
 
 - Date: 2026-10-29. User requested fixes and phone retesting; baseline `a14ce1d58e699e922ee24468015fc11798999ef1`, with existing uncommitted Phase 112 documentation preserved; model/version unavailable.

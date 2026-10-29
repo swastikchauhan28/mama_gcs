@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-10-29 — Phase 114 header screenshot investigation
+
+- Done: confirmed the landscape fixture header overlay follows visible Android status icons; the targeted light screenshot now temporarily hides the status bar. No production UI was changed. See [Phase 114](phase-114-report.md) and D-114-01.
+- Verification: two comparison tests passed on the phone; the targeted Foundation test failed once on missing `menu-more`, then passed on retry with a clear landscape screenshot. Android test build and lint succeeded; JVM tests and production assembly were up to date.
+- In progress: the first navigation failure is unexplained; portrait screenshots showed system icons even when insets reported hidden. Live production light theme was not checked.
+- Broken or risky: eleven data-mutating phone tests remain excluded; complete Android regression and Cube heartbeat remain unverified.
+- Next: investigate navigation failure if it recurs, run excluded checks only in a disposable environment, and resume heartbeat diagnosis when hardware evidence is available.
+- Do not touch: saved user data, physical hardware, live parameters or command paths. Commit/push only when requested.
+
 ## 2026-10-29 — Phase 113 phone UI repairs
 
 - Done: mobile workspace titles can wrap; the waypoint hint test scrolls its lazy list explicitly; the marker test waits for rendering without lowering white/purple thresholds. See [Phase 113](phase-113-report.md) and D-113-01.
