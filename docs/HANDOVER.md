@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-10-29 — Phase 111 independent multi-source checks
+
+- Done: added independent MAVLink 1/2 source fixtures and tests for pre-heartbeat rejection, system/component filtering and fresh-session selection. See [Phase 111](phase-111-report.md) and D-111-01.
+- Verification: 478 JVM tests passed; Android test APK built; 3 targeted emulator tests passed, Android healthy and four connection panels visually reviewed. Production debug assembly up-to-date; lint passed (report task up-to-date).
+- In progress: none in this phase.
+- Broken or risky: simulated source IDs do not establish sender authentication or the physical Cube-to-phone heartbeat. Hardware-team investigation remains open.
+- Next: review the test diff; resume hardware localization when the team has evidence.
+- Do not touch: physical hardware, live parameters, outbound commands, user data or unrelated work. Commit/push only when requested.
+
 ## 2026-10-29 — Phase 110 independent radio status checks
 
 - Done: added independent MAVLink 1/2 radio fixtures and parser/Classic-path tests distinguishing radio-only evidence from a separately received vehicle heartbeat. See [Phase 110](phase-110-report.md) and D-110-01.

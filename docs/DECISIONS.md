@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-111-01: Independently exercise source selection and reconnect
+
+- Date: 2026-10-29. User approved Phase 111 and emulator tests; baseline `61324c3de37b427d3045de23fb7d7c8e388019ed`, clean. Model/version unavailable.
+- Choice: use synthetic PyMAVLink 2.4.49 MAVLink 1/2 fixtures for distinct systems and components alongside Phase 109 frames. Exercise pre-heartbeat rejection, selected-source updates, other-source isolation and new-session reselection through the in-memory Classic path. Keep production trust logic, transport, persistence, dependencies and no-send boundary unchanged.
+- Alternatives: existing app-generated fixtures share the production checksum; physical links require separate hardware-team verification. A fixed test stream proves only covered cases and does not authenticate senders or establish real telemetry safety. Revisit with independently verified real hardware data. The baseline is a recovery reference, not an approved release.
+
+
 ## D-110-01: Independently verify radio-only and mixed Classic streams
 
 - Date: 2026-10-29. User approved Phase 110 and emulator tests; baseline `700e45f4871327ba2c70c7d9ad5c8e122a116ef3`, clean. Model/version unavailable.

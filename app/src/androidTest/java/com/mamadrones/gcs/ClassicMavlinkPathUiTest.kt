@@ -21,6 +21,7 @@ import com.mamadrones.gcs.data.repository.VehicleRepositoryImpl
 import com.mamadrones.gcs.data.transport.VehicleTransport
 import com.mamadrones.gcs.domain.model.*
 import com.mamadrones.gcs.presentation.components.ClassicConnectionCheckPanel
+import com.mamadrones.gcs.presentation.dashboard.RcPwmPanels
 import com.mamadrones.gcs.presentation.theme.MamaGcsTheme
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
@@ -239,6 +240,84 @@ class ClassicMavlinkPathUiTest {
                 assertEquals(42, repository.vehicleState.value.systemId)
                 compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: NOT CONFIRMED")
                 capture("phase110-mixed-$prefix")
+            }
+            assertEquals(0, transport.sendCount.get())
+        } finally {
+            runBlocking { session.stop() }
+            session.close()
+            scope.cancel()
+        }
+    }
+
+    @Test fun independentSourcesRemainIsolatedAndReconnectSelectsAnew() {
+        fun load(name: String) = InstrumentationRegistry.getInstrumentation().context.assets.open(name).bufferedReader().useLines { lines ->
+            lines.filter { it.isNotBlank() && !it.startsWith("#") }.associate { line ->
+                val parts = line.split('=', limit = 2)
+                parts[0] to parts[1].chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+            }
+        }
+        val chosen = load("phase109-vectors.txt")
+        val others = load("phase111-vectors.txt")
+        val clock = AtomicLong(1_000)
+        val displayTime = mutableLongStateOf(1_000)
+        val transport = MemoryClassicTransport()
+        val repository = VehicleRepositoryImpl()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository,
+            heartbeatTimeoutMillis = 30_000, scope = scope, elapsedClock = { clock.get() }, epochClock = { 1_000_000L })
+        val link = mutableStateOf(ConnectionState(TransportStatus.OPEN, connectedAtEpochMillis = 1_000_000,
+            connectedAtElapsedMillis = 1_000))
+        fun emit(bytes: ByteArray) = runBlocking { transport.emit(bytes) }
+        fun restart(at: Long) {
+            runBlocking { session.stop() }
+            clock.set(at)
+            runBlocking { session.start() }
+            compose.runOnIdle { displayTime.longValue = at; link.value = link.value.copy(connectedAtElapsedMillis = at) }
+        }
+        fun rcDisplayed(): String = RcPwmPanels.rc(repository.vehicleState.value, clock.get()).rows.first { it.first == "RC 1" }.second
+        try {
+            runBlocking { session.start() }
+            compose.setContent { MamaGcsTheme {
+                val vehicle by repository.vehicleState.collectAsState()
+                Surface(Modifier.verticalScroll(rememberScrollState())) {
+                    ClassicConnectionCheckPanel(ClassicConnectionCheck.assess(true, link.value, vehicle, 1_000_000, displayTime.longValue))
+                }
+            } }
+            for ((index, prefix) in listOf("v1", "v2").withIndex()) {
+                if (index > 0) restart(3_000)
+                emit(others.getValue("${prefix}_other_system_rc") + others.getValue("${prefix}_other_system_status"))
+                compose.waitUntil(10_000) { repository.vehicleState.value.mavlinkDiagnostics.ignoredBeforeHeartbeat == 2L }
+                assertEquals(null, repository.vehicleState.value.systemId)
+                assertEquals("—", rcDisplayed())
+                emit(chosen.getValue("${prefix}_heartbeat") + chosen.getValue("${prefix}_rc_channels") + chosen.getValue("${prefix}_sys_status"))
+                compose.waitUntil(10_000) { repository.vehicleState.value.mavlinkDiagnostics.acceptedMessages == 3L }
+                assertEquals(42, repository.vehicleState.value.systemId)
+                assertEquals(1, repository.vehicleState.value.componentId)
+                assertEquals("1500 µs", rcDisplayed())
+                assertEquals(67, repository.vehicleState.value.battery.percentage)
+                emit(others.getValue("${prefix}_other_system_heartbeat") + others.getValue("${prefix}_other_system_rc") +
+                    others.getValue("${prefix}_other_system_status") + others.getValue("${prefix}_other_component_heartbeat") +
+                    others.getValue("${prefix}_other_component_rc") + others.getValue("${prefix}_other_component_status"))
+                compose.waitUntil(10_000) { repository.vehicleState.value.mavlinkDiagnostics.ignoredOtherSource == 6L }
+                assertEquals(42, repository.vehicleState.value.systemId)
+                assertEquals(1, repository.vehicleState.value.componentId)
+                assertEquals("1500 µs", rcDisplayed())
+                assertEquals(67, repository.vehicleState.value.battery.percentage)
+                compose.waitUntil(10_000) { compose.onAllNodesWithText("LIVE RECEIVE EVIDENCE").fetchSemanticsNodes().isNotEmpty() }
+                compose.onNodeWithTag("classic-check-measurements").performScrollTo().assertTextEquals("5. Measurement messages: Battery, System status, RC input")
+                capture("phase111-selected-$prefix")
+                restart(if (index == 0) 2_000 else 4_000)
+                assertEquals(null, repository.vehicleState.value.systemId)
+                assertEquals("—", rcDisplayed())
+                emit(others.getValue("${prefix}_other_system_heartbeat") + others.getValue("${prefix}_other_system_rc") + others.getValue("${prefix}_other_system_status"))
+                compose.waitUntil(10_000) { repository.vehicleState.value.mavlinkDiagnostics.acceptedMessages == 3L }
+                assertEquals(99, repository.vehicleState.value.systemId)
+                assertEquals(1, repository.vehicleState.value.componentId)
+                assertEquals("1100 µs", rcDisplayed())
+                assertEquals(30, repository.vehicleState.value.battery.percentage)
+                assertEquals(0L, repository.vehicleState.value.mavlinkDiagnostics.ignoredOtherSource)
+                compose.waitUntil(10_000) { compose.onAllNodesWithText("LIVE RECEIVE EVIDENCE").fetchSemanticsNodes().isNotEmpty() }
+                capture("phase111-reselected-$prefix")
             }
             assertEquals(0, transport.sendCount.get())
         } finally {
