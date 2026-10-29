@@ -43,7 +43,7 @@ fun ClassicConnectionCheckPanel(check: ClassicConnectionAssessment) {
             Text(guidance, Modifier.testTag("classic-check-guidance"))
             Text("RC receipt does not prove stick movement, SBUS wiring, neutral position or safe control.",
                 style = MaterialTheme.typography.bodySmall)
-            Text("5-second display window. Bytes, heartbeat, RC, GPS, position, attitude, Rover HUD and system-status checks use elapsed time; the battery measurement check uses calendar time and may be affected by clock changes. Receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.",
+            Text("5-second display window. Bytes, heartbeat and all listed measurement receipt checks use elapsed time. Battery receipt refers to the SYS_STATUS summary. Receipt is not sensor validity. Read-only check; movement and emergency-stop commands remain unavailable.",
                 style = MaterialTheme.typography.bodySmall)
         }
     }

@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-10-29 — Phase 107 Classic battery-summary receipt timing
+
+- Done: the Classic connection check uses elapsed current-session SYS_STATUS battery-summary sample and accepted SYS_STATUS evidence. Separate battery display and per-pack policies are unchanged. See [Phase 107](phase-107-report.md) and D-107-01.
+- Verification: 472 JVM tests passed; both debug APKs built; 6 targeted emulator checks passed with Android healthy and stale screenshot reviewed. Initial lint passed; 472 unit tests and lint passed again after strengthening the pack-isolation test (lint report task up-to-date).
+- Broken or risky: the five-second window is diagnostic only; message receipt does not establish battery health, source identity or hardware safety.
+- Next: review the diff and investigate the separate Cube-to-phone heartbeat path with the hardware team when available.
+- Do not touch: hardware, live parameters, command paths, persistent user data or unrelated work. Commit/push only when requested.
+
+
 ## 2026-10-29 — Phase 106 Classic system-status receipt timing
 
 - Done: the Classic connection check uses elapsed current-session system-status sample and accepted SYS_STATUS evidence. The separate battery check retains its calendar-time policy. See [Phase 106](phase-106-report.md) and D-106-01.

@@ -46,6 +46,8 @@ object ClassicConnectionCheck {
     // Display freshness, not a validated failsafe or a requested telemetry rate.
     const val FRESH_FOR_MILLIS = 5_000L
 
+    // The calendar argument is retained for existing callers; receipt freshness uses elapsed time.
+    @Suppress("UNUSED_PARAMETER")
     fun assess(active: Boolean, connection: ConnectionState, vehicle: VehicleState,
         nowEpochMillis: Long, nowElapsedMillis: Long? = null): ClassicConnectionAssessment {
         if (connection.status == TransportStatus.ERROR) return ClassicConnectionAssessment(ClassicCheckStage.ERROR)
@@ -85,13 +87,6 @@ object ClassicConnectionCheck {
             return ClassicConnectionAssessment(ClassicCheckStage.WAITING_HEARTBEAT,
                 socketOpen = true, freshBytes = true, freshDecodedMessage = true)
         }
-        // Battery receipt still uses calendar timestamps; do not borrow an invalid epoch boundary.
-        val openedEpoch = connection.connectedAtEpochMillis
-        val startedEpoch = diagnostics.startedAtEpochMillis
-        fun fresh(timestamp: Long?): Boolean = openedEpoch != null && startedEpoch != null &&
-            startedEpoch >= 0 && startedEpoch <= openedEpoch && openedEpoch <= nowEpochMillis &&
-            timestamp != null && timestamp >= openedEpoch && timestamp <= nowEpochMillis &&
-            nowEpochMillis - timestamp <= FRESH_FOR_MILLIS
         // Both elapsed receipts must be current and accepted from the selected autopilot.
         val freshRcChannels = freshElapsed(vehicle.rcInput.lastUpdatedAtElapsedMillis) &&
             diagnostics.messageObservations.any {
@@ -128,11 +123,17 @@ object ClassicConnectionCheck {
                 it.type == ObservedMavlinkMessage.SYS_STATUS && it.accepted > 0 &&
                     freshElapsed(it.lastAcceptedAtElapsedMillis)
             }
+        // This is the SYS_STATUS battery summary, not individual BATTERY_STATUS packs.
+        val freshBattery = freshElapsed(vehicle.battery.lastUpdatedAtElapsedMillis) &&
+            diagnostics.messageObservations.any {
+                it.type == ObservedMavlinkMessage.SYS_STATUS && it.accepted > 0 &&
+                    freshElapsed(it.lastAcceptedAtElapsedMillis)
+            }
         val messages = listOf(
             "GPS" to freshGps,
             "Position" to freshPosition,
             "Attitude" to freshAttitude,
-            "Battery" to fresh(vehicle.battery.lastUpdatedAtEpochMillis),
+            "Battery" to freshBattery,
             "Rover HUD" to freshRoverHud,
             "System status" to freshSystemStatus,
         ).filter { it.second }.map { it.first } + if (freshRcChannels) listOf("RC input") else emptyList()

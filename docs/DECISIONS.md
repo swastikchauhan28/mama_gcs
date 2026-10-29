@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-107-01: Use elapsed SYS_STATUS battery-summary receipt in Classic checks
+
+- Date: 2026-10-29. User approved Phase 107 and offline emulator tests. Baseline `719ba31766e87c5fa9d6a08acba9c1da833b26a2`, clean; model/version unavailable.
+- Choice: require fresh current-Classic-session elapsed battery-summary sample and accepted selected-source SYS_STATUS evidence; no calendar fallback. Keep existing battery display policy, per-pack BATTERY_STATUS handling, reports, source filtering, transport, commands, persistence, dependencies and permissions unchanged. Preserve the epoch argument for API compatibility even though this assessment no longer uses it.
+- Alternatives: calendar-time receipt can jump; sample time without accepted evidence can be misattributed. Do not treat individual BATTERY_STATUS messages as SYS_STATUS summary evidence. Receipt does not authenticate the source or prove battery health or safety. Five seconds is an unverified connection diagnostic; the separate battery display has its own policy. Test missing/stale/future/pre-session/other-source evidence, independent sample and message expiry, clock jumps, reconnection, battery-pack isolation and offline emulator UI. Baseline recovery is unexecuted and not a qualified release.
+
+
 ## D-106-01: Use elapsed selected-source system-status receipt in Classic checks
 
 - Date: 2026-10-29. User approved Phase 106 and offline emulator tests. Baseline `dd63885e2022d3e36268d1c4defb157a9fd1395a`, clean; model/version unavailable.

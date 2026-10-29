@@ -158,7 +158,7 @@ class ClassicConnectionCheckTest {
         val result = assess(vehicle.copy(gps = GpsState(fix = GpsFix.NO_FIX, lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now),
             position = GlobalPositionState(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now),
             mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(heartbeat, positionObservation, attitudeObservation, gpsObservation, hudObservation, systemObservation)),
-            battery = BatteryState(lastUpdatedAtEpochMillis = now),
+            battery = BatteryState(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now),
             roverHud = RoverHudState(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now),
             systemStatus = AutopilotSystemStatus(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now),
             rcInput = RcInputState(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now)))
@@ -403,12 +403,12 @@ class ClassicConnectionCheckTest {
         assertFalse(assess(current, active = false).measurementMessages.contains("System status"))
     }
 
-    @Test fun systemStatusSurvivesCalendarChangesExpiresAndRecoversWithoutChangingBatteryPolicy() {
-        val current = vehicle.copy(attitude = AttitudeState(), battery = BatteryState(lastUpdatedAtEpochMillis = now),
+    @Test fun systemAndBatteryReceiptsSurviveCalendarChangesExpireAndRecover() {
+        val current = vehicle.copy(attitude = AttitudeState(), battery = BatteryState(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now),
             systemStatus = AutopilotSystemStatus(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now),
             mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(heartbeat, systemObservation)))
         for (wall in listOf(1L, Long.MAX_VALUE)) {
-            assertEquals(listOf("System status"), ClassicConnectionCheck.assess(true, connection, current, wall, now).measurementMessages)
+            assertEquals(listOf("Battery", "System status"), ClassicConnectionCheck.assess(true, connection, current, wall, now).measurementMessages)
         }
         assertEquals(listOf("Battery", "System status"), assess(current).measurementMessages)
         val boundary = current.copy(battery = BatteryState(), systemStatus = current.systemStatus.copy(lastUpdatedAtElapsedMillis = now - 5_000),
@@ -418,6 +418,45 @@ class ClassicConnectionCheckTest {
         assertFalse(assess(boundary, time = now + 1).measurementMessages.contains("System status"))
         assertEquals(listOf("Battery", "System status"), assess(current).measurementMessages)
         assertFalse(assess(current, link = connection.copy(connectedAtElapsedMillis = now + 1), time = now + 2).measurementMessages.contains("System status"))
+    }
+
+    @Test fun batterySummaryRequiresCurrentSampleAndAcceptedSysStatus() {
+        val current = vehicle.copy(attitude = AttitudeState(),
+            battery = BatteryState(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now),
+            mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(heartbeat, systemObservation)))
+        assertEquals(listOf("Battery"), assess(current).measurementMessages)
+        for (time in listOf(null, -1L, 9_999L, now - 5_001, now + 1)) {
+            val sample = current.copy(battery = current.battery.copy(lastUpdatedAtElapsedMillis = time))
+            val accepted = current.copy(mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(
+                heartbeat, systemObservation.copy(lastAcceptedAtElapsedMillis = time))))
+            assertFalse(assess(sample).measurementMessages.contains("Battery"))
+            assertFalse(assess(accepted).measurementMessages.contains("Battery"))
+        }
+        val other = current.copy(mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(
+            heartbeat, systemObservation.copy(accepted = 0, otherSource = 1))))
+        assertFalse(assess(other).measurementMessages.contains("Battery"))
+        val packOnly = current.copy(batteries = listOf(BatteryState(batteryId = 1, lastUpdatedAtElapsedMillis = now)),
+            mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(heartbeat,
+                MavlinkMessageObservation(ObservedMavlinkMessage.BATTERY_STATUS, accepted = 1, lastAcceptedAtElapsedMillis = now))))
+        assertFalse(assess(packOnly).measurementMessages.contains("Battery"))
+        assertFalse(assess(current.copy(connectionStatus = VehicleConnectionState.DISCONNECTED)).measurementMessages.contains("Battery"))
+        assertFalse(assess(current, active = false).measurementMessages.contains("Battery"))
+    }
+
+    @Test fun batterySummarySurvivesCalendarChangesExpiresAndRecovers() {
+        val current = vehicle.copy(attitude = AttitudeState(),
+            battery = BatteryState(lastUpdatedAtEpochMillis = now, lastUpdatedAtElapsedMillis = now),
+            mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(heartbeat, systemObservation)))
+        for (wall in listOf(1L, Long.MAX_VALUE)) {
+            assertEquals(listOf("Battery"), ClassicConnectionCheck.assess(true, connection, current, wall, now).measurementMessages)
+        }
+        val boundary = current.copy(battery = current.battery.copy(lastUpdatedAtElapsedMillis = now - 5_000),
+            mavlinkDiagnostics = diagnostics.copy(messageObservations = listOf(heartbeat,
+                systemObservation.copy(lastAcceptedAtElapsedMillis = now - 5_000))))
+        assertTrue(assess(boundary).measurementMessages.contains("Battery"))
+        assertFalse(assess(boundary, time = now + 1).measurementMessages.contains("Battery"))
+        assertEquals(listOf("Battery"), assess(current).measurementMessages)
+        assertFalse(assess(current, link = connection.copy(connectedAtElapsedMillis = now + 1), time = now + 2).measurementMessages.contains("Battery"))
     }
 
 }
