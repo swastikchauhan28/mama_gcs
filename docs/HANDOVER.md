@@ -1,5 +1,23 @@
 # Current handover
 
+## 2026-10-29 — Phase 116 emulator follow-up
+
+- Done: all eleven previously excluded data-changing methods passed on the isolated synthetic emulator after using 3 GB RAM and four CPU cores, without concurrent Gradle work. See [Phase 116](phase-116-report.md) and D-116-02.
+- Verification: four health-gated batches passed 4, 3, 2 and 2 tests, with zero newly observed crash/ANR events in each. Settings screenshot was reviewed; the mission screenshot was obscured by an Android full-screen notice.
+- In progress: emulator resource tuning worked for this run; the earlier ANRs' exact cause and long-term stability remain unproven.
+- Broken or risky: full current Android regression, intermittent menu failure, Cube heartbeat and release gates remain unverified.
+- Next: review the test evidence; use a stable disposable emulator for broader software coverage and separately resume hardware diagnosis when evidence is available.
+- Do not touch: saved phone data, physical hardware, firmware, parameters or vehicle commands. Commit/push only when requested.
+
+## 2026-10-29 — Phase 116 emulator testing incomplete
+
+- Done: reconciled the eleven excluded methods and reviewed their storage/file side effects. See [Phase 116](phase-116-report.md) and D-116-01.
+- Verification: both APK build tasks were up to date. Three task-started emulator attempts encountered Android ANRs; the health gate refused instrumentation on the fresh AVD. None of the eleven methods ran.
+- In progress: Phase 116 awaits a stable disposable emulator; do not treat startup or APK installation as a test pass.
+- Broken or risky: full Android regression, the intermittent menu failure and Cube heartbeat remain unverified. Startup and error evidence is in ignored build output and may disappear on clean.
+- Next: fix or replace the emulator environment without wiping user data, then run the listed methods under the health gate and record results.
+- Do not touch: saved phone data, physical hardware, firmware, parameters or vehicle commands. Commit/push only when requested.
+
 ## 2026-10-29 — Phase 115 menu investigation
 
 - Done: added isolated repeated menu navigation checks, with no production behavior change. See [Phase 115](phase-115-report.md) and D-115-01.

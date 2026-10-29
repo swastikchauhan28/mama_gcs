@@ -1,5 +1,17 @@
 # Decisions and alternatives
 
+## D-116-02: Diagnose emulator stalls with available host resources
+
+- Date: 2026-10-29; user requested repairing the emulator and rerunning the eleven checks. Baseline `428790493292956c817931453303c7d9fe444696` with Phase 116 documentation changes preserved; model/version unavailable.
+- Context: three prior launches produced Android service/system ANRs, including a fresh AVD. WHPX reports usable and the host currently has several GB free. The cause is unproven.
+- Choice: first run the existing synthetic AVD with four virtual cores and 3 GB RAM, no parallel build, no snapshots and no wipe, then inspect startup and use the existing health gate. If background Google services continue to stall, consider a separately recorded emulator-only configuration after confirming its effect; do not change app, production configuration, tests or health checks to obtain a pass. Alternatives: discard failure evidence, modify the populated phone, or install another image without review. Cost: resource tuning may not solve the underlying environment and successful runs do not prove stable operation elsewhere. No physical hardware or operator data is in scope.
+
+## D-116-01: Run previously excluded storage tests on the disposable emulator
+
+- Date: 2026-10-29; user approved Phase 116. Baseline `428790493292956c817931453303c7d9fe444696`, clean; model/version unavailable.
+- Context: eleven Android methods were withheld from the populated phone because they may overwrite settings, routes, or files; previous emulator attempts suffered system ANRs.
+- Choice: reconcile the methods against preserved logs, inspect side effects, use only the previously identified disposable Pixel API 34 emulator without wiping or dismissing errors, and health-gate test batches. Keep hardware tests and the phone excluded. Alternatives: alter operator data on the phone or replace the tests with mocks; these would respectively risk data and lose real persistence/picker coverage. Map flows may use the configured provider, picker tests create and remove uniquely named emulator files, and interruptions may leave synthetic emulator state behind. Revisit if the AVD is unstable or test assumptions do not hold; never treat a retry as erasing a failure. Baseline is a recovery reference, not a validated release.
+
 ## D-115-01: Isolate intermittent menu navigation before changing behavior
 
 - Date: 2026-10-29; user approved Phase 115 and phone tests. Baseline `83992bef4b789a5bc03ee2ba09cee41f33c0af3f`, clean; model/version unavailable.
