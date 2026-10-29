@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-10-29 — Phase 104 Classic GPS receipt timing
+
+- Done: the Classic connection check uses elapsed current-session GPS sample and accepted GPS_RAW_INT evidence, including messages reporting no fix. Other measurement checks retain their existing policies. See [Phase 104](phase-104-report.md) and D-104-01.
+- Verification: 464 JVM tests passed; both debug APKs built; 6 targeted emulator checks passed with Android healthy and stale screenshot reviewed. Lint passed (report task up-to-date).
+- Broken or risky: the five-second window is diagnostic only; message receipt does not establish a GPS fix, accuracy, source identity or hardware safety.
+- Next: review the diff and investigate the separate Cube-to-phone heartbeat path with the hardware team when available.
+- Do not touch: hardware, live parameters, command paths, persistent user data or unrelated work. Commit/push only when requested.
+
+
 ## 2026-10-29 — Phase 103 Classic attitude receipt timing
 
 - Done: the Classic connection check uses elapsed current-session attitude sample and accepted ATTITUDE evidence. Other measurement groups retain their existing policies. See [Phase 103](phase-103-report.md) and D-103-01.

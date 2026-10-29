@@ -71,7 +71,7 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
         )
     }
 
-    fun onGpsRawInt(message: MavlinkMessage.GpsRawInt, receivedAtEpochMillis: Long) {
+    fun onGpsRawInt(message: MavlinkMessage.GpsRawInt, receivedAtEpochMillis: Long, receivedAtElapsedMillis: Long? = null) {
         val validFix = message.fixType in GPS_FIX_2D..GPS_FIX_TYPE_MAX_KNOWN
         val latitude = message.latitudeE7 / DEGREES_E7
         val longitude = message.longitudeE7 / DEGREES_E7
@@ -83,7 +83,8 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
                 latitude = latitude.takeIf { validFix && it in -90.0..90.0 && longitude in -180.0..180.0 },
                 longitude = longitude.takeIf { validFix && latitude in -90.0..90.0 && it in -180.0..180.0 },
                 altitudeMeters = (message.altitudeMillimetersMsl / MILLIMETERS_PER_METER).takeIf { validFix },
-                lastUpdatedAtEpochMillis = receivedAtEpochMillis
+                lastUpdatedAtEpochMillis = receivedAtEpochMillis,
+                lastUpdatedAtElapsedMillis = receivedAtElapsedMillis
             )
         )
     }

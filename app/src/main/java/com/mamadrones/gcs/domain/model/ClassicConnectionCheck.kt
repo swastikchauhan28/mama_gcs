@@ -110,9 +110,14 @@ object ClassicConnectionCheck {
                 it.type == ObservedMavlinkMessage.ATTITUDE && it.accepted > 0 &&
                     freshElapsed(it.lastAcceptedAtElapsedMillis)
             }
-        // Receipt is distinct from sensor validity: a GPS message can report NO_FIX.
+        // A received GPS message can still report NO_FIX.
+        val freshGps = freshElapsed(vehicle.gps.lastUpdatedAtElapsedMillis) &&
+            diagnostics.messageObservations.any {
+                it.type == ObservedMavlinkMessage.GPS_RAW_INT && it.accepted > 0 &&
+                    freshElapsed(it.lastAcceptedAtElapsedMillis)
+            }
         val messages = listOf(
-            "GPS" to fresh(vehicle.gps.lastUpdatedAtEpochMillis),
+            "GPS" to freshGps,
             "Position" to freshPosition,
             "Attitude" to freshAttitude,
             "Battery" to fresh(vehicle.battery.lastUpdatedAtEpochMillis),

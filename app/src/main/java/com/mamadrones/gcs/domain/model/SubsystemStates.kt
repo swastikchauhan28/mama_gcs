@@ -14,7 +14,9 @@ data class GpsState(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val altitudeMeters: Double? = null,
-    val lastUpdatedAtEpochMillis: Long? = null
+    val lastUpdatedAtEpochMillis: Long? = null,
+    // Volatile selected-source receipt time; it does not imply a GPS fix.
+    val lastUpdatedAtElapsedMillis: Long? = null
 )
 
 data class BatteryState(
