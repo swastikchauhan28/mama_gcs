@@ -1,5 +1,11 @@
 # Decisions and alternatives
 
+## D-099-01: Use elapsed receipt evidence for RC input display
+
+- Date: 2026-10-29. User approved Phase 99 and offline emulator testing. Model/version unavailable. Baseline `d0de263869ca437698394606a57089d6d9505d48`, clean.
+- Choice: derive RC panel freshness and sample age from volatile elapsed session, selected-heartbeat, RC sample and accepted selected-autopilot observation times, with the existing five-second diagnostic window and UI timer. Require active connected session and valid current-session evidence; missing, negative, future, pre-session or stale evidence hides values. No calendar-time fallback. Preserve wall-clock timestamps and existing PWM and RC activity behavior. Do not change source selection, decoding, command capabilities, persistence, dependencies or permissions.
+- Alternatives: calendar time can jump and present stale values as current; relying on sample time alone can misattribute a source. Elapsed time and protocol identities do not authenticate the peer or prove physical safety, stick movement or wiring; five seconds is not a verified hardware rate. Test wall-clock jumps, invalid evidence, independently stale heartbeat/sample/accepted observation, recovery and session reset plus offline emulator UI and PWM regression. Scoped reversal to baseline is unexecuted and not a verified release.
+
 ## D-098-01: Use elapsed receipt time for Classic RC_CHANNELS
 
 - Date: 2026-10-28. User approved Phase 98 and offline emulator testing. Model/version unavailable. Git HEAD `7921c5d90b410a077540b776efe8a265a279bf95` with the uncommitted Phase 97 change set documented in the Phase 97 report and handover. Tracked baseline diff and untracked Phase 97 report copied to temporary `mama-phase98-baseline-20261028-173135` for recovery; not a verified release.

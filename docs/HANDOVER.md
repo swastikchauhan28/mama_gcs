@@ -2,6 +2,28 @@
 
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
+## 2026-10-29 — Phase 99 RC input display timing
+
+### Done
+
+- The RC input panel uses elapsed current-session, selected-heartbeat, RC sample and accepted-observation evidence before displaying channel values. PWM and the RC activity recorder retain their existing calendar-time policies. See [Phase 99](phase-99-report.md).
+
+### In progress
+
+- Phase 99 publication was requested; check Git for current commit and remote status. Fresh JVM run passed 452/452; debug builds and lint passed. Emulator retry passed 5/5 with a controlled RC clock; a separate actual RC timer check passed 1/1. The initial 4/5 run and test-only changes after lint are documented in the phase report.
+
+### Broken or risky
+
+- Five seconds remains an unverified diagnostic threshold. Receipt does not establish physical stick movement, calibration, wiring, vehicle identity or safety. PWM, RC activity and other measurement timing remain calendar-dependent; hardware and sleep/wake are unverified.
+
+### Next
+
+- Review the phase report and outstanding hardware evidence before field use.
+
+### Do not touch
+
+- Physical operation, Cube/radio settings, command paths, persistent user data and unrelated work remain outside this phase.
+
 ## 2026-10-28 — Phase 98 Classic RC receipt timing
 
 ### Done

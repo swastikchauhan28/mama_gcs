@@ -1,6 +1,7 @@
 package com.mamadrones.gcs
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.mamadrones.gcs.domain.model.*
 import com.mamadrones.gcs.presentation.screens.RcPwmContent
+import com.mamadrones.gcs.presentation.screens.RcPwmScreen
 import java.io.File
 import org.junit.Rule
 import org.junit.Test
@@ -60,6 +62,59 @@ class RcPwmScreenTest {
         compose.onNodeWithText("1501 µs").performScrollTo().assertIsDisplayed()
         for (value in listOf(1601, 1701, 1801)) compose.onNodeWithText("$value µs").assertDoesNotExist()
         compose.onNodeWithTag("pwm-port-3").assertIsNotSelected()
+    }
+
+    @Test fun rcValuesExpireAndRecoverWhenElapsedTimeAdvances() {
+        val elapsed = mutableStateOf(10_000L)
+        val heartbeat = MavlinkMessageObservation(ObservedMavlinkMessage.HEARTBEAT, accepted = 1, lastAcceptedAtElapsedMillis = 10_000)
+        val rc = MavlinkMessageObservation(ObservedMavlinkMessage.RC_CHANNELS, accepted = 1, lastAcceptedAtElapsedMillis = 10_000)
+        val state = mutableStateOf(VehicleState(systemId = 1, componentId = 1, connectionStatus = VehicleConnectionState.CONNECTED,
+            lastHeartbeatAtEpochMillis = 10_000, lastHeartbeatAtElapsedMillis = 10_000,
+            rcInput = RcInputState(1, listOf(1500), 99, 10_000, 10_000),
+            mavlinkDiagnostics = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,
+                startedAtEpochMillis = 1_000, startedAtElapsedMillis = 1_000, messageObservations = listOf(heartbeat, rc))))
+        compose.setContent { MaterialTheme { RcPwmContent(state.value, 10_000, nowElapsedMillis = elapsed.value) } }
+        compose.onNodeWithText("1500 µs").performScrollTo().assertIsDisplayed()
+        compose.runOnIdle {
+            elapsed.value = 15_001
+            state.value = state.value.copy(lastHeartbeatAtElapsedMillis = 15_001,
+                mavlinkDiagnostics = state.value.mavlinkDiagnostics.copy(messageObservations = listOf(
+                    heartbeat.copy(lastAcceptedAtElapsedMillis = 15_001), rc)))
+        }
+        compose.onNodeWithText("STALE · VALUES HIDDEN").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("1500 µs").assertDoesNotExist()
+        capture("phase99-rc-stale")
+        compose.runOnIdle {
+            state.value = state.value.copy(rcInput = state.value.rcInput.copy(lastUpdatedAtElapsedMillis = 15_001),
+                mavlinkDiagnostics = state.value.mavlinkDiagnostics.copy(messageObservations = listOf(
+                    heartbeat.copy(lastAcceptedAtElapsedMillis = 15_001), rc.copy(lastAcceptedAtElapsedMillis = 15_001))))
+        }
+        compose.onNodeWithText("1500 µs").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun realRcDisplayTimerHidesValuesWithoutNewMessages() {
+        val state = mutableStateOf(VehicleState())
+        compose.setContent { MaterialTheme { RcPwmScreen(state.value) } }
+        fun freshSample(): VehicleState {
+            val elapsed = android.os.SystemClock.elapsedRealtime()
+            val wall = System.currentTimeMillis()
+            return VehicleState(systemId = 1, componentId = 1, connectionStatus = VehicleConnectionState.CONNECTED,
+                lastHeartbeatAtEpochMillis = wall, lastHeartbeatAtElapsedMillis = elapsed,
+                rcInput = RcInputState(1, listOf(1500), 99, wall, elapsed),
+                mavlinkDiagnostics = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,
+                    startedAtEpochMillis = wall - 1_000, startedAtElapsedMillis = elapsed - 1_000,
+                    messageObservations = listOf(
+                        MavlinkMessageObservation(ObservedMavlinkMessage.HEARTBEAT, accepted = 1, lastAcceptedAtElapsedMillis = elapsed),
+                        MavlinkMessageObservation(ObservedMavlinkMessage.RC_CHANNELS, accepted = 1, lastAcceptedAtElapsedMillis = elapsed))))
+        }
+        compose.onNodeWithText("RC inputs · RC_CHANNELS", substring = true, ignoreCase = true).performScrollTo()
+        compose.runOnIdle { state.value = freshSample() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("1500 µs").fetchSemanticsNodes().isNotEmpty() }
+        // No state changes: the actual screen ticker must hide the old value.
+        compose.waitUntil(12_000) { compose.onAllNodesWithText("1500 µs").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithText("1500 µs").assertDoesNotExist()
+        compose.runOnIdle { state.value = freshSample() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("1500 µs").fetchSemanticsNodes().isNotEmpty() }
     }
 
     private fun selectPort(port: Int) {

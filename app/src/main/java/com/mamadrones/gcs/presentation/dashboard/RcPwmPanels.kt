@@ -1,6 +1,7 @@
 package com.mamadrones.gcs.presentation.dashboard
 
 import com.mamadrones.gcs.domain.model.VehicleState
+import com.mamadrones.gcs.domain.model.ObservedMavlinkMessage
 import com.mamadrones.gcs.presentation.components.PanelSpec
 
 /** The five-second display window is a UI timeout, never a hardware failsafe. */
@@ -20,10 +21,38 @@ object RcPwmPanels {
         return "RECENTLY RECEIVED · NOT VERIFIED"
     }
 
-    fun rc(state: VehicleState, now: Long): PanelSpec {
+    /** RC uses elapsed receipt evidence; PWM intentionally retains its calendar-time policy. */
+    fun rc(state: VehicleState, nowElapsedMillis: Long?): PanelSpec {
         val sample = state.rcInput
-        val status = sampleStatus(state, sample.lastUpdatedAtEpochMillis, now)
+        val diagnostics = state.mavlinkDiagnostics
+        val started = diagnostics.startedAtElapsedMillis
+        val sampleAt = sample.lastUpdatedAtElapsedMillis
+        val now = nowElapsedMillis
+        fun current(time: Long?): Boolean = started != null && started >= 0 && now != null && now >= started &&
+            time != null && time >= started && time <= now && now - time <= DISPLAY_WINDOW_MILLIS
+        fun accepted(type: ObservedMavlinkMessage): Boolean = diagnostics.messageObservations.any {
+            it.type == type && it.accepted > 0 && current(it.lastAcceptedAtElapsedMillis)
+        }
+        val status = when {
+            sampleAt == null && sample.lastUpdatedAtEpochMillis == null -> "NOT RECEIVED"
+            !state.connected || !diagnostics.active -> "LINK NOT LIVE · VALUES HIDDEN"
+            started == null || started < 0 || now == null || now < started || sampleAt == null || sampleAt < 0 ->
+                "ELAPSED TIME UNAVAILABLE · VALUES HIDDEN"
+            sampleAt < started -> "NOT FROM CURRENT SESSION"
+            sampleAt > now -> "CLOCK INCONSISTENT · VALUES HIDDEN"
+            state.systemId == null || state.systemId !in 1..255 || state.componentId == null || state.componentId !in 1..255 -> "AUTOPILOT NOT CONFIRMED · VALUES HIDDEN"
+            !current(state.lastHeartbeatAtElapsedMillis) || !accepted(ObservedMavlinkMessage.HEARTBEAT) ->
+                "HEARTBEAT NOT CURRENT · VALUES HIDDEN"
+            now - sampleAt > DISPLAY_WINDOW_MILLIS -> "STALE · VALUES HIDDEN"
+            !accepted(ObservedMavlinkMessage.RC_CHANNELS) -> "RC RECEIPT NOT CONFIRMED · VALUES HIDDEN"
+            else -> "RECENTLY RECEIVED · NOT VERIFIED"
+        }
         val show = status == "RECENTLY RECEIVED · NOT VERIFIED"
+        val sampleAge = when {
+            sampleAt == null -> "Elapsed receipt time unavailable"
+            now == null || sampleAt < 0 || now < 0 || sampleAt > now -> "Elapsed receipt time inconsistent"
+            else -> "Last received ${(now - sampleAt) / 1_000} s ago (elapsed time)"
+        }
         return PanelSpec("RC inputs · RC_CHANNELS", status,
             listOf(
                 "Reported channel count" to if (show) sample.channelCount?.toString() ?: "UNKNOWN" else "—",
@@ -31,7 +60,7 @@ object RcPwmPanels {
             ) + List(18) { index -> "RC ${index + 1}" to if (show)
                 sample.channelsMicroseconds.getOrNull(index)?.let { "$it µs" } ?: "UNUSED / UNAVAILABLE"
                 else "—" },
-            note = "${age(sample.lastUpdatedAtEpochMillis, now)}. First 18 channels only; reported count may be larger. " +
+            note = "$sampleAge. First 18 channels only; reported count may be larger. " +
                 "RSSI is not a percentage. No channel-to-stick mapping or neutral calibration is assumed.")
     }
 

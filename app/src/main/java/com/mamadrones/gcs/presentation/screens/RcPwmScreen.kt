@@ -21,11 +21,14 @@ fun RcPwmScreen(state: VehicleState, modifier: Modifier = Modifier) {
     val now by produceState(System.currentTimeMillis()) {
         while (true) { delay(500); value = System.currentTimeMillis() }
     }
-    RcPwmContent(state, now, modifier)
+    val nowElapsed by produceState(android.os.SystemClock.elapsedRealtime()) {
+        while (true) { delay(500); value = android.os.SystemClock.elapsedRealtime() }
+    }
+    RcPwmContent(state, now, modifier, nowElapsed)
 }
 
 @Composable
-fun RcPwmContent(state: VehicleState, now: Long, modifier: Modifier = Modifier) = ScreenBody(modifier) {
+fun RcPwmContent(state: VehicleState, now: Long, modifier: Modifier = Modifier, nowElapsedMillis: Long? = null) = ScreenBody(modifier) {
     var selectedPort by rememberSaveable { mutableStateOf<Int?>(null) }
     val ports = state.pwmOutputs.map { it.port }.distinct().sorted()
     val port = selectedPort?.takeIf { it in ports } ?: ports.firstOrNull()
@@ -34,7 +37,7 @@ fun RcPwmContent(state: VehicleState, now: Long, modifier: Modifier = Modifier) 
         "Use only a hardware-team-secured test setup. The app cannot stop the rover.")
     RcInputActivityPanel(state, now)
     if (port == null) {
-        SubsystemCard(RcPwmPanels.rc(state, now))
+        SubsystemCard(RcPwmPanels.rc(state, nowElapsedMillis))
         Notice("PWM OUTPUTS NOT RECEIVED", "No SERVO_OUTPUT_RAW sample has arrived from the selected autopilot in this session.")
     } else {
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -43,9 +46,9 @@ fun RcPwmContent(state: VehicleState, now: Long, modifier: Modifier = Modifier) 
                     label = { Text("Port $candidate") }, modifier = Modifier.testTag("pwm-port-$candidate"))
             }
         }
-        CardGrid(listOf(RcPwmPanels.rc(state, now), RcPwmPanels.pwm(state, port, now)))
+        CardGrid(listOf(RcPwmPanels.rc(state, nowElapsedMillis), RcPwmPanels.pwm(state, port, now)))
     }
     Notice("MONITOR LIMITS", "Up to four reported output ports are retained per session. Channel numbers and port values do not verify MAIN/AUX or left/right wiring. " +
-        "Values are hidden after five seconds without a new sample, or when the heartbeat/link is not current. " +
+        "Values are hidden after five seconds without a new sample, or when the heartbeat/link is not current. RC display uses elapsed time; PWM and the RC activity recorder use calendar time. " +
         "This is a display timeout, not a failsafe. If messages are absent, ask the hardware team to check the telemetry stream; the app does not request rates or change parameters.")
 }
