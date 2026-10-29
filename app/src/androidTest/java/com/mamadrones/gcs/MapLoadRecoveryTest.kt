@@ -425,40 +425,56 @@ class MapLoadRecoveryTest {
             } finally {
                 compose.runOnIdle { mapView.removeOnDidFinishRenderingFrameListener(frameListener) }
             }
-            val screenshot = requireNotNull(androidx.test.platform.app.InstrumentationRegistry
-                .getInstrumentation().uiAutomation.takeScreenshot())
+            var centerX = 0
+            var centerY = 0
+            compose.runOnIdle {
+                val view = requireNotNull(findMap(compose.activity.window.decorView))
+                val location = IntArray(2)
+                view.getLocationOnScreen(location)
+                val home = map.projection.toScreenLocation(org.maplibre.android.geometry.LatLng(-35.3631, 149.1651))
+                centerX = (location[0] + home.x).roundToInt()
+                centerY = (location[1] + home.y).roundToInt()
+            }
+            var screenshot: android.graphics.Bitmap? = null
+            var whiteCenterPixels = 0
+            var purpleCenterPixels = 0
             try {
-                File(compose.activity.getExternalFilesDir(null), "phase52-home-marker.png").outputStream().use {
-                    assertTrue(screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+                // Symbol layers can still be fading after the first rendered frames. Preserve
+                // the strict white-H and purple-center checks while waiting for full rendering.
+                compose.waitUntil(10_000) {
+                    compose.runOnIdle { map.triggerRepaint() }
+                    val next = androidx.test.platform.app.InstrumentationRegistry
+                        .getInstrumentation().uiAutomation.takeScreenshot()
+                    if (next == null) false else {
+                        screenshot?.recycle()
+                        screenshot = next
+                        whiteCenterPixels = 0
+                        purpleCenterPixels = 0
+                        if (centerX < 7 || centerY < 7 || centerX + 7 >= next.width || centerY + 7 >= next.height) {
+                            false
+                        } else {
+                            for (dy in -7..7) for (dx in -7..7) {
+                                val pixel = next.getPixel(centerX + dx, centerY + dy)
+                                if (android.graphics.Color.red(pixel) >= 220 &&
+                                    android.graphics.Color.green(pixel) >= 220 &&
+                                    android.graphics.Color.blue(pixel) >= 220) whiteCenterPixels++
+                                if (kotlin.math.abs(android.graphics.Color.red(pixel) - 114) <= 20 &&
+                                    kotlin.math.abs(android.graphics.Color.green(pixel) - 74) <= 20 &&
+                                    kotlin.math.abs(android.graphics.Color.blue(pixel) - 200) <= 20) purpleCenterPixels++
+                            }
+                            whiteCenterPixels >= 3 && purpleCenterPixels >= 10
+                        }
+                    }
                 }
-                var centerX = 0
-                var centerY = 0
-                compose.runOnIdle {
-                    val view = requireNotNull(findMap(compose.activity.window.decorView))
-                    val location = IntArray(2)
-                    view.getLocationOnScreen(location)
-                    val home = map.projection.toScreenLocation(org.maplibre.android.geometry.LatLng(-35.3631, 149.1651))
-                    centerX = (location[0] + home.x).roundToInt()
-                    centerY = (location[1] + home.y).roundToInt()
-                }
-                // The map source/layer can exist while its actual H icon is still invisible.
-                // Sample only the center, far inside the white circle border and away from the vehicle.
-                var whiteCenterPixels = 0
-                var purpleCenterPixels = 0
-                for (dy in -7..7) for (dx in -7..7) {
-                    val pixel = screenshot.getPixel(centerX + dx, centerY + dy)
-                    if (android.graphics.Color.red(pixel) >= 220 &&
-                        android.graphics.Color.green(pixel) >= 220 &&
-                        android.graphics.Color.blue(pixel) >= 220) whiteCenterPixels++
-                    if (kotlin.math.abs(android.graphics.Color.red(pixel) - 114) <= 20 &&
-                        kotlin.math.abs(android.graphics.Color.green(pixel) - 74) <= 20 &&
-                        kotlin.math.abs(android.graphics.Color.blue(pixel) - 200) <= 20) purpleCenterPixels++
+                val captured = requireNotNull(screenshot)
+                File(compose.activity.getExternalFilesDir(null), "phase113-home-marker.png").outputStream().use {
+                    assertTrue(captured.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
                 }
                 assertTrue("Projected home is not the purple marker: $purpleCenterPixels purple pixels at $centerX,$centerY",
                     purpleCenterPixels >= 10)
                 assertTrue("Home H is not visible at $centerX,$centerY: $whiteCenterPixels white pixels",
                     whiteCenterPixels >= 3)
-            } finally { screenshot.recycle() }
+            } finally { screenshot?.recycle() }
             awaitPosition(map, -35.363)
             compose.runOnIdle {
                 assertNotNull(map.style!!.getLayer("mama-home-marker"))

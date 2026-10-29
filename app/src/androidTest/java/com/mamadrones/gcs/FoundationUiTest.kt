@@ -223,6 +223,8 @@ class FoundationUiTest {
         compose.openMissionFiles()
         compose.onNodeWithText("Import route file").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Export GPX").performScrollTo().assertIsDisplayed()
+        // The hint is inside a lazy-list item; first bring the item into the viewport.
+        compose.onNodeWithTag("mission-editor").performScrollToNode(hasText("Tap a numbered point to edit it", substring = true))
         compose.onNodeWithText("Tap a numbered point to edit it", substring = true).performScrollTo().assertIsDisplayed()
         compose.openWorkspace("general")
         compose.onNodeWithText("Light").performScrollTo().performClick()

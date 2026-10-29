@@ -107,7 +107,7 @@ fun StationShell(
                                 maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Text(workspace, Modifier.weight(1f).padding(horizontal = 8.dp).testTag("workspace-title"),
-                            style = MaterialTheme.typography.titleSmall, maxLines = if (wide) 1 else 2,
+                            style = MaterialTheme.typography.titleSmall, maxLines = if (wide) 1 else Int.MAX_VALUE,
                             overflow = TextOverflow.Ellipsis)
                         if (wide) ConnectionShortcut(live.connectionStatus) { onNavigate("settings") }
                     }

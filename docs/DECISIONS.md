@@ -1,5 +1,20 @@
 # Decisions and alternatives
 
+## D-113-01: Repair phone UI layout and test synchronization
+
+- Date: 2026-10-29. User requested fixes and phone retesting; baseline `a14ce1d58e699e922ee24468015fc11798999ef1`, with existing uncommitted Phase 112 documentation preserved; model/version unavailable.
+- Context: on phone, 320 dp/2x text ellipsized the workspace title; a long lazy-list item was not fully brought into view by the test; a home marker screenshot captured the visible H during its fade, giving blended rather than white center pixels. A separate map retry timed out before load.
+- Choice: let mobile titles use needed lines, have the navigation test scroll its lazy list to the waypoint hint without removing visibility assertions, and wait for a rendered home marker satisfying the existing white/purple pixel criteria before evaluating expiry. Keep map identity/RC semantics, persistence, permissions, dependencies, network destinations, and command boundaries unchanged.
+- Alternatives: truncating labels hides meaning; merely changing the expected white threshold or removing visibility assertions hides a real rendering failure; instantaneous captures are vulnerable to marker fade. Risks include taller headers on constrained screens and renderer timing differences. Revisit on different device densities and field hardware; do not treat test success as authentication, sensor validity or safe operation. Recovery is a scoped reviewed inverse against the baseline, not an already validated release.
+
+
+## D-112-01: Run the inventoried software regression on a disposable emulator
+
+- Date: 2026-10-29. User approved Phase 112; baseline `a14ce1d58e699e922ee24468015fc11798999ef1`, clean; model/version unavailable.
+- Choice: inventory the current non-hardware Android tests, run disjoint batches with the existing health-gated runner on the identified disposable AVD using the documented software renderer without wiping data, and report executed, failed, skipped and excluded cases. Some tests temporarily mutate emulator-only settings/drafts or create test-owned files and clean up; map tests may access the existing configured map provider. Exclude the four-method physical BLE class. Preserve failures and app data.
+- Alternatives: repeat only recent focused tests (less app-wide evidence) or run all classes without review (could include physical operations). Emulator instability, network availability, assumptions and local-test cleanup limit evidence; no run establishes physical acceptance, authentication or release readiness. Revisit with a stable device and separate hardware authorization. Recovery is a scoped review, not an executed release rollback.
+
+
 ## D-111-01: Independently exercise source selection and reconnect
 
 - Date: 2026-10-29. User approved Phase 111 and emulator tests; baseline `61324c3de37b427d3045de23fb7d7c8e388019ed`, clean. Model/version unavailable.

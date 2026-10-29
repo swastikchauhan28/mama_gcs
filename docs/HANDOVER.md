@@ -1,5 +1,30 @@
 # Current handover
 
+## 2026-10-29 — Phase 113 phone UI repairs
+
+- Done: mobile workspace titles can wrap; the waypoint hint test scrolls its lazy list explicitly; the marker test waits for rendering without lowering white/purple thresholds. See [Phase 113](phase-113-report.md) and D-113-01.
+- Verification: 478 JVM tests passed; debug and test APKs built; all 3 formerly failing tests plus 2 related layout checks passed on the user's phone, with clean observed health and synthetic screenshots reviewed. Lint passed (report task up-to-date).
+- In progress: none for these three checks; preserve Phase 112's original failures and other uncommitted documentation.
+- Broken or risky: eleven phone tests remain excluded by user request; broader Android regression and real Cube heartbeat remain unverified. Larger titles take more vertical space; the synthetic landscape settings capture had undiagnosed top-label artifacts. No hardware/safety claim follows from these checks.
+- Next: review the full diff and test evidence; run excluded tests only in a safe disposable environment and continue hardware diagnosis separately.
+- Do not touch: saved user data, physical hardware, live parameters, command paths or unrelated work. Commit/push only when requested.
+
+## 2026-10-29 — Phase 112 phone software follow-up
+
+- Done: with user approval, updated the phone app and test APK in place. Ran 182 distinct non-hardware software methods; 179 passed at least once. Six interrupted freshness/foundation checks and the RC expiry check passed on retry. See [Phase 112](phase-112-report.md) for all failures and evidence.
+- In progress: 3 phone checks remain unresolved: home-marker white-pixel assertion/map retry, waypoint hint visibility and enlarged workspace title ellipsis. Eleven tests were not run because they temporarily replace saved routes or preferences; user chose to keep phone data unchanged.
+- Broken or risky: the prior full emulator suite remains incomplete; synthetic phone results do not verify Cube telemetry, source authenticity or hardware safety. Test screenshots and a synthetic GeoJSON remain on the phone.
+- Next: investigate the three phone failures and use a stable disposable environment for data-mutating tests; do not assume retries erase failed runs.
+- Do not touch: saved user data, physical hardware, live parameters, outbound commands or unrelated work. Commit/push only when requested.
+
+## 2026-10-29 — Phase 112 software regression incomplete
+
+- Done: inventoried 44 software Android classes (193 declared tests), excluded the 4 physical BLE tests, reviewed emulator-only storage and existing map-provider side effects. Fresh JVM rerun: 478 tests passed; debug build and lint checks passed with tasks up-to-date. See [Phase 112](phase-112-report.md) and D-112-01.
+- In progress: Android software regression has not started; the health-gated runner refused a System UI ANR dialog and later startup also recorded an ANR. Three no-wipe emulator boot attempts and logs are recorded; task-started emulator stopped.
+- Broken or risky: no current full Android suite result; synthetic/unit results do not verify physical telemetry or safety. Hardware team's heartbeat investigation remains open.
+- Next: restore a stable emulator environment, rerun the inventoried non-hardware batches and record all failures, skips and Android health.
+- Do not touch: physical hardware, app data, live parameters, outbound commands or unrelated work; do not dismiss ANR dialogs or wipe data to force acceptance. Commit/push only when requested.
+
 ## 2026-10-29 — Phase 111 independent multi-source checks
 
 - Done: added independent MAVLink 1/2 source fixtures and tests for pre-heartbeat rejection, system/component filtering and fresh-session selection. See [Phase 111](phase-111-report.md) and D-111-01.
