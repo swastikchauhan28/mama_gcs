@@ -67,7 +67,9 @@ data class RoverHudState(
     val throttlePercent: Int? = null,
     val altitudeMetersMsl: Double? = null,
     val climbRateMetersPerSecond: Double? = null,
-    val lastUpdatedAtEpochMillis: Long? = null
+    val lastUpdatedAtEpochMillis: Long? = null,
+    // Volatile selected-source receipt time; not proof of physical movement.
+    val lastUpdatedAtElapsedMillis: Long? = null
 )
 
 data class AutopilotSystemStatus(

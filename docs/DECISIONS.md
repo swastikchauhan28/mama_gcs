@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-105-01: Use elapsed selected-source Rover HUD receipt in Classic checks
+
+- Date: 2026-10-29. User approved Phase 105 and offline emulator tests. Baseline `eeca1cb273935fdbb51823f26cdb9cba65c5e906`, clean; model/version unavailable.
+- Choice: forward the existing session elapsed receipt timestamp into volatile Rover HUD state and require fresh current-Classic-session sample and accepted VFR_HUD evidence without calendar fallback. Keep calendar timestamps for existing reports and other measurement checks unchanged. No source filtering, transport, command, persistence, dependency or permission changes.
+- Alternatives: calendar-time freshness can jump; sample time alone cannot establish selected-source acceptance. Receipt does not authenticate the source or prove reported speed, movement or physical safety; the five-second window is not a failsafe. Verify missing, stale, future, pre-session and other-source evidence, calendar jumps, recovery and offline emulator UI. Baseline recovery is unexecuted and not a qualified release.
+
+
 ## D-104-01: Use elapsed selected-source GPS receipt in Classic checks
 
 - Date: 2026-10-29. User approved Phase 104 and offline emulator tests. Baseline `d6071123c7b332d3b7c34d5514730a538a3dbaee`, clean; model/version unavailable.

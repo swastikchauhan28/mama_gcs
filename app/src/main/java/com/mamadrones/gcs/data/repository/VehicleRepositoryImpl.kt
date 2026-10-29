@@ -137,7 +137,7 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
         )
     }
 
-    fun onVfrHud(message: MavlinkMessage.VfrHud, receivedAtEpochMillis: Long) {
+    fun onVfrHud(message: MavlinkMessage.VfrHud, receivedAtEpochMillis: Long, receivedAtElapsedMillis: Long? = null) {
         _vehicleState.value = _vehicleState.value.copy(
             roverHud = RoverHudState(
                 groundSpeedMetersPerSecond = message.groundSpeedMetersPerSecond
@@ -146,7 +146,8 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
                 throttlePercent = message.throttlePercent.takeIf { it in 0..100 },
                 altitudeMetersMsl = message.altitudeMetersMsl.toDouble().takeIf(Double::isFinite),
                 climbRateMetersPerSecond = message.climbRateMetersPerSecond.toDouble().takeIf(Double::isFinite),
-                lastUpdatedAtEpochMillis = receivedAtEpochMillis
+                lastUpdatedAtEpochMillis = receivedAtEpochMillis,
+                lastUpdatedAtElapsedMillis = receivedAtElapsedMillis
             )
         )
     }

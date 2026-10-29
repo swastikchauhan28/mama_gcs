@@ -116,12 +116,18 @@ object ClassicConnectionCheck {
                 it.type == ObservedMavlinkMessage.GPS_RAW_INT && it.accepted > 0 &&
                     freshElapsed(it.lastAcceptedAtElapsedMillis)
             }
+        // HUD message receipt does not establish physical speed or movement.
+        val freshRoverHud = freshElapsed(vehicle.roverHud.lastUpdatedAtElapsedMillis) &&
+            diagnostics.messageObservations.any {
+                it.type == ObservedMavlinkMessage.VFR_HUD && it.accepted > 0 &&
+                    freshElapsed(it.lastAcceptedAtElapsedMillis)
+            }
         val messages = listOf(
             "GPS" to freshGps,
             "Position" to freshPosition,
             "Attitude" to freshAttitude,
             "Battery" to fresh(vehicle.battery.lastUpdatedAtEpochMillis),
-            "Rover HUD" to fresh(vehicle.roverHud.lastUpdatedAtEpochMillis),
+            "Rover HUD" to freshRoverHud,
             "System status" to fresh(vehicle.systemStatus.lastUpdatedAtEpochMillis),
         ).filter { it.second }.map { it.first } + if (freshRcChannels) listOf("RC input") else emptyList()
         return ClassicConnectionAssessment(
