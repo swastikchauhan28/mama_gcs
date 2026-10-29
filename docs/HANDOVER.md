@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-10-29 — Phase 109 independent MAVLink fixtures
+
+- Done: added synthetic PyMAVLink 2.4.49 MAVLink 1/2 golden vectors and parser/Classic-path tests for heartbeat, RC, system status, truncation and corruption. See [Phase 109](phase-109-report.md) and D-109-01.
+- Verification: 476 JVM tests passed; Android test APK built; 2 targeted emulator tests passed, Android healthy and both panels visually reviewed. Production debug assembly up-to-date; lint passed (report task up-to-date).
+- Broken or risky: fixtures do not verify the physical Cube-to-phone heartbeat, sensor accuracy or source authentication; hardware-team investigation remains open.
+- Next: review these uncommitted test and documentation changes; investigate the physical telemetry path when hardware is available.
+- Do not touch: hardware, live parameters, command paths, persistent user data or unrelated work. Commit/push only when requested.
+
 ## 2026-10-29 — Phase 108 synthetic Classic receive path
 
 - Done: added test-only synthetic MAVLink integration through the Classic parser, session, selected-source routing, repository, assessment and connection panel, including expiry, recovery and reconnect. See [Phase 108](phase-108-report.md) and D-108-01.

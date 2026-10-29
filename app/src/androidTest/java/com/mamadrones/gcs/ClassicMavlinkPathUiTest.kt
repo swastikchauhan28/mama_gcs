@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.test.platform.app.InstrumentationRegistry
 import com.mamadrones.gcs.data.mavlink.MavlinkChecksum
 import com.mamadrones.gcs.data.mavlink.MavlinkMessageRouter
 import com.mamadrones.gcs.data.mavlink.MavlinkParser
@@ -101,6 +102,74 @@ class ClassicMavlinkPathUiTest {
             compose.runOnIdle { displayTime.longValue = 7_000; link.value = link.value.copy(connectedAtElapsedMillis = 7_000) }
             waitStatus("SOCKET OPEN · WAITING FOR BYTES")
             compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: NOT CONFIRMED")
+            assertEquals(0, transport.sendCount.get())
+        } finally {
+            runBlocking { session.stop() }
+            session.close()
+            scope.cancel()
+        }
+    }
+
+    @Test fun independentPymavlinkV1AndV2FramesReachClassicPanel() {
+        val vectors = InstrumentationRegistry.getInstrumentation().context.assets.open("phase109-vectors.txt").bufferedReader().useLines { lines ->
+            lines.filter { it.isNotBlank() && !it.startsWith("#") }.associate { line ->
+                val parts = line.split('=', limit = 2)
+                parts[0] to parts[1].chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+            }
+        }
+        val clock = AtomicLong(1_000)
+        val displayTime = mutableLongStateOf(1_000)
+        val transport = MemoryClassicTransport()
+        val repository = VehicleRepositoryImpl()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository,
+            heartbeatTimeoutMillis = 30_000, scope = scope, elapsedClock = { clock.get() }, epochClock = { 1_000_000L })
+        val link = mutableStateOf(ConnectionState(TransportStatus.OPEN, connectedAtEpochMillis = 1_000_000,
+            connectedAtElapsedMillis = 1_000))
+        fun emit(bytes: ByteArray) = runBlocking { transport.emit(bytes) }
+        try {
+            runBlocking { session.start() }
+            compose.setContent { MamaGcsTheme {
+                val vehicle by repository.vehicleState.collectAsState()
+                Surface(Modifier.verticalScroll(rememberScrollState())) {
+                    ClassicConnectionCheckPanel(ClassicConnectionCheck.assess(true, link.value, vehicle, 1_000_000, displayTime.longValue))
+                }
+            } }
+            for ((index, prefix) in listOf("v1", "v2").withIndex()) {
+                if (index > 0) {
+                    runBlocking { session.stop() }
+                    clock.set(2_000)
+                    runBlocking { session.start() }
+                    compose.runOnIdle { displayTime.longValue = 2_000; link.value = link.value.copy(connectedAtElapsedMillis = 2_000) }
+                }
+                val heartbeat = vectors.getValue("${prefix}_heartbeat")
+                val corrupt = heartbeat.copyOf().apply { this[lastIndex] = (last().toInt() xor 1).toByte() }
+                emit(corrupt)
+                compose.waitUntil(10_000) { repository.vehicleState.value.mavlinkDiagnostics.checksumFailures > 0 }
+                compose.onNodeWithTag("classic-check-measurements").assertTextEquals("5. Measurement messages: NOT CONFIRMED")
+                emit(heartbeat.copyOfRange(0, 5))
+                emit(heartbeat.copyOfRange(5, heartbeat.size))
+                emit(vectors.getValue("${prefix}_rc_channels") + vectors.getValue("${prefix}_sys_status"))
+                compose.waitUntil(10_000) { repository.vehicleState.value.mavlinkDiagnostics.acceptedMessages >= 3L }
+                compose.waitUntil(10_000) { compose.onAllNodesWithText("LIVE RECEIVE EVIDENCE").fetchSemanticsNodes().isNotEmpty() }
+                val state = repository.vehicleState.value
+                assertEquals(42, state.systemId)
+                assertEquals(1500, state.rcInput.channelsMicroseconds[0])
+                assertEquals(1700, state.rcInput.channelsMicroseconds[1])
+                assertEquals(67, state.battery.percentage)
+                assertEquals(24.6, requireNotNull(state.battery.voltage), 0.001)
+                assertEquals(if (prefix == "v1") 3L else 0L, state.mavlinkDiagnostics.decodedV1Messages)
+                assertEquals(if (prefix == "v2") 3L else 0L, state.mavlinkDiagnostics.decodedV2Messages)
+                compose.onNodeWithTag("classic-check-measurements").performScrollTo().assertTextEquals("5. Measurement messages: Battery, System status, RC input")
+                compose.onNodeWithTag("classic-check-rc-status").assertTextEquals("6. RC_CHANNELS from selected autopilot: FRESH")
+                capture("phase109-independent-$prefix")
+                if (prefix == "v2") {
+                    emit(vectors.getValue("v2_rc_zero_rssi") + vectors.getValue("v2_sys_zero_remaining"))
+                    compose.waitUntil(10_000) { repository.vehicleState.value.mavlinkDiagnostics.acceptedMessages >= 5L }
+                    assertEquals(0, repository.vehicleState.value.rcInput.rssiRaw)
+                    assertEquals(0, repository.vehicleState.value.battery.percentage)
+                }
+            }
             assertEquals(0, transport.sendCount.get())
         } finally {
             runBlocking { session.stop() }

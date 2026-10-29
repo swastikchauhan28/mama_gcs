@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-109-01: Validate fixed MAVLink frames from an independent implementation
+
+- Date: 2026-10-29. User approved Phase 109 and offline emulator tests. Baseline `c500ba2d4f97e3b6e9dceefa21ecf7e8e9ea26cc`, clean; model/version unavailable.
+- Choice: create fixed synthetic MAVLink 1 and 2 fixtures using a pinned official PyMAVLink release in a temporary directory, record exact provenance and generation inputs, and test Mama GCS parsing and Classic path without runtime or build dependencies on the generator. Verify expected decoded fields, version and source, corruption rejection, and emulator presentation. Preserve previous hardware and command boundaries.
+- Alternatives: app-generated checksums share the implementation under test; downloading or running a generator on user data would expand scope. Fixtures contain synthetic values only; independent implementation agreement is not authentication, full protocol conformance, sensor validity or physical hardware verification. A narrow source reversal is an unexecuted recovery option, not a qualified release.
+
+
 ## D-108-01: Exercise Classic receive path with synthetic MAVLink
 
 - Date: 2026-10-29. User approved Phase 108 and offline emulator testing. Baseline `44c154f6bfbf525e0d39b8d4f39e68869e32ec6e`, clean; model/version unavailable.
