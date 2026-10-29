@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-108-01: Exercise Classic receive path with synthetic MAVLink
+
+- Date: 2026-10-29. User approved Phase 108 and offline emulator testing. Baseline `44c154f6bfbf525e0d39b8d4f39e68869e32ec6e`, clean; model/version unavailable.
+- Choice: use checksum-valid and corrupted synthetic MAVLink frames through an in-memory Classic transport, production parser, session, selected-source routing, repository, assessment and actual connection panel on the emulator. Verify fragmented input, accepted measurements, other-source rejection, stale evidence, recovery, reconnect and no outbound transport sends. Use a controlled elapsed clock for repeatable expiry; keep a separate existing real-clock screen test. No production behavior, hardware, source filters, dependencies, persistence or network destinations are changed.
+- Alternatives: isolated model fixtures cannot verify decoder-to-screen integration; physical telemetry would require hardware-team availability and separate authorization. Synthetic checks cannot verify radio links, physical devices, authenticated identity, fix accuracy or safe motion. Preserve failures and report targeted coverage honestly. Recovery to the baseline is unexecuted, not a qualified release.
+
+
 ## D-107-01: Use elapsed SYS_STATUS battery-summary receipt in Classic checks
 
 - Date: 2026-10-29. User approved Phase 107 and offline emulator tests. Baseline `719ba31766e87c5fa9d6a08acba9c1da833b26a2`, clean; model/version unavailable.

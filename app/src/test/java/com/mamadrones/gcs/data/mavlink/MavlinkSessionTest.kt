@@ -6,6 +6,8 @@ import com.mamadrones.gcs.domain.model.ConnectionState
 import com.mamadrones.gcs.domain.model.TransportStatus
 import com.mamadrones.gcs.domain.model.VehicleConnectionState
 import com.mamadrones.gcs.domain.model.TelemetryLinkKind
+import com.mamadrones.gcs.domain.model.ClassicConnectionCheck
+import com.mamadrones.gcs.domain.model.ClassicCheckStage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -174,6 +176,47 @@ class MavlinkSessionTest {
             assertEquals(1L, repository.vehicleState.value.mavlinkDiagnostics.messageObservations.first { it.type.messageId == 1 }.otherSource)
             session.stop(); session.start()
             assertNull(repository.vehicleState.value.systemStatus.lastUpdatedAtElapsedMillis)
+        } finally { session.stop(); session.close() }
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun `classic frames feed complete current session evidence and expire independently`() = runTest {
+        val transport = FakeTransport(TelemetryLinkKind.CLASSIC)
+        val repository = VehicleRepositoryImpl()
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository,
+            heartbeatTimeoutMillis = 30_000, scope = this, elapsedClock = { testScheduler.currentTime }, epochClock = { 1_000_000L })
+        var link = ConnectionState(TransportStatus.OPEN, connectedAtEpochMillis = 1_000_000L, connectedAtElapsedMillis = 0)
+        fun frame(id: Int, length: Int, crc: Int, system: Int = 42, payload: ByteArray = ByteArray(length)) =
+            mavlinkTestFrame(id, payload, crc, system, 1)
+        fun assessment() = ClassicConnectionCheck.assess(true, link, repository.vehicleState.value, 1_000_000L, testScheduler.currentTime)
+        try {
+            session.start()
+            val bad = heartbeatFrame(systemId = 42).also { it[it.lastIndex] = (it.last().toInt() xor 1).toByte() }
+            transport.emit(bad); runCurrent()
+            assertEquals(ClassicCheckStage.WAITING_MAVLINK, assessment().stage)
+            val heartbeat = heartbeatFrame(systemId = 42)
+            transport.emit(heartbeat.copyOfRange(0, 5)); runCurrent()
+            assertEquals(ClassicCheckStage.WAITING_MAVLINK, assessment().stage)
+            transport.emit(heartbeat.copyOfRange(5, heartbeat.size)); runCurrent()
+            assertEquals(ClassicCheckStage.WAITING_MEASUREMENTS, assessment().stage)
+            transport.emit(frame(24, 30, 24, 99)); runCurrent()
+            assertEquals(ClassicCheckStage.WAITING_MEASUREMENTS, assessment().stage)
+            assertEquals(1L, repository.vehicleState.value.mavlinkDiagnostics.ignoredOtherSource)
+            val rc = ByteArray(42).apply { putUInt16(4, 1500); this[40] = 1; this[41] = 255.toByte() }
+            transport.emit(frame(24,30,24) + frame(33,28,104) + frame(30,28,39) + frame(74,20,20) +
+                frame(1,31,124) + frame(65,42,118,payload = rc)); runCurrent()
+            assertEquals(listOf("GPS", "Position", "Attitude", "Battery", "Rover HUD", "System status", "RC input"), assessment().measurementMessages)
+            assertTrue(assessment().freshRcChannels)
+            advanceTimeBy(5_001); runCurrent()
+            transport.emit(heartbeatFrame(systemId = 42)); runCurrent()
+            assertEquals(ClassicCheckStage.WAITING_MEASUREMENTS, assessment().stage)
+            assertTrue(assessment().measurementMessages.isEmpty())
+            transport.emit(frame(1,31,124) + frame(65,42,118,payload = rc)); runCurrent()
+            assertEquals(listOf("Battery", "System status", "RC input"), assessment().measurementMessages)
+            session.stop(); session.start()
+            link = link.copy(connectedAtElapsedMillis = testScheduler.currentTime)
+            assertEquals(ClassicCheckStage.WAITING_BYTES, assessment().stage)
+            assertTrue(repository.vehicleState.value.mavlinkDiagnostics.messageObservations.isEmpty())
         } finally { session.stop(); session.close() }
     }
 
@@ -572,8 +615,7 @@ class MavlinkSessionTest {
         return mavlinkTestFrame(33, payload, 104, systemId = systemId, componentId = 1)
     }
 
-    private class FakeTransport : VehicleTransport {
-        override val linkKind = TelemetryLinkKind.BLE
+    private class FakeTransport(override val linkKind: TelemetryLinkKind = TelemetryLinkKind.BLE) : VehicleTransport {
         override val connectionState = MutableStateFlow(ConnectionState())
         private val packets = MutableSharedFlow<ByteArray>(extraBufferCapacity = 8)
         override suspend fun connect() {

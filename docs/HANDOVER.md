@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-10-29 — Phase 108 synthetic Classic receive path
+
+- Done: added test-only synthetic MAVLink integration through the Classic parser, session, selected-source routing, repository, assessment and connection panel, including expiry, recovery and reconnect. See [Phase 108](phase-108-report.md) and D-108-01.
+- Verification: 473 JVM tests passed; Android test APK built; 2 targeted emulator tests passed with Android healthy and live/stale screenshots reviewed. Production debug app build was up to date; lint passed (report task up-to-date).
+- Broken or risky: synthetic frames do not prove physical Cube-to-phone heartbeat, source authentication, sensor accuracy or safety; the five-second window is diagnostic only.
+- Next: review the diff and investigate the separate Cube-to-phone heartbeat path with the hardware team when available.
+- Do not touch: hardware, live parameters, commands, persistent user data or unrelated work. Commit/push only when requested.
+
+
 ## 2026-10-29 — Phase 107 Classic battery-summary receipt timing
 
 - Done: the Classic connection check uses elapsed current-session SYS_STATUS battery-summary sample and accepted SYS_STATUS evidence. Separate battery display and per-pack policies are unchanged. See [Phase 107](phase-107-report.md) and D-107-01.
