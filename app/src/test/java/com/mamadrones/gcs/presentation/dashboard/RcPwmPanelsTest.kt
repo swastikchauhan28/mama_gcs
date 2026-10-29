@@ -9,13 +9,15 @@ class RcPwmPanelsTest {
         accepted = 1, lastAcceptedAtElapsedMillis = 10_000)
     private val rcObservation = MavlinkMessageObservation(ObservedMavlinkMessage.RC_CHANNELS,
         accepted = 1, lastAcceptedAtElapsedMillis = 10_000)
+    private val pwmObservation = MavlinkMessageObservation(ObservedMavlinkMessage.SERVO_OUTPUT_RAW,
+        accepted = 1, lastAcceptedAtElapsedMillis = 10_000)
     private val state = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
         systemId = 1, componentId = 1, lastHeartbeatAtEpochMillis = 10_000,
         lastHeartbeatAtElapsedMillis = 10_000,
         mavlinkDiagnostics = MavlinkDiagnostics(active = true, startedAtEpochMillis = 1_000,
-            startedAtElapsedMillis = 1_000, messageObservations = listOf(heartbeat, rcObservation)),
+            startedAtElapsedMillis = 1_000, messageObservations = listOf(heartbeat, rcObservation, pwmObservation)),
         rcInput = RcInputState(2, listOf(1500, 2000), 200, 10_000, 10_000),
-        pwmOutputs = listOf(PwmOutputState(0, listOf(1501, 0), 10_000)))
+        pwmOutputs = listOf(PwmOutputState(0, listOf(1501, 0), 10_000, 10_000)))
 
     @Test fun freshRawValuesAreNumberedNotMappedOrScaled() {
         val rc = RcPwmPanels.rc(state, 11_000)
@@ -94,6 +96,36 @@ class RcPwmPanelsTest {
         assertEquals("1500 µs", RcPwmPanels.rc(recovered, 15_001).rows.toMap()["RC 1"])
         assertEquals("1500 µs", RcPwmPanels.rc(state, 15_000).rows.toMap()["RC 1"])
         assertTrue(RcPwmPanels.rc(state.copy(mavlinkDiagnostics = state.mavlinkDiagnostics.copy(startedAtElapsedMillis = 10_001)), 11_000).rows.all { it.second == "—" })
+    }
+
+    @Test fun pwmPortsExpireIndependentlyAndRecoverAfterWallClockChanges() {
+        val advanced = state.copy(lastHeartbeatAtEpochMillis = Long.MAX_VALUE, lastHeartbeatAtElapsedMillis = 15_001,
+            mavlinkDiagnostics = state.mavlinkDiagnostics.copy(startedAtEpochMillis = Long.MAX_VALUE,
+                messageObservations = listOf(heartbeat.copy(lastAcceptedAtElapsedMillis = 15_001),
+                    pwmObservation.copy(lastAcceptedAtElapsedMillis = 15_001))),
+            pwmOutputs = listOf(PwmOutputState(0, listOf(1501), Long.MAX_VALUE, 10_000),
+                PwmOutputState(1, listOf(1701), 0, 15_001)))
+        assertEquals("STALE · VALUES HIDDEN", RcPwmPanels.pwm(advanced, 0, 15_001).status)
+        assertEquals("1701 µs", RcPwmPanels.pwm(advanced, 1, 15_001).rows.toMap()["Output field 1"])
+        val recovered = advanced.copy(pwmOutputs = listOf(PwmOutputState(0, listOf(1502), 0, 15_001)))
+        assertEquals("1502 µs", RcPwmPanels.pwm(recovered, 0, 15_001).rows.toMap()["Output field 1"])
+        assertEquals("1501 µs", RcPwmPanels.pwm(state, 0, 15_000).rows.toMap()["Output field 1"])
+    }
+
+    @Test fun pwmMissingInvalidAndUnacceptedEvidenceFailsClosed() {
+        val output = state.pwmOutputs.single()
+        val variants = listOf(state.copy(systemId = null), state.copy(componentId = 0),
+            state.copy(lastHeartbeatAtElapsedMillis = null),
+            state.copy(pwmOutputs = listOf(output.copy(lastUpdatedAtElapsedMillis = null))),
+            state.copy(pwmOutputs = listOf(output.copy(lastUpdatedAtElapsedMillis = 999))),
+            state.copy(pwmOutputs = listOf(output.copy(lastUpdatedAtElapsedMillis = 11_001))),
+            state.copy(mavlinkDiagnostics = state.mavlinkDiagnostics.copy(startedAtElapsedMillis = null)),
+            state.copy(mavlinkDiagnostics = state.mavlinkDiagnostics.copy(messageObservations = listOf(heartbeat))),
+            state.copy(mavlinkDiagnostics = state.mavlinkDiagnostics.copy(messageObservations = listOf(heartbeat, pwmObservation.copy(accepted = 0)))),
+            state.copy(mavlinkDiagnostics = state.mavlinkDiagnostics.copy(messageObservations = listOf(heartbeat, pwmObservation.copy(lastAcceptedAtElapsedMillis = 11_001)))))
+        variants.forEach { assertTrue(RcPwmPanels.pwm(it, 0, 11_000).rows.all { row -> row.second == "—" }) }
+        assertTrue(RcPwmPanels.pwm(state, 0, null).rows.all { it.second == "—" })
+        assertTrue(RcPwmPanels.pwm(state.copy(mavlinkDiagnostics = state.mavlinkDiagnostics.copy(startedAtElapsedMillis = 10_001)), 0, 11_000).rows.all { it.second == "—" })
     }
 
 }

@@ -14,4 +14,6 @@ data class PwmOutputState(
     val port: Int,
     val outputsMicroseconds: List<Int?> = emptyList(),
     val lastUpdatedAtEpochMillis: Long? = null,
+    // Volatile receipt time for this port; never a physical-output confirmation.
+    val lastUpdatedAtElapsedMillis: Long? = null,
 )

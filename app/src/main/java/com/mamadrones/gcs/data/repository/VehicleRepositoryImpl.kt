@@ -45,7 +45,7 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
         )) }
     }
 
-    fun onServoOutputRaw(message: MavlinkMessage.ServoOutputRaw, receivedAtEpochMillis: Long) {
+    fun onServoOutputRaw(message: MavlinkMessage.ServoOutputRaw, receivedAtEpochMillis: Long, receivedAtElapsedMillis: Long? = null) {
         if (message.port !in 0..255) return
         _vehicleState.update { current ->
             // Keep the first four distinct ports; existing ports continue updating.
@@ -53,7 +53,7 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
             else current.copy(pwmOutputs = (current.pwmOutputs.filterNot { it.port == message.port } +
                 PwmOutputState(message.port, List(16) { index ->
                     message.outputsMicroseconds.getOrNull(index)?.takeIf { it in 0..65_535 }
-                }, receivedAtEpochMillis)).sortedBy { it.port })
+                }, receivedAtEpochMillis, receivedAtElapsedMillis)).sortedBy { it.port })
         }
     }
 

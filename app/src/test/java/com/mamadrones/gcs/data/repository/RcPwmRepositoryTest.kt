@@ -29,13 +29,15 @@ class RcPwmRepositoryTest {
 
     @Test fun outputPortsStaySeparateAndBoundedAndExistingPortsCanUpdate() {
         val repo = VehicleRepositoryImpl()
-        repeat(6) { port -> repo.onServoOutputRaw(MavlinkMessage.ServoOutputRaw(1, 1, port, listOf(1000 + port)), 100) }
+        repeat(6) { port -> repo.onServoOutputRaw(MavlinkMessage.ServoOutputRaw(1, 1, port, listOf(1000 + port)), 100, 101) }
         assertEquals(listOf(0, 1, 2, 3), repo.vehicleState.value.pwmOutputs.map { it.port })
-        repo.onServoOutputRaw(MavlinkMessage.ServoOutputRaw(1, 1, 1, listOf(1500, 0)), 200)
+        repo.onServoOutputRaw(MavlinkMessage.ServoOutputRaw(1, 1, 1, listOf(1500, 0)), 200, 201)
         val ports = repo.vehicleState.value.pwmOutputs
         assertEquals(1000, ports[0].outputsMicroseconds[0])
         assertEquals(listOf(1500, 0) + List<Int?>(14) { null }, ports[1].outputsMicroseconds)
         assertEquals(200L, ports[1].lastUpdatedAtEpochMillis)
+        assertEquals(101L, ports[0].lastUpdatedAtElapsedMillis)
+        assertEquals(201L, ports[1].lastUpdatedAtElapsedMillis)
     }
 
     @Test fun restartClearsRcAndPwmWhileDisconnectRetainsOnlyHistoricalSamples() {

@@ -192,6 +192,8 @@ class MavlinkSessionTest {
             assertEquals(1L, observed.getValue(65).beforeHeartbeat)
             assertEquals(2L, observed.getValue(65).otherSource)
             assertEquals(1L, observed.getValue(36).accepted)
+            assertTrue(state.pwmOutputs.single().lastUpdatedAtElapsedMillis != null)
+            assertEquals(state.pwmOutputs.single().lastUpdatedAtElapsedMillis, observed.getValue(36).lastAcceptedAtElapsedMillis)
             assertEquals(1L, observed.getValue(36).otherSource)
             session.stop()
             assertFalse(repository.vehicleState.value.mavlinkDiagnostics.active)

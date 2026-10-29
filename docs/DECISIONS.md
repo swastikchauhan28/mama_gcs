@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-101-01: Use elapsed receipt evidence per PWM port
+
+- Date: 2026-10-29. User approved Phase 101 and offline emulator tests. Baseline `cd41b87a6f609855c4ea3ad4c057f7f8278a06e5`, clean; model/version unavailable.
+- Choice: forward the existing selected-source elapsed receipt time to each bounded PWM port sample and use current-session elapsed heartbeat, accepted heartbeat and accepted SERVO_OUTPUT_RAW evidence with that port's own sample timestamp. Fail closed on missing, stale, future or pre-session evidence; retain calendar timestamps for existing reports. Keep the five-second diagnostic window and the existing screen ticker. No source filter, transport, commands, persistence, dependencies or hardware changes.
+- Alternatives: calendar-time freshness can jump; using only a global accepted timestamp can make an older port appear current when another port receives data. Per-port elapsed receipt reduces this risk but does not authenticate the sender or verify physical outputs. Test independent ports, invalid evidence, wall-clock jumps, session changes, expiry and recovery on synthetic fixtures and an offline emulator. The timeout is not a hardware failsafe; hardware and deep-sleep behavior are unverified. Recovery to baseline is unexecuted and not a verified release.
+
+
 ## D-100-01: Use elapsed evidence for RC activity recording
 
 - Date: 2026-10-29. User approved Phase 100 and offline emulator testing. Model/version unavailable. Baseline `0647c05253774c3e0e504861aef223aedbb70a2e`, clean.

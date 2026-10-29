@@ -18,17 +18,14 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun RcPwmScreen(state: VehicleState, modifier: Modifier = Modifier) {
-    val now by produceState(System.currentTimeMillis()) {
-        while (true) { delay(500); value = System.currentTimeMillis() }
-    }
     val nowElapsed by produceState(android.os.SystemClock.elapsedRealtime()) {
         while (true) { delay(500); value = android.os.SystemClock.elapsedRealtime() }
     }
-    RcPwmContent(state, now, modifier, nowElapsed)
+    RcPwmContent(state, modifier, nowElapsed)
 }
 
 @Composable
-fun RcPwmContent(state: VehicleState, now: Long, modifier: Modifier = Modifier, nowElapsedMillis: Long? = null) = ScreenBody(modifier) {
+fun RcPwmContent(state: VehicleState, modifier: Modifier = Modifier, nowElapsedMillis: Long? = null) = ScreenBody(modifier) {
     var selectedPort by rememberSaveable { mutableStateOf<Int?>(null) }
     val ports = state.pwmOutputs.map { it.port }.distinct().sorted()
     val port = selectedPort?.takeIf { it in ports } ?: ports.firstOrNull()
@@ -46,9 +43,9 @@ fun RcPwmContent(state: VehicleState, now: Long, modifier: Modifier = Modifier, 
                     label = { Text("Port $candidate") }, modifier = Modifier.testTag("pwm-port-$candidate"))
             }
         }
-        CardGrid(listOf(RcPwmPanels.rc(state, nowElapsedMillis), RcPwmPanels.pwm(state, port, now)))
+        CardGrid(listOf(RcPwmPanels.rc(state, nowElapsedMillis), RcPwmPanels.pwm(state, port, nowElapsedMillis)))
     }
     Notice("MONITOR LIMITS", "Up to four reported output ports are retained per session. Channel numbers and port values do not verify MAIN/AUX or left/right wiring. " +
-        "Values are hidden after five seconds without a new sample, or when the heartbeat/link is not current. RC display and activity use elapsed time; PWM uses calendar time. " +
+        "Values are hidden after five seconds without a new sample, or when the heartbeat/link is not current. RC display, activity and PWM use elapsed receipt time. " +
         "This is a display timeout, not a failsafe. If messages are absent, ask the hardware team to check the telemetry stream; the app does not request rates or change parameters.")
 }

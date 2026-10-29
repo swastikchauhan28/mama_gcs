@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-10-29 — Phase 101 PWM output timing
+
+- Done: PWM display uses elapsed selected-source heartbeat and per-port receipt evidence; stale, missing or inconsistent timing hides values. See [Phase 101](phase-101-report.md) and D-101-01.
+- Verification: 456 JVM tests and 12 targeted emulator tests passed; debug APKs built and stale-port screenshot inspected. The first unit-test compilation failed on a missing assertion import, corrected on rerun. Lint passed.
+- Broken or risky: the five-second window is a diagnostic, not a physical failsafe. Emulator tests do not verify hardware, deep sleep, source identity or PWM-to-actuator mapping.
+- Next: review the diff; investigate the separate Cube-to-phone heartbeat path with the hardware team when available.
+- Do not touch: physical hardware, live parameters, command paths, persistent user data or unrelated work. Commit/push only when requested.
+
+
 ## 2026-10-29 — Phase 100 RC activity timing
 
 - Done: RC activity observation now uses elapsed session, selected heartbeat and accepted RC evidence, retaining bounded historical ranges on interruption. PWM timing is unchanged. See [Phase 100](phase-100-report.md) and D-100-01.
