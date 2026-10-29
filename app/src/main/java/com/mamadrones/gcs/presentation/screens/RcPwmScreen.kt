@@ -35,7 +35,7 @@ fun RcPwmContent(state: VehicleState, now: Long, modifier: Modifier = Modifier, 
     ScreenHeader("RC & PWM monitor", "Receive-only · no calibration or output commands")
     Notice("OBSERVATION ONLY", "These are autopilot-reported values, not measurements of motor movement or proof of a safe stop. " +
         "Use only a hardware-team-secured test setup. The app cannot stop the rover.")
-    RcInputActivityPanel(state, now)
+    RcInputActivityPanel(state, nowElapsedMillis ?: -1L)
     if (port == null) {
         SubsystemCard(RcPwmPanels.rc(state, nowElapsedMillis))
         Notice("PWM OUTPUTS NOT RECEIVED", "No SERVO_OUTPUT_RAW sample has arrived from the selected autopilot in this session.")
@@ -49,6 +49,6 @@ fun RcPwmContent(state: VehicleState, now: Long, modifier: Modifier = Modifier, 
         CardGrid(listOf(RcPwmPanels.rc(state, nowElapsedMillis), RcPwmPanels.pwm(state, port, now)))
     }
     Notice("MONITOR LIMITS", "Up to four reported output ports are retained per session. Channel numbers and port values do not verify MAIN/AUX or left/right wiring. " +
-        "Values are hidden after five seconds without a new sample, or when the heartbeat/link is not current. RC display uses elapsed time; PWM and the RC activity recorder use calendar time. " +
+        "Values are hidden after five seconds without a new sample, or when the heartbeat/link is not current. RC display and activity use elapsed time; PWM uses calendar time. " +
         "This is a display timeout, not a failsafe. If messages are absent, ask the hardware team to check the telemetry stream; the app does not request rates or change parameters.")
 }

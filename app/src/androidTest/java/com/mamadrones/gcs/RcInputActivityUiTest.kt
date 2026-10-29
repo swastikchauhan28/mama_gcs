@@ -26,11 +26,12 @@ import org.junit.Test
 /** Synthetic fixtures only; never opens a radio or sends vehicle commands. */
 class RcInputActivityUiTest {
     @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
-    private fun vehicle(at: Long = 10_000, value: Int = 1501) = VehicleState(
+    private fun vehicle(at: Long = 10_000, value: Int = 1501, elapsedAt: Long = at) = VehicleState(
         systemId = 1, componentId = 1, connectionStatus = VehicleConnectionState.CONNECTED,
-        lastHeartbeatAtEpochMillis = at,
-        mavlinkDiagnostics = MavlinkDiagnostics(active = true, startedAtEpochMillis = 1_000),
-        rcInput = RcInputState(channelCount = 1, channelsMicroseconds = listOf(value), lastUpdatedAtEpochMillis = at))
+        lastHeartbeatAtEpochMillis = at, lastHeartbeatAtElapsedMillis = elapsedAt,
+        mavlinkDiagnostics = MavlinkDiagnostics(active = true, startedAtEpochMillis = 1_000, startedAtElapsedMillis = 1_000,
+            messageObservations = listOf(ObservedMavlinkMessage.HEARTBEAT, ObservedMavlinkMessage.RC_CHANNELS).map { MavlinkMessageObservation(type = it, accepted = 1, lastAcceptedAtElapsedMillis = elapsedAt) }),
+        rcInput = RcInputState(channelCount = 1, channelsMicroseconds = listOf(value), lastUpdatedAtEpochMillis = at, lastUpdatedAtElapsedMillis = elapsedAt))
 
     @Test fun missingEvidenceDisablesStart() {
         compose.setContent { MaterialTheme { RcInputActivityPanel(VehicleState(), 10_000) } }
@@ -107,9 +108,9 @@ class RcInputActivityUiTest {
     }
 
     @Test fun realScreenTimerInterruptsWithoutNewPackets() {
-        val state = mutableStateOf(vehicle(System.currentTimeMillis()))
+        val state = mutableStateOf(vehicle(System.currentTimeMillis(), elapsedAt = android.os.SystemClock.elapsedRealtime()))
         compose.setContent { MaterialTheme { RcPwmScreen(state.value) } }
-        compose.runOnIdle { state.value = vehicle(System.currentTimeMillis()) }
+        compose.runOnIdle { state.value = vehicle(System.currentTimeMillis(), elapsedAt = android.os.SystemClock.elapsedRealtime()) }
         compose.waitUntil(timeoutMillis = 3_000) {
             compose.onAllNodes(hasTestTag("rc-activity-start") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
         }
@@ -120,4 +121,18 @@ class RcInputActivityUiTest {
         }
         compose.onNodeWithTag("rc-activity-range-1").assertTextEquals("RC 1: min 1501 · max 1501 · span 0")
     }
+    @Test fun clockChangesKeepActivityUntilElapsedEvidenceExpires() {
+        val state = mutableStateOf(vehicle())
+        val elapsed = mutableStateOf(10_000L)
+        compose.setContent { MaterialTheme { Column(Modifier.verticalScroll(rememberScrollState())) {
+            RcInputActivityPanel(state.value, elapsed.value)
+        } } }
+        compose.onNodeWithTag("rc-activity-start").performScrollTo().performClick()
+        compose.runOnIdle { state.value = vehicle().copy(lastHeartbeatAtEpochMillis = Long.MAX_VALUE); elapsed.value = 10_001 }
+        compose.onNodeWithTag("rc-activity-status").assertTextEquals("OBSERVING · NOT CALIBRATION")
+        compose.runOnIdle { elapsed.value = 15_001 }
+        compose.onNodeWithTag("rc-activity-status").assertTextEquals("INTERRUPTED · HISTORICAL RANGES")
+        compose.onNodeWithTag("rc-activity-range-1").assertTextEquals("RC 1: min 1501 · max 1501 · span 0")
+    }
+
 }

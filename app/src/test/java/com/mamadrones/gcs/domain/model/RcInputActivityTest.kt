@@ -6,9 +6,10 @@ import org.junit.Test
 class RcInputActivityTest {
     private fun vehicle(at: Long = 10_000, values: List<Int?> = listOf(1501, 1498)) = VehicleState(
         systemId = 1, componentId = 1, connectionStatus = VehicleConnectionState.CONNECTED,
-        lastHeartbeatAtEpochMillis = at,
-        mavlinkDiagnostics = MavlinkDiagnostics(active = true, startedAtEpochMillis = 1_000, linkKind = TelemetryLinkKind.CLASSIC),
-        rcInput = RcInputState(channelCount = values.size, channelsMicroseconds = values, lastUpdatedAtEpochMillis = at))
+        lastHeartbeatAtEpochMillis = at, lastHeartbeatAtElapsedMillis = at,
+        mavlinkDiagnostics = MavlinkDiagnostics(active = true, startedAtEpochMillis = 1_000, startedAtElapsedMillis = 1_000, linkKind = TelemetryLinkKind.CLASSIC,
+            messageObservations = listOf(ObservedMavlinkMessage.HEARTBEAT, ObservedMavlinkMessage.RC_CHANNELS).map { MavlinkMessageObservation(type = it, accepted = 1, lastAcceptedAtElapsedMillis = at) }),
+        rcInput = RcInputState(channelCount = values.size, channelsMicroseconds = values, lastUpdatedAtEpochMillis = at, lastUpdatedAtElapsedMillis = at))
 
     @Test fun startRequiresExplicitFreshEvidenceAndKeepsExactValues() {
         assertEquals(RcActivityStatus.IDLE, RcInputActivity.start(VehicleState(), 10_000).status)
@@ -24,14 +25,14 @@ class RcInputActivityTest {
         val bad = listOf(v.copy(systemId = null), v.copy(componentId = 0), v.copy(systemId = 256),
             v.copy(connectionStatus = VehicleConnectionState.DISCONNECTED),
             v.copy(mavlinkDiagnostics = v.mavlinkDiagnostics.copy(active = false)),
-            v.copy(mavlinkDiagnostics = v.mavlinkDiagnostics.copy(startedAtEpochMillis = null)),
-            v.copy(mavlinkDiagnostics = v.mavlinkDiagnostics.copy(startedAtEpochMillis = -1)),
-            v.copy(lastHeartbeatAtEpochMillis = null), v.copy(lastHeartbeatAtEpochMillis = 4_999),
-            v.copy(lastHeartbeatAtEpochMillis = 10_001), v.copy(lastHeartbeatAtEpochMillis = 999),
-            v.copy(rcInput = v.rcInput.copy(lastUpdatedAtEpochMillis = null)),
-            v.copy(rcInput = v.rcInput.copy(lastUpdatedAtEpochMillis = 4_999)),
-            v.copy(rcInput = v.rcInput.copy(lastUpdatedAtEpochMillis = 10_001)),
-            v.copy(rcInput = v.rcInput.copy(lastUpdatedAtEpochMillis = 999)))
+            v.copy(mavlinkDiagnostics = v.mavlinkDiagnostics.copy(startedAtElapsedMillis = null)),
+            v.copy(mavlinkDiagnostics = v.mavlinkDiagnostics.copy(startedAtElapsedMillis = -1)),
+            v.copy(lastHeartbeatAtElapsedMillis = null), v.copy(lastHeartbeatAtElapsedMillis = 4_999),
+            v.copy(lastHeartbeatAtElapsedMillis = 10_001), v.copy(lastHeartbeatAtElapsedMillis = 999),
+            v.copy(rcInput = v.rcInput.copy(lastUpdatedAtElapsedMillis = null)),
+            v.copy(rcInput = v.rcInput.copy(lastUpdatedAtElapsedMillis = 4_999)),
+            v.copy(rcInput = v.rcInput.copy(lastUpdatedAtElapsedMillis = 10_001)),
+            v.copy(rcInput = v.rcInput.copy(lastUpdatedAtElapsedMillis = 999)))
         bad.forEach { assertNotNull(RcInputActivity.unavailableReason(it, 10_000)) }
         assertNull(RcInputActivity.unavailableReason(vehicle(5_000), 10_000))
     }
@@ -67,7 +68,7 @@ class RcInputActivityTest {
         val initial = RcInputActivity.start(v, 10_000)
         listOf(v.copy(systemId = 2), v.copy(componentId = 2),
             v.copy(mavlinkDiagnostics = v.mavlinkDiagnostics.copy(linkKind = TelemetryLinkKind.BLE)),
-            v.copy(mavlinkDiagnostics = v.mavlinkDiagnostics.copy(startedAtEpochMillis = 2_000))).forEach { changed ->
+            v.copy(mavlinkDiagnostics = v.mavlinkDiagnostics.copy(startedAtElapsedMillis = 2_000))).forEach { changed ->
             val interrupted = RcInputActivity.observe(initial, changed, 10_001)
             assertEquals(RcActivityStatus.INTERRUPTED, interrupted.status)
             assertEquals(initial.ranges, interrupted.ranges)
@@ -77,7 +78,9 @@ class RcInputActivityTest {
 
     @Test fun staleRcStopsEvenWithFreshHeartbeat() {
         val initial = RcInputActivity.start(vehicle(), 10_000)
-        val next = RcInputActivity.observe(initial, vehicle().copy(lastHeartbeatAtEpochMillis = 15_001), 15_001)
+        val v = vehicle()
+        val heartbeat = v.mavlinkDiagnostics.messageObservations.map { if (it.type == ObservedMavlinkMessage.HEARTBEAT) it.copy(lastAcceptedAtElapsedMillis = 15_001) else it }
+        val next = RcInputActivity.observe(initial, v.copy(lastHeartbeatAtElapsedMillis = 15_001, mavlinkDiagnostics = v.mavlinkDiagnostics.copy(messageObservations = heartbeat)), 15_001)
         assertEquals(RcActivityStatus.INTERRUPTED, next.status)
         assertEquals(initial.ranges, next.ranges)
     }
@@ -112,4 +115,33 @@ class RcInputActivityTest {
         assertEquals(RcChannelRange(1600, 1600), restarted.ranges[0])
         assertEquals(RcActivitySnapshot(), RcInputActivity.observe(RcActivitySnapshot(), vehicle(), 10_000))
     }
+    @Test fun calendarClockChangesDoNotInterruptOrDuplicateSamples() {
+        val initial = RcInputActivity.start(vehicle(), 10_000)
+        val v = vehicle()
+        val shifted = v.copy(lastHeartbeatAtEpochMillis = Long.MAX_VALUE,
+            mavlinkDiagnostics = v.mavlinkDiagnostics.copy(startedAtEpochMillis = 0),
+            rcInput = v.rcInput.copy(lastUpdatedAtEpochMillis = 0, channelsMicroseconds = listOf(2000)))
+        val observed = RcInputActivity.observe(initial, shifted, 10_001)
+        assertEquals(RcActivityStatus.OBSERVING, observed.status)
+        assertEquals(initial.ranges, observed.ranges)
+        val next = RcInputActivity.observe(observed, vehicle(10_002, listOf(1800)).copy(lastHeartbeatAtEpochMillis = 0), 10_002)
+        assertEquals(RcChannelRange(1501, 1800), next.ranges[0])
+    }
+
+    @Test fun acceptedObservationMustBeCurrentAndMissingEvidenceInterrupts() {
+        val v = vehicle()
+        val initial = RcInputActivity.start(v, 10_000)
+        val cases = listOf(emptyList(),
+            v.mavlinkDiagnostics.messageObservations.map { it.copy(accepted = 0) },
+            v.mavlinkDiagnostics.messageObservations.map { it.copy(lastAcceptedAtElapsedMillis = null) },
+            v.mavlinkDiagnostics.messageObservations.map { it.copy(lastAcceptedAtElapsedMillis = 4_999) },
+            v.mavlinkDiagnostics.messageObservations.map { it.copy(lastAcceptedAtElapsedMillis = 10_002) })
+        cases.forEach { observations ->
+            val changed = v.copy(mavlinkDiagnostics = v.mavlinkDiagnostics.copy(messageObservations = observations))
+            val result = RcInputActivity.observe(initial, changed, 10_001)
+            assertEquals(RcActivityStatus.INTERRUPTED, result.status)
+            assertEquals(initial.ranges, result.ranges)
+        }
+    }
+
 }

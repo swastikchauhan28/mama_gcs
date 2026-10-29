@@ -10,17 +10,17 @@ import com.mamadrones.gcs.domain.model.*
 
 /** Local screen observations only. Leaving this screen discards the activity check. */
 @Composable
-fun RcInputActivityPanel(vehicle: VehicleState, now: Long) {
+fun RcInputActivityPanel(vehicle: VehicleState, nowElapsed: Long) {
     var snapshot by remember { mutableStateOf(RcActivitySnapshot()) }
     // Derive the current view immediately, so a stale snapshot is never drawn as observing
     // while an effect waits for the next frame. Effects only retain the bounded ranges.
     val previous = snapshot
-    val current = RcInputActivity.observe(previous, vehicle, now)
+    val current = RcInputActivity.observe(previous, vehicle, nowElapsed)
     LaunchedEffect(current) {
         // A delayed retention effect must not overwrite a newer Start/Stop/Clear action.
         if (snapshot == previous && snapshot != current) snapshot = current
     }
-    val unavailable = RcInputActivity.unavailableReason(vehicle, now)
+    val unavailable = RcInputActivity.unavailableReason(vehicle, nowElapsed)
     OutlinedCard(Modifier.fillMaxWidth().testTag("rc-activity-panel")) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("RC input activity check", style = MaterialTheme.typography.titleMedium)
@@ -34,10 +34,10 @@ fun RcInputActivityPanel(vehicle: VehicleState, now: Long) {
                 "move one remote stick at a time, then stop observation. This app cannot stop the rover.")
             if (current.status == RcActivityStatus.IDLE) {
                 Text(unavailable ?: "Fresh RC values are available for a local observation.", Modifier.testTag("rc-activity-availability"))
-                OutlinedButton(onClick = { snapshot = RcInputActivity.start(vehicle, now) }, enabled = unavailable == null,
+                OutlinedButton(onClick = { snapshot = RcInputActivity.start(vehicle, nowElapsed) }, enabled = unavailable == null,
                     modifier = Modifier.testTag("rc-activity-start").heightIn(min = 48.dp)) { Text("Start observation") }
             } else if (current.status == RcActivityStatus.OBSERVING) {
-                OutlinedButton(onClick = { snapshot = RcInputActivity.stop(current, vehicle, now) },
+                OutlinedButton(onClick = { snapshot = RcInputActivity.stop(current, vehicle, nowElapsed) },
                     modifier = Modifier.testTag("rc-activity-stop").heightIn(min = 48.dp)) { Text("Stop observation") }
             }
             current.reason?.let { Text(it) }

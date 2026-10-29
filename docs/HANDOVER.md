@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-10-29 — Phase 100 RC activity timing
+
+- Done: RC activity observation now uses elapsed session, selected heartbeat and accepted RC evidence, retaining bounded historical ranges on interruption. PWM timing is unchanged. See [Phase 100](phase-100-report.md) and D-100-01.
+- Verification: fresh 454 JVM tests passed; both debug APKs built; eight targeted emulator checks and Android health gate passed, with light/dark screenshot review; lint passed (report task up-to-date).
+- Broken or risky: five-second timeout is diagnostic only; duplicate samples within one elapsed millisecond remain indistinguishable. Physical radio, RC input, deep sleep and safe operation are not verified.
+- Next: review the phase diff; investigate the separate Cube-to-phone heartbeat path with the hardware team when available.
+- Do not touch: hardware controls, live parameters, unrelated work or Git history. Commit/push only when requested.
+
+
 Read this first, then the [project instructions](../AGENTS.md). Keep the newest session first; put detailed chronology in the linked phase report. Update status when evidence changes, without removing earlier failed-run evidence.
 
 ## 2026-10-29 — Phase 99 RC input display timing

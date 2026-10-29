@@ -2,6 +2,7 @@ package com.mamadrones.gcs.domain.model
 
 enum class RcActivityStatus { IDLE, OBSERVING, STOPPED, INTERRUPTED }
 
+// Session and sample times are volatile elapsed-realtime values, not calendar timestamps.
 data class RcActivitySession(val startedAt: Long, val link: TelemetryLinkKind, val system: Int, val component: Int)
 data class RcChannelRange(val minimum: Int, val maximum: Int) {
     val span: Int get() = maximum - minimum
@@ -27,8 +28,13 @@ object RcInputActivity {
             return "The telemetry link is not live."
         fun fresh(timestamp: Long?) = timestamp != null && timestamp >= key.startedAt &&
             timestamp <= now && now - timestamp <= FRESHNESS_MS
-        if (!fresh(vehicle.lastHeartbeatAtEpochMillis)) return "Waiting for a fresh autopilot heartbeat."
-        if (!fresh(vehicle.rcInput.lastUpdatedAtEpochMillis)) return "Waiting for fresh RC_CHANNELS from this session."
+        fun accepted(type: ObservedMavlinkMessage): Boolean = vehicle.mavlinkDiagnostics.messageObservations.any {
+            it.type == type && it.accepted > 0 && fresh(it.lastAcceptedAtElapsedMillis)
+        }
+        if (!fresh(vehicle.lastHeartbeatAtElapsedMillis) || !accepted(ObservedMavlinkMessage.HEARTBEAT))
+            return "Waiting for a fresh selected-autopilot heartbeat."
+        if (!fresh(vehicle.rcInput.lastUpdatedAtElapsedMillis) || !accepted(ObservedMavlinkMessage.RC_CHANNELS))
+            return "Waiting for fresh selected-autopilot RC_CHANNELS from this session."
         if (values(vehicle).none { it != null }) return "No usable RC channel values were reported."
         return null
     }
@@ -37,7 +43,7 @@ object RcInputActivity {
         unavailableReason(vehicle, now)?.let { return RcActivitySnapshot(reason = it) }
         return RcActivitySnapshot(RcActivityStatus.OBSERVING, session(vehicle),
             values(vehicle).map { value -> value?.let { RcChannelRange(it, it) } },
-            vehicle.rcInput.lastUpdatedAtEpochMillis, now)
+            vehicle.rcInput.lastUpdatedAtElapsedMillis, now)
     }
 
     fun observe(current: RcActivitySnapshot, vehicle: VehicleState, now: Long): RcActivitySnapshot {
@@ -48,7 +54,7 @@ object RcInputActivity {
             else -> unavailableReason(vehicle, now)
         }
         if (reason != null) return current.copy(status = RcActivityStatus.INTERRUPTED, reason = reason)
-        val sampleAt = requireNotNull(vehicle.rcInput.lastUpdatedAtEpochMillis)
+        val sampleAt = requireNotNull(vehicle.rcInput.lastUpdatedAtElapsedMillis)
         if (current.lastSampleAt != null && sampleAt < current.lastSampleAt)
             return current.copy(status = RcActivityStatus.INTERRUPTED, reason = "The RC sample timestamp moved backwards.")
         if (sampleAt == current.lastSampleAt) return current.copy(lastCheckedAt = now)
@@ -71,7 +77,7 @@ object RcInputActivity {
     }
 
     private fun session(vehicle: VehicleState): RcActivitySession? {
-        val started = vehicle.mavlinkDiagnostics.startedAtEpochMillis?.takeIf { it >= 0 } ?: return null
+        val started = vehicle.mavlinkDiagnostics.startedAtElapsedMillis?.takeIf { it >= 0 } ?: return null
         val system = vehicle.systemId?.takeIf { it in 1..255 } ?: return null
         val component = vehicle.componentId?.takeIf { it in 1..255 } ?: return null
         return RcActivitySession(started, vehicle.mavlinkDiagnostics.linkKind, system, component)

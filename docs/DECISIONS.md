@@ -1,5 +1,11 @@
 # Decisions and alternatives
 
+## D-100-01: Use elapsed evidence for RC activity recording
+
+- Date: 2026-10-29. User approved Phase 100 and offline emulator testing. Model/version unavailable. Baseline `0647c05253774c3e0e504861aef223aedbb70a2e`, clean.
+- Choice: use volatile elapsed session start, selected-heartbeat and accepted RC sample/observation timestamps for the local activity recorder, including start, range updates, interruption and stop. Require active connected selected-autopilot evidence and fail closed for missing, stale, future, pre-session, regressed or unaccepted timing. Supply the existing 500 ms elapsed screen tick; do not fall back to calendar time. Keep bounded historical ranges after interruption, require explicit restart, and leave PWM timing unchanged. Do not change source filtering, transport, commands, persistence, permissions or dependencies.
+- Alternatives: calendar time can jump and corrupt freshness or sample ordering; using only the RC sample can misattribute selected-source evidence. Elapsed session timestamps have millisecond resolution and do not authenticate the peer. Five seconds remains an unverified display diagnostic, not proof of wiring, calibration, stick mapping or safety. Test clock jumps, session/source changes, unavailable data, expiry, recovery, final stop, UI timer and PWM regression on an offline emulator. Scoped reversal to baseline is an unexecuted recovery option, not a validated release.
+
 ## D-099-01: Use elapsed receipt evidence for RC input display
 
 - Date: 2026-10-29. User approved Phase 99 and offline emulator testing. Model/version unavailable. Baseline `d0de263869ca437698394606a57089d6d9505d48`, clean.
