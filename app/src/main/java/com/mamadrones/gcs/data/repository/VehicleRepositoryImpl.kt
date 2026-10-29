@@ -121,7 +121,7 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
         )
     }
 
-    fun onAttitude(message: MavlinkMessage.Attitude, receivedAtEpochMillis: Long) {
+    fun onAttitude(message: MavlinkMessage.Attitude, receivedAtEpochMillis: Long, receivedAtElapsedMillis: Long? = null) {
         _vehicleState.value = _vehicleState.value.copy(
             attitude = AttitudeState(
                 rollRadians = message.rollRadians.toDouble().validAngle(),
@@ -130,7 +130,8 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
                 rollRateRadiansPerSecond = message.rollRateRadiansPerSecond.toDouble().takeIf(Double::isFinite),
                 pitchRateRadiansPerSecond = message.pitchRateRadiansPerSecond.toDouble().takeIf(Double::isFinite),
                 yawRateRadiansPerSecond = message.yawRateRadiansPerSecond.toDouble().takeIf(Double::isFinite),
-                lastUpdatedAtEpochMillis = receivedAtEpochMillis
+                lastUpdatedAtEpochMillis = receivedAtEpochMillis,
+                lastUpdatedAtElapsedMillis = receivedAtElapsedMillis
             )
         )
     }

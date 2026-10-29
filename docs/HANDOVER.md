@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-10-29 — Phase 103 Classic attitude receipt timing
+
+- Done: the Classic connection check uses elapsed current-session attitude sample and accepted ATTITUDE evidence. Other measurement groups retain their existing policies. See [Phase 103](phase-103-report.md) and D-103-01.
+- Verification: 461 JVM tests passed; both debug APKs built; 5 targeted controlled-clock emulator tests passed with Android healthy and stale screenshot reviewed. Lint passed (report task up-to-date); two real-clock screen/RC regressions passed with Android healthy.
+- Broken or risky: the five-second window is diagnostic only. Message receipt does not verify sensor accuracy, source identity or hardware behavior.
+- Next: review the diff and investigate the separate Cube-to-phone heartbeat path with the hardware team when available.
+- Do not touch: hardware, live parameters, commands, persistent user data or unrelated work. Commit/push only when requested.
+
+
 ## 2026-10-29 — Phase 102 Classic position receipt timing
 
 - Done: the Classic connection check uses elapsed current-session position and accepted GLOBAL_POSITION_INT receipt evidence. Other measurement groups retain calendar-time checks. See [Phase 102](phase-102-report.md) and D-102-01.

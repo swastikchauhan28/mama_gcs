@@ -1,0 +1,17 @@
+# Phase 103 — Classic attitude receipt freshness
+
+2026-10-29. User approved implementation and offline emulator testing. Baseline `185a24d95fd572e4b38e2c1b0660010d026711f2`, clean; model/version unavailable. See D-103-01.
+
+Goal: use current-session elapsed selected-source attitude sample and accepted ATTITUDE evidence in the Classic connection check; preserve other measurement policies. Receipt does not prove accuracy or physical safety.
+
+## Behavior and boundaries
+
+`MavlinkSession` selects the autopilot and timestamps received messages with elapsed realtime. The router forwards the attitude receipt time to `VehicleRepositoryImpl`, which keeps one in-memory `AttitudeState` with calendar and elapsed timestamps. A new session clears this state. `ClassicConnectionCheck` lists Attitude only when the sample and accepted selected-source ATTITUDE observation are current after the Classic socket opened. Calendar timestamps remain in other existing displays and reports; GPS, battery, rover HUD and system-status Classic checks retain calendar-time freshness. The assessment is a bounded in-memory list of labels.
+
+The input stream is untrusted. Receipt does not authenticate the sender or verify attitude accuracy, calibration, hardware movement or safety. The five-second window is an unverified diagnostic, not a failsafe. No commands, source-selection changes, persistence, external destinations, dependencies or permissions are introduced. Missing elapsed evidence fails closed; hardware and deep-sleep behavior remain unverified.
+
+## Verification
+
+- `gradlew.bat -I %TEMP%\mama-gcs-phase58-local-build.gradle :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --no-daemon --max-workers=1 --console=plain`: 461 JVM tests passed with 0 failures/errors/skips; both debug APKs built; lint passed (30 tasks executed, 67 up-to-date; lint report task up-to-date).
+- Targeted emulator run `scripts/Test-AndroidAcceptance.ps1 -Serial emulator-5554 -TestClass 'com.mamadrones.gcs.ClassicConnectionCheckUiTest#attitudeReceiptUsesElapsedTimeAndExpiresIndependently,com.mamadrones.gcs.ClassicConnectionCheckUiTest#positionReceiptUsesElapsedTimeAndExpiresIndependently,com.mamadrones.gcs.ClassicConnectionCheckUiTest#stagesAndGuidanceRemainReadableInBothThemes,com.mamadrones.gcs.ClassicConnectionPlainLanguageUiTest'`: 5/5 passed on Pixel_3a_API_34_extension_level_7_x86_64, Android health gate passed. Evidence `app/build/acceptance-20261029-121524-b107e907/`; attitude stale screenshot visually reviewed. These are synthetic, controlled-clock tests, not physical acceptance. A separate real-clock run `scripts/Test-AndroidAcceptance.ps1 -Serial emulator-5554 -TestClass 'com.mamadrones.gcs.ClassicConnectionCheckUiTest#screenExpiresEvidenceWithoutIncomingUpdatesAndDisconnectClearsIt,com.mamadrones.gcs.ClassicConnectionCheckUiTest#rcReceiptExpiresIndependentlyAndRecovers'` passed 2/2 with Android healthy; evidence `app/build/acceptance-20261029-121908-5745d5ac/`.
+- Review guide: trace selected-source attitude elapsed time through the router and repository, then check the independent sample/accepted-observation predicates, UI wording and tests. Changed files were reviewed for secrets; no dedicated secret scanner was available, so this is not a repository-wide scan. `git diff --check` passed. Baseline `185a24d95fd572e4b38e2c1b0660010d026711f2` is a recovery reference, not a verified release; authorize and review a scoped inverse before applying it. Commit/push require separate authorization.

@@ -53,7 +53,9 @@ data class AttitudeState(
     val rollRateRadiansPerSecond: Double? = null,
     val pitchRateRadiansPerSecond: Double? = null,
     val yawRateRadiansPerSecond: Double? = null,
-    val lastUpdatedAtEpochMillis: Long? = null
+    val lastUpdatedAtEpochMillis: Long? = null,
+    // Volatile selected-source receipt time, not sensor validation.
+    val lastUpdatedAtElapsedMillis: Long? = null
 )
 
 /** Read-only Rover instrument values decoded from MAVLink VFR_HUD. */

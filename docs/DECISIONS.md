@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-103-01: Use elapsed selected-source attitude receipt in Classic checks
+
+- Date: 2026-10-29. User approved Phase 103 and offline emulator tests. Baseline `185a24d95fd572e4b38e2c1b0660010d026711f2`, clean; model/version unavailable.
+- Choice: forward the current session's elapsed receipt time into volatile attitude state, and require fresh selected-source attitude sample and accepted ATTITUDE observation after the Classic socket opened. No calendar fallback. Keep existing calendar receipt time for other displays and reports, and keep other measurement checks unchanged. No source-filter, transport, command, persistence, dependency or permission changes.
+- Alternatives: calendar timestamps can jump; a sample timestamp without selected-source acceptance can misattribute evidence. Elapsed receipt cannot authenticate a source or establish sensor accuracy or physical safety. The five-second diagnostic window is not a failsafe. Verify timing boundaries, wall-clock changes, source filtering, expiry/recovery and synthetic emulator UI. Baseline recovery is unexecuted and not a qualified release.
+
+
 ## D-102-01: Use elapsed selected-source position receipt in Classic checks
 
 - Date: 2026-10-29. User approved Phase 102 and offline emulator testing. Baseline `6be569b64258a6fe82d6e34caad55ef266a72134`, clean; model/version unavailable.

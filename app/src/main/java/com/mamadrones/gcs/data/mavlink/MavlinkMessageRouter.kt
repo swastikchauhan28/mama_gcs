@@ -23,7 +23,7 @@ class MavlinkMessageRouter @Inject constructor(
             is MavlinkMessage.Heartbeat -> vehicleRepository.onHeartbeat(message, receivedAtEpochMillis, receivedAtElapsedMillis)
             is MavlinkMessage.GpsRawInt -> vehicleRepository.onGpsRawInt(message, receivedAtEpochMillis)
             is MavlinkMessage.GlobalPositionInt -> vehicleRepository.onGlobalPositionInt(message, receivedAtEpochMillis, receivedAtElapsedMillis)
-            is MavlinkMessage.Attitude -> vehicleRepository.onAttitude(message, receivedAtEpochMillis)
+            is MavlinkMessage.Attitude -> vehicleRepository.onAttitude(message, receivedAtEpochMillis, receivedAtElapsedMillis)
             is MavlinkMessage.VfrHud -> vehicleRepository.onVfrHud(message, receivedAtEpochMillis)
             is MavlinkMessage.SystemStatus -> vehicleRepository.onSystemStatus(message, receivedAtEpochMillis, receivedAtElapsedMillis)
             is MavlinkMessage.BatteryStatus -> vehicleRepository.onBatteryStatus(message, receivedAtEpochMillis, receivedAtElapsedMillis)
