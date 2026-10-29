@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-115-01: Isolate intermittent menu navigation before changing behavior
+
+- Date: 2026-10-29; user approved Phase 115 and phone tests. Baseline `83992bef4b789a5bc03ee2ba09cee41f33c0af3f`, clean; model/version unavailable.
+- Context: Phase 114 missed `menu-more` after a menu tap once; its retry passed. The existing log cannot distinguish delayed rendering, a dismissed popup, orientation recreation or other causes.
+- Choice: exercise menu open, item visibility, navigation callback and popup dismissal repeatedly in an isolated `StationShell` fixture in both orientations, then rerun the existing failing flow on the phone when available. Add no retry or weaker assertion and do not change production behavior without evidence. Alternative: immediately add waits or retries; this might hide a real popup defect and would not establish the cause. Trade-off: finite successful repetitions cannot prove absence of intermittent failures. Revisit the hypothesis if captured evidence identifies a failure.
+- Scope: fixture state only, no user preferences/routes, telemetry connections or hardware commands. Device rotation is test-activity-scoped and restored. Baseline is a recovery reference, not a verified release.
+
 ## D-114-01: Diagnose the synthetic header against actual system-bar state
 
 - Date: 2026-10-29. User approved Phase 114 and phone tests; baseline `e04fb57d53d5f2d6ca960e347a1ab8489e0d364b`, clean; model/version unavailable.

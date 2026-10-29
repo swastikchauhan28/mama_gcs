@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-10-29 — Phase 115 menu investigation
+
+- Done: added isolated repeated menu navigation checks, with no production behavior change. See [Phase 115](phase-115-report.md) and D-115-01.
+- Verification: test APK build and lint succeeded; phone fixture passed 12 cycles each in portrait and landscape, and the formerly failing Foundation flow passed twice. The earlier failure remains recorded.
+- In progress: the original intermittent failure was not reproduced and its cause remains unknown; passing repetitions do not prove it cannot recur.
+- Broken or risky: eleven phone tests that mutate user data remain excluded; full Android regression and the Cube heartbeat remain unverified.
+- Next: capture popup and rotation evidence if the failure returns; run excluded tests only in a disposable environment and resume hardware diagnosis with new evidence.
+- Do not touch: saved user data, physical hardware, parameters or command paths. Commit/push only when requested.
+
 ## 2026-10-29 — Phase 114 header screenshot investigation
 
 - Done: confirmed the landscape fixture header overlay follows visible Android status icons; the targeted light screenshot now temporarily hides the status bar. No production UI was changed. See [Phase 114](phase-114-report.md) and D-114-01.
