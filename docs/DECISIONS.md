@@ -1,5 +1,24 @@
 # Decisions and alternatives
 
+## D-122-03: Limit large-text fit padding to the actual map viewport
+
+- Date: 2026-10-30; the stricter actual-system-font test failed after a full 35-second wait: three landscape markers remained only 17–23 pixels apart even though their features were present. Evidence `app/build/acceptance-20261030-153817-cd277db1/`; the emulator font setting was restored. Phase 122 test changes retained.
+- Context: at 2x system font, the real landscape mission map has little vertical space after headers and controls; fixed 48 dp padding on both edges consumes most of it and fits the route at an unnecessarily low zoom.
+- Choice: for the existing large-text planning mode only, cap fit padding to one fifth of the smaller measured map dimension, retaining the prior 48 dp upper bound. Normal font fit remains unchanged. Keep the full geometry bounds and marker-separation/label/pixel checks. Alternatives: accept overlapping labels, omit markers, or enlarge a map beyond available layout space; each conceals or displaces the issue. Trade-off: on very small maps markers may be closer to edges, and arbitrary viewport, field, or physical accuracy is not guaranteed. Single-point camera and all mission data/commands remain unchanged.
+
+## D-122-02: Require distinct visible marker positions
+
+- Date: 2026-10-30; the corrected Phase 122 large-font emulator test passed, but visual inspection of its first landscape-three capture showed overlapping markers. Evidence `app/build/phase122-emulator/phase122-landscape-3.png` and `app/build/acceptance-20261030-151501-01dbb986/`; the original unset font setting was restored after a delayed second delete.
+- Choice: require pairwise projected marker separation sufficient for the marker diameter in the actual-activity large-font check, while retaining label, coordinate and pixel assertions; rerun and inspect. Alternative: accept overlapping source features or reduce the visual check, which does not establish readable numbered points. The overlap may be an animation/capture timing issue or an actual fitting limitation, which remains to be established before a production change.
+
+## D-122-01: Exercise actual Android font scaling on a disposable emulator
+
+- Date: 2026-10-30; user approved Phase 122. Baseline `8f7ded86f8d5a4a8b95f4272a42a7c268e2c7841`, clean; model/version unavailable. Baseline is a recovery reference, not a verified release.
+- Context: Phase 121 used a Compose density override and constrained fixture sizes, not Android's actual font setting or the real mission activity. The new collapsible control behavior needs confirmation in the actual planner after orientation changes and when normal text returns.
+- Choice: use only the task-owned disposable emulator, record its original system font setting, set font scale 2.0 for a real-activity test of one/two/three synthetic waypoints in portrait and landscape, and restore the exact original setting in a finally block. Separately verify normal-scale controls at 1.0 and restore the original. Back up and restore emulator-local draft/recovery/basemap. Verify rendered labels and pixels, controls collapse and can reopen; capture synthetic screenshots. Alternative: only repeat a Compose override, which cannot establish system configuration propagation. No hardware, real phone data, new dependency, external destination or vehicle command is involved.
+- Follow-up: first large-font run reached landscape then failed because the test called `performScrollTo` on the non-scrollable landscape map controls. Evidence `app/build/acceptance-20261030-150545-8df08921/`; normal-font test passed and the system setting was restored. Scroll only in portrait and retain all visibility and marker assertions.
+- Risks: emulator crashes can interrupt in-app cleanup or host-level setting restoration; verify both after the run and report interruptions. Android/provider/MapLibre failures can block visual verification. This is not physical-device, mission-execution or coverage-accuracy acceptance.
+
 ## D-121-02: Collapse large-text map controls after fitting
 
 - Date: 2026-10-30; approved Phase 121 tests failed for standard and compact 300x320 dp map fixtures at 2x text. Evidence `app/build/acceptance-20261030-142538-02620f50/` and screenshots in `app/build/phase121-emulator/`. The single-point capture also shows a marker partly covered by Fit draft; for two points the large right inset left nearly no fitting width, causing excessive zoom-out and overlapping markers.

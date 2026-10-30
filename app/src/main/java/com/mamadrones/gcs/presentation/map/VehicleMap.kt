@@ -370,7 +370,12 @@ fun VehicleMap(
         // On a small map, large-text controls can consume nearly the whole fitting area.
         // Hide them after fitting and use the unobscured map for the camera calculation.
         if (collapseForLargeText) controlsExpanded = false
-        val padding = (48 * mapView.resources.displayMetrics.density).toInt()
+        val defaultPadding = (48 * mapView.resources.displayMetrics.density).toInt()
+        // At large text sizes the real map can be short; fixed padding can otherwise
+        // leave so little fitting height that distinct numbered points overlap.
+        val padding = if (collapseForLargeText && mapView.width > 0 && mapView.height > 0) {
+            minOf(defaultPadding, (minOf(mapView.width, mapView.height) / 5).coerceAtLeast(1))
+        } else defaultPadding
         val update = if (targets.size == 1) CameraUpdateFactory.newLatLngZoom(targets.first(), DEFAULT_MAP_ZOOM)
         else {
             // The bottom-right controls cover map pixels. Fit the entire route to the remaining

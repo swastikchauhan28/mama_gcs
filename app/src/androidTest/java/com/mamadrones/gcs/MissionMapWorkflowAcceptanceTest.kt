@@ -13,6 +13,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.mamadrones.gcs.data.local.datastore.LocalMissionDraftRepository
 import com.mamadrones.gcs.data.local.datastore.LocalSettingsRepository
 import com.mamadrones.gcs.domain.model.BasemapStyle
+import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -84,6 +85,69 @@ class MissionMapWorkflowAcceptanceTest {
         }
     }
 
+    @Test fun androidLargeFontFitsOneTwoAndThreePointsInBothOrientations() {
+        val drafts = LocalMissionDraftRepository(instrumentation.targetContext)
+        val settings = LocalSettingsRepository(instrumentation.targetContext)
+        val previous = runBlocking { drafts.load() }
+        val recovery = runBlocking { drafts.loadRecovery() }
+        val basemap = runBlocking { settings.preferences.first().basemap }
+        val a = -35.363 to 149.165
+        val b = -35.364 to 149.166
+        val c = -35.365 to 149.1655
+        var activity: ActivityScenario<MainActivity>? = null
+        try {
+            runBlocking {
+                drafts.save(MissionDraft(waypoints = listOf(DraftWaypoint("phase122-a", a.first, a.second))))
+                settings.setBasemap(BasemapStyle.STREETS)
+            }
+            val scenario = ActivityScenario.launch(MainActivity::class.java).also { activity = it }
+            scenario.onActivity {
+                check(it.resources.configuration.fontScale >= 1.8f) { "Test requires Android system font scale >= 1.8" }
+                it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
+            awaitOrientation(scenario, Configuration.ORIENTATION_PORTRAIT)
+            compose.openWorkspace("mission")
+            compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+            assertMap(scenario, listOf(a), "phase122-portrait-1.png", largeText = true)
+            add(b); assertMap(scenario, listOf(a, b), "phase122-portrait-2.png", largeText = true)
+            add(c); assertMap(scenario, listOf(a, b, c), "phase122-portrait-3.png", largeText = true)
+            scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+            awaitOrientation(scenario, Configuration.ORIENTATION_LANDSCAPE)
+            assertMap(scenario, listOf(a, b, c), "phase122-landscape-3.png", largeText = true)
+            scrollToRoute("mission-remove-2").performClick()
+            assertMap(scenario, listOf(a, b), "phase122-landscape-2.png", largeText = true)
+            scrollToRoute("mission-remove-1").performClick()
+            assertMap(scenario, listOf(a), "phase122-landscape-1.png", largeText = true)
+        } finally {
+            activity?.close()
+            runBlocking { drafts.save(previous); recovery?.let { drafts.saveRecovery(it) }; settings.setBasemap(basemap) }
+        }
+    }
+
+    @Test fun androidNormalFontKeepsPlanningControlsVisible() {
+        val drafts = LocalMissionDraftRepository(instrumentation.targetContext)
+        val previous = runBlocking { drafts.load() }
+        val recovery = runBlocking { drafts.loadRecovery() }
+        var activity: ActivityScenario<MainActivity>? = null
+        try {
+            runBlocking { drafts.save(MissionDraft(waypoints = listOf(DraftWaypoint("phase122-normal", -35.363, 149.165)))) }
+            val scenario = ActivityScenario.launch(MainActivity::class.java).also { activity = it }
+            scenario.onActivity {
+                check(it.resources.configuration.fontScale <= 1.1f) { "Test requires Android system font scale 1.0" }
+                it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
+            awaitOrientation(scenario, Configuration.ORIENTATION_PORTRAIT)
+            compose.openWorkspace("mission")
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-map"))
+            compose.waitUntil(45_000) { compose.onAllNodes(hasTestTag("mission-fit") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("mission-fit").assertIsDisplayed().assertIsEnabled()
+            compose.onAllNodesWithTag("coverage-map-controls").assertCountEquals(0)
+        } finally {
+            activity?.close()
+            runBlocking { drafts.save(previous); recovery?.let { drafts.saveRecovery(it) } }
+        }
+    }
+
     private fun awaitOrientation(scenario: ActivityScenario<MainActivity>, orientation: Int) {
         compose.waitUntil(15_000) {
             var matched = false
@@ -105,10 +169,16 @@ class MissionMapWorkflowAcceptanceTest {
         compose.onNodeWithTag("mission-confirm-waypoint").performClick()
     }
 
-    private fun assertMap(scenario: ActivityScenario<MainActivity>, expected: List<Pair<Double, Double>>, imageName: String) {
+    private fun assertMap(scenario: ActivityScenario<MainActivity>, expected: List<Pair<Double, Double>>, imageName: String,
+        largeText: Boolean = false) {
         var portrait = false
         scenario.onActivity { portrait = it.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT }
         if (portrait) compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-map"))
+        if (largeText) {
+            val controls = compose.onNodeWithTag("coverage-map-controls")
+            if (portrait) controls.performScrollTo()
+            controls.assertIsDisplayed().assertTextContains("Map controls").performClick()
+        }
         compose.waitUntil(30_000) { compose.onAllNodes(hasTestTag("mission-fit") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
         var view: MapView? = null
         var map: MapLibreMap? = null
@@ -134,6 +204,10 @@ class MissionMapWorkflowAcceptanceTest {
             // Style loading can finish before MapLibre creates its native renderer.
             compose.waitUntil(20_000) { rendered.get() }
             compose.onNodeWithTag("mission-fit").performClick()
+            if (largeText) {
+                compose.onNodeWithTag("coverage-map-controls").assertTextContains("Map controls")
+                compose.onAllNodesWithTag("mission-fit").assertCountEquals(0)
+            }
             compose.waitUntil(35_000) {
                 val projected = mutableListOf<Pair<Int, Int>>()
                 val mapBounds = Rect()
@@ -190,8 +264,16 @@ class MissionMapWorkflowAcceptanceTest {
                     }
                     val imageryVisible = !imageName.contains("hybrid") ||
                         (samples > 0 && nonBlack > samples * 0.9 && colours.size > 32)
-                    detail = "labels=$labels points=$projected pixels=$counts nonBlack=$nonBlack/$samples colours=${colours.size}"
-                    labels && imageryVisible && projected.size == expected.size &&
+                    val minimumSeparation = 28f * requireNotNull(view).resources.displayMetrics.density
+                    val separated = !largeText || projected.indices.all { i ->
+                        (i + 1 until projected.size).all { j ->
+                            val dx = (projected[i].first - projected[j].first).toFloat()
+                            val dy = (projected[i].second - projected[j].second).toFloat()
+                            dx * dx + dy * dy >= minimumSeparation * minimumSeparation
+                        }
+                    }
+                    detail = "labels=$labels points=$projected pixels=$counts separated=$separated nonBlack=$nonBlack/$samples colours=${colours.size}"
+                    labels && imageryVisible && separated && projected.size == expected.size &&
                         counts.all { (orange, dark) -> orange >= 12 && dark >= 3 }
                 }
             }

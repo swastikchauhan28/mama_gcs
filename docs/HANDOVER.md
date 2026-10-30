@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-10-30 — Phase 122 system-font mission fit
+
+- Done: large-text planning fit padding adapts to short map dimensions, preventing tested landscape route markers from overlapping. Actual Android 2x font setting and real mission activity tested; normal-text behavior checked. See [Phase 122](phase-122-report.md), D-122-01 through D-122-03.
+- Verification: 478 fresh JVM tests, app/test builds and lint passed. Actual 2x one/two/three-point portrait and landscape test, normal-scale control test and three map regressions passed with healthy emulator gates. Screenshot review confirmed separation. Original emulator font setting restored to unset; earlier test-navigation failure, overlapping screenshot, restoration retry and startup ANRs are retained.
+- In progress: human review of the uncommitted diff and map-fitting trade-off.
+- Broken or risky: landscape workspace title truncates at 2x font (`Pl...`); full Android regression, other device/font configurations, provider outages, prior native MapLibre crash cause, hardware telemetry and physical accuracy remain unverified.
+- Next: review the fit change and evidence, then address landscape title truncation or pursue separately scoped real-device/hardware acceptance.
+- Do not touch: user phone data, physical hardware, parameters or commands. Commit/push only when requested.
+
 ## 2026-10-30 — Phase 121 large-text map fitting
 
 - Done: at font scale >= 1.8 planning map controls start collapsed and close after Fit draft, keeping the route clear and avoiding excessive right-inset zoom-out. See [Phase 121](phase-121-report.md), D-121-01 and D-121-02.
