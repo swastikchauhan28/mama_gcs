@@ -32,6 +32,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -131,6 +132,7 @@ fun VehicleMap(
 ) {
     val mapView = rememberMapViewWithLifecycle()
     var controlsExpanded by remember(compactPlanningControls) { mutableStateOf(!compactPlanningControls) }
+    var controlsWidthPx by remember { mutableIntStateOf(0) }
     val clockTick by produceState(android.os.SystemClock.elapsedRealtime()) {
         while (true) { delay(1_000); value = android.os.SystemClock.elapsedRealtime() }
     }
@@ -361,9 +363,18 @@ fun VehicleMap(
         val targets = (draftWaypoints + draftFence).map { LatLng(it.latitude, it.longitude) }.distinct()
         if (targets.isEmpty()) return
         followVehicle = false
+        val padding = (48 * mapView.resources.displayMetrics.density).toInt()
         val update = if (targets.size == 1) CameraUpdateFactory.newLatLngZoom(targets.first(), DEFAULT_MAP_ZOOM)
-            else CameraUpdateFactory.newLatLngBounds(LatLngBounds.Builder().includes(targets).build(),
-                (48 * mapView.resources.displayMetrics.density).toInt())
+        else {
+            // The bottom-right controls cover map pixels. Fit the entire route to the remaining
+            // width to reduce the chance of a waypoint being hidden behind an opaque button.
+            val maxRight = (mapView.width - padding - 1).coerceAtLeast(padding)
+            val right = (padding + controlsWidthPx).coerceAtMost(maxRight)
+            val bounds = LatLngBounds.Builder().includes(targets).build()
+            val camera = loadedMap.getCameraForLatLngBounds(bounds, intArrayOf(padding, padding, right, padding))
+            if (camera == null) CameraUpdateFactory.newLatLngBounds(bounds, padding)
+            else CameraUpdateFactory.newCameraPosition(camera)
+        }
         loadedMap.animateCamera(update, CAMERA_ANIMATION_MILLIS)
     }
 
@@ -430,7 +441,9 @@ fun VehicleMap(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(start = 8.dp, end = 8.dp, bottom = 32.dp),
+                .padding(start = 8.dp, end = 8.dp, bottom = 32.dp)
+                .onSizeChanged { controlsWidthPx = it.width }
+                .testTag("map-control-overlay"),
             verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.End,
         ) {

@@ -1,5 +1,24 @@
 # Decisions and alternatives
 
+## D-120-03: Await a rendered map frame before querying labels
+
+- Date: 2026-10-30; user requested completion of Phase 120. The emulator retest crashed in MapLibre native `queryRenderedFeatures` after two portrait captures; evidence `app/build/acceptance-20261030-133008-8095d123/`. The renderer was null in the crash trace; the exact lifecycle sequence is not proven. Phase 120 uncommitted changes are retained.
+- Follow-up: the first passing workflow's Hybrid screenshot was black and did not visibly show both numbers despite a successful rendered-feature query. Require the Hybrid framebuffer to contain map imagery as well as marker/label evidence before capturing; the screenshot is reviewed independently. Preserve the earlier passing result as source/marker evidence only.
+- Choice: attach a frame listener to the current MapView and wait for a completed render before each test's native rendered-feature query, as existing MapLibre tests do. Preserve label-coordinate and pixel assertions and the crash record. Alternatives: remove the rendered-feature check (would lose evidence) or add an arbitrary sleep (does not establish renderer readiness). This test-side adjustment does not establish that production MapLibre lifecycle is universally safe; investigate any repeat crash separately.
+
+## D-120-02: Reserve map-control space when fitting a draft
+
+- Date: 2026-10-30; approved Phase 120 acceptance test found that a portrait waypoint is covered by the bottom-right map controls after Fit draft. Baseline `a34a2a7` with uncommitted Phase 120 test preserved; model/version unavailable. Failure evidence: `app/build/acceptance-20261030-130700-ce74cf5e/` and `app/build/phase120-emulator/failure-portrait-add.png`.
+- Choice: calculate fit bounds with a right inset derived from the measured control overlay, retaining base padding on all sides and capping the inset for very narrow maps. Test visible marker pixels and label coordinates through the real editor in both orientations, plus the existing map-selection workflow. Alternative: hiding map controls or loosening the test would leave the usability defect unresolved; a hardcoded device-specific inset would not accommodate text size or layout changes. Cost: a smaller fitted map area when controls are expanded, potentially lower zoom. A single-point fit remains centered. Revisit if small viewports, coverage overlays or accessibility scaling require a different layout.
+- Scope: display camera only; no route geometry, saved data, telemetry, network destination or vehicle command changes. An emulator visual pass does not establish physical accuracy or safety.
+
+## D-120-01: Verify actual mission editor and visible map together
+
+- Date: 2026-10-30; user approved Phase 120. Baseline `a34a2a7`, clean; model/version unavailable. This baseline is a recovery reference, not a verified release.
+- Context: Phase 119 covered synthetic map inputs and style reload but did not drive edits through the actual mission editor. Existing mission tests check editing and fit, but their orange-pixel heuristic does not establish each waypoint's identity and numbering.
+- Choice: test the real activity/editor, local ViewModel and repository using a synthetic draft on the disposable emulator. Drive add, edit, reorder and remove controls; compare the expected coordinate order with the rendered MapLibre label features and marker pixels; exercise fit in portrait and landscape and switch the existing configured style. Back up and restore the emulator's saved draft, recovery draft and basemap setting; do not touch the user's phone or hardware. Alternative: exercise only VehicleMap again, which would miss UI-to-state integration, or depend only on screenshots, which cannot independently establish coordinates.
+- Trade-offs: configured styles depend on provider and glyph availability, and source/render callbacks and camera animation are asynchronous. Tests establish only synthetic, screen-level behavior, not physical coverage or command readiness. A failed/interrupted run can leave the disposable emulator's test data; no operator data is used. Investigate failures without weakening assertions or dismissing system dialogs.
+
 ## D-119-02: Require rendered marker and label evidence
 
 - Date: 2026-10-30; user requested diagnosis and repair of the black configured-map capture. Baseline `0b52739aa4d4b270922f6bbb5965e168cf3ce461` with uncommitted Phase 119 tests and records preserved; model/version unavailable.

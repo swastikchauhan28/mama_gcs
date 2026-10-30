@@ -62,13 +62,15 @@ class MissionMapDialogTest {
                 ready
             }
             val loadedMap = requireNotNull(map)
+            val controlsWidth = compose.onNodeWithTag("map-control-overlay").fetchSemanticsNode().boundsInRoot.width.toInt()
             lateinit var fittedCamera: org.maplibre.android.camera.CameraPosition
             activity.onActivity {
                 val padding = (48 * view.resources.displayMetrics.density).toInt()
                 fittedCamera = requireNotNull(loadedMap.getCameraForLatLngBounds(
                     LatLngBounds.Builder().includes(original.waypoints.map { point ->
                         LatLng(point.latitude, point.longitude)
-                    }).build(), intArrayOf(padding, padding, padding, padding)))
+                    }).build(), intArrayOf(padding, padding, (padding + controlsWidth).coerceAtMost(
+                        (view.width - padding - 1).coerceAtLeast(padding)), padding)))
             }
             val idle = AtomicBoolean(false)
             val listener = MapLibreMap.OnCameraIdleListener { idle.set(true) }

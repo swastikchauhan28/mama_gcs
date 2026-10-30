@@ -1,5 +1,23 @@
 # Current handover
 
+## 2026-10-30 — Phase 120 targeted emulator retest passed
+
+- Done: Fit draft reserves the measured width of its map controls; real mission editor tests cover add, edit, reorder, remove, portrait/landscape fit and style change. See [Phase 120](phase-120-report.md) and decisions D-120-01 through D-120-03.
+- Verification: 478 fresh JVM tests and app/test build/lint passed. Three targeted emulator tests passed after a test-side frame guard; the stricter workflow passed again, and portrait and Hybrid screenshots show numbered markers clear of controls. Earlier hidden marker, startup ANRs, native test-query crash and early black screenshot are retained in the report.
+- In progress: review the uncommitted diff; native MapLibre crash cause is not fully established despite the guarded passing retest.
+- Broken or risky: full Android regression, tiny viewports/large fonts, provider outages, hardware heartbeat, physical field accuracy and release gates remain unverified.
+- Next: human review of the fit behavior and evidence; separately plan any broader device or hardware acceptance.
+- Do not touch: user phone data, physical hardware, parameters or commands. Commit/push only when requested.
+
+## 2026-10-30 — Phase 120 mission fit fix awaiting emulator retest
+
+- Done: real-editor test exposed a portrait waypoint hidden under map controls; implemented measured control-width fit padding and updated the existing camera expectation. See [Phase 120](phase-120-report.md), D-120-01 and D-120-02.
+- Verification: 478 fresh JVM tests, app/test APK builds and lint passed. Initial Android workflow failed before the fix; the Android test did not run against the fix because repeated emulator startups hit System UI ANRs or a snapshot timeout.
+- In progress: the production fit change, edited workflow, rotation/style behavior and related map dialog require a healthy emulator retest and screenshot review.
+- Broken or risky: no visual/runtime acceptance of this fix; narrow layouts and large text remain unverified. Hardware heartbeat, physical coverage and release gates remain open.
+- Next: follow the exact targeted emulator tests in the Phase 120 report; investigate any failures rather than weakening assertions.
+- Do not touch: user phone data, physical hardware, parameters or commands. Do not commit/push without explicit request.
+
 ## 2026-10-30 — Phase 119 configured-map visual follow-up
 
 - Done: replaced the immediate configured-map screenshot with checks for rendered label features, marker pixels and nonblack map pixels, retaining the previous source assertions. No production map behavior changed.
