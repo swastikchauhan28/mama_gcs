@@ -142,6 +142,164 @@ class MapAcceptanceTest {
             compose.runOnIdle { view?.removeOnDidFinishRenderingFrameListener(listener) }
         }
     }
+    @Test fun waypointSourcesFollowRouteEditsAndConfiguredStyleReload() {
+        val a = DraftWaypoint("a", -35.363, 149.165)
+        val b = DraftWaypoint("b", -35.364, 149.166)
+        val c = DraftWaypoint("c", -35.3634, 149.1645)
+        val edited = DraftWaypoint("b", -35.3644, 149.1658)
+        val points = mutableStateOf(listOf(a, b))
+        val selected = mutableStateOf(BasemapStyle.STREETS)
+        val sourceIds = listOf("mama-draft-points", "mama-draft-labels-source")
+        compose.setContent { MamaGcsTheme {
+            CompositionLocalProvider(LocalBasemapStyle provides selected.value) {
+                VehicleMap(VehicleState(), Modifier.fillMaxSize(), planningMode = true, draftWaypoints = points.value)
+            }
+        } }
+        val map = loadedMap()
+        compose.runOnIdle {
+            map.cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
+                .target(org.maplibre.android.geometry.LatLng(-35.3637, 149.1653)).zoom(16.0).build()
+        }
+        assertWaypointSources(map, points.value, sourceIds)
+        assertVisibleNumberedWaypoints(map, points.value, "phase119-initial.png")
+        for (route in listOf(listOf(a, b, c), listOf(a, edited, c), listOf(c, a, edited), listOf(c, edited))) {
+            compose.runOnIdle { points.value = route }
+            assertWaypointSources(map, route, sourceIds)
+        }
+        assertVisibleNumberedWaypoints(map, points.value, "phase119-edited.png")
+        compose.runOnIdle { selected.value = BasemapStyle.HYBRID }
+        compose.waitUntil(45_000) {
+            var ready = false
+            compose.runOnIdle { ready = map.style?.isFullyLoaded == true &&
+                map.style?.uri?.contains("/maps/${BasemapStyle.HYBRID.mapTilerId}/") == true }
+            ready
+        }
+        assertWaypointSources(map, points.value, sourceIds)
+        assertVisibleNumberedWaypoints(map, points.value, "phase119-configured-settled.png")
+        compose.runOnIdle { points.value = emptyList() }
+        assertWaypointSources(map, emptyList(), sourceIds)
+    }
+
+    private fun assertVisibleNumberedWaypoints(map: MapLibreMap, points: List<DraftWaypoint>, imageName: String) {
+        var last: android.graphics.Bitmap? = null
+        var detail = "no frame"
+        try {
+            compose.waitUntil(35_000) {
+                val screenPoints = mutableListOf<Pair<Int, Int>>()
+                var labelsPresent = false
+                compose.runOnIdle {
+                    val view = requireNotNull(findMap(compose.activity.window.decorView))
+                    val offset = IntArray(2)
+                    view.getLocationOnScreen(offset)
+                    labelsPresent = points.withIndex().all { (index, point) ->
+                        val projected = map.projection.toScreenLocation(
+                            org.maplibre.android.geometry.LatLng(point.latitude, point.longitude))
+                        screenPoints.add((offset[0] + projected.x).toInt() to (offset[1] + projected.y).toInt())
+                        val area = android.graphics.RectF(projected.x - 14, projected.y - 14,
+                            projected.x + 14, projected.y + 14)
+                        map.queryRenderedFeatures(area, "mama-draft-labels").any {
+                            it.getStringProperty("label") == (index + 1).toString()
+                        }
+                    }
+                    map.triggerRepaint()
+                }
+                val frame = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+                last?.recycle()
+                last = frame
+                if (frame == null) false else {
+                    val pixelCounts = screenPoints.map { (x, y) ->
+                        var orange = 0
+                        var darkInside = 0
+                        if (x >= 18 && y >= 18 && x + 18 < frame.width && y + 18 < frame.height) {
+                            for (dy in -18..18) for (dx in -18..18) {
+                                val pixel = frame.getPixel(x + dx, y + dy)
+                                val red = android.graphics.Color.red(pixel)
+                                val green = android.graphics.Color.green(pixel)
+                                val blue = android.graphics.Color.blue(pixel)
+                                if (red >= 235 && green in 90..190 && blue <= 100) orange++
+                                if (dx * dx + dy * dy <= 49 && red < 80 && green < 80 && blue < 80) darkInside++
+                            }
+                        }
+                        orange to darkInside
+                    }
+                    var nonBlack = 0
+                    var samples = 0
+                    val colours = mutableSetOf<Int>()
+                    for (x in frame.width / 4 until frame.width * 3 / 4 step 8) {
+                        for (y in frame.height / 4 until frame.height * 3 / 4 step 8) {
+                            val colour = frame.getPixel(x, y) and 0x00ffffff
+                            colours.add(colour)
+                            if (colour != 0) nonBlack++
+                            samples++
+                        }
+                    }
+                    val mapVisible = nonBlack > samples * 0.9 && colours.size > 32
+                    detail = "labels=$labelsPresent marker pixels=$pixelCounts nonBlack=$nonBlack/$samples colours=${colours.size}"
+                    labelsPresent && mapVisible && screenPoints.size == points.size &&
+                        pixelCounts.all { (orange, dark) -> orange >= 30 && dark >= 3 }
+                }
+            }
+            java.io.File(compose.activity.getExternalFilesDir(null), imageName).outputStream().use {
+                check(requireNotNull(last).compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+            }
+        } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+            last?.let { frame ->
+                java.io.File(compose.activity.getExternalFilesDir(null), "failure-$imageName").outputStream().use {
+                    frame.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                }
+            }
+            throw AssertionError("Visible numbered waypoints did not settle: $detail", failure)
+        } finally { last?.recycle() }
+    }
+
+    private fun assertWaypointSources(map: MapLibreMap, expected: List<DraftWaypoint>, ids: List<String>) {
+        val rendered = java.util.concurrent.atomic.AtomicBoolean(false)
+        val listener = MapView.OnDidFinishRenderingFrameListener { _, _, _ -> rendered.set(true) }
+        lateinit var view: MapView
+        compose.runOnIdle {
+            view = requireNotNull(findMap(compose.activity.window.decorView))
+            view.addOnDidFinishRenderingFrameListener(listener)
+            map.triggerRepaint()
+        }
+        var last = "not queried"
+        try {
+            compose.waitUntil(20_000) { rendered.get() }
+            compose.waitUntil(20_000) {
+                var matched = false
+                compose.runOnIdle {
+                    val results = ids.map { id ->
+                        map.style?.getSourceAs<org.maplibre.android.style.sources.GeoJsonSource>(id)
+                            ?.querySourceFeatures(null)
+                    }
+                    last = results.toString()
+                    matched = results.all { features ->
+                        features != null && features.all { feature ->
+                            val point = feature.geometry() as? org.maplibre.geojson.Point
+                            expected.withIndex().any { (index, waypoint) ->
+                                point != null && kotlin.math.abs(point.latitude() - waypoint.latitude) < 0.00002 &&
+                                    kotlin.math.abs(point.longitude() - waypoint.longitude) < 0.00002 &&
+                                    feature.getStringProperty("label") == (index + 1).toString()
+                            }
+                        } && expected.withIndex().all { (index, waypoint) ->
+                            features.any { feature ->
+                                val point = feature.geometry() as? org.maplibre.geojson.Point
+                                point != null && kotlin.math.abs(point.latitude() - waypoint.latitude) < 0.00002 &&
+                                    kotlin.math.abs(point.longitude() - waypoint.longitude) < 0.00002 &&
+                                    feature.getStringProperty("label") == (index + 1).toString()
+                            }
+                        }
+                    }
+                    map.triggerRepaint()
+                }
+                matched
+            }
+        } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+            throw AssertionError("Waypoint sources $ids failed to converge for $expected; observed=$last", failure)
+        } finally {
+            compose.runOnIdle { view.removeOnDidFinishRenderingFrameListener(listener) }
+        }
+    }
+
     private fun findMap(view: View): MapView? {
         if (view is MapView) return view
         if (view is ViewGroup) for (i in 0 until view.childCount) findMap(view.getChildAt(i))?.let { return it }

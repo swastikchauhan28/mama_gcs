@@ -793,6 +793,97 @@ class MapLoadRecoveryTest {
         }
     }
 
+    @Test fun waypointCirclesFollowRouteEditsAndOfflineStyleReload() {
+        val first = File.createTempFile("phase119-a-", ".json", compose.activity.cacheDir)
+        val second = File.createTempFile("phase119-b-", ".json", compose.activity.cacheDir)
+        first.writeText(VALID_STYLE)
+        second.writeText(VALID_STYLE.replace("#12202c", "#243444"))
+        val url = mutableStateOf<String?>(Uri.fromFile(first).toString())
+        val a = DraftWaypoint("a", -35.363, 149.165)
+        val b = DraftWaypoint("b", -35.364, 149.166)
+        val c = DraftWaypoint("c", -35.3634, 149.1645)
+        val edited = DraftWaypoint("b", -35.3644, 149.1658)
+        val points = mutableStateOf(listOf(a, b))
+        val sourceIds = listOf("mama-draft-points")
+        try {
+            compose.setContent { MamaGcsTheme {
+                VehicleMap(VehicleState(), Modifier.fillMaxSize(), planningMode = true,
+                    draftWaypoints = points.value, styleUrl = url.value)
+            } }
+            val map = awaitLoaded()
+            compose.runOnIdle {
+                map.cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
+                    .target(org.maplibre.android.geometry.LatLng(-35.3637, 149.1653)).zoom(16.0).build()
+            }
+            assertWaypointSources(map, points.value, sourceIds)
+            for (route in listOf(listOf(a, b, c), listOf(a, edited, c), listOf(c, a, edited), listOf(c, edited))) {
+                compose.runOnIdle { points.value = route }
+                assertWaypointSources(map, route, sourceIds)
+            }
+            compose.runOnIdle { url.value = Uri.fromFile(second).toString() }
+            compose.waitUntil(20_000) {
+                var ready = false
+                compose.runOnIdle { ready = map.style?.uri == url.value && map.style?.isFullyLoaded == true }
+                ready
+            }
+            assertWaypointSources(map, points.value, sourceIds)
+            compose.runOnIdle { points.value = emptyList() }
+            assertWaypointSources(map, emptyList(), sourceIds)
+        } finally {
+            compose.runOnIdle { url.value = null }
+            compose.waitForIdle()
+            check(first.delete() && second.delete())
+        }
+    }
+
+    private fun assertWaypointSources(map: MapLibreMap, expected: List<DraftWaypoint>, ids: List<String>) {
+        val rendered = java.util.concurrent.atomic.AtomicBoolean(false)
+        val listener = MapView.OnDidFinishRenderingFrameListener { _, _, _ -> rendered.set(true) }
+        lateinit var view: MapView
+        compose.runOnIdle {
+            view = requireNotNull(findMap(compose.activity.window.decorView))
+            view.addOnDidFinishRenderingFrameListener(listener)
+            map.triggerRepaint()
+        }
+        var last = "not queried"
+        try {
+            compose.waitUntil(20_000) { rendered.get() }
+            compose.waitUntil(20_000) {
+                var matched = false
+                compose.runOnIdle {
+                    val results = ids.map { id ->
+                        map.style?.getSourceAs<org.maplibre.android.style.sources.GeoJsonSource>(id)
+                            ?.querySourceFeatures(null)
+                    }
+                    last = results.toString()
+                    matched = results.all { features ->
+                        features != null && features.all { feature ->
+                            val point = feature.geometry() as? org.maplibre.geojson.Point
+                            expected.withIndex().any { (index, waypoint) ->
+                                point != null && kotlin.math.abs(point.latitude() - waypoint.latitude) < 0.00002 &&
+                                    kotlin.math.abs(point.longitude() - waypoint.longitude) < 0.00002 &&
+                                    feature.getStringProperty("label") == (index + 1).toString()
+                            }
+                        } && expected.withIndex().all { (index, waypoint) ->
+                            features.any { feature ->
+                                val point = feature.geometry() as? org.maplibre.geojson.Point
+                                point != null && kotlin.math.abs(point.latitude() - waypoint.latitude) < 0.00002 &&
+                                    kotlin.math.abs(point.longitude() - waypoint.longitude) < 0.00002 &&
+                                    feature.getStringProperty("label") == (index + 1).toString()
+                            }
+                        }
+                    }
+                    map.triggerRepaint()
+                }
+                matched
+            }
+        } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+            throw AssertionError("Waypoint sources $ids failed to converge for $expected; observed=$last", failure)
+        } finally {
+            compose.runOnIdle { view.removeOnDidFinishRenderingFrameListener(listener) }
+        }
+    }
+
     private fun findMap(view: View): MapView? {
         if (view is MapView) return view
         if (view is ViewGroup) for (index in 0 until view.childCount) findMap(view.getChildAt(index))?.let { return it }

@@ -1,5 +1,18 @@
 # Decisions and alternatives
 
+## D-119-02: Require rendered marker and label evidence
+
+- Date: 2026-10-30; user requested diagnosis and repair of the black configured-map capture. Baseline `0b52739aa4d4b270922f6bbb5965e168cf3ce461` with uncommitted Phase 119 tests and records preserved; model/version unavailable.
+- Context: source queries passed but the immediately captured configured-style framebuffer was black. It is unknown whether capture timing, renderer, style or resources caused this; query success is not visual evidence.
+- Choice: retain source checks and wait for actual orange marker pixels and rendered label-layer features at both projected positions before saving the screenshot; test after route changes and style switch. Capture a failure image if rendering never arrives. Alternative: rely on a fixed sleep or accept source data alone; neither demonstrates visible output. The emulator uses synthetic routes and the existing configured style, with no physical hardware or user data. Revisit if controlled rendering evidence shows a production defect or external resources are unavailable.
+
+## D-119-01: Exercise waypoint source synchronization on edited routes
+
+- Date: 2026-10-30; user approved Phase 119. Baseline `0b52739aa4d4b270922f6bbb5965e168cf3ce461`, clean; model/version unavailable. This revision is a recovery reference, not a verified release.
+- Context: Phase 118 separated circles and labels because a glyphless style suppressed the shared source. Both sources are independently published from the same ordered route. An interrupted update or style reload could leave stale positions or numbering.
+- Choice: use synthetic routes on a disposable emulator to inspect coordinates and ordinal labels after add, edit, reorder, remove, clear and style change. Check circles with a local glyphless style and both sources with the existing configured style. Comparing only counts would miss stale coordinates or incorrect numbering; relying only on the provider would hide offline regressions. No production behavior, hardware, saved user data, dependencies or destinations are intentionally changed.
+- Trade-offs: style and source publication are asynchronous, so checks establish eventual convergence, not atomicity. Glyphless local styles cannot verify rendered labels; configured style evidence depends on provider and emulator availability. Revisit if tests find divergence, provider outages prevent verification or real vehicle acceptance differs.
+
 ## D-118-05: Isolate waypoint circles from label glyph loading
 
 - Date: 2026-10-30; user requested comparison, fix and emulator validation. Baseline `c03f4d270931747590cab2efc42a73809e71f159` with prior Phase 118 changes retained; model/version unavailable.

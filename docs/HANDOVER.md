@@ -1,5 +1,23 @@
 # Current handover
 
+## 2026-10-30 — Phase 119 configured-map visual follow-up
+
+- Done: replaced the immediate configured-map screenshot with checks for rendered label features, marker pixels and nonblack map pixels, retaining the previous source assertions. No production map behavior changed.
+- Verification: the revised configured-style test passed on the disposable emulator, with both numbered markers visible in initial, edited and Hybrid images; see [Phase 119](phase-119-report.md) for commands, evidence and prior black screenshots. Some Hybrid edge imagery remains low-resolution.
+- In progress: provider availability and full-resolution tile settlement on other devices are not established.
+- Broken or risky: emulator startup can freeze; full Android regression, Cube heartbeat, physical field accuracy and release gates remain unverified.
+- Next: review the evidence and uncommitted Phase 119 diff; separately address any further map/provider or hardware acceptance requirements.
+- Do not touch: saved phone data, physical hardware, parameters or commands. Commit/push only when requested.
+
+## 2026-10-30 — Phase 119 waypoint source synchronization
+
+- Done: added separate offline-circle and configured-style circle/label checks for synthetic route add, edit, reorder, remove, clear and style reload; no production behavior changed. See [Phase 119](phase-119-report.md) and D-119-01.
+- Verification: both new instrumentation cases passed together; the existing offline two-marker pixel regression passed separately. App and test APK builds and lint succeeded; JVM tests were up-to-date, not rerun.
+- In progress: configured-style screenshot captured a black map, so source-query success does not establish visible numbered labels or tiles. Investigate on a settled configured style before claiming visual acceptance.
+- Broken or risky: an initial System UI ANR blocked instrumentation; a clean restart and test-package reinstall recovered it. Full Android regression, Cube heartbeat, physical coverage and release gates remain unverified.
+- Next: independently investigate the black configured-map capture and check visible numbered markers after edits/reload; keep offline and online evidence separate.
+- Do not touch: saved phone data, physical hardware, parameters or commands. Commit/push only when requested.
+
 ## 2026-10-30 — Phase 118 waypoint source fix
 
 - Done: separated waypoint circle and label GeoJSON sources so a glyphless style no longer hides the tested circles. See [Phase 118](phase-118-report.md), D-118-04 and D-118-05.
