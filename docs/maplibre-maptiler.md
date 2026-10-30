@@ -2,6 +2,8 @@
 
 The Android app renders the online geographic basemap with MapLibre Native 13.6.1 and the MapTiler Streets vector style. MAVLink `GLOBAL_POSITION_INT` data is rendered separately as runtime GeoJSON sources for the vehicle marker, heading line, and bounded current-session track.
 
+Mission planning supplies a local draft to `VehicleMap`. The map writes the same bounded waypoint feature collection (coordinates and numbered labels, up to the draft's 250-waypoint limit) into separate in-memory circle and label GeoJSON sources whenever the draft or style changes. This isolates circle rendering from glyph-dependent label loading; labels can still be unavailable when glyphs fail. Both sources are recreated on a style reload and are not persisted independently. The existing map provider may receive normal style and tile requests; neither marker visibility nor a map preview proves real-world positioning or a safe route. See [Phase 118](phase-118-report.md).
+
 ## Create and restrict the MapTiler key
 
 Create a dedicated MapTiler key with these settings:

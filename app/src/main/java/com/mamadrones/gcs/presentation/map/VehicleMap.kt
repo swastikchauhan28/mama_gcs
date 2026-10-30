@@ -97,6 +97,7 @@ private const val TRACK_SOURCE_ID = "mama-track-source"
 private const val HEADING_SOURCE_ID = "mama-heading-source"
 private const val HOME_SOURCE_ID = "mama-home-source"
 private const val DRAFT_POINTS_SOURCE_ID = "mama-draft-points"
+private const val DRAFT_LABELS_SOURCE_ID = "mama-draft-labels-source"
 private const val DRAFT_LINE_SOURCE_ID = "mama-draft-line"
 private const val DRAFT_FENCE_SOURCE_ID = "mama-draft-fence"
 private const val COVERAGE_SOURCE_ID = "mama-coverage-preview"
@@ -309,11 +310,12 @@ fun VehicleMap(
         val loadedStyle = style ?: return@LaunchedEffect
         if (!planningMode) return@LaunchedEffect
         val points = draftWaypoints.map { Point.fromLngLat(it.longitude, it.latitude) }
-        loadedStyle.getSourceAs<GeoJsonSource>(DRAFT_POINTS_SOURCE_ID)?.setGeoJson(
-            FeatureCollection.fromFeatures(points.mapIndexed { index, point ->
-                Feature.fromGeometry(point).apply { addStringProperty("label", (index + 1).toString()) }
-            })
-        )
+        val waypointFeatures = FeatureCollection.fromFeatures(points.mapIndexed { index, point ->
+            Feature.fromGeometry(point).apply { addStringProperty("label", (index + 1).toString()) }
+        })
+        // Keep circles independent from the symbol layer's glyph-loading failures.
+        loadedStyle.getSourceAs<GeoJsonSource>(DRAFT_POINTS_SOURCE_ID)?.setGeoJson(waypointFeatures)
+        loadedStyle.getSourceAs<GeoJsonSource>(DRAFT_LABELS_SOURCE_ID)?.setGeoJson(waypointFeatures)
         loadedStyle.getSourceAs<GeoJsonSource>(DRAFT_LINE_SOURCE_ID)?.setGeoJson(
             if (points.size >= 2) FeatureCollection.fromFeatures(arrayOf(Feature.fromGeometry(LineString.fromLngLats(points))))
             else emptyFeatureCollection()
@@ -667,6 +669,7 @@ private fun installDraftLayers(style: Style) {
     style.addSource(GeoJsonSource(DRAFT_LINE_SOURCE_ID, emptyFeatureCollection()))
     style.addSource(GeoJsonSource(DRAFT_FENCE_SOURCE_ID, emptyFeatureCollection()))
     style.addSource(GeoJsonSource(DRAFT_POINTS_SOURCE_ID, emptyFeatureCollection()))
+    style.addSource(GeoJsonSource(DRAFT_LABELS_SOURCE_ID, emptyFeatureCollection()))
     style.addSource(GeoJsonSource(COVERAGE_SOURCE_ID, emptyFeatureCollection()))
     style.addSource(GeoJsonSource(COVERAGE_GAPS_SOURCE_ID, emptyFeatureCollection()))
     style.addLayer(FillLayer("mama-draft-fence-fill", DRAFT_FENCE_SOURCE_ID).withProperties(
@@ -681,7 +684,7 @@ private fun installDraftLayers(style: Style) {
     style.addLayer(CircleLayer("mama-draft-waypoints", DRAFT_POINTS_SOURCE_ID).withProperties(
         circleColor(AndroidColor.rgb(255, 159, 67)), circleRadius(12f),
         circleStrokeColor(AndroidColor.BLACK), circleStrokeWidth(2f)))
-    style.addLayer(SymbolLayer("mama-draft-labels", DRAFT_POINTS_SOURCE_ID).withProperties(
+    style.addLayer(SymbolLayer("mama-draft-labels", DRAFT_LABELS_SOURCE_ID).withProperties(
         textField(get("label")), textColor(AndroidColor.BLACK), textSize(12f),
         textAllowOverlap(true), textIgnorePlacement(true)))
 }

@@ -1,5 +1,59 @@
 # Current handover
 
+## 2026-10-30 — Phase 118 waypoint source fix
+
+- Done: separated waypoint circle and label GeoJSON sources so a glyphless style no longer hides the tested circles. See [Phase 118](phase-118-report.md), D-118-04 and D-118-05.
+- Verification: original two-marker test passed; three related map/mission checks passed; final marker/style-reload batch passed both after a fresh synthetic telemetry fixture update. 478 JVM tests passed; app/test builds and lint succeeded. Earlier failed attempts remain recorded.
+- In progress: labels still require glyphs; only one configured-map screenshot and local-style scenarios were reviewed. Full landscape tile settling and broader provider availability remain unverified.
+- Broken or risky: emulator startup ANRs, full Android regression, intermittent menu failure, Cube heartbeat, physical coverage and release gates remain unverified.
+- Next: review the source split and test evidence, then broaden map/provider testing on a stable emulator as needed.
+- Do not touch: saved phone data, physical hardware, parameters or commands. Commit/push only when requested.
+
+## 2026-10-30 — Phase 118 waypoint geometry comparison
+
+- Done: compared original and offset-longitude synthetic route geometry on the disposable emulator. See [Phase 118](phase-118-report.md) and D-118-03.
+- Verification: both marker checks failed with empty local point-source queries; Android health was clear during that batch. The independent-source follow-up was blocked by an emulator System UI ANR.
+- In progress: the original test remains failed and the cause is unknown; the geometry comparison did not identify a fix.
+- Broken or risky: emulator startup, local/online marker behavior, full Android regression, hardware telemetry and physical coverage remain unverified.
+- Next: inspect the local source against an independent source and representative style on a stable emulator, then fix the established cause and rerun the original assertion.
+- Do not touch: saved phone data, physical hardware, parameters or commands. Commit/push only when requested.
+
+## 2026-10-30 — Phase 118 source comparisons
+
+- Done: ran failure-preserving local-style comparisons after recovering an emulator session. See [Phase 118](phase-118-report.md) and D-118-02.
+- Verification: original marker test continued to fail with empty point-source queries after hiding/removing labels and replacing point features. Health gate reported no new errors during those tests. A nonvertical geometry comparison was blocked by a later emulator ANR and removed without changing the failed assertion.
+- In progress: waypoint-source/rendering cause remains unknown; no production fix or passing retest yet.
+- Broken or risky: local style lacks glyphs, emulator startup is unreliable, online map behavior and physical hardware remain unverified.
+- Next: test geometry and a representative style on a stable disposable emulator, identify the cause, then repair and rerun focused regression.
+- Do not touch: saved phone data, physical hardware, parameters or commands. Commit/push only when requested.
+
+## 2026-10-30 — Phase 118 failed-test follow-up blocked
+
+- Done: prepared and built a failure-preserving local-style comparison; it was removed after the emulator blocked execution. See [Phase 118](phase-118-report.md) and D-118-02.
+- Verification: diagnostic test APK build passed; neither retry ran instrumentation because both emulator starts had System UI ANRs, and the runner refused the error dialog.
+- In progress: the existing offline marker test remains failed; the empty point-source cause and glyph hypothesis remain unverified.
+- Broken or risky: emulator reliability, landscape marker rendering, online map tiles, full Android regression, Cube heartbeat and physical coverage remain unverified.
+- Next: use a healthy disposable emulator to run the retained test and compare a representative style; preserve the earlier failures and avoid weakening the assertion.
+- Do not touch: phone data, physical hardware, parameters or commands. Commit/push only when requested.
+
+## 2026-10-30 — Phase 118 diagnostic follow-up
+
+- Done: captured the failed offline landscape test and checked its projected positions and waypoint source. See [Phase 118](phase-118-report.md).
+- Verification: diagnostic test failed again with an empty queried waypoint source; its screenshot shows the route line without visible circles. Android health was clear during the test, though startup service ANRs occurred. A later label-layer experiment was blocked by an Android ANR and removed without changing the original assertion.
+- In progress: determine why the local-style point source is empty; the lack of glyphs is only a hypothesis. The configured online style has not been compared.
+- Broken or risky: no verified landscape marker rendering or online provider tiles; emulator reliability, full Android regression, Cube heartbeat and physical coverage remain unverified.
+- Next: use a stable disposable emulator to distinguish local style/glyph behavior from app rendering, then fix and rerun the failed test and regression.
+- Do not touch: saved phone data, physical hardware, parameters or commands. Commit/push only when requested.
+
+## 2026-10-30 — Phase 118 landscape map investigation incomplete
+
+- Done: added an independent offline-style landscape route test and failure diagnostics; no production code changed. See [Phase 118](phase-118-report.md) and D-118-01.
+- Verification: test APK built; first test reached camera idle and projected separation, then failed its two-marker pixel check with Android healthy. Diagnostic revision built but did not run because two later emulator starts showed System UI ANRs.
+- In progress: rerun diagnostics on a stable disposable emulator and determine whether the original failure is rendering, projection, occlusion or test sampling.
+- Broken or risky: no fully verified landscape map or online provider tiles; full Android regression, prior intermittent menu failure, Cube heartbeat and physical coverage remain unverified.
+- Next: inspect failure screenshot and coordinates, fix the established cause and run the targeted regression without weakening assertions.
+- Do not touch: saved phone data, physical hardware, parameters or commands. Commit/push only when requested.
+
 ## 2026-10-30 — Phase 117 mission test follow-up
 
 - Done: the revised landscape route-pixel test passed on the isolated emulator. See [Phase 117](phase-117-report.md) and D-117-01.

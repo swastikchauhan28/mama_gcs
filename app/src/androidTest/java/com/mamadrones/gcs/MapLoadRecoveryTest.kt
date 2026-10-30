@@ -31,6 +31,93 @@ class MapLoadRecoveryTest {
     private val vehicle = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
         position = GlobalPositionState(-35.363, 149.165, lastUpdatedAtEpochMillis = System.currentTimeMillis(), lastUpdatedAtElapsedMillis = android.os.SystemClock.elapsedRealtime()), headingDegrees = 90.0)
 
+    @Test fun landscapeMissionFitsBothRenderedRouteMarkersAfterCameraIdle() {
+        val styleFile = File.createTempFile("phase118-style-", ".json", compose.activity.cacheDir)
+        styleFile.writeText(VALID_STYLE)
+        val styleUrl = mutableStateOf<String?>(Uri.fromFile(styleFile).toString())
+        val route = listOf(DraftWaypoint("first", -35.363, 149.165), DraftWaypoint("second", -35.365, 149.165))
+        var idleListener: MapLibreMap.OnCameraIdleListener? = null
+        var map: MapLibreMap? = null
+        try {
+            compose.setContent {
+                MamaGcsTheme {
+                    com.mamadrones.gcs.presentation.screens.MissionScreen(
+                        VehicleState(), com.mamadrones.gcs.presentation.mission.MissionPlanUiState(
+                            loading = false, draft = MissionDraft("Synthetic route", route)),
+                        mapStyleUrl = styleUrl.value, onAction = {})
+                }
+            }
+            val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+            assertTrue("The fixture must be landscape", root.width > root.height)
+            map = awaitLoaded()
+            val loadedMap = requireNotNull(map)
+            val idle = AtomicBoolean(false)
+            idleListener = MapLibreMap.OnCameraIdleListener { idle.set(true) }
+            compose.runOnIdle { loadedMap.addOnCameraIdleListener(idleListener!!) }
+            compose.onNodeWithTag("mission-fit").assertIsEnabled().performClick()
+            compose.waitUntil(20_000) { idle.get() }
+            val rendered = AtomicBoolean(false)
+            val frameListener = MapView.OnDidFinishRenderingFrameListener { _, _, _ -> rendered.set(true) }
+            lateinit var view: MapView
+            val coordinates = ArrayList<Pair<Int, Int>>()
+            compose.runOnIdle {
+                view = requireNotNull(findMap(compose.activity.window.decorView))
+                view.addOnDidFinishRenderingFrameListener(frameListener)
+                loadedMap.triggerRepaint()
+                val location = IntArray(2)
+                view.getLocationOnScreen(location)
+                route.forEach { point ->
+                    val projected = loadedMap.projection.toScreenLocation(org.maplibre.android.geometry.LatLng(point.latitude, point.longitude))
+                    coordinates.add((location[0] + projected.x).roundToInt() to (location[1] + projected.y).roundToInt())
+                }
+            }
+            try {
+                compose.waitUntil(10_000) { rendered.get() }
+                assertTrue("Both fitted points must be visibly separated", kotlin.math.abs(coordinates[0].second - coordinates[1].second) >= 40)
+                var bitmap: android.graphics.Bitmap? = null
+                try {
+                    compose.waitUntil(10_000) {
+                        val frame = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+                        if (frame == null) false else {
+                            val markersVisible = coordinates.all { (x, y) ->
+                                var count = 0
+                                if (x >= 18 && y >= 18 && x + 18 < frame.width && y + 18 < frame.height) {
+                                    for (dy in -18..18) for (dx in -18..18) {
+                                        val pixel = frame.getPixel(x + dx, y + dy)
+                                        if (android.graphics.Color.red(pixel) >= 235 && android.graphics.Color.green(pixel) in 90..190 &&
+                                            android.graphics.Color.blue(pixel) <= 100) count++
+                                    }
+                                }
+                                count >= 12
+                            }
+                            if (markersVisible) { bitmap = frame; true } else { frame.recycle(); false }
+                        }
+                    }
+                    File(compose.activity.getExternalFilesDir(null), "phase118-landscape-offline-route.png").outputStream().use {
+                        assertTrue(requireNotNull(bitmap).compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+                    }
+                } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+                    androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()?.let { frame ->
+                        File(compose.activity.getExternalFilesDir(null), "phase118-landscape-failure.png").outputStream().use {
+                            frame.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                        }
+                        frame.recycle()
+                    }
+                    var sourceDetails = "unavailable"
+                    compose.runOnIdle {
+                        sourceDetails = loadedMap.style?.getSourceAs<GeoJsonSource>("mama-draft-points")
+                            ?.querySourceFeatures(null)?.map { it.geometry().toString() }.toString()
+                    }
+                    throw AssertionError("Marker pixels missing near projections: $coordinates; points=$sourceDetails", failure)
+                } finally { bitmap?.recycle() }
+            } finally { compose.runOnIdle { view.removeOnDidFinishRenderingFrameListener(frameListener) } }
+        } finally {
+            compose.runOnIdle { idleListener?.let { map?.removeOnCameraIdleListener(it) }; styleUrl.value = null }
+            compose.waitForIdle()
+            check(styleFile.delete()) { "Could not remove test-owned map style" }
+        }
+    }
+
     @Test fun denseOverlayRemainsResponsiveDuringRepeatedMapInteractions() {
         val style = File.createTempFile("phase88-style-", ".json", compose.activity.cacheDir)
         style.writeText(VALID_STYLE)
@@ -507,13 +594,20 @@ class MapLoadRecoveryTest {
         second.writeText(VALID_STYLE.replace("#12202c", "#ccddee"))
         val url = mutableStateOf<String?>(Uri.fromFile(first).toString())
         val points = listOf(DraftWaypoint("a", -35.363, 149.165), DraftWaypoint("b", -35.364, 149.166))
+        val state = mutableStateOf(vehicle)
+        // This test models continuing telemetry; freshness expiry has separate tests.
+        fun refreshPosition() {
+            state.value = vehicle.copy(position = vehicle.position.copy(
+                lastUpdatedAtEpochMillis = System.currentTimeMillis(),
+                lastUpdatedAtElapsedMillis = android.os.SystemClock.elapsedRealtime()))
+        }
         try {
             compose.setContent { MamaGcsTheme {
-                VehicleMap(vehicle, Modifier.fillMaxSize(), planningMode = true,
+                VehicleMap(state.value, Modifier.fillMaxSize(), planningMode = true,
                     draftWaypoints = points, draftFence = points + DraftWaypoint("c", -35.365, 149.164), styleUrl = url.value)
             } }
             val map = awaitLoaded()
-            awaitPosition(map, -35.363)
+            awaitPosition(map, -35.363, beforePoll = ::refreshPosition)
             compose.runOnIdle {
                 map.cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
                     .target(org.maplibre.android.geometry.LatLng(-35.37, 149.17)).zoom(14.0).bearing(30.0).build()
@@ -524,13 +618,13 @@ class MapLoadRecoveryTest {
                 compose.runOnIdle { switched = map.style?.uri == url.value && map.style?.isFullyLoaded == true }
                 switched
             }
-            awaitPosition(map, -35.363)
+            awaitPosition(map, -35.363, beforePoll = ::refreshPosition)
             compose.runOnIdle {
                 assertEquals(-35.37, map.cameraPosition.target!!.latitude, 0.00001)
                 assertEquals(14.0, map.cameraPosition.zoom, 0.001)
                 assertEquals(30.0, map.cameraPosition.bearing, 0.001)
                 for (source in listOf("mama-vehicle-source", "mama-track-source", "mama-heading-source",
-                    "mama-draft-points", "mama-draft-line", "mama-draft-fence", "mama-home-source")) {
+                    "mama-draft-points", "mama-draft-labels-source", "mama-draft-line", "mama-draft-fence", "mama-home-source")) {
                     assertNotNull(source, map.style!!.getSource(source))
                 }
             }

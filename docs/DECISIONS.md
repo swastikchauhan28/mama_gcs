@@ -1,5 +1,37 @@
 # Decisions and alternatives
 
+## D-118-05: Isolate waypoint circles from label glyph loading
+
+- Date: 2026-10-30; user requested comparison, fix and emulator validation. Baseline `c03f4d270931747590cab2efc42a73809e71f159` with prior Phase 118 changes retained; model/version unavailable.
+- Context: in the glyphless local style, the existing waypoint source queried empty and circles were absent, while a newly created independent point source with a circle layer returned both points in the same map. Removing/hiding the existing label layer after tile initialization did not recover the original source. MapLibre logged an empty resource URL. This suggests source/layer resource coupling but does not establish all renderer or online behavior.
+- Follow-up: the style-reload regression twice timed out waiting for a synthetic vehicle source, once before reload and once after. Its single initial position can expire during slow emulator startup. Test the intended continuous fresh-input scenario by refreshing its synthetic sample during polling; retain the source and camera assertions and separate stale-position tests. This timing explanation is a hypothesis until retested.
+- Choice: keep the existing waypoint-circle source free of the glyph-dependent symbol layer by adding a separate label source populated with the same feature collection. Preserve labels and update both sources together. Validate the original two-marker check on the local style, source creation and real-activity regression; retain failed evidence. Alternative: hide labels or change only the test to ignore missing circles; either changes visible behavior or conceals the issue. Trade-off: one additional in-memory map source and duplicate feature publication; labels can still be unavailable without glyphs, online style and external tiles remain independently unverified. Revisit if representative map tests show regressions or partial update behavior. No persistence, external destination, transport or physical safety behavior changes. Baseline is not a verified release.
+
+## D-118-04: Compare a separate point source in the same map
+
+- Date: 2026-10-30; user explicitly requested an independent-source comparison, fix and emulator test. Baseline `c03f4d270931747590cab2efc42a73809e71f159` with Phase 118 changes preserved; model/version unavailable.
+- Context: same-longitude and offset points both failed; label-layer visibility and republishing to the app source did not change the local-style query. The separate-source diagnostic was previously blocked by an emulator ANR.
+- Choice: add a temporary failure-only independent GeoJSON point source and circle layer to the same test map, compare source data while retaining the original failure, then use observed evidence to choose a targeted fix. Alternative: blindly change app source or weaken the test, either of which obscures the cause. The local background style is not an online-tile or physical positioning test. No phone data or physical hardware is involved.
+
+## D-118-03: Compare same-longitude and offset waypoint geometry
+
+- Date: 2026-10-30; user requested repair and emulator retest. Baseline `c03f4d270931747590cab2efc42a73809e71f159` with existing Phase 118 edits preserved; model/version unavailable.
+- Context: local style shows the line but no waypoint circles for two points with the same longitude; prior label and source replacements did not resolve it. A geometry comparison was built but blocked before execution.
+- Choice: run the original vertical-point test and an otherwise identical offset-point test as separate cases on the disposable emulator, preserving the existing original assertion and failure evidence. If results identify a fixture defect, repair only with a direct independent assertion. Do not change production behavior based on a hypothesis, rely on real provider credentials, touch user data, or bypass emulator health checks. Trade-off: a background-only local style does not prove online tile/glyph behavior; emulator startup may fail.
+
+## D-118-02: Isolate the glyphless-style hypothesis without hiding failures
+
+- Date: 2026-10-30; user requested fixing the remaining failing test. Baseline `c03f4d270931747590cab2efc42a73809e71f159` with existing Phase 118 work preserved; model/version unavailable.
+- Context: local offline style produced a route line but its waypoint source query was empty. The original failure could reflect a renderer/source or test-style problem; online style behavior remains unknown.
+- Choice: run a failure-only comparison with the test fixture's label layer hidden after capturing the original failure, then always fail with both source results. Alternative: hide labels or weaken the original test and call it fixed, which would lose evidence. No production behavior, user data, external destinations or safety checks change. Decide any actual fix only from observed results, and restore ordinary test checks after the experiment.
+
+## D-118-01: Verify settled route markers with an independent offline map
+
+- Date: 2026-10-30; user approved Phase 118. Baseline `c03f4d270931747590cab2efc42a73809e71f159`, clean; model/version unavailable.
+- Context: Phase 117 captures the first orange pixels after an animated fit; the real draft also contains a much larger field outline, so overlapping route points in that frame do not by themselves establish a map defect. Online tiles are outside the test's control.
+- Follow-up: the source diagnostic returned no visible waypoint features with the background-only style. Compare a failure-only, test-local label-layer visibility change to examine the glyphless-style hypothesis; preserve the original failed result and do not apply that visibility change to the app.
+- Choice: add a separate landscape `MissionScreen` fixture using the existing local background-only style and two synthetic, separated waypoints. Observe actual MapLibre camera-idle and rendered frames, check projected marker separation and orange pixels near both projections, save a screenshot, and run the existing real-activity mission test as a regression. Do not change route geometry, production map behavior, assertions, external destinations or saved phone data. Alternative: lengthen a fixed sleep or require arbitrary screenshot colors; neither independently verifies camera completion or both marker locations. Trade-off: a local background is not evidence that external provider tiles load. Revisit if SDK callback/rendering behavior or real-provider evidence differs. Baseline is a recovery reference, not a tested release.
+
 ## D-117-01: Review synthetic mission and coverage views on a disposable emulator
 
 - Date: 2026-10-30; user approved Phase 117. Baseline `8b4cc7c624b059e97267d1bb3de09fa21f30ec0f`, clean; model/version unavailable.
