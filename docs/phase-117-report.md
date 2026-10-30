@@ -1,0 +1,28 @@
+# Phase 117 — Mission and coverage visual review (incomplete)
+
+2026-10-30. User approved mission and field-coverage visual checks on the emulator. Baseline `8b4cc7c624b059e97267d1bb3de09fa21f30ec0f`, clean; model/version unavailable. See D-117-01. No hardware, phone data or production app behavior was changed.
+
+## Existing-test run and visual evidence
+
+Started the isolated `MamaPhase116` AVD with `-gpu swiftshader_indirect -no-snapshot -no-boot-anim -no-window -memory 3072 -cores 4`, and ran `scripts/Test-AndroidAcceptance.ps1 -Serial emulator-5554 -TestClass "com.mamadrones.gcs.MissionPlanningTest#editReorderAndSaveDraftSurvivesNewViewModel,com.mamadrones.gcs.FieldCoverageAppTest#realPlannerShowsCoverageInPortraitAndLandscapeWithoutSavingIt"`. Both original tests passed; health gate found zero new crash lines, zero new ANRs and no error dialog. Evidence `app/build/acceptance-20261030-101203-b14cb3d8/`. The map may use the existing configured map provider; test data and screenshot files are synthetic.
+
+Reviewed `mission-portrait.png`, `mission-landscape.png`, `phase76-app-portrait.png`, `phase76-app-landscape.png`, `phase80-app-portrait.png` and `phase80-app-landscape.png` under `app/build/phase117-emulator-20261030/` (ignored, temporary). The portrait mission screenshot displays a route marker and line; both coverage diagrams are visible, with safety messaging. The comparison cards scroll horizontally, and text at the edge or top of the viewport can be partially clipped at the captured scroll position. The landscape mission screenshot has no full-screen overlay but its map area is blank at capture time; it does not establish that route markers render there. The cause is not proven. Screenshots do not establish soil coverage or real-world positioning accuracy.
+
+## Targeted test follow-up
+
+Changed only `MissionPlanningTest`: after rotation, wait for the fit control to become enabled, fit the synthetic draft, and wait up to 20 seconds for orange pixels in the map area before writing the landscape screenshot. The check excludes the right-side controls, but color matching is heuristic and does not alone prove marker identity. It retains previous assertions and introduces no retries or relaxed conditions. This test change is **not yet runtime verified**.
+
+The first test APK build failed because screenshot bounds were in dp rather than pixels. Corrected to pixel bounds; rerunning `gradlew.bat -I "%TEMP%\mama-gcs-phase58-local-build.gradle" :app:assembleDebugAndroidTest --no-daemon --max-workers=1 --console=plain` succeeded (6 executed, 54 up to date). After rebuilding, two no-wipe emulator restart attempts produced System UI startup ANRs; on the second, the revised test APK installed, but the existing acceptance runner refused to start because an Android error dialog appeared. A third no-wipe retry after lint and resource release showed an Android Bluetooth crash dialog. No revised test ran. ANR and crash evidence is under `app/build/phase117-emulator-20261030/`; no error dialog was dismissed, and the task-started emulator was stopped. `gradlew.bat -I "%TEMP%\mama-gcs-phase58-local-build.gradle" :app:lintDebug --no-daemon --max-workers=1 --console=plain` succeeded (3 executed, 31 up to date).
+
+## Remaining
+
+A stable emulator is needed to run the strengthened mission test, inspect its new landscape screenshot and investigate any failure without weakening assertions. Phase 117 is incomplete until that verification succeeds. The initial passing run applies to the original test, not the revised one. Full Android regression, intermittent menu failure, real Cube heartbeat, physical coverage accuracy and release gates remain unverified. Commit/push require separate authorization.
+
+
+## 2026-10-30 follow-up — Revised mission check passed
+
+The user requested an emulator repair and rerun. With WHPX usable and approximately 6 GB host memory free, the same disposable AVD was started without wiping using `-gpu swiftshader_indirect -no-snapshot -no-boot-anim -no-window -memory 3072 -cores 4`, without a concurrent build. The launcher appeared with no startup ANR observed in the checked event buffer. The previously built test APK was installed in place only on the disposable emulator. No permanent emulator configuration or Android service was changed, so this successful run is not proof of the earlier failures' root cause or a durable repair.
+
+`scripts/Test-AndroidAcceptance.ps1 -Serial emulator-5554 -TestClass "com.mamadrones.gcs.MissionPlanningTest#editReorderAndSaveDraftSurvivesNewViewModel"` passed (1 test); the health gate reported zero new crash lines, zero new ANRs and no error dialog. Evidence: `app/build/acceptance-20261030-103351-484e84df/` (ignored, temporary). The new `mission-landscape-rendered.png` was inspected: it shows orange route markers and the safety banner, but the markers overlap and the basemap appears blank in the captured frame. The pixel threshold is only a color heuristic and may be satisfied before the camera animation and map tiles fully settle. Thus the strengthened test has run successfully, but an unobscured fully rendered landscape route/basemap visual remains unverified. Do not infer the initial blank capture's root cause from this result. The emulator was stopped without wiping data.
+
+The scoped test change is now runtime verified; complete visual acceptance of the landscape map remains open, as do broader Android regression, the earlier intermittent menu failure, physical Cube heartbeat and release gates. No phone data or physical hardware was touched. Commit/push require separate authorization.

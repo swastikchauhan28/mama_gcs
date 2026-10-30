@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-117-01: Review synthetic mission and coverage views on a disposable emulator
+
+- Date: 2026-10-30; user approved Phase 117. Baseline `8b4cc7c624b059e97267d1bb3de09fa21f30ec0f`, clean; model/version unavailable.
+- Context: the Phase 116 mission screenshot was obscured by Android's full-screen education overlay despite passing interaction assertions. Existing real-activity tests generate synthetic routes, coverage previews and portrait/landscape captures in disposable storage.
+- Choice: reuse the isolated `MamaPhase116` emulator, existing mission and coverage tests and unmodified Android health gate, then independently inspect the captures. Investigate reproducible visual defects in scope; avoid a production change if no defect is evidenced. Alternatives: rely on semantics alone or alter user phone data; these respectively miss pixels or risk operator data. The coverage preview and screenshots are not physical measurement or evidence of soil coverage. Map views may use the configured provider. Existing AVD failures remain historical evidence; a passing retry does not prove host stability.
+- Recovery: no production change planned; preserve pre-existing AVD data and user data. The baseline is a source recovery reference, not a tested release. Revisit if the notice recurs or a reproducible layout defect is found.
+- Follow-up before test edit: landscape capture showed a blank map after rotation while the portrait capture displayed the route. Compare a targeted test-only capture that waits for map readiness, fits the draft and requires visible orange route pixels; this verifies rendered evidence without claiming the initial blank proves a production defect. Trade-off: renderer or map-provider issues can fail the test and need investigation; do not suppress them.
+- 2026-10-30 retry: user requested emulator repair and rerun. WHPX is usable and host free memory has recovered; first repeat the previous resource-tuned configuration without concurrent Gradle, preserving the recorded ANR/crash evidence and unchanged health gate. If unstable, inspect a scoped emulator-only alternative; do not weaken tests or modify phone data.
+
 ## D-116-02: Diagnose emulator stalls with available host resources
 
 - Date: 2026-10-29; user requested repairing the emulator and rerunning the eleven checks. Baseline `428790493292956c817931453303c7d9fe444696` with Phase 116 documentation changes preserved; model/version unavailable.

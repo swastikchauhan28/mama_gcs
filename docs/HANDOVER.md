@@ -1,5 +1,23 @@
 # Current handover
 
+## 2026-10-30 — Phase 117 mission test follow-up
+
+- Done: the revised landscape route-pixel test passed on the isolated emulator. See [Phase 117](phase-117-report.md) and D-117-01.
+- Verification: targeted mission test passed (1) with no new crash/ANR in the health gate; prior mission and coverage tests also passed. The new screenshot shows overlapping route markers on a blank-looking basemap.
+- In progress: confirm the fully rendered landscape route and basemap after camera and tile loading; the pixel heuristic alone does not establish this.
+- Broken or risky: emulator stability and earlier Android ANRs remain unresolved; full Android regression, intermittent menu failure, Cube heartbeat and physical coverage remain unverified.
+- Next: diagnose capture timing/map rendering with independent evidence, preserving all failures and user data.
+- Do not touch: saved phone data, physical hardware, parameters or vehicle commands. Commit/push only when requested.
+
+## 2026-10-30 — Phase 117 mission visual review incomplete
+
+- Done: original mission and coverage emulator tests passed and portrait/landscape screenshots were reviewed; coverage diagrams were visible. Added a test-only route-render check for landscape capture. See [Phase 117](phase-117-report.md) and D-117-01.
+- Verification: original tests passed with healthy gate; revised test APK and lint passed after correcting a dp/pixel compilation error. The revised test was blocked by emulator startup ANRs and a Bluetooth crash and has not run.
+- In progress: verify the revised test and inspect its landscape screenshot on a stable emulator. Original landscape map capture was blank; its cause is unconfirmed.
+- Broken or risky: full Android regression, intermittent menu failure, Cube heartbeat, real coverage accuracy and release gates remain unverified.
+- Next: restore a healthy disposable emulator without dismissing errors or wiping data; run the revised mission test and investigate failures.
+- Do not touch: saved phone data, physical hardware, parameters or vehicle commands. Commit/push only when requested.
+
 ## 2026-10-29 — Phase 116 emulator follow-up
 
 - Done: all eleven previously excluded data-changing methods passed on the isolated synthetic emulator after using 3 GB RAM and four CPU cores, without concurrent Gradle work. See [Phase 116](phase-116-report.md) and D-116-02.

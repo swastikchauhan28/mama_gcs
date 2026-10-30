@@ -65,7 +65,10 @@ class MissionPlanningTest {
                 assertTrue("Editor must actually render in landscape", rotatedRoot.width > rotatedRoot.height)
                 scrollToTag("mission-add").assertIsEnabled()
                 compose.onNodeWithTag("mission-map").assertIsDisplayed()
-                capture("mission-landscape")
+                // A map can report its Compose node before native route layers render.
+                compose.waitUntil(20_000) { compose.onAllNodes(hasTestTag("mission-fit") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+                compose.onNodeWithTag("mission-fit").performClick()
+                captureRenderedLandscapeRoute()
                 compose.onNodeWithTag("mission-editor").performScrollToNode(hasText("Start mission"))
                 compose.onNodeWithText("Start mission").assertIsNotEnabled()
                 scenario.close()
@@ -114,6 +117,35 @@ class MissionPlanningTest {
         })
         compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag(tag))
         return compose.onNodeWithTag(tag)
+    }
+
+    private fun captureRenderedLandscapeRoute() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val bounds = compose.onNodeWithTag("mission-map").fetchSemanticsNode().boundsInRoot
+        var captured: Bitmap? = null
+        try {
+            // Exclude the right-side map controls, whose gold labels are not route evidence.
+            compose.waitUntil(20_000) {
+                val frame = instrumentation.uiAutomation.takeScreenshot()
+                if (frame == null) false else {
+                    var orange = 0
+                    val right = (bounds.left + bounds.width * 0.65f).toInt().coerceAtMost(frame.width)
+                    val bottom = bounds.bottom.toInt().coerceAtMost(frame.height)
+                    for (y in bounds.top.toInt().coerceAtLeast(0) until bottom step 3) {
+                        for (x in bounds.left.toInt().coerceAtLeast(0) until right step 3) {
+                            val pixel = frame.getPixel(x, y)
+                            if (android.graphics.Color.red(pixel) >= 235 && android.graphics.Color.green(pixel) in 90..190 &&
+                                android.graphics.Color.blue(pixel) <= 100) orange++
+                        }
+                    }
+                    if (orange >= 12) { captured = frame; true } else { frame.recycle(); false }
+                }
+            }
+            val directory = requireNotNull(instrumentation.targetContext.getExternalFilesDir("qa")).apply { mkdirs() }
+            File(directory, "mission-landscape.png").outputStream().use {
+                assertTrue(requireNotNull(captured).compress(Bitmap.CompressFormat.PNG, 100, it))
+            }
+        } finally { captured?.recycle() }
     }
 
     private fun capture(name: String) {
