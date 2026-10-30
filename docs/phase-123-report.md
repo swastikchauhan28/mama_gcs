@@ -1,0 +1,24 @@
+# Phase 123 — Enlarged-text workspace header
+
+Date: 2026-10-30. User approved implementation and emulator testing. Baseline `42dbd1e6a9d97cd8e1014779c35b24e3cdc44370` was clean; it is a recovery reference, not a verified release. AI model/version unavailable.
+
+## Goal and design
+
+The Phase 122 landscape screenshot at 2x Android font showed the mission workspace title truncated to `Pl...`. The wide header shared horizontal space among brand, rover selector, workspace title and connection. At font scale >= 1.8 and width >= 720 dp, keep a compact Menu, workspace title and connection in one row and expose the same rover selection action inside the existing menu. Allow the title to wrap. Ordinary wide and portrait layouts keep their prior behavior. The trade-off is an extra tap for the selector at enlarged wide sizes; exceptionally long labels or other viewports remain unverified. See D-123-01 for alternatives and revision.
+
+The path is Android font configuration -> `StationShell` wide/enlarged layout -> title, menu and `onVehicleDetails` callback; no new data storage, external endpoint, permission, dependency, hardware command, or mission data format is introduced. Vehicle label comes from existing state and may still be truncated in the normal wide layout. Opening the menu is local UI state; telemetry connection behavior is unchanged.
+
+## Verification
+
+- `./gradlew.bat -I "$env:TEMP\mama-gcs-phase58-local-build.gradle" :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --no-daemon --max-workers=1 --console=plain` succeeded for the final production revision: 97 actionable tasks, 27 executed and 70 up-to-date. After adding the selector-action assertion, `:app:assembleDebugAndroidTest :app:lintDebug` also succeeded (9 executed, 60 up-to-date). An earlier fresh unit-test task also passed before the header revision; do not treat all final tasks as fresh. Gradle log: `%USERPROFILE%/.gradle/daemon/8.13/daemon-20736.out.log`.
+- On disposable `MamaPhase116`, `scripts/Test-AndroidAcceptance.ps1` with `LandscapeOverlapTest#actualLargeSystemFontKeepsWorkspaceTitleAndActionsReadable` and `MissionMapWorkflowAcceptanceTest#androidLargeFontFitsOneTwoAndThreePointsInBothOrientations` passed 2 tests with healthy Android gate at 2x actual system font: `app/build/acceptance-20261030-162715-c1f58668/`. The header test checks unellipsized title, visible/enabled menu, connection and safety, selector in menu, and navigation to settings. The map test uses synthetic one/two/three-point drafts in both orientations and checks marker pixels, labels and separation.
+- A subsequent healthy targeted run opened the relocated selector, checked its Vehicle selection dialog and closed it: `app/build/acceptance-20261030-163435-8b2736ed/` (1 test). The final font cleanup needed a second delete; `app/build/phase123-emulator/selector-font-restoration.txt` confirms the original unset value.
+- The same runner with `LandscapeOverlapTest#wideHeaderKeepsTitleAndConnectionOnOneRow` and `MissionMapWorkflowAcceptanceTest#androidNormalFontKeepsPlanningControlsVisible` passed 2 tests at 1x with healthy Android gate: `app/build/acceptance-20261030-162600-b72ac017/`.
+- Reviewed `app/build/phase123-emulator/phase123-portrait-final.png`, `phase123-landscape-final.png` and `phase123-map-landscape-3-final.png`. The first two capture header layout before map tiles finished rendering; the dedicated map capture shows three distinct numbered markers. Images and acceptance logs are local build artifacts, not release artifacts.
+- The emulator's original `font_scale` was unset. Android repopulated `1.0` immediately after the final test cleanup; a second delete restored `null`, verified after 8 seconds and again after screenshot collection; evidence `app/build/phase123-emulator/final-font-restoration.txt`.
+
+## Failed attempts and open risks
+
+The first two-row version passed its title assertion but failed the existing landscape three-marker separation test (`app/build/acceptance-20261030-161355-02fde22c/`). It was revised to the one-row/menu design; assertions were retained. The first run of that design passed both assertions but the health gate failed due to a new Android `com.google.android.as` job ANR (`app/build/acceptance-20261030-162321-8239cd86/`); the later healthy retry above passed. No failing test was disabled.
+
+These are targeted emulator checks, not a full app regression, real-device accessibility validation, hardware telemetry test or a claim of physical field coverage accuracy. Provider outages and the earlier native MapLibre crash cause remain open. Human review of the selector's extra tap and full diff, security/dependency review as applicable, release gate and physical acceptance remain required before real use. No hardware or user phone was used. No commit or push is implied by implementation approval.

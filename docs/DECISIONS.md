@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-123-01: Reflow the wide header at enlarged system text
+
+- Date: 2026-10-30; user approved Phase 123. Baseline `42dbd1e6a9d97cd8e1014779c35b24e3cdc44370`, clean; model/version unavailable. Baseline is a recovery reference, not a verified release.
+- Context: Phase 122's actual 2x Android font landscape screenshot truncated the mission workspace title to `Pl...`. The wide header puts menu/brand, vehicle selector, title and connection action in one row; mobile already uses two rows.
+- Follow-up: the initial two-row wide header passed its title check, but the 2x mission-map separation regression failed because its added height left too little map space (`app/build/acceptance-20261030-161355-02fde22c/`). Revised choice: retain one header row at large text with Menu, the full workspace title, and connection action. Move the rover selector into the existing menu for that layout, preserving its current label and action; the normal layout is unchanged. This costs an extra tap to select a rover but preserves map height. Verify menu access, title, connection, safety, and original map assertions.
+- Original choice: at font scale >=1.8 on wide screens, use a menu/title row and a vehicle/connection row, retaining the same actions and normal-font wide layout. Verify actual system font at 1x and 2x, portrait and landscape, title text layout without ellipsis, usable menu/safety/connection, and the mission-map fit regression. Save/restore the exact emulator font setting and use no hardware. Alternatives: shrink text (accessibility loss) or hide the selector/status (loss of function). Trade-off: the extra row consumes vertical map space, which must be tested; long vehicle names may still ellipsize and arbitrary languages/devices remain unverified.
+
 ## D-122-03: Limit large-text fit padding to the actual map viewport
 
 - Date: 2026-10-30; the stricter actual-system-font test failed after a full 35-second wait: three landscape markers remained only 17–23 pixels apart even though their features were present. Evidence `app/build/acceptance-20261030-153817-cd277db1/`; the emulator font setting was restored. Phase 122 test changes retained.

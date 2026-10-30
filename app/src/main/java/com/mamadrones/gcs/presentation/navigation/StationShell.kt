@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mamadrones.gcs.domain.model.VehicleConnectionState
@@ -49,6 +50,14 @@ private fun ConnectionShortcut(status: VehicleConnectionState, onClick: () -> Un
     }
 }
 
+@Composable
+private fun VehicleSelector(vehicle: VehicleState, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    TextButton(onClick = onClick, modifier = modifier.testTag("vehicle-selector")) {
+        Text(vehicle.displayName ?: vehicle.systemId?.let { "Rover · SYS $it" } ?: "No rover selected",
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
 /** A map-first shell. Configuration categories never permanently consume the operating map. */
 @Composable
 fun StationShell(
@@ -79,6 +88,7 @@ fun StationShell(
         contentColor = MaterialTheme.colorScheme.onBackground) {
     BoxWithConstraints(Modifier.fillMaxSize().displayCutoutPadding().imePadding()) {
         val wide = maxWidth >= 720.dp
+        val enlargedWideHeader = wide && LocalDensity.current.fontScale >= 1.8f
         Column(Modifier.fillMaxSize()) {
             Surface(shadowElevation = 2.dp) {
                 Column {
@@ -86,11 +96,16 @@ fun StationShell(
                         Box {
                             TextButton(onClick = { menuOpen = true }, modifier = Modifier.heightIn(min = 52.dp).testTag("station-menu")) {
                                 MamaIcon(ConsoleIcon.DASHBOARD)
-                                if (wide) Text("  MAMA GCS", style = MaterialTheme.typography.titleSmall)
+                                if (wide && !enlargedWideHeader) Text("  MAMA GCS", style = MaterialTheme.typography.titleSmall)
                                 else Text(" Menu", style = MaterialTheme.typography.labelMedium)
                             }
                             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                                 Text("ROVER GROUND STATION", Modifier.padding(16.dp), style = MaterialTheme.typography.labelSmall)
+                                if (enlargedWideHeader) DropdownMenuItem(
+                                    text = { Text(vehicle.displayName ?: vehicle.systemId?.let { "Rover · SYS $it" } ?: "No rover selected") },
+                                    onClick = { menuOpen = false; onVehicleDetails() },
+                                    modifier = Modifier.testTag("vehicle-selector"),
+                                )
                                 listOf(
                                     WorkspacePage("dashboard", "Operate rover"), WorkspacePage("mission", "Plan route"),
                                     WorkspacePage("more", "Rover configuration"), WorkspacePage("diagnostics", "Analyze tools"),
@@ -102,12 +117,10 @@ fun StationShell(
                                 }
                             }
                         }
-                        if (wide) TextButton(onClick = onVehicleDetails, modifier = Modifier.testTag("vehicle-selector")) {
-                            Text(vehicle.displayName ?: vehicle.systemId?.let { "Rover · SYS $it" } ?: "No rover selected",
-                                maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
+                        if (wide && !enlargedWideHeader) VehicleSelector(vehicle, onVehicleDetails)
                         Text(workspace, Modifier.weight(1f).padding(horizontal = 8.dp).testTag("workspace-title"),
-                            style = MaterialTheme.typography.titleSmall, maxLines = if (wide) 1 else Int.MAX_VALUE,
+                            style = MaterialTheme.typography.titleSmall,
+                            maxLines = if (wide && !enlargedWideHeader) 1 else Int.MAX_VALUE,
                             overflow = TextOverflow.Ellipsis)
                         if (wide) ConnectionShortcut(live.connectionStatus) { onNavigate("settings") }
                     }

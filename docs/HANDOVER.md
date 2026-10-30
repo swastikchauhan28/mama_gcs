@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-10-30 — Phase 123 enlarged-text header
+
+- Done: at large system font on wide screens, the header shows the full workspace title and moves the rover selector into the existing menu; normal wide layout is retained. See [Phase 123](phase-123-report.md) and D-123-01.
+- Verification: Gradle unit-test, app/test APK and lint tasks succeeded (27 executed, 70 up-to-date). Actual 2x header and one/two/three-marker portrait/landscape map tests passed on a healthy emulator; two normal-font checks also passed. The relocated selector dialog also passed a fresh targeted test; screenshots reviewed. A prior two-row map regression, a system-service ANR and font-restoration retry are recorded.
+- In progress: owner review of the diff and the extra menu tap to select a rover.
+- Broken or risky: untested screen sizes, languages and physical devices, full Android regression, provider outages, prior native MapLibre crash, Cube heartbeat, field accuracy and release gates remain open.
+- Next: human review; separately scope additional accessibility or hardware acceptance.
+- Do not touch: user phone data, physical hardware, parameters or commands. Commit/push only when requested.
+
 ## 2026-10-30 — Phase 122 system-font mission fit
 
 - Done: large-text planning fit padding adapts to short map dimensions, preventing tested landscape route markers from overlapping. Actual Android 2x font setting and real mission activity tested; normal-text behavior checked. See [Phase 122](phase-122-report.md), D-122-01 through D-122-03.
