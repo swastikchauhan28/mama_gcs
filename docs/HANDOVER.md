@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-10-30 — Phase 121 large-text map fitting
+
+- Done: at font scale >= 1.8 planning map controls start collapsed and close after Fit draft, keeping the route clear and avoiding excessive right-inset zoom-out. See [Phase 121](phase-121-report.md), D-121-01 and D-121-02.
+- Verification: 478 fresh JVM tests, app/test builds and lint passed. Two constrained-map emulator tests passed for one/two/three points and 2x text in both fixture shapes and control modes; three normal/large-text coverage and map-dialog regressions passed. Reviewed screenshots; earlier overlapping-marker failures and Android startup ANRs remain documented.
+- In progress: review the uncommitted diff and the additional-tap/auto-collapse behavior.
+- Broken or risky: actual device/system font scaling, smaller viewports, provider outages, full Android regression, native MapLibre crash cause, hardware telemetry and physical coverage remain unverified.
+- Next: human review and, when available, real-device accessibility and hardware acceptance.
+- Do not touch: user phone data, vehicle hardware, parameters or commands. Commit/push only when requested.
+
 ## 2026-10-30 — Phase 120 targeted emulator retest passed
 
 - Done: Fit draft reserves the measured width of its map controls; real mission editor tests cover add, edit, reorder, remove, portrait/landscape fit and style change. See [Phase 120](phase-120-report.md) and decisions D-120-01 through D-120-03.

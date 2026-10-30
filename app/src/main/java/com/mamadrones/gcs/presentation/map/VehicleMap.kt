@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -131,7 +132,10 @@ fun VehicleMap(
     coverageGapSamples: List<CoverageMapPoint>? = null,
 ) {
     val mapView = rememberMapViewWithLifecycle()
-    var controlsExpanded by remember(compactPlanningControls) { mutableStateOf(!compactPlanningControls) }
+    val collapseForLargeText = planningMode && LocalDensity.current.fontScale >= 1.8f
+    var controlsExpanded by remember(compactPlanningControls, collapseForLargeText) {
+        mutableStateOf(!compactPlanningControls && !collapseForLargeText)
+    }
     var controlsWidthPx by remember { mutableIntStateOf(0) }
     val clockTick by produceState(android.os.SystemClock.elapsedRealtime()) {
         while (true) { delay(1_000); value = android.os.SystemClock.elapsedRealtime() }
@@ -363,13 +367,16 @@ fun VehicleMap(
         val targets = (draftWaypoints + draftFence).map { LatLng(it.latitude, it.longitude) }.distinct()
         if (targets.isEmpty()) return
         followVehicle = false
+        // On a small map, large-text controls can consume nearly the whole fitting area.
+        // Hide them after fitting and use the unobscured map for the camera calculation.
+        if (collapseForLargeText) controlsExpanded = false
         val padding = (48 * mapView.resources.displayMetrics.density).toInt()
         val update = if (targets.size == 1) CameraUpdateFactory.newLatLngZoom(targets.first(), DEFAULT_MAP_ZOOM)
         else {
             // The bottom-right controls cover map pixels. Fit the entire route to the remaining
             // width to reduce the chance of a waypoint being hidden behind an opaque button.
             val maxRight = (mapView.width - padding - 1).coerceAtLeast(padding)
-            val right = (padding + controlsWidthPx).coerceAtMost(maxRight)
+            val right = (padding + if (collapseForLargeText) 0 else controlsWidthPx).coerceAtMost(maxRight)
             val bounds = LatLngBounds.Builder().includes(targets).build()
             val camera = loadedMap.getCameraForLatLngBounds(bounds, intArrayOf(padding, padding, right, padding))
             if (camera == null) CameraUpdateFactory.newLatLngBounds(bounds, padding)
@@ -480,7 +487,7 @@ fun VehicleMap(
             }
         }
         }
-        if (compactPlanningControls) FilledTonalButton(
+        if (compactPlanningControls || collapseForLargeText) FilledTonalButton(
             onClick = { controlsExpanded = !controlsExpanded }, colors = mapButtonColors,
             modifier = Modifier.heightIn(min = 48.dp).testTag("coverage-map-controls"),
         ) { Text(if (controlsExpanded) "Hide controls" else "Map controls") }

@@ -124,6 +124,13 @@ class FieldCoverageUiTest {
             compose.onNodeWithTag("coverage-map-controls").performScrollTo().assertIsDisplayed().performClick()
             compose.onNodeWithTag("mission-fit").assertIsDisplayed().assertIsEnabled().performClick()
             compose.waitUntil(30_000) { var zoom = 0.0; compose.runOnIdle { zoom = map!!.cameraPosition.zoom }; zoom > 18.0 }
+            if (largeText) {
+                // Large-text fit closes the controls so the preview is not covered.
+                compose.onNodeWithTag("coverage-map-controls").performScrollTo().assertTextContains("Map controls")
+                compose.onAllNodesWithTag("mission-fit").assertCountEquals(0)
+                compose.onNodeWithTag("coverage-map-controls").performClick()
+                compose.onNodeWithTag("mission-fit").assertIsDisplayed().assertIsEnabled()
+            }
             compose.onNodeWithTag("coverage-map-controls").performScrollTo().assertIsDisplayed().performClick()
             compose.onAllNodesWithTag("mission-fit").assertCountEquals(0)
             assertCompactMapLayout()

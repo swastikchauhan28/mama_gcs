@@ -1,5 +1,17 @@
 # Decisions and alternatives
 
+## D-121-02: Collapse large-text map controls after fitting
+
+- Date: 2026-10-30; approved Phase 121 tests failed for standard and compact 300x320 dp map fixtures at 2x text. Evidence `app/build/acceptance-20261030-142538-02620f50/` and screenshots in `app/build/phase121-emulator/`. The single-point capture also shows a marker partly covered by Fit draft; for two points the large right inset left nearly no fitting width, causing excessive zoom-out and overlapping markers.
+- Choice: at font scale 1.8 or higher, offer a collapsible planning-control group in both layouts, initially collapsed, and collapse it when Fit draft is pressed. Fit without reserving the hidden group width in this mode. Existing normal-font compact behavior remains as before. Alternatives: clamp the inset while leaving controls over the map (still obscures points), or hardcode tiny text/control sizes (harms readability). Cost: large-text users need one additional tap to access map controls and controls close after fitting. Test one/two/three points in portrait/landscape-shaped constrained map areas with both control modes, and preserve earlier failures. This changes map presentation only; it cannot guarantee every viewport or physical accuracy.
+
+## D-121-01: Check fitting in constrained maps with enlarged text
+
+- Date: 2026-10-30; user approved Phase 121. Baseline `08ef3e347e9e4f35a7f2c115aa48e6821ebe0e48`, clean; model/version unavailable. Baseline is a recovery reference, not a verified release.
+- Context: Phase 120 reserves space for map controls in normal layouts but very small maps, 2x text, compact controls, and one-point fit remain unverified. A narrow viewport can leave too little room for asymmetric insets, and a single point is currently centered without control-aware padding.
+- Choice: add disposable-emulator tests with synthetic points and bounded portrait- and landscape-shaped map fixtures at 2x text, including standard and compact planning controls. Check that controls remain usable and route markers and their numbers are visible after fit, including one-, two-, and three-point routes. Use the existing configured style for glyphs; capture screenshots and keep failures. Alternatives: rely on geometry/source data alone or fixed screen assumptions, which do not prove actual visible markers. If a defect is established, make a focused display-only fix and rerun affected checks.
+- Trade-offs: these fixtures represent small map areas, not every physical device or Android accessibility configuration. Provider/glyph loading and emulator health can block visual checks. No user phone, hardware, persisted operator draft, route execution, or new external destination is involved.
+
 ## D-120-03: Await a rendered map frame before querying labels
 
 - Date: 2026-10-30; user requested completion of Phase 120. The emulator retest crashed in MapLibre native `queryRenderedFeatures` after two portrait captures; evidence `app/build/acceptance-20261030-133008-8095d123/`. The renderer was null in the crash trace; the exact lifecycle sequence is not proven. Phase 120 uncommitted changes are retained.
