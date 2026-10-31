@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-10-31 — Phase 125 map-test stability
+
+- Done: ran the affected 27-test group three consecutive times on the disposable emulator; all passed with healthy Android gates. See [Phase 125](phase-125-report.md).
+- Verification: three runs of 27 tests, no recorded failures, skips, crashes or ANRs; build verification succeeded with 79 tasks up-to-date. The original emulator font setting remained unset. No application code changed.
+- Broken or risky: the earlier native MapLibre SIGSEGV remains unexplained; three healthy repetitions do not prove it cannot recur. Full current software regression after the Phase 124 test changes, physical telemetry, real field accuracy and release gates remain open.
+- Next: review the stability evidence; separately scope full software regression or physical hardware acceptance.
+- Do not touch: user phone data, hardware or vehicle commands. Commit/push only when requested.
+
 ## 2026-10-31 — Phase 124 grouped-test repair and retest
 
 - Done: test-only synchronization refreshes simulated position, waits for real screenshots and rendered coverage pixels, and waits for a MapView frame before dense source queries. Existing assertions remain. See D-124-01 and the follow-up in [Phase 124](phase-124-report.md).
