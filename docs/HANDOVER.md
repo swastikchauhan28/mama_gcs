@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-10-31 — Phase 129 emulator startup investigation
+
+- Done: reviewed earlier errors and observed two no-wipe starts of the task-owned emulator. Both encountered System UI ANRs before focused tests; see [Phase 129](phase-129-report.md).
+- Verification: startup crash buffers were empty; Android ANR events and dialogs were recorded. Map and document-picker tests, builds and unit tests were not run in this phase. No app or configuration changes.
+- Broken or risky: emulator startup remains unreliable; Bluetooth HCI and MapLibre crash causes remain unproven. Hardware, field accuracy and release acceptance remain open.
+- Next: investigate Android/host startup evidence or run focused checks on a healthy authorized device; retain the health gate.
+- Do not touch: user data, existing emulator contents, hardware or vehicle commands. Commit/push only when requested.
+
 ## 2026-10-31 — Phase 128 complete software regression
 
 - Done: completed the software regression on a disposable emulator; no application or hardware changes. See [Phase 128](phase-128-report.md).
