@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-10-31 — Phase 137 configured map phone checks
+
+- Done: two existing synthetic configured-map interaction methods passed on the phone; a planning repeat also passed. See [Phase 137](phase-137-report.md).
+- Verification: synthetic map interaction checks passed; an in-memory settled-frame test passed on the phone before and after map recreation, checking both numbered markers and map detail. Build/lint passed (10 tasks executed, 59 up-to-date; 27 warnings). One earlier concurrent-capture long-press attempt timed out; a no-capture retry passed. Post-check found no matching app crash/ANR indicators.
+- In progress: investigate the earlier capture-time long-press timeout if it recurs, and complete remaining hardware and release checks.
+- Broken or risky: the long-press timeout cause is unknown. The prior intermittent MapLibre crash, emulator ANRs, hardware, field and release acceptance remain open.
+- Next: review results and investigate the gesture timeout if reproducible; keep provider credentials and phone data protected.
+- Do not touch: saved phone data, user settings, hardware or vehicle commands. Commit/push only when requested.
+
 ## 2026-10-31 — Phase 136 map recreation test
 
 - Done: added a synthetic map creation, source-query and removal/recreation test using a uniquely created temporary style. See [Phase 136](phase-136-report.md).

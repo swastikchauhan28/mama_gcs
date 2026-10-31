@@ -180,7 +180,42 @@ class MapAcceptanceTest {
         assertWaypointSources(map, emptyList(), sourceIds)
     }
 
-    private fun assertVisibleNumberedWaypoints(map: MapLibreMap, points: List<DraftWaypoint>, imageName: String) {
+    @Test fun configuredMapRecreationShowsNumberedMarkersOnSettledBasemap() {
+        val showMap = mutableStateOf(true)
+        val points = listOf(DraftWaypoint("a", -35.363, 149.165), DraftWaypoint("b", -35.364, 149.166))
+        var previousView: MapView? = null
+        try {
+            compose.setContent { MamaGcsTheme {
+                if (showMap.value) VehicleMap(VehicleState(), Modifier.fillMaxSize(),
+                    planningMode = true, draftWaypoints = points)
+            } }
+            repeat(2) { cycle ->
+                val map = loadedMap()
+                var currentView: MapView? = null
+                compose.runOnIdle {
+                    currentView = findMap(compose.activity.window.decorView)
+                    map.cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
+                        .target(org.maplibre.android.geometry.LatLng(-35.3635, 149.1655)).zoom(16.0).build()
+                }
+                assertNotNull("Map view must exist", currentView)
+                if (previousView != null) assertNotSame("Reopening must create a new map", previousView, currentView)
+                assertWaypointSources(map, points, listOf("mama-draft-points", "mama-draft-labels-source"))
+                assertVisibleNumberedWaypoints(map, points, null)
+                previousView = currentView
+                compose.runOnIdle { showMap.value = false }
+                compose.waitUntil(10_000) {
+                    var removed = false
+                    compose.runOnIdle { removed = findMap(compose.activity.window.decorView) == null }
+                    removed
+                }
+                if (cycle == 0) compose.runOnIdle { showMap.value = true }
+            }
+        } finally {
+            compose.runOnIdle { showMap.value = false }
+            compose.waitForIdle()
+        }
+    }
+    private fun assertVisibleNumberedWaypoints(map: MapLibreMap, points: List<DraftWaypoint>, imageName: String?) {
         var last: android.graphics.Bitmap? = null
         var detail = "no frame"
         try {
@@ -239,11 +274,11 @@ class MapAcceptanceTest {
                         pixelCounts.all { (orange, dark) -> orange >= 30 && dark >= 3 }
                 }
             }
-            java.io.File(compose.activity.getExternalFilesDir(null), imageName).outputStream().use {
+            if (imageName != null) java.io.File(compose.activity.getExternalFilesDir(null), imageName).outputStream().use {
                 check(requireNotNull(last).compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
             }
         } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
-            last?.let { frame ->
+            if (imageName != null) last?.let { frame ->
                 java.io.File(compose.activity.getExternalFilesDir(null), "failure-$imageName").outputStream().use {
                     frame.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
                 }
