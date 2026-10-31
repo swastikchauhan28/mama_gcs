@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-10-31 — Phase 128 complete software regression
+
+- Done: completed the software regression on a disposable emulator; no application or hardware changes. See [Phase 128](phase-128-report.md).
+- Verification: fresh build, 478/478 JVM tests, and all 206 software Android methods passed across 11 healthy batches; lint had 28 warnings and no errors. Four hardware-only methods were excluded. Font setting restored.
+- Broken or risky: two earlier emulator startups showed System UI ANR and Bluetooth service error; the successful suite does not prove those or the earlier MapLibre native crash fixed. Hardware, field accuracy and release acceptance remain open.
+- Next: investigate recurring emulator failures and review the saved evidence; conduct hardware acceptance separately when available.
+- Do not touch: user data, existing emulator contents, hardware or vehicle commands. Commit/push only when requested.
+
 ## 2026-10-31 — Phase 127 emulator investigation
 
 - Done: reviewed prior Android service/MapLibre failure logs; observed two no-wipe cold starts and ran the real map-recovery plus document-picker group after each. See [Phase 127](phase-127-report.md).
