@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-124-01: Synchronize affected emulator tests with real readiness
+
+- Date: 2026-10-30. User requested fixes and emulator retests. Starting revision `3d0409c340cb9ef042357c587c0776416f509788`; pre-existing uncommitted Phase 124 handover/report are preserved. Model/version unavailable.
+- Context: grouped regression found a stale simulated position after map reload, null system screenshot, missing cyan pixels immediately after source update, and MapLibre native `querySourceFeatures` SIGSEGV in the dense-map test. All passed individually; root cause of the native crash is not established.
+- Follow-up: the first grouped retest crashed in the same native query from the separate `denseSampledGapSourceSwitchesAndClears` test (`app/build/acceptance-20261030-174507-d6a95cd9/`), before the guarded dense-interaction method ran. Apply the same render-readiness guard to that test and repeat the grouped run; do not claim the native cause is fixed.
+- Choice: refresh the synthetic position before asserting controls; use existing bounded real-system screenshot readiness; wait for visible cyan pixels without relaxing color/count checks; require a fresh MapView render before dense source queries. Retest original grouped sequence and affected cases on disposable emulator. No production, device, network, hardware, authorization, or persistence changes.
+- Alternatives: accept isolated passes, suppress errors, weaken pixel checks or replace real map features/screenshots with mocks. These would not prove the requested behavior. Cost: bounded waits can lengthen failures; a frame callback is evidence of rendering, not a proven MapLibre crash fix or lifetime guarantee. Revisit if the grouped failure or native crash recurs.
+
 ## D-123-01: Reflow the wide header at enlarged system text
 
 - Date: 2026-10-30; user approved Phase 123. Baseline `42dbd1e6a9d97cd8e1014779c35b24e3cdc44370`, clean; model/version unavailable. Baseline is a recovery reference, not a verified release.

@@ -138,6 +138,12 @@ class MapLoadRecoveryTest {
                     .target(org.maplibre.android.geometry.LatLng(-35.3627, 149.165)).zoom(17.0).build()
             }
             fun waitForRegion(min: Double?, max: Double?) {
+                // The SDK source query needs an active native renderer, not only a loaded style.
+                val rendered = AtomicBoolean(false)
+                val listener = MapView.OnDidFinishRenderingFrameListener { _, _, _ -> rendered.set(true) }
+                compose.runOnIdle { view.addOnDidFinishRenderingFrameListener(listener); map.triggerRepaint() }
+                try { compose.waitUntil(10_000) { rendered.get() } }
+                finally { compose.runOnIdle { view.removeOnDidFinishRenderingFrameListener(listener) } }
                 compose.waitUntil(30_000) {
                     var valid = false
                     compose.runOnIdle {
@@ -242,6 +248,16 @@ class MapLoadRecoveryTest {
                 map.triggerRepaint()
             }
             fun awaitGrid(minLatitude: Double?, maxLatitude: Double?) {
+                val rendered = AtomicBoolean(false)
+                val listener = MapView.OnDidFinishRenderingFrameListener { _, _, _ -> rendered.set(true) }
+                lateinit var view: MapView
+                compose.runOnIdle {
+                    view = requireNotNull(findMap(compose.activity.window.decorView))
+                    view.addOnDidFinishRenderingFrameListener(listener)
+                    map.triggerRepaint()
+                }
+                try { compose.waitUntil(10_000) { rendered.get() } }
+                finally { compose.runOnIdle { view.removeOnDidFinishRenderingFrameListener(listener) } }
                 val started = android.os.SystemClock.elapsedRealtime()
                 compose.waitUntil(30_000) {
                     var valid = false
@@ -382,26 +398,33 @@ class MapLoadRecoveryTest {
                     assertNotNull(map.style!!.getSource("mama-draft-fence"))
                     map.triggerRepaint()
                 }
-                compose.awaitScreenshotFrame(view)
-                val screenshot = requireNotNull(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+                var screenX = 0; var screenY = 0
+                compose.runOnIdle {
+                    val center = map.projection.toScreenLocation(org.maplibre.android.geometry.LatLng(-35.363, 149.165))
+                    val offset = IntArray(2); view.getLocationOnScreen(offset)
+                    screenX = (offset[0] + center.x).roundToInt(); screenY = (offset[1] + center.y).roundToInt()
+                }
+                var screenshot: android.graphics.Bitmap? = null
+                var cyan = 0
                 try {
-                    File(compose.activity.getExternalFilesDir(null), "phase81-map-overlay.png").outputStream().use {
-                        assertTrue(screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
-                    }
-                    var screenX = 0; var screenY = 0
-                    compose.runOnIdle {
-                        val center = map.projection.toScreenLocation(org.maplibre.android.geometry.LatLng(-35.363, 149.165))
-                        val offset = IntArray(2); view.getLocationOnScreen(offset)
-                        screenX = (offset[0] + center.x).roundToInt(); screenY = (offset[1] + center.y).roundToInt()
-                    }
-                    var cyan = 0
-                    for (dy in -6..6) for (dx in -6..6) {
-                        val pixel = screenshot.getPixel(screenX + dx, screenY + dy)
-                        if (android.graphics.Color.red(pixel) < 60 && android.graphics.Color.green(pixel) in 120..190 &&
-                            android.graphics.Color.blue(pixel) in 130..205) cyan++
+                    // Source features can arrive before their pixels reach the system compositor.
+                    compose.waitUntil(15_000) {
+                        compose.awaitScreenshotFrame(view)
+                        val frame = compose.awaitSystemScreenshot()
+                        var count = 0
+                        for (dy in -6..6) for (dx in -6..6) {
+                            val pixel = frame.getPixel(screenX + dx, screenY + dy)
+                            if (android.graphics.Color.red(pixel) < 60 && android.graphics.Color.green(pixel) in 120..190 &&
+                                android.graphics.Color.blue(pixel) in 130..205) count++
+                        }
+                        cyan = count
+                        if (count >= 3) { screenshot = frame; true } else { frame.recycle(); false }
                     }
                     assertTrue("Rendered pass line not visible at projected center: $cyan cyan pixels", cyan >= 3)
-                } finally { screenshot.recycle() }
+                    File(compose.activity.getExternalFilesDir(null), "phase81-map-overlay.png").outputStream().use {
+                        assertTrue(requireNotNull(screenshot).compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+                    }
+                } finally { screenshot?.recycle() }
                 compose.runOnIdle { lines.value = listOf(east) }
                 awaitLine(east)
                 compose.runOnIdle { url.value = Uri.fromFile(second).toString() }
@@ -681,6 +704,9 @@ class MapLoadRecoveryTest {
             val map = awaitLoaded()
             compose.onNodeWithText("MAP LOAD FAILED").assertDoesNotExist()
             compose.onNodeWithText("Retry map").assertDoesNotExist()
+            // A slow style reload can outlive the five-second position evidence window.
+            compose.runOnIdle { state.value = vehicle.copy(position = vehicle.position.copy(
+                lastUpdatedAtEpochMillis = System.currentTimeMillis(), lastUpdatedAtElapsedMillis = android.os.SystemClock.elapsedRealtime())) }
             compose.onNodeWithTag("map-center").assertIsEnabled()
             compose.onNodeWithTag("map-follow").assertIsEnabled()
             awaitPosition(map, -35.363)
@@ -713,6 +739,8 @@ class MapLoadRecoveryTest {
             file.writeText(VALID_STYLE)
             compose.onNodeWithText("Retry map").performClick()
             awaitPosition(awaitLoaded(), -35.364)
+            compose.runOnIdle { state.value = state.value.copy(position = state.value.position.copy(
+                lastUpdatedAtEpochMillis = System.currentTimeMillis(), lastUpdatedAtElapsedMillis = android.os.SystemClock.elapsedRealtime())) }
             compose.onNodeWithTag("map-center").assertIsEnabled()
         } finally {
             compose.runOnIdle { view?.removeOnDidFailLoadingMapListener(failureListener); url.value = null }

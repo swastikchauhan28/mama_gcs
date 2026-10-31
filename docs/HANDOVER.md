@@ -1,5 +1,22 @@
 # Current handover
 
+## 2026-10-31 — Phase 124 grouped-test repair and retest
+
+- Done: test-only synchronization refreshes simulated position, waits for real screenshots and rendered coverage pixels, and waits for a MapView frame before dense source queries. Existing assertions remain. See D-124-01 and the follow-up in [Phase 124](phase-124-report.md).
+- Verification: test APK and lint builds succeeded; most Gradle tasks were up-to-date. The original affected groups passed 27 and 17 tests respectively with healthy Android gates on the disposable emulator. Cyan coverage line and invalid-coordinate screenshots were visually inspected.
+- Broken or risky: previous native MapLibre SIGSEGV remains unexplained; the guard and one grouped pass do not prove it cannot recur. Two startup System UI freezes and an unhealthy grouped run with System UI/Google services ANRs occurred before the passing run. Full current software suite was not rerun after this test-only revision; hardware and release gates remain open.
+- Next: review the test-only changes and evidence; further stress or full regression should be scoped separately. Preserve original failure logs.
+- Do not touch: user phone data, hardware, parameters or vehicle commands. Commit/push only when requested.
+
+## 2026-10-30 — Phase 124 full software regression
+
+- Done: reviewed the Android inventory and ran all 206 software methods on a disposable emulator, separating actual normal and 2x Android font tests. All 206 passed at least once, including isolated retests. See [Phase 124](phase-124-report.md).
+- Verification: 478 fresh JVM tests passed; debug APKs and lint succeeded with 28 warnings and 97 Gradle tasks executed. The uninterrupted emulator run was not clean: two map assertions failed, the app crashed in a MapLibre native source-feature query, and a coordinate-test screenshot returned null after restart. Each affected test passed individually; failures and crash remain open evidence.
+- In progress: investigate the grouped-run map crash, map assertion failures and screenshot reliability; passing isolated retries do not establish sequence stability.
+- Broken or risky: no clean full-sequence Android acceptance, full device/locale coverage, provider outage validation, Cube heartbeat, physical field accuracy or release gate.
+- Next: inspect saved crash/assertion logs and reproduce the sequence before proposing a scoped fix; preserve all test assertions.
+- Do not touch: user phone data, hardware or vehicle commands. Commit/push only when requested.
+
 ## 2026-10-30 — Phase 123 enlarged-text header
 
 - Done: at large system font on wide screens, the header shows the full workspace title and moves the rover selector into the existing menu; normal wide layout is retained. See [Phase 123](phase-123-report.md) and D-123-01.

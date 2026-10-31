@@ -114,7 +114,7 @@ class MissionCoordinateEntryUiTest {
 
     private fun capturePortraitDisplay(name: String) {
         compose.awaitScreenshotFrame(compose.activity.window.decorView)
-        val screenshot = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+        val screenshot = compose.awaitSystemScreenshot()
         try {
             assertTrue("$name must show the portrait display", screenshot.height > screenshot.width)
             val target = File(requireNotNull(compose.activity.getExternalFilesDir(null)), name)
