@@ -1,0 +1,19 @@
+# Phase 136 — synthetic map teardown and recreation
+
+Date: 2026-10-31. Starting revision `2f5eb0f261510a7adc592bcbd4364c6b392b87d4`, clean and synchronized. Model/version unavailable.
+
+## Decision before edit
+
+The user approved a focused map lifecycle test on their phone without changing saved data. Existing fixture tests query synthetic sources and change styles but do not explicitly remove and recreate the Compose map between queries. Add a bounded instrumentation test that creates a local temporary style, displays a synthetic waypoint source, verifies source features, removes the map from composition, verifies its view is absent, and repeats with a fresh map view. Exercise real map disposal via `rememberMapViewWithLifecycle` while only querying live maps. Do not deliberately query destroyed objects or generate a nondeterministic native race; that could crash the user's app and would not prove a production defect. This sequential lifecycle test is not a controlled reproduction of the prior race.
+
+The debug-only `FixtureTestActivity` hosts synthetic content; the test must not open the saved route repository, write preferences, use provider credentials, contact hardware or delete anything except its own uniquely created cache file. Temporary/cache and app-install state can change; saved route/settings must not. Existing user data cannot be byte-for-byte verified from this test. Keep all assertions and Android crash/ANR checks; record actual phone results and limitations. The app is already on the 13.7.1 candidate; no production code or dependency changes are planned. Rollback is removal of the new test change only, without touching user data. Build verification passed; phone execution initially awaited wireless-debugging reconnection, as recorded below.
+
+## Initial verification
+
+Command: `.\gradlew.bat -I "$env:TEMP\mama-gcs-phase58-local-build.gradle" :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug --no-daemon --max-workers=1 --console=plain`. BUILD SUCCESSFUL in 4m 18s; 10 tasks executed and 87 up-to-date. The unit-test task was up-to-date, so this was not a fresh 478-test run. Lint reported zero errors and 27 warnings. Evidence: `app/build/phase136-gradle.txt` and temporary build reports. Phone debugging disconnected before the test package was installed; the new test has not yet run. No claim of runtime success or native-crash fix is supported.
+
+## 2026-10-31 continuation — phone test
+
+After the user reconnected the unlocked phone, installed only the existing test package with `adb install -r`; no app uninstall or data clearing was performed. Ran `adb shell am instrument -w -r -e class com.mamadrones.gcs.MapLoadRecoveryTest#mapRecreationKeepsSyntheticSourceQueryable com.mamadrones.gcs.test/androidx.test.runner.AndroidJUnitRunner`. The runner reported **OK (1 test)** in 4.631 seconds, with a successful method status. The test performs three sequential create/query/remove cycles, asserts each recreated view differs from the prior one, and checks the synthetic waypoint source. It uses a uniquely named temporary cache style and cleanup and does not access the saved-route repository or save settings. Cache and transient app state may change; no byte-for-byte audit of all phone data was performed.
+
+The bounded post-test check found zero matching new app crash indicators, zero matching app ANRs and no app error dialog. Evidence: `app/build/phase136/phone-instrumentation.txt`, `phone-health.txt`; ignored build artifacts may be cleaned. No live rover, network map, document-picker workflow, other device or screen-reader test was used. The check is sequential and does not reproduce the original race; one passing run does not prove that the earlier MapLibre crash is fixed. The previous emulator startup ANRs, configured-map visual testing, security/advisory review, hardware and release acceptance remain open.

@@ -864,6 +864,43 @@ class MapLoadRecoveryTest {
         }
     }
 
+    @Test fun mapRecreationKeepsSyntheticSourceQueryable() {
+        val style = File.createTempFile("phase136-map-", ".json", compose.activity.cacheDir)
+        style.writeText(VALID_STYLE)
+        val showMap = mutableStateOf(true)
+        val points = listOf(DraftWaypoint("a", -35.363, 149.165), DraftWaypoint("b", -35.364, 149.166))
+        var previousView: MapView? = null
+        try {
+            compose.setContent {
+                MamaGcsTheme {
+                    if (showMap.value) {
+                        VehicleMap(VehicleState(), Modifier.fillMaxSize(), planningMode = true,
+                            draftWaypoints = points, styleUrl = Uri.fromFile(style).toString())
+                    }
+                }
+            }
+            repeat(3) {
+                val map = awaitLoaded()
+                var currentView: MapView? = null
+                compose.runOnIdle { currentView = findMap(compose.activity.window.decorView) }
+                assertNotNull("A map view must exist after creation", currentView)
+                if (previousView != null) assertNotSame("Recreation must use a new map view", previousView, currentView)
+                assertWaypointSources(map, points, listOf("mama-draft-points"))
+                previousView = currentView
+                compose.runOnIdle { showMap.value = false }
+                compose.waitUntil(10_000) {
+                    var removed = false
+                    compose.runOnIdle { removed = findMap(compose.activity.window.decorView) == null }
+                    removed
+                }
+                if (it < 2) compose.runOnIdle { showMap.value = true }
+            }
+        } finally {
+            compose.runOnIdle { showMap.value = false }
+            compose.waitForIdle()
+            check(style.delete()) { "Could not remove test-owned map style" }
+        }
+    }
     private fun assertWaypointSources(map: MapLibreMap, expected: List<DraftWaypoint>, ids: List<String>) {
         val rendered = java.util.concurrent.atomic.AtomicBoolean(false)
         val listener = MapView.OnDidFinishRenderingFrameListener { _, _, _ -> rendered.set(true) }

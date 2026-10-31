@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-10-31 — Phase 136 map recreation test
+
+- Done: added a synthetic map creation, source-query and removal/recreation test using a uniquely created temporary style. See [Phase 136](phase-136-report.md).
+- Verification: debug and test APK build and lint passed (10 tasks executed, 87 up-to-date; 27 lint warnings); unit tests were up-to-date. After reconnection, the new synthetic test passed on the phone; a bounded post-check found no matching app crash/ANR indicators.
+- In progress: configured-map visual tests and a controlled baseline comparison remain open; the new test does not save routes or settings.
+- Broken or risky: the test is not a controlled reproduction of the prior query/teardown race; MapLibre crash, emulator ANRs, hardware and release acceptance remain open.
+- Next: review the candidate and remaining checks; do not claim the previous crash fixed without stronger evidence.
+- Do not touch: saved phone data, user settings, hardware or vehicle commands. Commit/push only when requested.
+
 ## 2026-10-31 — Phase 135 MapLibre candidate evaluation
 
 - Done: user approved evaluating MapLibre 13.7.1 with OkHttp 4.12.0; candidate catalog change was prepared for evaluation. See [Phase 135](phase-135-report.md); preserve the pre-existing Phase 134 documents.
