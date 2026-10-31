@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-10-31 — Phase 132 lint warning review
+
+- Done: reviewed the Bluetooth permission attribute and debug landscape fixture; retained both declarations and warnings without suppression. See [Phase 132](phase-132-report.md).
+- Verification: fresh Gradle unit tests 478/478, lint zero errors and 28 warnings; 45 tasks executed. No app code, permission, test, dependency or lint changes. Android UI and hardware checks were not run.
+- Broken or risky: Android 16 large-screen debug fixture orientation is not verified; Bluetooth beacon filtering and runtime behavior remain hardware-dependent. Emulator ANRs, prior MapLibre crash, field and release acceptance remain open.
+- Next: separately review the 26 version warnings and design an adaptive large-screen fixture when prioritized; investigate emulator reliability or use a healthy authorized device.
+- Do not touch: user data, existing emulator contents, hardware or vehicle commands. Commit/push only when requested.
+
 ## 2026-10-31 — Phase 131 host and emulator investigation
 
 - Done: checked host resources and emulator acceleration; repeated one no-wipe startup on the Phase 130 emulator. See [Phase 131](phase-131-report.md).
