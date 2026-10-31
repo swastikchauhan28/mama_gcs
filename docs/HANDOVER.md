@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-10-31 — Phase 133 dependency warning review
+
+- Done: mapped all 26 Phase 132 version warnings to 15 catalog/wrapper groups, documented roles, risks, priorities and future test plans; see [Phase 133](phase-133-report.md).
+- Verification: reconciled the saved lint XML and reviewed current declarations and selected vendor documentation. No fresh build/tests, dependency changes, security scan or hardware checks were performed.
+- Broken or risky: advisory/transitive review remains incomplete; MapLibre crash and emulator startup failures are unresolved. Suggested versions are historical lint observations, not approved updates. Field and release acceptance remain open.
+- Next: investigate MapLibre/OkHttp compatibility and upstream advisories; separately scope any update and obtain specific approval before changes.
+- Do not touch: user data, existing emulator contents, hardware or vehicle commands. Commit/push only when requested.
+
 ## 2026-10-31 — Phase 132 lint warning review
 
 - Done: reviewed the Bluetooth permission attribute and debug landscape fixture; retained both declarations and warnings without suppression. See [Phase 132](phase-132-report.md).
