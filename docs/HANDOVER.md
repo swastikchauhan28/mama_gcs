@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-10-31 — Phase 130 fresh-emulator comparison
+
+- Done: created and observed a separate task-owned API 34 emulator with fresh data and baseline launch settings; see [Phase 130](phase-130-report.md).
+- Verification: boot reached launcher and crash buffer was empty, but Android event logs recorded Google Play services and Bluetooth ANRs. Map-recovery and document-picker tests were not run; no build, lint or unit checks were run.
+- Broken or risky: startup instability also appeared on fresh emulator data; root cause and prior MapLibre crash remain unproven. Hardware, field accuracy and release acceptance remain open.
+- Next: inspect host/emulator evidence or use a healthy authorized test device for the focused tests; keep health checks enabled.
+- Do not touch: user data, existing emulator contents, hardware or vehicle commands. Commit/push only when requested.
+
 ## 2026-10-31 — Phase 129 emulator startup investigation
 
 - Done: reviewed earlier errors and observed two no-wipe starts of the task-owned emulator. Both encountered System UI ANRs before focused tests; see [Phase 129](phase-129-report.md).
