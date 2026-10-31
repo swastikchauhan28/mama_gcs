@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-10-31 — Phase 127 emulator investigation
+
+- Done: reviewed prior Android service/MapLibre failure logs; observed two no-wipe cold starts and ran the real map-recovery plus document-picker group after each. See [Phase 127](phase-127-report.md).
+- Verification: both targeted runs passed 13/13 tests with healthy Android gates; startup crash and ANR buffers were empty at observation points. Existing APKs were reused; no fresh build, full regression, physical device or production code changes.
+- Broken or risky: intermittent Bluetooth HCI startup, System UI/media-provider ANRs and the earlier native MapLibre SIGSEGV remain unexplained. Two clean runs and a 40-second observation period do not establish a repair or prove a cause.
+- Next: review saved logs; investigate recurrence with narrowly scoped, privacy-aware emulator diagnostics; separately rerun the complete software gate when appropriate.
+- Do not touch: user data, existing emulator contents, hardware or vehicle commands. Commit/push only when requested.
+
 ## 2026-10-31 — Phase 126 affected-test fixes and grouped reruns
 
 - Done: test-only changes add a bounded real-keyboard refocus and system-screenshot readiness, plus refresh RC synthetic evidence after scrolling. The five earlier failed methods and subsequently observed RC/PWM failures passed in their affected grouped retests. See [Phase 126](phase-126-report.md) and D-126-01.
