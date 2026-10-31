@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-126-01: Retest real keyboard and screenshot readiness without masking system failures
+
+- Date: 2026-10-31. User requested fixing remaining failed tests and emulator issues. Starting revision `d165811f2dabcadeabb3cc8f434674831496da26` with pre-existing uncommitted Phase 126 handover/report preserved; model/version unavailable.
+- Context: grouped fresh-emulator tests timed out waiting for real IME visibility, a system screenshot returned null, and DocumentsUI failed to return while Android media provider ANRed. All five passed individually; root causes and emulator system-service instability remain unproven.
+- Choice: reuse bounded real-system screenshot acquisition in the library and coverage tests, and introduce a bounded focus/retry for the real keyboard that still requires actual IME insets before continuing. Keep input, IME visibility, screenshot, file contents and Android health assertions. Diagnose emulator startup separately and rerun original grouped sequences, including the real picker, without disabling services or clearing data.
+- Follow-up: the grouped retest exposed `RcInputActivityUiTest#realScreenTimerInterruptsWithoutNewPackets` returning NOT STARTED (`app/build/acceptance-20261031-130715-5d83aa05/`). The test refreshed its five-second synthetic evidence before a potentially slow scroll. Move the scroll before the refresh and verify Start/observing and subsequent real timer expiry without altering production freshness or the 5-second assertion semantics. This is a timing hypothesis, not established proof of root cause.
+- Alternatives: accept isolated passes, skip IME/picker tests, dismiss Android failure dialogs, replace real screenshots or silently mark ANRs healthy; these would hide the reported failures. Cost: bounded retries lengthen failure reporting and may not resolve underlying platform failures. Revisit if grouped or system failures recur; a passing rerun alone does not establish root cause.
+
 ## D-124-01: Synchronize affected emulator tests with real readiness
 
 - Date: 2026-10-30. User requested fixes and emulator retests. Starting revision `3d0409c340cb9ef042357c587c0776416f509788`; pre-existing uncommitted Phase 124 handover/report are preserved. Model/version unavailable.

@@ -110,11 +110,14 @@ class RcInputActivityUiTest {
     @Test fun realScreenTimerInterruptsWithoutNewPackets() {
         val state = mutableStateOf(vehicle(System.currentTimeMillis(), elapsedAt = android.os.SystemClock.elapsedRealtime()))
         compose.setContent { MaterialTheme { RcPwmScreen(state.value) } }
+        // Scrolling can take longer than the real five-second evidence window.
+        // Inject the test's last sample only after the button is in view.
+        compose.onNodeWithTag("rc-activity-start").performScrollTo()
         compose.runOnIdle { state.value = vehicle(System.currentTimeMillis(), elapsedAt = android.os.SystemClock.elapsedRealtime()) }
         compose.waitUntil(timeoutMillis = 3_000) {
             compose.onAllNodes(hasTestTag("rc-activity-start") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
         }
-        compose.onNodeWithTag("rc-activity-start").performScrollTo().performClick()
+        compose.onNodeWithTag("rc-activity-start").performClick()
         compose.onNodeWithTag("rc-activity-status").assertTextEquals("OBSERVING · NOT CALIBRATION")
         compose.waitUntil(timeoutMillis = 10_000) {
             compose.onAllNodesWithText("INTERRUPTED · HISTORICAL RANGES").fetchSemanticsNodes().isNotEmpty()

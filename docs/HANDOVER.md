@@ -1,5 +1,30 @@
 # Current handover
 
+## 2026-10-31 — Phase 126 affected-test fixes and grouped reruns
+
+- Done: test-only changes add a bounded real-keyboard refocus and system-screenshot readiness, plus refresh RC synthetic evidence after scrolling. The five earlier failed methods and subsequently observed RC/PWM failures passed in their affected grouped retests. See [Phase 126](phase-126-report.md) and D-126-01.
+- Verification: the original affected groups passed 40, 27, 21 and 28 tests with healthy Android gates; the last group used a rebuilt test APK after the separate RC fixture adjustment. Real keyboard screenshots were inspected. App/test builds and lint passed with most tasks up-to-date; the full current inventory was not rerun.
+- Broken or risky: prior Android Bluetooth/System UI/media-provider failures and MapLibre native SIGSEGV remain unexplained. An intermediate 28-test run failed a new PWM visibility check, an isolated retest passed, and a subsequent full-group attempt stalled; the final group passed. Emulator startup and sequence reliability are not proven fixed by a healthy rerun. Hardware and release gates remain open.
+- Next: review test-only retry behavior and evidence; separately rerun the complete software gate and investigate emulator/MapLibre root causes.
+- Do not touch: existing emulator data, user phone data, hardware or vehicle commands. Commit/push only when requested.
+
+## 2026-10-31 — Phase 126 continued on fresh emulator
+
+- Done: fresh emulator restarted and the 206-method software Android inventory ran across batches and retries. All 206 methods emitted a passing status at least once, including isolated retests; see [Phase 126](phase-126-report.md).
+- Verification: fresh JVM 478/478, debug builds and lint passed (28 warnings). The grouped Android regression was not clean: five UI tests failed then passed individually; the document-picker batch also had an Android media-provider ANR, and one navigation batch was interrupted by ADB before a healthy 11-test rerun. Some passing method statuses occurred within an unhealthy batch.
+- Broken or risky: no clean full grouped Android acceptance; prior MapLibre native crash, Android system-service instability, grouped test timeouts, physical hardware telemetry and field/release acceptance remain open.
+- Next: investigate grouped planner, keyboard, document-picker and Android media-service reliability; reproduce on a healthy emulator without weakening assertions, then rerun the affected sequence and full gate.
+- Do not touch: user phone data, existing emulator data, hardware or vehicle commands. Commit/push only when requested.
+
+## 2026-10-31 — Phase 126 regression blocked by emulator startup
+
+- Done: fresh JVM, debug APK and lint build passed; current Android inventory reviewed. See [Phase 126](phase-126-report.md).
+- Verification: 478 JVM tests passed with no skips; 97 Gradle tasks executed and lint had 28 warnings. No Android test batch began: repeated system-service errors and ANRs failed the emulator health precheck, including on a new isolated AVD.
+- In progress: restore a healthy Android emulator environment and rerun all 206 software Android methods; four physical-only methods remain excluded.
+- Broken or risky: Android software regression incomplete; prior native MapLibre crash remains unexplained, and hardware, field accuracy and release gates remain open.
+- Next: diagnose the Android Bluetooth/System UI startup failures without dismissing dialogs, then rerun the software inventory with healthy gates.
+- Do not touch: old emulator data, user phone data, hardware or vehicle commands. Commit/push only when requested.
+
 ## 2026-10-31 — Phase 125 map-test stability
 
 - Done: ran the affected 27-test group three consecutive times on the disposable emulator; all passed with healthy Android gates. See [Phase 125](phase-125-report.md).

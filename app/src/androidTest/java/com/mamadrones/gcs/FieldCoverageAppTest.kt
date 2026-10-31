@@ -64,7 +64,7 @@ class FieldCoverageAppTest {
                     scenario.onActivity { visible = ViewCompat.getRootWindowInsets(it.window.decorView)?.isVisible(WindowInsetsCompat.Type.ime()) == true }
                     return visible
                 }
-                compose.waitUntil(10_000) { keyboardVisible() }
+                compose.awaitRealKeyboard(::keyboardVisible) { node("coverage-width").performClick() }
                 capture("phase76-app-landscape-settings-ime.png")
                 node("coverage-width").performImeAction()
                 compose.waitUntil(10_000) { !keyboardVisible() }
@@ -126,7 +126,7 @@ class FieldCoverageAppTest {
 
     private fun capture(name: String) {
         compose.waitForIdle()
-        val bitmap = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+        val bitmap = compose.awaitSystemScreenshot()
         try { File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null), name).outputStream().use {
             assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
         } } finally { bitmap.recycle() }

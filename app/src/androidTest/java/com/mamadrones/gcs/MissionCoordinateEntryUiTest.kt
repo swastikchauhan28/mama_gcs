@@ -46,7 +46,7 @@ class MissionCoordinateEntryUiTest {
             compose.onNodeWithTag("mission-longitude-sign").performClick()
             compose.onNodeWithTag("mission-longitude").assertTextContains("-149.16")
             compose.onNodeWithTag("mission-longitude").performClick()
-            compose.waitUntil(10_000) { imeVisible() }
+            compose.awaitRealKeyboard(::imeVisible) { compose.onNodeWithTag("mission-longitude").performClick() }
             compose.onNodeWithTag("mission-confirm-waypoint").assertIsEnabled()
             capturePortraitDisplay("phase75-signed-decimal-ime.png")
 
@@ -86,7 +86,7 @@ class MissionCoordinateEntryUiTest {
             compose.onNodeWithTag("mission-add").performClick()
             compose.onNodeWithTag("mission-latitude").performClick().performTextReplacement("91")
             compose.onNodeWithTag("mission-longitude").performClick().performTextReplacement("181")
-            compose.waitUntil(10_000) { imeVisible() }
+            compose.awaitRealKeyboard(::imeVisible) { compose.onNodeWithTag("mission-longitude").performClick() }
             compose.onNodeWithText("Enter a latitude from -90 to 90.").assertIsDisplayed()
             compose.onNodeWithText("Enter a longitude from -180 to 180.").assertIsDisplayed()
             compose.onNodeWithTag("mission-confirm-waypoint").assertIsNotEnabled()

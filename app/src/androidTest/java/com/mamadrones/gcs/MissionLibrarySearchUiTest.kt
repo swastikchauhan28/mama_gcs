@@ -148,17 +148,18 @@ class MissionLibrarySearchUiTest {
         fun imeVisible(): Boolean = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
             ?.isVisible(WindowInsetsCompat.Type.ime()) == true
 
-        compose.waitUntil(10_000) { imeVisible() }
+        compose.awaitRealKeyboard(::imeVisible) { compose.onNodeWithTag("mission-library-search").performClick() }
         compose.onNodeWithTag("mission-library-search").performTextInput("north")
         compose.onNodeWithTag("mission-library-result-count").assertTextEquals("1 of 2 routes")
         compose.onNodeWithTag("library-entry-lib-field").assertDoesNotExist()
         assertTrue("IME must remain visible before Done", imeVisible())
 
-        val screenshot = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+        val screenshot = compose.awaitSystemScreenshot()
         File(requireNotNull(compose.activity.getExternalFilesDir(null)), "phase70-library-ime.png")
             .outputStream().use { output ->
                 assertTrue("Keyboard-open screenshot must be written", screenshot.compress(Bitmap.CompressFormat.PNG, 100, output))
             }
+        screenshot.recycle()
         compose.onNodeWithTag("mission-library-search").performImeAction()
         compose.waitUntil(10_000) { !imeVisible() }
         compose.onNodeWithTag("mission-library-result-count").assertTextEquals("1 of 2 routes")
@@ -166,11 +167,12 @@ class MissionLibrarySearchUiTest {
         compose.onNode(hasText("Open") and hasAnyAncestor(hasTestTag("library-entry-lib-north")))
             .performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Close").assertIsDisplayed()
-        val afterDone = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+        val afterDone = compose.awaitSystemScreenshot()
         File(requireNotNull(compose.activity.getExternalFilesDir(null)), "phase70-library-after-done.png")
             .outputStream().use { output ->
                 assertTrue("After-Done screenshot must be written", afterDone.compress(Bitmap.CompressFormat.PNG, 100, output))
             }
+        afterDone.recycle()
         compose.onNodeWithText("Close").performClick()
         compose.onNodeWithText("Local route library · 2").assertDoesNotExist()
     }

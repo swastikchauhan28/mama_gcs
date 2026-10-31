@@ -52,6 +52,20 @@ internal fun ComposeTestRule.awaitSystemScreenshot(): Bitmap {
     return requireNotNull(screenshot) { "Android system screenshot unavailable after 10 seconds" }
 }
 
+/** A newly opened dialog can receive focus before Android attaches the IME.
+ * Retry the same user focus action once, then require real IME insets; do not
+ * replace the platform keyboard with a fixture or accept a hidden keyboard.
+ */
+internal fun ComposeTestRule.awaitRealKeyboard(visible: () -> Boolean, refocus: () -> Unit) {
+    try {
+        waitUntil(5_000) { visible() }
+    } catch (_: androidx.compose.ui.test.ComposeTimeoutException) {
+        println("IME not visible after initial focus; retrying the same field once")
+        refocus()
+        waitUntil(20_000) { visible() }
+    }
+}
+
 /** Compose semantics may be idle before the rotated window has submitted a frame.
  * Wait for a real render commit, then the next vsync, before taking system pixels.
  * This still captures native map surfaces through UiAutomation, not a drawn mock.
