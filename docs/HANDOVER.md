@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-10-31 — Phase 131 host and emulator investigation
+
+- Done: checked host resources and emulator acceleration; repeated one no-wipe startup on the Phase 130 emulator. See [Phase 131](phase-131-report.md).
+- Verification: the later boot showed a System UI ANR and Bluetooth HCI startup abort, so the map-recovery and document-picker tests were not run. No build, lint or unit checks were run.
+- Broken or risky: startup failures persist beyond first boot; cause and prior MapLibre crash remain unproven. Hardware, field accuracy and release acceptance remain open.
+- Next: targeted emulator/host profiling or focused tests on a healthy authorized device; retain crash and ANR health gates.
+- Do not touch: user data, existing emulator contents, hardware or vehicle commands. Commit/push only when requested.
+
 ## 2026-10-31 — Phase 130 fresh-emulator comparison
 
 - Done: created and observed a separate task-owned API 34 emulator with fresh data and baseline launch settings; see [Phase 130](phase-130-report.md).
