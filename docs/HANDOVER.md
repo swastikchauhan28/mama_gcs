@@ -1,5 +1,22 @@
 # Current handover
 
+## 2026-10-31 — Phase 135 MapLibre candidate evaluation
+
+- Done: user approved evaluating MapLibre 13.7.1 with OkHttp 4.12.0; candidate catalog change was prepared for evaluation. See [Phase 135](phase-135-report.md); preserve the pre-existing Phase 134 documents.
+- Verification: fresh build, 478/478 unit tests, lint zero errors/27 warnings; debug and release runtime graphs resolve candidate and OkHttp 4.12.0. Four selected synthetic map fixture tests passed on the user phone after a data-preserving update; no app crash/ANR indicators were found in the bounded post-check. Both task emulators had System UI ANRs.
+- In progress: selected phone map tests passed; configured-map visual tests and controlled teardown/query baseline comparison remain open. The document-picker test replaces a saved route, so do not run it against user phone data. No baseline crash reproduction or runtime fix evidence exists.
+- Broken or risky: emulator startup, earlier MapLibre native crash, network/security review, field and release acceptance remain unresolved. The candidate remains an evaluation, not a release.
+- Next: restore Android health, run focused map tests and review candidate before any deployment. Roll back only the catalog entry if directed or needed; preserve existing documents and data.
+- Do not touch: user data, existing emulator contents, hardware or vehicle commands. Commit/push only when requested.
+
+## 2026-10-31 — Phase 134 MapLibre and OkHttp investigation
+
+- Done: reviewed the resolved debug map/network graph, prior crash stack, upstream 13.7.1 notes and repository advisory pages; see [Phase 134](phase-134-report.md).
+- Verification: offline Gradle dependency report succeeded. MapLibre 13.6.1 and OkHttp 4.12.0 resolve together; no build, lint, instrumentation, vulnerability scan or hardware tests ran. No dependency or code changes.
+- Broken or risky: 13.7.1 describes a feature-query lifecycle race fix that overlaps the saved crash API, but the crash cause and candidate compatibility are unproven. Emulator ANRs, security exposure review, field and release acceptance remain open.
+- Next: separately scope and seek specific approval for an isolated MapLibre candidate evaluation; retain OkHttp for that comparison and do not claim a fix without evidence.
+- Do not touch: user data, existing emulator contents, hardware or vehicle commands. Commit/push only when requested.
+
 ## 2026-10-31 — Phase 133 dependency warning review
 
 - Done: mapped all 26 Phase 132 version warnings to 15 catalog/wrapper groups, documented roles, risks, priorities and future test plans; see [Phase 133](phase-133-report.md).
