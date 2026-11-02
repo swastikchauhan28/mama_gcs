@@ -78,6 +78,7 @@ class MissionPlanningTest {
                     compose.waitUntil(10_000) { compose.onAllNodesWithText("No unsaved changes").fetchSemanticsNodes().isNotEmpty() }
                     scrollToTag("mission-edit-1").assertIsDisplayed()
                     scrollToTag("mission-remove-1").performClick()
+                    compose.onNodeWithTag("mission-confirm-remove-waypoint").performClick()
                     scrollToTag("mission-save").performClick()
                     compose.waitUntil(10_000) { runBlocking { repository.load().waypoints.size == 1 } }
                     assertTrue(runBlocking { repository.load().waypoints.first().id == saved.waypoints.first().id })

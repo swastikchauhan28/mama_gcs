@@ -119,6 +119,7 @@ fun MissionScreen(
     var initialLongitude by rememberSaveable { mutableStateOf("") }
     var showRename by rememberSaveable { mutableStateOf(false) }
     var showNewConfirmation by rememberSaveable { mutableStateOf(false) }
+    var pendingWaypointRemovalId by rememberSaveable { mutableStateOf<String?>(null) }
     var showLibrary by rememberSaveable { mutableStateOf(false) }
     var librarySearchQuery by rememberSaveable { mutableStateOf("") }
     var showSaveToLibrary by rememberSaveable { mutableStateOf(false) }
@@ -354,7 +355,7 @@ fun MissionScreen(
                                     modifier = Modifier.testTag("mission-up-$index")) { Text("Up") }
                                 TextButton(onClick = { onAction(MissionPlanAction.Move(point.id, 1)) }, enabled = plan.editable && index < plan.draft.waypoints.lastIndex,
                                     modifier = Modifier.testTag("mission-down-$index")) { Text("Down") }
-                                TextButton(onClick = { onAction(MissionPlanAction.Remove(point.id)) }, enabled = plan.editable,
+                                TextButton(onClick = { pendingWaypointRemovalId = point.id }, enabled = plan.editable,
                                     modifier = Modifier.testTag("mission-remove-$index")) { Text("Remove") }
                             }
                         }
@@ -406,6 +407,26 @@ fun MissionScreen(
         confirmButton = { TextButton(onClick = { onAction(MissionPlanAction.New); showNewConfirmation = false }) { Text("New draft") } },
         dismissButton = { TextButton(onClick = { showNewConfirmation = false }) { Text("Cancel") } }
     )
+    pendingWaypointRemovalId?.let { id ->
+        val index = plan.draft.waypoints.indexOfFirst { it.id == id }
+        val waypoint = plan.draft.waypoints.getOrNull(index)
+        AlertDialog(
+            onDismissRequest = { pendingWaypointRemovalId = null },
+            title = { Text("Remove waypoint?") },
+            text = {
+                Text(if (waypoint == null) "This waypoint is no longer in the working draft."
+                    else "Waypoint ${index + 1} (${String.format(Locale.US, "%.7f, %.7f", waypoint.latitude, waypoint.longitude)}) will be removed from the working draft. The saved route changes only after Save draft.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { onAction(MissionPlanAction.Remove(id)); pendingWaypointRemovalId = null },
+                    enabled = waypoint != null && plan.editable,
+                    modifier = Modifier.testTag("mission-confirm-remove-waypoint"),
+                ) { Text("Remove waypoint") }
+            },
+            dismissButton = { TextButton(onClick = { pendingWaypointRemovalId = null }) { Text("Cancel") } },
+        )
+    }
     if (showSaveToLibrary) {
         var name by rememberSaveable { mutableStateOf(plan.draft.name) }
         AlertDialog(

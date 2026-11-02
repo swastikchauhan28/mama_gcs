@@ -60,6 +60,7 @@ class MissionMapWorkflowAcceptanceTest {
             scrollToRoute("mission-up-2").performClick()
             assertMap(scenario, listOf(a, c, edited), "phase120-portrait-reorder.png")
             scrollToRoute("mission-remove-1").performClick()
+            compose.onNodeWithTag("mission-confirm-remove-waypoint").performClick()
             assertMap(scenario, listOf(a, edited), "phase120-portrait-remove.png")
             scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
             awaitOrientation(scenario, Configuration.ORIENTATION_LANDSCAPE)
@@ -115,8 +116,10 @@ class MissionMapWorkflowAcceptanceTest {
             awaitOrientation(scenario, Configuration.ORIENTATION_LANDSCAPE)
             assertMap(scenario, listOf(a, b, c), "phase122-landscape-3.png", largeText = true)
             scrollToRoute("mission-remove-2").performClick()
+            compose.onNodeWithTag("mission-confirm-remove-waypoint").performClick()
             assertMap(scenario, listOf(a, b), "phase122-landscape-2.png", largeText = true)
             scrollToRoute("mission-remove-1").performClick()
+            compose.onNodeWithTag("mission-confirm-remove-waypoint").performClick()
             assertMap(scenario, listOf(a), "phase122-landscape-1.png", largeText = true)
         } finally {
             activity?.close()

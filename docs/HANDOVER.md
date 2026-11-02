@@ -1,5 +1,22 @@
 # Current handover
 
+## 2026-11-02 — Phase 139 local waypoint removal confirmation
+
+- Done: Route-list Remove now opens a dialog naming the selected waypoint; Cancel/dismiss does not edit, and confirmation emits the existing remove action only while that ID remains present and the draft editable. No hardware, transport, mission transfer, persistence schema or vehicle command change. See [Phase 139](phase-139-report.md) and D-139-01.
+- Verification: fresh build/test APK, 478/478 JVM tests and lint passed (zero errors, 27 warnings). After correcting screenshot capture for the dialog's separate window, the focused 2x-text Compose check and real mission-editor save/relaunch check both passed on the no-wipe emulator. The final dialog screenshot was visually reviewed in ignored `app/build/phase139/remove-confirmation.png`. The first screenshot attempt failed and the intermediate screenshot showed the underlying screen; both are recorded in the report.
+- In progress: owner diff review and broader software regression. Existing map-workflow removal tests were updated and compiled but not rerun here.
+- Broken or risky: prior emulator/MapLibre issues, current Cube heartbeat, physical operation/field accuracy and release gates remain open. No physical phone or hardware test in this phase.
+- Next: use a healthy disposable emulator for broader software regression; continue TELEM1 heartbeat isolation only when hardware work resumes.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
+## 2026-11-02 — current hardware port correction
+
+- Done: operator confirms R12 telemetry lead is currently on Cube TELEM1; separate SBUS/RCIN remains the reported RC path. Updated [hardware record](hardware-integration.md) and README without erasing the older TELEM2 bench evidence. No firmware, parameter, app code or hardware change.
+- In progress: read-only live SERIAL1 and Cube heartbeat isolation for the current wiring. The older accepted file lists SERIAL1 MAVLink2/57,600 but does not verify the present live settings.
+- Broken or risky: no current valid Cube heartbeat or RC_CHANNELS has been independently demonstrated through T12 Bluetooth in Mama GCS. Wiring continuity, physical safety, speed enforcement and command path are unverified.
+- Next: with motor/ESC outputs isolated, check TELEM1-to-R12 UART pins and live SERIAL1 readback, then compare Cube-origin heartbeat at the Cube port and phone side. Keep vehicle commands unavailable.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-02 — Phase 138 map gesture timeout comparison
 
 - Done: repeated the existing synthetic planning-map gesture test on the no-wipe Android Studio emulator, alternating baseline and host screenshot attempts; see [Phase 138](phase-138-report.md). No app/test source changes.

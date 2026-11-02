@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-139-01: Confirm removal of a local route waypoint
+
+- Date: 2026-11-02. The user requested software-only work while hardware is on hold. Starting revision `6aac355`; three pre-existing documentation edits are preserved. AI model/version: unavailable.
+- Context: the Route list removes a waypoint immediately when Remove is tapped. On a crowded or enlarged-text screen, an accidental tap changes the working draft and starts its recovery update.
+- Choice: show the waypoint number and coordinates in a confirmation dialog. Cancel/dismiss leaves the draft untouched; the confirm action resolves the waypoint by stable ID and is enabled only while the draft remains editable and that ID still exists. Keep the existing remove action, storage, and hardware boundaries unchanged.
+- Alternatives: add undo or redesign the route list. Undo needs new state and persistence rules; a list redesign is broader than this request. Cost: one extra tap per removal. Revisit if operators need rapid bulk editing or an undo history.
+- Verification: update existing real-editor and isolated Compose checks so they assert Cancel emits no remove action, Confirm emits exactly the selected ID, and prior route/map workflow continues. Build, JVM tests, lint, and a disposable-emulator UI run remain separate evidence.
+
 ## D-126-01: Retest real keyboard and screenshot readiness without masking system failures
 
 - Date: 2026-10-31. User requested fixing remaining failed tests and emulator issues. Starting revision `d165811f2dabcadeabb3cc8f434674831496da26` with pre-existing uncommitted Phase 126 handover/report preserved; model/version unavailable.

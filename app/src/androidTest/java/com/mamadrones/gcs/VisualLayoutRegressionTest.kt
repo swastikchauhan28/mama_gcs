@@ -19,6 +19,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.test.platform.app.InstrumentationRegistry
 import com.mamadrones.gcs.domain.model.ThemeMode
 import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
@@ -418,6 +419,26 @@ class VisualLayoutRegressionTest {
         compose.onNodeWithTag("mission-down-0").performClick()
         compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-remove-0"))
         compose.onNodeWithTag("mission-remove-0").performClick()
+        compose.onNodeWithText("Remove waypoint?").assertIsDisplayed()
+        compose.onNodeWithTag("mission-confirm-remove-waypoint").assertIsEnabled()
+        // The dialog is a separate Android window; a Compose root capture may omit it.
+        var confirmation: Bitmap? = null
+        compose.waitUntil(10_000) {
+            confirmation = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+            confirmation != null
+        }
+        val dialogScreenshot = requireNotNull(confirmation)
+        val confirmationFile = File(requireNotNull(compose.activity.getExternalFilesDir(null)), "phase139-remove-confirmation.png")
+        confirmationFile.outputStream().use { output ->
+            assertTrue("Removal confirmation screenshot must be written", dialogScreenshot.compress(Bitmap.CompressFormat.PNG, 100, output))
+        }
+        dialogScreenshot.recycle()
+        compose.runOnIdle { assertEquals(listOf(MissionPlanAction.Move("wp-1", 1)), actions) }
+        compose.onNodeWithText("Cancel").performClick()
+        compose.runOnIdle { assertEquals(listOf(MissionPlanAction.Move("wp-1", 1)), actions) }
+        compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-remove-0"))
+        compose.onNodeWithTag("mission-remove-0").performClick()
+        compose.onNodeWithTag("mission-confirm-remove-waypoint").performClick()
         compose.runOnIdle {
             assertEquals(listOf(MissionPlanAction.Move("wp-1", 1), MissionPlanAction.Remove("wp-1")), actions)
         }
