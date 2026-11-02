@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-02 — Phase 143 field coverage verification
+
+- Done: six targeted emulator tests passed for the real planner preview, width/overlap changes, outline invalidation, triangle and concave offline maps, and clearing a selected preview after an outline edit. See [Phase 143](phase-143-report.md).
+- Verification: existing Phase 140 APKs were installed without clearing data. Six separate invocations each reported `OK (1 test)`. The synthetic portrait screenshot at ignored `app/build/phase143/coverage-portrait.png` was reviewed; a bounded window check found no Android error dialog.
+- In progress: broader software regression and owner review; these checks do not cover every field shape or setting.
+- Broken or risky: calculated coverage and modeled gaps are estimates; actual soil coverage, positioning accuracy and physical operation are unverified. Hardware heartbeat and release gates remain open.
+- Next: continue risk-based software verification and resume TELEM1 diagnosis when hardware work restarts.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-02 — Phase 142 route exchange verification
 
 - Done: six targeted emulator tests passed, covering real Android picker export/import for GeoJSON and GPX, cancellation, explicit saving, format round trips and invalid input handling. See [Phase 142](phase-142-report.md).
