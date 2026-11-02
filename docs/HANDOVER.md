@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-02 — Phase 142 route exchange verification
+
+- Done: six targeted emulator tests passed, covering real Android picker export/import for GeoJSON and GPX, cancellation, explicit saving, format round trips and invalid input handling. See [Phase 142](phase-142-report.md).
+- Verification: the existing Phase 140 app and test APKs were installed without clearing data. Three instrumentation invocations returned `OK (1 test)`, `OK (1 test)` and `OK (4 tests)`; the final bounded window check found no matching Android error dialog.
+- In progress: broader Android regression and owner review. Invalid import preservation was tested at the ViewModel boundary with in-memory storage, not through the system picker.
+- Broken or risky: emulator tests do not establish hardware operation, route upload or field accuracy; prior intermittent emulator/MapLibre issues and release gates remain open.
+- Next: continue targeted software verification and resume TELEM1 heartbeat diagnosis when hardware work restarts.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-02 — Phase 141 mission planning regression
 
 - Done: four selected mission planning instrumentation checks passed on the no-wipe disposable emulator, covering the local editor save/reopen flow, both waypoint jump paths, and map markers through route edits, rotation and style change. See [Phase 141](phase-141-report.md).
