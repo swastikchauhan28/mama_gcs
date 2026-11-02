@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-02 — Phase 138 map gesture timeout comparison
+
+- Done: repeated the existing synthetic planning-map gesture test on the no-wipe Android Studio emulator, alternating baseline and host screenshot attempts; see [Phase 138](phase-138-report.md). No app/test source changes.
+- Verification: fresh app/test APK packaging succeeded (79/79 tasks executed). All 12 targeted instrumentation invocations passed. Two captures show synthetic waypoint overlays while the test fixture is active; exact capture/long-press overlap was not established. Bounded checks reported no new ANR/crash indicators or app-error window. Unit, lint and full regression were not run.
+- Broken or risky: the earlier Phase 137 phone timeout remains unexplained; this emulator run did not reproduce or fix it. The capture frames did not establish basemap tile rendering. Prior MapLibre crash, emulator startup failures, hardware and release gates remain open.
+- Next: if a gesture timeout recurs, timestamp the native gesture and capture on the reproducing device. Continue separate map, hardware and release validation without inferring physical safety from synthetic tests.
+- Do not touch: saved phone data, user settings, hardware or vehicle commands. Commit/push only when requested.
+
 ## 2026-10-31 — Phase 137 configured map phone checks
 
 - Done: two existing synthetic configured-map interaction methods passed on the phone; a planning repeat also passed. See [Phase 137](phase-137-report.md).
