@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-02 — Phase 146 snapshot exception investigation
+
+- Done: inspected the Phase 145 stack and coverage coroutine path; no definitive cause or code fix established. See [Phase 146](phase-146-report.md).
+- Verification: a launcher ANR blocked the first emulator start; after restarts, two comparison test attempts failed with no Compose hierarchy while Android System UI was unresponsive. Neither reproduced the original snapshot exception. Existing APKs were reused; no build, JVM test or lint ran.
+- In progress: obtain a healthy disposable emulator and reproduce the original exception before choosing a fix. The Phase 145 retry passed but does not resolve it.
+- Broken or risky: emulator System UI/launcher freezes, original intermittent snapshot exception, hardware heartbeat, physical coverage and release gates remain open.
+- Next: repeat the affected test on a healthy emulator and compare failure evidence; resume TELEM1 diagnosis when hardware work restarts.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-02 — Phase 145 coverage comparison checks
 
 - Done: four selected synthetic coverage tests passed first run; direction comparison passed on one retry after a Compose snapshot threading exception. See [Phase 145](phase-145-report.md).
