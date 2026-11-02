@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-02 — Phase 145 coverage comparison checks
+
+- Done: four selected synthetic coverage tests passed first run; direction comparison passed on one retry after a Compose snapshot threading exception. See [Phase 145](phase-145-report.md).
+- Verification: existing app/test APKs were installed on the no-wipe emulator. Headland, sideways error, advisory overlap and overlength input checks passed; the direction check's first failure remains unexplained. The synthetic comparison screenshot in ignored `app/build/phase145/comparison.png` was reviewed.
+- In progress: investigate the intermittent direction test exception and broader Android regression; the retry is not a fix.
+- Broken or risky: physical field coverage, positioning accuracy, hardware heartbeat and release acceptance remain unverified.
+- Next: diagnose the Compose snapshot exception if reproducible, and resume TELEM1 diagnosis when hardware work restarts.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-02 — Phase 144 invalid route picker test
 
 - Done: added a disposable-emulator test selecting an invalid route through Android DocumentsUI; it checks the visible error, no import preview, and preservation of a saved route and distinct unsaved edit. See [Phase 144](phase-144-report.md) and D-144-01. Production code is unchanged.
