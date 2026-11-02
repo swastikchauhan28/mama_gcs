@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-02 — Phase 141 mission planning regression
+
+- Done: four selected mission planning instrumentation checks passed on the no-wipe disposable emulator, covering the local editor save/reopen flow, both waypoint jump paths, and map markers through route edits, rotation and style change. See [Phase 141](phase-141-report.md).
+- Verification: the previously built Phase 140 app and test APKs were installed without clearing data; all four invocations reported `OK (1 test)`. The synthetic map screenshot in ignored `app/build/phase141/landscape-hybrid.png` was reviewed. A bounded window check found no Android error dialog after the runs.
+- In progress: broader Android regression and owner review; this was not the entire app suite.
+- Broken or risky: prior intermittent emulator/MapLibre problems, hardware heartbeat, field accuracy and release gates remain open. The tests use synthetic routes and do not establish physical operation.
+- Next: continue software regression according to outstanding risk; resume TELEM1 heartbeat isolation when hardware work restarts.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-02 — Phase 140 local waypoint jump
 
 - Done: Route now accepts a numbered local waypoint, validates it against the current draft, scrolls to that row and marks its stable ID. Keyboard Done and Go share the same jump action. No route edit, persistence, telemetry or vehicle command changed. See [Phase 140](phase-140-report.md) and D-140-01.
