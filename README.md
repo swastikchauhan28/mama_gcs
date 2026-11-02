@@ -2,7 +2,7 @@
 
 Native Android ground-control-station foundation for a Mama agricultural UGV: ArduPilot Rover, VESC motors, spray equipment and hydraulics. Kotlin · Compose · Material 3 · Hilt · offline-first.
 
-For hardware discussions, consult the [current hardware record](docs/hardware-integration.md#current-hardware-record--updated-21-october-2026) first. It records the accepted parameter-file baseline, user-reported TELEM2 plus SBUS/RCIN wiring, T12/R12/HC-05 route, confirmed 8 km/h maximum and current undecoded telemetry evidence; do not repeat already answered questions from historical phase reports.
+For hardware discussions, consult the [current hardware record](docs/hardware-integration.md) first. The operator now reports TELEM1 for the R12 telemetry lead, with separate SBUS to RCIN; the older TELEM2 photo and readback remain historical. The record retains the parameter-file baseline, T12/R12 route, 8 km/h maximum and undecoded telemetry evidence. Do not repeat already answered questions from historical phase reports.
 
 ## Current uncommitted change: home-marker legibility (Phases 52–53)
 

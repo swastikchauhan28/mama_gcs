@@ -1,5 +1,9 @@
 # Hardware integration gates
 
+## 2 November 2026 — current TELEM1 connection
+
+The operator now confirms the R12 telemetry lead is plugged into Cube **TELEM1**. This supersedes the 21 October TELEM2 report for the current setup; the earlier photo and `SERIAL2_PROTOCOL=2`, `SERIAL2_BAUD=57` Mission Planner readback remain historical evidence for that earlier configuration. The current Cube serial settings to read are **`SERIAL1_PROTOCOL`, `SERIAL1_BAUD`, and applicable flow-control/options settings**. The accepted older parameter file lists `SERIAL1_PROTOCOL=2` and `SERIAL1_BAUD=57`, but no live SERIAL1 readback or physical continuity check has yet verified the present setup. The separate **R12 SBUS → Cube RCIN** lead remains user-reported. Do not copy old SERIAL2 settings, write the older file to the Cube, or infer a valid Cube-to-phone MAVLink path from the port name alone.
+
 ## 23 October 2026 — Phase 50 software-only correction
 
 After the comparison below was written, Phase 50 added a separate checksum-validated `RADIO_STATUS (109)` radio-only diagnostic. The statement below that Mama GCS has no CRC-extra/decoder entry for ID 109 was correct for the earlier app build, not the current working tree. The original 22 October screenshot counts remain historical and must not be reinterpreted as a new live test. No current phone/R12/Cube path was tested in this software phase; the read-only heartbeat isolation below remains required. See [Phase 50](phase-50-report.md).
@@ -42,7 +46,7 @@ Use this record before requesting hardware information. The operator explicitly 
 | Receiver | **Skydroid R12, Multi Link V1.0**. |
 | Phone-facing Bluetooth name | Initially **HC-05**, later **T12_485** confirmed as the T12 remote (seen in both Classic paired devices and BLE discovery), then the operator identified **t12_131** for the later bench test. Use the device identified for the current setup; do not assume all names are the same physical remote or that a name proves protocol. Keep these separate from the VESC adapter. |
 | Intended communication route | Phone → HC-05/T12 remote → R12 receiver → Cube. MAVLink is the reported telemetry protocol. On 13 October 2026 the operator confirmed live Cube telemetry reaches Mama GCS through this route. Retain as user-confirmed reception, not an independently observed acceptance test or proof of commands reaching the Cube. |
-| Cube telemetry connector | On 21 October the operator confirmed **TELEM2 → receiver UART** and separate **SBUS → RCIN**; the latest Cube photo shows TELEM2 occupied. Use TELEM2 as the current user-reported route. Which receiver UART pair and the exact TX/RX/GND mapping are not established by the photo. |
+| Cube telemetry connector | On 2 November the operator confirms the current R12 telemetry lead is on **TELEM1**; the 21 October TELEM2 photo/report is historical. **SBUS → RCIN** is separate. Current TELEM1 pin mapping, crossover and ground continuity have not been independently checked. |
 | Remote-control lead | **SBUS → Cube RCIN**, user-confirmed and consistent with the separate yellow/black lead in the photos. |
 | Motor driver | **Flipsky Dual 75100 with aluminum PCB**, reported hardware version **“48”**. PWM is the reported control connection from the Cube. Exact firmware and hardware-version identification are not independently verified. |
 | Motor-data adapter/path | Operator identifies **Flipsky Bluetooth 2.4G wireless V6 NRF51** and reports motor data comes through Cube MAVLink. Retain those reports; actual VESC feedback wiring, message mapping and live motor measurements have not been demonstrated. PWM control alone does not establish feedback. |
@@ -55,7 +59,7 @@ These replace conflicting earlier verbal output assignments and calibration numb
 - `SERVO1_FUNCTION=73`: configured left throttle; `SERVO2_FUNCTION=74`: configured right throttle.
 - Both outputs: `MIN=1100`, `TRIM=1500`, `MAX=1900`, `REVERSED=1`. Do not relabel minimum/maximum as physically verified forward/reverse commands.
 - `RCMAP_ROLL=1`, `RCMAP_THROTTLE=3`.
-- The supplied file has `SERIAL1_PROTOCOL=2`, `SERIAL1_BAUD=57` (**57600 baud**), `SERIAL2_PROTOCOL=11`, and `SERIAL2_BAUD=256`. Since the reported cable is on TELEM2/SERIAL2, do not apply the SERIAL1 values to it. A later live Mission Planner readback now shows current `SERIAL2_PROTOCOL=2` and `SERIAL2_BAUD=57` (MAVLink 2 / 57600), so retain the file only as an older configuration reference and do not write it. Receiver-side UART baud and framing remain unverified.
+- The supplied file has `SERIAL1_PROTOCOL=2`, `SERIAL1_BAUD=57` (**57600 baud**), `SERIAL2_PROTOCOL=11`, and `SERIAL2_BAUD=256`. The current user-reported cable is on TELEM1/SERIAL1, so read back live SERIAL1 settings before treating the file values as current. A 21 October Mission Planner screenshot showed `SERIAL2_PROTOCOL=2` and `SERIAL2_BAUD=57` for the then-reported TELEM2 setup; it does not verify the present TELEM1 setup. Preserve the accepted file as history and do not write it to the Cube. Receiver-side UART baud and framing remain unverified.
 - `FS_GCS_ENABLE=0`, `FS_THR_ENABLE=0`, `RC_OVERRIDE_TIME=3`. These do not demonstrate a guaranteed stop after phone or radio loss.
 - `CRUISE_SPEED=4` (4 m/s, 14.4 km/h) conflicts with the confirmed **8 km/h maximum**. `SPEED_MAX=0` does not establish enforcement of that maximum. Record this as unresolved safety/configuration work, not permission to exceed 8 km/h or silently alter the Cube file.
 
