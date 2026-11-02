@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-02 — Phase 147 emulator retry
+
+- Done: launched the disposable emulator with a temporary four-core setting and ran the affected coverage comparison test three times; all passed. See [Phase 147](phase-147-report.md).
+- Verification: the existing installed APKs were reused. Three isolated instrumentation invocations returned `OK (1 test)`; no matching Android error window was observed before runs or afterward. No fresh build, JVM tests or lint ran.
+- In progress: original snapshot exception and prior Android freezes remain unexplained. The launch setting and available memory changed together, so their effect cannot be isolated.
+- Broken or risky: three passes do not prove long-term emulator stability, physical coverage, hardware communication or release readiness.
+- Next: retain the launch-only configuration for further software checks and capture evidence if the exception or Android freeze recurs; resume TELEM1 diagnosis when hardware work restarts.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-02 — Phase 146 snapshot exception investigation
 
 - Done: inspected the Phase 145 stack and coverage coroutine path; no definitive cause or code fix established. See [Phase 146](phase-146-report.md).
