@@ -9,6 +9,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -22,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -67,6 +69,8 @@ fun MissionScreen(
     mapStyleUrl: String? = MapStyleConfig.styleUrlOrNull(LocalBasemapStyle.current),
 ) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val scope = rememberCoroutineScope()
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
@@ -128,6 +132,13 @@ fun MissionScreen(
     var editorTab by rememberSaveable { mutableStateOf("Route") }
     var showFileActions by rememberSaveable { mutableStateOf(false) }
     var planningSpeedInput by rememberSaveable { mutableStateOf("") }
+    var jumpWaypointInput by rememberSaveable { mutableStateOf("") }
+    var jumpedWaypointId by remember(plan.draft) { mutableStateOf<String?>(null) }
+    val routeListState = rememberLazyListState()
+    val jumpWaypointNumber = jumpWaypointInput.toIntOrNull()
+    val waypointCount = plan.draft.waypoints.size
+    val canJumpToWaypoint = !plan.loading && !plan.loadFailed &&
+        jumpWaypointNumber != null && jumpWaypointNumber in 1..waypointCount
     val timingRouteAvailable = !plan.loading && !plan.loadFailed
     val coverage = rememberFieldCoverageState(plan.draft.keepInFence, timingRouteAvailable)
     val travelEstimate = remember(plan.draft, planningSpeedInput, timingRouteAvailable) {
@@ -169,6 +180,16 @@ fun MissionScreen(
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val wide = maxWidth >= 680.dp
+        // Route items follow one shared header, an optional mobile map, and the route introduction.
+        val firstWaypointItemIndex = if (wide) 2 else 3
+        fun jumpToWaypoint() {
+            val number = jumpWaypointNumber ?: return
+            if (!canJumpToWaypoint) return
+            jumpedWaypointId = plan.draft.waypoints[number - 1].id
+            focusManager.clearFocus()
+            keyboardController?.hide()
+            scope.launch { routeListState.scrollToItem(firstWaypointItemIndex + number - 1) }
+        }
         // Leave room for the local file toolbar and editor padding in a short landscape window.
         val coverageDiagramHeight = (maxHeight - 72.dp).coerceIn(80.dp, 260.dp)
         val enlargedMobileHeader = !wide && androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.8f
@@ -217,6 +238,7 @@ fun MissionScreen(
             ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().testTag("mission-editor"),
+                state = routeListState,
                 contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 item {
@@ -274,6 +296,31 @@ fun MissionScreen(
                         style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick = { openEditor(null, null, null) }, enabled = canAdd,
                         modifier = Modifier.testTag("mission-add")) { Text("Add coordinates") }
+                    if (waypointCount > 0) {
+                        Text("Jump to waypoint", style = MaterialTheme.typography.titleSmall)
+                        OutlinedTextField(
+                            value = jumpWaypointInput,
+                            onValueChange = { jumpWaypointInput = it.take(MissionDraft.MAX_WAYPOINTS.toString().length) },
+                            label = { Text("Waypoint number") },
+                            singleLine = true,
+                            isError = jumpWaypointInput.isNotEmpty() && !canJumpToWaypoint,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { jumpToWaypoint() }),
+                            supportingText = {
+                                Text(
+                                    if (jumpWaypointInput.isNotEmpty() && !canJumpToWaypoint) "Enter a number from 1 to $waypointCount."
+                                    else "1 to $waypointCount · local draft only",
+                                    modifier = Modifier.testTag("mission-jump-help"),
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth().testTag("mission-jump-input"),
+                        )
+                        TextButton(
+                            onClick = { jumpToWaypoint() },
+                            enabled = canJumpToWaypoint,
+                            modifier = Modifier.testTag("mission-jump-go"),
+                        ) { Text("Go to waypoint") }
+                    }
                 }
                 if (editorTab == "Review") {
                 item {
@@ -344,9 +391,13 @@ fun MissionScreen(
                     Text("No waypoints yet. This draft can be prepared without a vehicle connection.")
                 }
                 itemsIndexed(plan.draft.waypoints, key = { _, point -> point.id }) { index, point ->
-                    Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.small) {
-                        Column(Modifier.fillMaxWidth().padding(10.dp)) {
+                    val jumpTarget = jumpedWaypointId == point.id
+                    Surface(color = if (jumpTarget) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                        shape = MaterialTheme.shapes.small) {
+                        Column(Modifier.fillMaxWidth().padding(10.dp).testTag("mission-waypoint-row-$index")) {
                             Text("Waypoint ${index + 1}", style = MaterialTheme.typography.titleSmall)
+                            if (jumpTarget) Text("Jump target", style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.testTag("mission-jump-target"))
                             Text(String.format(Locale.US, "%.7f, %.7f", point.latitude, point.longitude), style = MaterialTheme.typography.bodySmall)
                             FlowRow {
                                 TextButton(onClick = { openEditor(point.id, point.latitude, point.longitude) }, enabled = plan.editable,

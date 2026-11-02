@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-02 — Phase 140 local waypoint jump
+
+- Done: Route now accepts a numbered local waypoint, validates it against the current draft, scrolls to that row and marks its stable ID. Keyboard Done and Go share the same jump action. No route edit, persistence, telemetry or vehicle command changed. See [Phase 140](phase-140-report.md) and D-140-01.
+- Verification: fresh build/test APK, 478/478 JVM tests and lint passed (zero errors, 27 warnings). Two focused emulator tests passed: the synthetic 250-point, 2× text case covers invalid inputs and first/last jumps; the wide-layout case covers the Go button and separate list offset. Neither emitted a route action. The waypoint-250 screenshot was reviewed in ignored `app/build/phase140/waypoint-250.png`. Two earlier test runs timed out while the keyboard covered the short landscape editor; the report preserves that history.
+- In progress: owner diff review and broader Android regression.
+- Broken or risky: the visible jump highlight is screen-local and clears when the draft changes. Hardware heartbeat, physical operation, field accuracy and release gates remain open.
+- Next: complete the remaining UI regression on a healthy disposable emulator before release; resume TELEM1 heartbeat isolation only when hardware work restarts.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-02 — Phase 139 local waypoint removal confirmation
 
 - Done: Route-list Remove now opens a dialog naming the selected waypoint; Cancel/dismiss does not edit, and confirmation emits the existing remove action only while that ID remains present and the draft editable. No hardware, transport, mission transfer, persistence schema or vehicle command change. See [Phase 139](phase-139-report.md) and D-139-01.

@@ -20,6 +20,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.espresso.Espresso
 import com.mamadrones.gcs.domain.model.ThemeMode
 import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
@@ -442,6 +443,96 @@ class VisualLayoutRegressionTest {
         compose.runOnIdle {
             assertEquals(listOf(MissionPlanAction.Move("wp-1", 1), MissionPlanAction.Remove("wp-1")), actions)
         }
+    }
+
+    @Test fun waypointJumpButtonFindsMiddleInWideLayout() {
+        val waypoints = (1..5).map { number ->
+            DraftWaypoint("wide-jump-$number", -35.36 + number * 0.00001, 149.16)
+        }
+        val actions = mutableListOf<MissionPlanAction>()
+        compose.setContent {
+            MamaGcsTheme {
+                Box(Modifier.width(700.dp)) {
+                    MissionScreen(VehicleState(), MissionPlanUiState(
+                        draft = MissionDraft(name = "Wide jump route", waypoints = waypoints), loading = false),
+                        actions::add, mapStyleUrl = null)
+                }
+            }
+        }
+        val editor = compose.onNodeWithTag("mission-editor")
+        editor.performScrollToNode(hasTestTag("mission-jump-input"))
+        compose.onNodeWithTag("mission-jump-input").performTextReplacement("3")
+        Espresso.closeSoftKeyboard()
+        editor.performScrollToNode(hasTestTag("mission-jump-go"))
+        compose.onNodeWithTag("mission-jump-go").performClick()
+        compose.waitUntil(10_000) {
+            compose.onAllNodes(hasTestTag("mission-waypoint-row-2")).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("mission-waypoint-row-2").assertIsDisplayed()
+        compose.onNodeWithTag("mission-jump-target").assertIsDisplayed()
+        compose.runOnIdle { assertTrue("Jump must not edit the local draft", actions.isEmpty()) }
+    }
+
+    @Test fun waypointJumpValidatesInputAndFindsFirstAndLastAtLargeText() {
+        val screenWidthPx = (320f * compose.activity.resources.displayMetrics.density).toInt()
+        compose.activity.runOnUiThread {
+            compose.activity.window.setLayout(screenWidthPx, WindowManager.LayoutParams.MATCH_PARENT)
+        }
+        val waypoints = (1..MissionDraft.MAX_WAYPOINTS).map { number ->
+            DraftWaypoint("jump-$number", -35.36 + number * 0.00001, 149.16)
+        }
+        val actions = mutableListOf<MissionPlanAction>()
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 2f)) {
+                MamaGcsTheme {
+                    Box(Modifier.width(320.dp)) {
+                        MissionScreen(VehicleState(), MissionPlanUiState(
+                            draft = MissionDraft(name = "Jump test route", waypoints = waypoints), loading = false),
+                            actions::add, mapStyleUrl = null)
+                    }
+                }
+            }
+        }
+
+        val editor = compose.onNodeWithTag("mission-editor")
+        editor.performScrollToNode(hasTestTag("mission-jump-input"))
+        compose.onNodeWithTag("mission-jump-input").performTextReplacement("251")
+        compose.onNodeWithTag("mission-jump-go").assertIsNotEnabled()
+        compose.onNodeWithText("Enter a number from 1 to 250.").assertIsDisplayed()
+        compose.onNodeWithTag("mission-jump-input").performTextReplacement("abc")
+        compose.onNodeWithTag("mission-jump-go").assertIsNotEnabled()
+        compose.onNodeWithTag("mission-jump-input").performTextReplacement("250")
+        compose.onNodeWithTag("mission-jump-go").assertIsEnabled()
+        compose.onNodeWithTag("mission-jump-input").performImeAction()
+        compose.waitUntil(20_000) {
+            compose.onAllNodesWithText("Waypoint 250").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("Waypoint 250").assertIsDisplayed()
+        compose.onNodeWithTag("mission-waypoint-row-249").assertIsDisplayed()
+        compose.onNodeWithTag("mission-jump-target").assertIsDisplayed()
+        var screenshot: Bitmap? = null
+        compose.waitUntil(10_000) {
+            screenshot = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+            screenshot != null
+        }
+        val image = requireNotNull(screenshot)
+        val capture = File(requireNotNull(compose.activity.getExternalFilesDir(null)), "phase140-waypoint-250.png")
+        capture.outputStream().use { output ->
+            assertTrue("Jump target screenshot must be written", image.compress(Bitmap.CompressFormat.PNG, 100, output))
+        }
+        image.recycle()
+
+        editor.performScrollToNode(hasTestTag("mission-jump-input"))
+        compose.onNodeWithTag("mission-jump-input").performTextReplacement("1")
+        compose.onNodeWithTag("mission-jump-go").assertIsEnabled()
+        compose.onNodeWithTag("mission-jump-input").performImeAction()
+        compose.waitUntil(10_000) {
+            compose.onAllNodes(hasTestTag("mission-waypoint-row-0")).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("mission-waypoint-row-0").assertIsDisplayed()
+        compose.onNodeWithTag("mission-jump-target").assertIsDisplayed()
+        compose.runOnIdle { assertTrue("Jump must not edit the local draft", actions.isEmpty()) }
     }
 
     @Test fun missionLibraryDialogKeepsLongRoutesAndActionsReachableAtLargeText() {

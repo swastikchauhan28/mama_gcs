@@ -4,6 +4,10 @@ Native Android ground-control-station foundation for a Mama agricultural UGV: Ar
 
 For hardware discussions, consult the [current hardware record](docs/hardware-integration.md) first. The operator now reports TELEM1 for the R12 telemetry lead, with separate SBUS to RCIN; the older TELEM2 photo and readback remain historical. The record retains the parameter-file baseline, T12/R12 route, 8 km/h maximum and undecoded telemetry evidence. Do not repeat already answered questions from historical phase reports.
 
+## Current software change: local waypoint jump (Phase 140)
+
+**Plan → Route** can jump to a numbered waypoint in the current draft and highlight its row without changing the route. The number is checked against the current waypoint count; the keyboard's Done action also jumps on short screens. The focused 250-point emulator check passed at enlarged text. This is local navigation, not a mission upload or rover command. See [Phase 140](docs/phase-140-report.md).
+
 ## Current uncommitted change: home-marker legibility (Phases 52–53)
 
 The offline map's local H icon was enlarged and its Android test now checks rendered purple/white marker pixels, not only map-layer presence. JVM/build/lint checks passed in Phase 52; the focused Android test and visual screenshot review subsequently passed on a disposable offline-map emulator in [Phase 53](docs/phase-53-report.md). Earlier emulator System UI failures remain recorded. No telemetry or control behavior changed. See [Phase 52](docs/phase-52-report.md).

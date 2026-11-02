@@ -1,5 +1,15 @@
 # Decisions and alternatives
 
+## D-140-01: Jump to a numbered local waypoint without editing the route
+
+- Date: 2026-11-02. The user approved a software-only Phase 140 after the Phase 139 commit. Starting revision `4e4402e`, clean and aligned with `origin/main`. AI model/version: unavailable.
+- Context: the local Route editor allows 250 waypoints but currently requires manual scrolling to find a numbered point. This affects review and editing only; hardware, route execution and vehicle identity remain out of scope.
+- Choice: add a bounded numeric field and Go action in the Route introduction. Validate against the current draft count, scroll the existing LazyColumn to that waypoint, and mark the target row using its stable waypoint ID. The input and marker are transient UI state; no route action, repository write, transport, or command is involved.
+- Alternatives: filter the route list or add a separate searchable picker. Filtering would make displayed list indices differ from route order and complicate reorder actions; a picker adds another window and navigation step. Direct scrolling preserves the existing list and actions. Cost: the jump control adds height to the Route introduction, and its item-index offset must stay aligned with the editor's header/map/summary structure. Revisit if the list structure changes or smaller screens show the control poorly.
+- Verification: test out-of-range and malformed input, first and 250th waypoint navigation, unchanged route actions, and the rendered control/target at enlarged text on a no-wipe emulator. Run build/JVM/lint and review the screenshot. Full Android regression remains a separate gate.
+- Follow-up: the first two 250-point emulator runs timed out after the Go action. The captured short landscape window showed the numeric keyboard covering the route editor. Add an IME Done path and clear text-field focus before scrolling so the control remains usable when the button sits behind the keyboard. Keep the target-row assertion and repeat it; this is a UI obstruction finding, not evidence of a route-data problem.
+- Resolution: the revised IME Done path passed the focused no-wipe emulator test and its target-row screenshot was reviewed. A second focused emulator test passed the Go-button tap and wide-layout list offset. Full Android regression remains open.
+
 ## D-139-01: Confirm removal of a local route waypoint
 
 - Date: 2026-11-02. The user requested software-only work while hardware is on hold. Starting revision `6aac355`; three pre-existing documentation edits are preserved. AI model/version: unavailable.
