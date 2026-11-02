@@ -1,6 +1,8 @@
 package com.mamadrones.gcs
 
 import android.os.SystemClock
+import android.content.ContentValues
+import android.provider.MediaStore
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.test.*
@@ -28,6 +30,54 @@ class RouteDocumentPickerTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val automation get() = instrumentation.uiAutomation
     private val codec = MissionDraftRouteCodec(MissionDraftGeoJsonCodec(), MissionDraftGpxCodec())
+
+    @Test fun invalidFileThroughPickerPreservesSavedAndWorkingDraft() {
+        val repository = LocalMissionDraftRepository(instrumentation.targetContext)
+        val previous = runBlocking { repository.load() }
+        val recovery = runBlocking { repository.loadRecovery() }
+        val file = "qa_route_" + UUID.randomUUID().toString().replace("-", "") + ".geojson"
+        val route = MissionDraft("Invalid import test", listOf(DraftWaypoint("p", -35.36, 149.16)))
+        val resolver = instrumentation.targetContext.contentResolver
+        var fileUri: android.net.Uri? = null
+        var scenario: ActivityScenario<MainActivity>? = null
+        try {
+            val values = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, file)
+                put(MediaStore.Downloads.MIME_TYPE, "application/geo+json")
+            }
+            val created = requireNotNull(resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values))
+            fileUri = created
+            requireNotNull(resolver.openOutputStream(created)).bufferedWriter().use { it.write("not a route") }
+            runBlocking { repository.save(route) }
+            scenario = ActivityScenario.launch(MainActivity::class.java)
+            awaitApp()
+            compose.openWorkspace("mission")
+            compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-edit-0"))
+            compose.onNodeWithTag("mission-edit-0").performClick()
+            compose.onNodeWithTag("mission-latitude").performTextReplacement("-35.365")
+            compose.onNodeWithTag("mission-confirm-waypoint").performClick()
+
+            action("Import route file")
+            downloads()
+            clickNative { it.text?.toString() == file }
+            awaitApp()
+            val error = "Unsupported route file. Choose a GeoJSON or GPX file."
+            compose.waitUntil(15_000) { compose.onAllNodesWithText(error).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasText(error))
+            compose.onNodeWithText(error).assertIsDisplayed()
+            compose.onNodeWithText("Import route preview").assertDoesNotExist()
+            assertEquals(route, runBlocking { repository.load() })
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-edit-0"))
+            compose.onNodeWithTag("mission-edit-0").performClick()
+            compose.onNodeWithTag("mission-latitude").assertTextContains("-35.365", substring = true)
+            compose.onNodeWithText("Cancel").performClick()
+        } finally {
+            scenario?.close()
+            runBlocking { repository.save(previous); recovery?.let { repository.saveRecovery(it) } }
+            fileUri?.let { resolver.delete(it, null, null) }
+        }
+    }
 
     @Test fun exportBothFormatsAndImportThroughSystemPickerWithCancellation() {
         val repository = LocalMissionDraftRepository(instrumentation.targetContext)

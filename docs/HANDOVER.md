@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-02 — Phase 144 invalid route picker test
+
+- Done: added a disposable-emulator test selecting an invalid route through Android DocumentsUI; it checks the visible error, no import preview, and preservation of a saved route and distinct unsaved edit. See [Phase 144](phase-144-report.md) and D-144-01. Production code is unchanged.
+- Verification: final test APK build and lint passed (9 tasks executed, 60 up-to-date; 27 lint warnings), and the focused picker test passed. Earlier fixture and assertion failures are recorded in the report. No matching Android error window was found afterward.
+- In progress: owner diff review and broader Android regression.
+- Broken or risky: interrupted tests may leave synthetic emulator data. Hardware heartbeat, physical operation and release gates remain open.
+- Next: review the test and run broader software regression as needed; resume TELEM1 diagnosis when hardware work restarts.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-02 — Phase 143 field coverage verification
 
 - Done: six targeted emulator tests passed for the real planner preview, width/overlap changes, outline invalidation, triangle and concave offline maps, and clearing a selected preview after an outline edit. See [Phase 143](phase-143-report.md).

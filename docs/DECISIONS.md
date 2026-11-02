@@ -1,5 +1,15 @@
 # Decisions and alternatives
 
+## D-144-01: Verify invalid import through Android DocumentsUI
+
+- Date: 2026-11-02. User approved Phase 144. Baseline `39c575f`, clean `main`; model gpt-6.1-terra.
+- Context: Phase 142 checked invalid content at the ViewModel boundary but did not exercise selecting a bad file through the system picker.
+- Choice: extend the disposable-emulator picker test with a uniquely named invalid GeoJSON file, a saved synthetic route and a distinct unsaved edit. Verify the visible error, absence of preview and preservation of both drafts. Clean up the exact generated file and restore prior emulator draft/recovery in `finally`.
+- Alternative: rely on the existing in-memory test; it cannot detect picker or UI integration failures. Cost: DocumentsUI automation and emulator load can fail independently of the app; interruption can leave temporary data. Revisit if picker behavior or error text changes.
+- Verification: rebuild test APK, run the focused picker test on the disposable emulator, and record actual results; no hardware, phone data, production behavior or dependencies change.
+- Follow-up: two emulator runs failed before the picker because the shell fixture did not create the file. Use a uniquely named Android MediaStore Downloads entry, delete its returned URI, and repeat the original assertions.
+- The MediaStore run reached the expected error and preserved edit, but the test's text assertion required an exact match while the editor formats seven decimal places. Use substring matching and repeat the full check.
+
 ## D-140-01: Jump to a numbered local waypoint without editing the route
 
 - Date: 2026-11-02. The user approved a software-only Phase 140 after the Phase 139 commit. Starting revision `4e4402e`, clean and aligned with `origin/main`. AI model/version: unavailable.
