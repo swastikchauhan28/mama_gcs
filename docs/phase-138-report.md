@@ -21,4 +21,3 @@ Evidence is under ignored `app/build/phase138/`: `gradle-build.txt`, `gradle-rep
 ## Conclusion and next safe step
 
 The intermittent long-press timeout did not recur in this bounded emulator comparison. Capture while the map fixture was visibly drawn also passed twice, but there is no proof that capture coincided with the long-press event. No evidence-based production or assertion change is justified. If the timeout recurs, add test-only start/end timestamps around the native gesture and screenshot operation, then compare on the device that reproduces it; preserve any failure and Android health evidence. Continue separate work on the earlier MapLibre crash, emulator startup reliability, hardware and release gates. Do not treat this result as map rendering, physical coverage or vehicle-operation acceptance.
-
