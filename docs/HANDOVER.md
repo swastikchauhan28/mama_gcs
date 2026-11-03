@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-03 — Phase 157 mission and coverage regression
+
+- Done: ran focused mission/coverage regression and corrected the enlarged-text test to scroll to the lazily composed comparison, swipe its horizontal row and assert the second range fits. No production app code changed. See [Phase 157](phase-157-report.md), D-157-01 and D-157-02.
+- Verification: 47 freshly executed targeted JVM tests passed; the initial five-test coverage batch had four passes and one enlarged-text timeout with Android healthy. Two route/GeoJSON tests passed with Android healthy; the corrected and strengthened enlarged-text test passed separately with Android healthy. Its final synthetic screenshot was reviewed. Final test APK build/lint succeeded with 27 warnings. These results span multiple batches, not one clean full run.
+- In progress: broader regression, owner walkthrough, release acceptance and physical field/hardware validation. Software coverage models do not prove physical soil coverage.
+- Broken or risky: an emulator restart showed a Bluetooth-system error before a later healthy preflight. Previous emulator/Compose instability and Cube heartbeat remain unresolved.
+- Next: review the scoped test-navigation change and evidence; use the practice guide on a disposable installation. Resume hardware work only when requested.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-03 — Phase 156 use compared settings
 
 - Done: added explicit **Use option A/B** actions for valid, current comparisons. A selected option copies only volatile width/overlap, preserves field/direction/headland, clears previous preview/map and prompts a new preview. Stale, invalid, busy and unavailable choices are rejected. See [Phase 156](phase-156-report.md) and D-156-01.

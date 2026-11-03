@@ -1,5 +1,22 @@
 # Decisions and alternatives
 
+## D-157-01: Focused mission-planning regression after coverage changes
+
+- Date: 2026-11-03. User approved Phase 157. Starting revision `a4762605385c8af0106222587ea24f6a90a1f38b`, clean `main`; model/version unavailable.
+- Context: Phases 155–156 added comparison and use actions with focused tests, but the broader mission/coverage workflow needs a fresh check.
+- Choice: freshly run relevant mission and coverage JVM tests plus selected real-app and synthetic UI emulator tests for route/outline, file exchange, old-preview invalidation, both options and enlarged text. Use existing bounded tests, the isolated emulator, health preflight and acceptance gate. Keep each attempt and distinguish failures, retries and partial coverage.
+- Alternative: rely on past phase results or run an unreviewed full app suite. Past evidence predates the latest changes; a full suite has separate side effects and includes hardware-dependent checks. Temporary emulator drafts/files may survive interruption; tests can contact the existing map provider. No physical phone, vehicle commands or Cube parameters are involved.
+- Fix confirmed in-scope defects without weakening assertions; otherwise report unresolved environment or coverage gaps. A passing synthetic suite does not establish physical coverage or release readiness.
+
+## D-157-02: Scroll to the enlarged-text comparison before asserting it
+
+- Date: 2026-11-03. During the approved regression, four of five coverage tests passed, but `trianglePreviewAndControlsRemainReachableAtLargeText` timed out waiting for the comparison header; Android health was clear. The current lazy list places the newer tool-settings comparison item before that header.
+- Choice: wait for the real direction-comparison calculation to finish using its enabled control, then scroll the real editor to the comparison header and retain the existing assertions that both direction results are displayed. This tests reachability instead of assuming an off-screen lazy item was already composed.
+- Alternative: increase the timeout or remove the visibility assertions. A longer wait does not cause an off-screen lazy item to compose, and removing assertions would conceal a usability failure. The off-screen explanation is a hypothesis until the unmodified UI passes the revised navigation; retain the original failure and investigate if the retry fails.
+- Follow-up: the retry passed, but its screenshot showed the second card partially clipped horizontally. Add an explicit horizontal swipe and verify that the second card's modeled range is fully inside the scroll viewport; preserve the earlier screenshot and retry result.
+- Final result: the strengthened check passed with Android healthy, and the post-swipe screenshot showed the full range. This supports the off-screen test-navigation explanation; no app code changed. The earlier failed batch and partially clipped screenshot remain recorded.
+
+
 ## D-156-01: Explicitly apply a compared tool setting
 
 - Date: 2026-11-03. User approved Phase 156. Baseline clean `38a0e58a96286df54c5092381ab526882bf8e398`; model/version unavailable.

@@ -419,11 +419,21 @@ class FieldCoverageUiTest {
         node("coverage-diagram").assertIsDisplayed()
         capture("phase76-large-triangle.png")
         node("coverage-compare").performClick()
-        compose.waitUntil(20_000) { compose.onAllNodesWithTag("coverage-comparison").fetchSemanticsNodes().isNotEmpty() }
+        // The comparison header is a separate lazy item and may be off-screen at large text.
+        compose.waitUntil(20_000) { compose.onAllNodes(hasTestTag("coverage-compare") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+        node("coverage-comparison").assertIsDisplayed()
         node("coverage-comparison-north-passes")
         capture("phase80-large-observe.png")
         node("coverage-comparison-north-passes").assertIsDisplayed()
         node("coverage-comparison-east-passes").assertIsDisplayed()
+        // The cards scroll horizontally at large text; check the full range is readable after swiping.
+        compose.onNodeWithTag("coverage-comparison-row").performTouchInput { swipeLeft() }
+        val eastRange = node("coverage-comparison-east-range")
+        eastRange.assertIsDisplayed()
+        val rowBounds = compose.onNodeWithTag("coverage-comparison-row").getUnclippedBoundsInRoot()
+        val rangeBounds = eastRange.getUnclippedBoundsInRoot()
+        assertTrue("East/west modeled range must fit horizontally after scrolling: $rangeBounds / $rowBounds",
+            rangeBounds.left >= rowBounds.left && rangeBounds.right <= rowBounds.right)
         capture("phase80-large-comparison.png")
         assertTrue(actions.isEmpty())
     }
