@@ -19,6 +19,56 @@ import java.io.File
 class MissionPlanningTest {
     @get:Rule val compose = createEmptyComposeRule()
 
+    @Test fun unsavedRouteAndOutlineRecoverAfterClosingAndReopeningEditor() {
+        val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val previous = runBlocking { repository.load() }
+        val previousRecovery = runBlocking { repository.loadRecovery() }
+        val baseline = MissionDraft(name = "Recovery baseline")
+        val points = listOf(-35.36326 to 149.16523, -35.36330 to 149.16527)
+        val outline = listOf(-35.36335 to 149.16520, -35.36335 to 149.16535, -35.36320 to 149.16535)
+        try {
+            runBlocking { repository.save(baseline) }
+            val first = androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java)
+            try {
+                compose.openWorkspace("mission")
+                compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+                points.forEach { (latitude, longitude) -> addPoint(latitude.toString(), longitude.toString()) }
+                outline.forEach { (latitude, longitude) -> addFenceVertex(latitude.toString(), longitude.toString()) }
+                compose.waitUntil(15_000) {
+                    runBlocking { repository.loadRecovery()?.let { it.waypoints.size == 2 && it.keepInFence.size == 3 } == true }
+                }
+                val working = requireNotNull(runBlocking { repository.loadRecovery() })
+                assertEquals(points, working.waypoints.map { it.latitude to it.longitude })
+                assertEquals(outline, working.keepInFence.map { it.latitude to it.longitude })
+                assertEquals(baseline, runBlocking { repository.load() })
+            } finally { first.close() }
+
+            val reopened = androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java)
+            try {
+                compose.openWorkspace("mission")
+                compose.waitUntil(15_000) { compose.onAllNodesWithText("Recovered unsaved changes · review and save").fetchSemanticsNodes().isNotEmpty() }
+                compose.onNodeWithTag("mission-save").assertIsEnabled()
+                assertEquals(baseline, runBlocking { repository.load() })
+                capture("phase151-recovered")
+                scrollToTag("mission-edit-0").performClick()
+                compose.onNodeWithTag("mission-latitude").assertTextContains("-35.36326", substring = true)
+                compose.onNodeWithTag("mission-longitude").assertTextContains("149.16523", substring = true)
+                compose.onNodeWithText("Cancel").performClick()
+                scrollToTag("mission-remove-fence-2").assertIsDisplayed()
+                compose.onNodeWithText("Outline vertex 3").assertIsDisplayed()
+                compose.onNodeWithTag("mission-save").performClick()
+                compose.waitUntil(15_000) {
+                    runBlocking { repository.load().waypoints.size == 2 && repository.loadRecovery() == null }
+                }
+                val saved = runBlocking { repository.load() }
+                assertEquals(points, saved.waypoints.map { it.latitude to it.longitude })
+                assertEquals(outline, saved.keepInFence.map { it.latitude to it.longitude })
+            } finally { reopened.close() }
+        } finally {
+            runBlocking { repository.save(previous); previousRecovery?.let { repository.saveRecovery(it) } }
+        }
+    }
+
     @Test fun editReorderAndSaveDraftSurvivesNewViewModel() {
         val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         val previous = runBlocking { repository.load() }

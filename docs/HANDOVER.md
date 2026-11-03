@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-03 — Phase 151 editor recovery check
+
+- Done: added a real-activity emulator test creating two unsaved waypoints and a three-vertex outline, closing/reopening the editor, verifying recovered state and explicitly saving it. See [Phase 151](phase-151-report.md) and D-151-01. No production code changed.
+- Verification: test APK build/lint passed (10 tasks executed, 59 up-to-date; 27 lint warnings). Assertions passed on both attempts; the first failed the Android health gate due to a Google Play services ANR, and the retry passed with Android healthy. The synthetic screenshot at ignored `app/build/phase151/recovered.png` was reviewed.
+- In progress: a separate OS process-death recovery check, owner walkthrough and release acceptance. Closing/reopening the activity creates a fresh editor but does not establish process-death behavior.
+- Broken or risky: the screenshot did not establish map rendering, earlier emulator/Compose failures remain open, and hardware heartbeat and physical coverage remain unverified.
+- Next: review the test and recovery evidence; plan process-death validation on a disposable emulator if needed, and resume TELEM1 diagnosis when hardware work restarts.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-03 — Phase 150 local planning journey
 
 - Done: added and ran a synthetic real-app journey creating two waypoints and a three-vertex field, previewing coverage, saving, exporting GeoJSON and reimporting through Android DocumentsUI. Corrected the stale README heading. See [Phase 150](phase-150-report.md) and D-150-01.

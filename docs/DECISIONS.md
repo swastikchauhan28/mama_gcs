@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-151-01: Verify local route recovery after closing and reopening the editor
+
+- Date: 2026-11-03. The user approved Phase 151. Baseline `13e5b88`, clean `main` aligned with locally recorded `origin/main`. Model: gpt-6.1-terra.
+- Context: local recovery has repository and coordinator checks, but the requested journey combines unsaved route and field edits with closing and reopening the real editor.
+- Choice: add a disposable-emulator real-activity test. Create synthetic waypoints and outline through the UI, wait until the recovery copy is saved, close and relaunch the activity, verify recovered coordinates and unsaved state, then save explicitly and verify the recovery copy clears. Restore the emulator's previous saved/recovery drafts in `finally`.
+- Alternative: rely only on repository/unit fixtures or force-stop the target from instrumentation. A fresh activity and ViewModel verifies the UI path and real storage while preserving cleanup. It does not prove OS process-death recovery; an interrupted test can leave emulator-only synthetic data. Revisit with a separately designed process-death test if needed.
+- Verification: build/lint the test package, run the focused check with the Android health gate, inspect a synthetic recovery screenshot, and retain any failed attempts. No production persistence, hardware, phone data or commands change.
+- Result: the first run passed assertions but failed the health gate due to a Google Play services ANR; the unchanged test passed with Android healthy on retry. The screenshot shows the recovery status and enabled save action; map rendering was not established by that capture.
+
 ## D-150-01: Exercise one local route and field journey
 
 - Date: 2026-11-03. The user approved Phase 150. Baseline `aecdbd6`, clean `main` aligned with locally recorded `origin/main`. Model: gpt-6.1-terra.
