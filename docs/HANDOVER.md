@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-03 — Phase 149 software readiness review
+
+- Done: reviewed the latest software evidence, test-helper diff, hardware history and release/recovery gates; see [Phase 149](phase-149-report.md). Recorded the 21 October Mission Planner title showing ArduRover 4.7.1 on CubeOrangePlus as a historical observation in [hardware integration](hardware-integration.md).
+- Verification: inspected current clean baseline `3329b5f`, Phase 148 local logs and 478-test JVM XML summary; no new tests or hardware checks ran. The 211 software Android methods passed across batches/retries, not a single clean run.
+- In progress: owner review/teach-back, realistic demo verification, dependency/secret review and validated release/recovery path remain open. README's old “Current uncommitted change” heading is stale.
+- Broken or risky: emulator/Compose failures remain unexplained; current Cube heartbeat through T12 and physical coverage remain unverified. No production release or rover control authorization is established.
+- Next: review the Phase 149 findings and correct stale README status in a scoped change; resume TELEM1 heartbeat isolation when hardware work restarts.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-03 — Phase 148 regression continuation
 
 - Done: reconciled 211 software Android test methods against passing instrumentation results across batches and retries; the four physical remote methods were excluded. The interrupted navigation, mission, map and visual batches had failures or stalls that later passed individually or in a healthy retry. See [Phase 148](phase-148-report.md).

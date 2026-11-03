@@ -1,5 +1,9 @@
 # Hardware integration gates
 
+## 3 November 2026 — historical Mission Planner version observation
+
+The operator-supplied Mission Planner screenshot dated 21 October 2026 shows the title `ArduRover V4.7.1` on `CubeOrangePlus` while Mission Planner displayed a connected vehicle. This is evidence of the version reported in that session, superseding the earlier 4.7.0-only description for that historical observation. It does not establish the installed version today or validate the T12/R12 Bluetooth telemetry path. No firmware or settings were changed during this review.
+
 ## 2 November 2026 — current TELEM1 connection
 
 The operator now confirms the R12 telemetry lead is plugged into Cube **TELEM1**. This supersedes the 21 October TELEM2 report for the current setup; the earlier photo and `SERIAL2_PROTOCOL=2`, `SERIAL2_BAUD=57` Mission Planner readback remain historical evidence for that earlier configuration. The current Cube serial settings to read are **`SERIAL1_PROTOCOL`, `SERIAL1_BAUD`, and applicable flow-control/options settings**. The accepted older parameter file lists `SERIAL1_PROTOCOL=2` and `SERIAL1_BAUD=57`, but no live SERIAL1 readback or physical continuity check has yet verified the present setup. The separate **R12 SBUS → Cube RCIN** lead remains user-reported. Do not copy old SERIAL2 settings, write the older file to the Cube, or infer a valid Cube-to-phone MAVLink path from the port name alone.
