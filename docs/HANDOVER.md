@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-03 — Phase 150 local planning journey
+
+- Done: added and ran a synthetic real-app journey creating two waypoints and a three-vertex field, previewing coverage, saving, exporting GeoJSON and reimporting through Android DocumentsUI. Corrected the stale README heading. See [Phase 150](phase-150-report.md) and D-150-01.
+- Verification: final test APK build/lint passed (9 tasks executed, 60 up-to-date; 27 lint warnings). The focused emulator journey passed with Android health gate; its coverage screenshot was reviewed at ignored `app/build/phase150/coverage.png`. The first test attempt timed out on an offscreen lazy-list item and is recorded in the report.
+- In progress: owner review, a human-operated walkthrough and release acceptance. The new journey is automated, not a manual demonstration or vehicle test.
+- Broken or risky: previewed coverage is modeled, hardware heartbeat and physical field performance remain unverified, and prior emulator/Compose issues remain open.
+- Next: review the test and demonstration evidence; perform the owner's manual walkthrough and resume TELEM1 diagnosis when hardware work restarts.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-03 — Phase 149 software readiness review
 
 - Done: reviewed the latest software evidence, test-helper diff, hardware history and release/recovery gates; see [Phase 149](phase-149-report.md). Recorded the 21 October Mission Planner title showing ArduRover 4.7.1 on CubeOrangePlus as a historical observation in [hardware integration](hardware-integration.md).

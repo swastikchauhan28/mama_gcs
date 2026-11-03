@@ -2,6 +2,7 @@ package com.mamadrones.gcs
 
 import android.os.SystemClock
 import android.content.ContentValues
+import android.graphics.Bitmap
 import android.provider.MediaStore
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -21,6 +22,7 @@ import org.junit.Rule
 import org.junit.Test
 import android.os.ParcelFileDescriptor
 import java.util.UUID
+import java.io.File
 
 /** English Android DocumentsUI acceptance. Run on a disposable emulator, not a user's phone.
  * Uses the real system picker and local Downloads provider; no mocked activity results or links.
@@ -30,6 +32,88 @@ class RouteDocumentPickerTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val automation get() = instrumentation.uiAutomation
     private val codec = MissionDraftRouteCodec(MissionDraftGeoJsonCodec(), MissionDraftGpxCodec())
+
+    @Test fun createFieldPreviewSaveExportAndReimportLocalRoute() {
+        val repository = LocalMissionDraftRepository(instrumentation.targetContext)
+        val previous = runBlocking { repository.load() }
+        val recovery = runBlocking { repository.loadRecovery() }
+        val name = "qa_route_" + UUID.randomUUID().toString().replace("-", "")
+        val file = "$name.geojson"
+        val points = listOf(-35.36326 to 149.16523, -35.36330 to 149.16527)
+        val outline = listOf(-35.36335 to 149.16520, -35.36335 to 149.16535, -35.36320 to 149.16535)
+        assertEquals("", shell("test -e ${path(file)} && echo exists"))
+        var scenario: ActivityScenario<MainActivity>? = null
+        try {
+            runBlocking { repository.save(MissionDraft()) }
+            scenario = ActivityScenario.launch(MainActivity::class.java)
+            awaitApp()
+            compose.openWorkspace("mission")
+            compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+            action("Rename")
+            compose.onNodeWithText("Draft name").performTextReplacement(name)
+            compose.onNodeWithText("Apply").performClick()
+            fun addCoordinate(tab: String, tag: String, coordinate: Pair<Double, Double>) {
+                compose.selectMissionTab(tab)
+                compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag(tag))
+                compose.onNodeWithTag(tag).performClick()
+                compose.onNodeWithTag("mission-latitude").performTextReplacement(coordinate.first.toString())
+                compose.onNodeWithTag("mission-longitude").performTextReplacement(coordinate.second.toString())
+                compose.onNodeWithTag("mission-confirm-waypoint").performClick()
+            }
+            points.forEach { addCoordinate("Route", "mission-add", it) }
+            outline.forEach { addCoordinate("Field outline", "mission-add-fence-vertex", it) }
+            compose.selectMissionTab("Coverage")
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("coverage-settings"))
+            compose.onNodeWithTag("coverage-settings").performClick()
+            compose.onNodeWithTag("coverage-width").performTextReplacement("2")
+            compose.onNodeWithTag("coverage-overlap").apply { performTextReplacement("10"); performImeAction() }
+            compose.onNodeWithTag("coverage-generate").assertIsEnabled().performClick()
+            compose.waitUntil(20_000) { compose.onAllNodes(hasTestTag("coverage-settings") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("coverage-diagram"))
+            compose.onNodeWithTag("coverage-diagram").assertIsDisplayed()
+            val screenshot = compose.awaitSystemScreenshot()
+            try {
+                File(requireNotNull(instrumentation.targetContext.getExternalFilesDir(null)), "phase150-coverage.png").outputStream().use {
+                    assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, it))
+                }
+            } finally { screenshot.recycle() }
+            compose.onNodeWithTag("mission-save").assertIsEnabled().performClick()
+            compose.waitUntil(15_000) { runBlocking { repository.load().let { it.name == name && it.waypoints.size == 2 && it.keepInFence.size == 3 } } }
+            val saved = runBlocking { repository.load() }
+            assertEquals(points, saved.waypoints.map { it.latitude to it.longitude })
+            assertEquals(outline, saved.keepInFence.map { it.latitude to it.longitude })
+
+            action("Export GeoJSON")
+            downloads()
+            awaitNative { it.className?.toString() == "android.widget.EditText" && it.text?.toString() == file }
+            clickNative { it.text?.toString()?.equals("Save", ignoreCase = true) == true }
+            awaitApp()
+            var content = ""
+            awaitCondition("exported test route") { content = shell("cat ${path(file)} 2>/dev/null"); content.isNotBlank() }
+            val exported = codec.decode(content)
+            assertEquals(points, exported.waypoints.map { it.latitude to it.longitude })
+            assertEquals(outline, exported.keepInFence.map { it.latitude to it.longitude })
+
+            action("New draft")
+            compose.onNode(hasText("New draft") and hasAnyAncestor(isDialog())).performClick()
+            assertEquals(saved, runBlocking { repository.load() })
+            importFile(file)
+            compose.onNodeWithText("Replace working draft").performClick()
+            assertEquals(saved, runBlocking { repository.load() })
+            compose.onNodeWithTag("mission-save").assertIsEnabled().performClick()
+            compose.waitUntil(15_000) {
+                runBlocking { repository.load().let { it.name == name && it.waypoints.size == 2 && it.keepInFence.size == 3 } } &&
+                    compose.onAllNodesWithText("No unsaved changes").fetchSemanticsNodes().isNotEmpty()
+            }
+            val imported = runBlocking { repository.load() }
+            assertEquals(points, imported.waypoints.map { it.latitude to it.longitude })
+            assertEquals(outline, imported.keepInFence.map { it.latitude to it.longitude })
+        } finally {
+            scenario?.close()
+            runBlocking { repository.save(previous); recovery?.let { repository.saveRecovery(it) } }
+            shell("rm -f ${path(file)}")
+        }
+    }
 
     @Test fun invalidFileThroughPickerPreservesSavedAndWorkingDraft() {
         val repository = LocalMissionDraftRepository(instrumentation.targetContext)

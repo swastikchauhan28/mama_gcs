@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-150-01: Exercise one local route and field journey
+
+- Date: 2026-11-03. The user approved Phase 150. Baseline `aecdbd6`, clean `main` aligned with locally recorded `origin/main`. Model: gpt-6.1-terra.
+- Context: previous tests cover route editing, coverage and document exchange separately. The owner wants one demonstrable software journey combining them.
+- Choice: add a disposable-emulator test using the real app UI and Android DocumentsUI: create a synthetic route and field, preview coverage, save, export GeoJSON and import it as a working draft. Verify coordinates and outline, and restore the prior emulator draft/recovery and delete only the uniquely named test export in `finally`. Correct the stale README heading.
+- Alternative: rely on separate existing tests or claim a manual demonstration from automated results. Separate tests do not exercise the combined flow; an automated run is not a human walkthrough. Cost: this longer UI test can be affected by Android picker, map and emulator instability; interruption may leave synthetic test data. Revisit if the workflow or picker changes.
+- Verification: build/lint the test package, run the focused journey with the Android health gate, inspect a synthetic coverage capture, and report failures and limits. No production code, dependencies, user phone data, hardware or vehicle commands change.
+- Follow-up: the first emulator run timed out waiting for an offscreen lazy-list diagram before scrolling to it. Wait for calculation completion via the enabled settings control, then scroll to and assert the diagram using the existing UI pattern; retain all route and export assertions.
+
 ## D-148-01: Handle Android fullscreen education during acceptance checks
 
 - Date: 2026-11-03. The user asked to complete the approved Phase 148 regression. Baseline `a0161c5`; the Phase 148 report and handover were already uncommitted and are preserved. Model: gpt-6.1-terra.
