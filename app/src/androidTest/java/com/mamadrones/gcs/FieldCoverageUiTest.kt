@@ -464,6 +464,39 @@ class FieldCoverageUiTest {
         assertTrue(actions.isEmpty())
     }
 
+    @Test fun useComparedToolSettingsUpdatesPreviewInputsAndClearsOldPreview() {
+        val draft = mutableStateOf(MissionDraft(keepInFence = coverageTestOutline()))
+        show(draft = draft)
+        node("coverage-width").performTextReplacement("2")
+        node("coverage-overlap").performTextReplacement("10")
+        node("coverage-headland").apply { performTextReplacement("0.5"); performImeAction() }
+        node("coverage-east-west").performClick()
+        generate()
+        fun compare() {
+            node("coverage-options-open").performClick()
+            compose.onNodeWithTag("coverage-options-width-a").performScrollTo().performTextReplacement("1.25")
+            compose.onNodeWithTag("coverage-options-overlap-a").performScrollTo().performTextReplacement("5")
+            compose.onNodeWithTag("coverage-options-width-b").performScrollTo().performTextReplacement("2.004")
+            compose.onNodeWithTag("coverage-options-overlap-b").performScrollTo().apply { performTextReplacement("50.25"); performImeAction() }
+            compose.onNodeWithTag("coverage-options-compare").assertIsEnabled().performClick()
+            compose.waitUntil(30_000) { compose.onAllNodesWithTag("coverage-option-a").fetchSemanticsNodes().isNotEmpty() }
+        }
+        compare()
+        node("coverage-option-use-b").performClick()
+        node("coverage-options-applied").assertIsDisplayed()
+        node("coverage-settings-summary").assertTextContains("Tool: 2.004 m · Overlap: 50.25% · Headland: 0.5 m · Single preview direction: East / west", substring = true)
+        node("coverage-empty").assertIsDisplayed()
+        compose.onAllNodesWithTag("coverage-option-a").assertCountEquals(0)
+        compare()
+        node("coverage-option-use-a").performClick()
+        node("coverage-options-applied").assertIsDisplayed()
+        node("coverage-settings-summary").assertTextContains("Tool: 1.25 m · Overlap: 5% · Headland: 0.5 m · Single preview direction: East / west", substring = true)
+        node("coverage-empty").assertIsDisplayed()
+        capture("phase156-applied.png")
+        assertTrue("Choosing settings must not dispatch a mission action", actions.isEmpty())
+        assertEquals(coverageTestOutline(), draft.value.keepInFence)
+    }
+
     @Test fun compareToolSettingsShowsBothOptionsAndInvalidatesOnEdit() {
         val draft = mutableStateOf(MissionDraft(keepInFence = coverageTestOutline()))
         show(draft = draft)

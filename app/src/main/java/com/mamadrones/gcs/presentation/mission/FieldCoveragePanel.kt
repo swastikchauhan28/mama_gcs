@@ -61,6 +61,7 @@ internal class FieldCoverageState(
     var mapEastWest by mutableStateOf<Boolean?>(null); private set
     var mapError by mutableStateOf<String?>(null); private set
     var busy by mutableStateOf(false); private set
+    var comparedSettingsApplied by mutableStateOf(false); private set
     private var job: Job? = null
     val inputError: String? get() {
         if (listOf(width, overlap, headland, sidewaysError, desiredMargin).any { it.length > COVERAGE_INPUT_MAX_LENGTH })
@@ -87,7 +88,21 @@ internal class FieldCoverageState(
     fun updateSidewaysError(value: String) { invalidate(); sidewaysError = value.take(COVERAGE_INPUT_MAX_LENGTH + 1) }
     fun updateDesiredMargin(value: String) { invalidate(); desiredMargin = value.take(COVERAGE_INPUT_MAX_LENGTH + 1) }
     fun setDirection(value: Boolean) { invalidate(); eastWest = value }
-    fun invalidate() { job?.cancel(); job = null; busy = false; result = null; comparison = null; hideMap() }
+    fun invalidate() { job?.cancel(); job = null; busy = false; result = null; comparison = null; comparedSettingsApplied = false; hideMap() }
+    /** Reject a choice calculated for an older field or shared preview state. */
+    fun applyComparedSettings(
+        expectedOutline: List<DraftWaypoint>, expectedWidth: String, expectedOverlap: String,
+        expectedHeadland: String, expectedDirection: Boolean, newWidth: String, newOverlap: String,
+    ): Boolean {
+        if (!available || busy || outline != expectedOutline || width != expectedWidth || overlap != expectedOverlap ||
+            headland != expectedHeadland || eastWest != expectedDirection ||
+            headland.length > COVERAGE_INPUT_MAX_LENGTH || newWidth.length > COVERAGE_INPUT_MAX_LENGTH || newOverlap.length > COVERAGE_INPUT_MAX_LENGTH ||
+            FieldCoveragePlanner.settingsError(newWidth.trim().toDoubleOrNull(), newOverlap.trim().toDoubleOrNull(), headland.trim().toDoubleOrNull()) != null
+        ) return false
+        invalidate()
+        width = newWidth; overlap = newOverlap; comparedSettingsApplied = true
+        return true
+    }
     fun hideMap() { mapLines = emptyList(); mapGapSamples = null; mapEastWest = null; mapError = null }
     fun showDirectionOnMap(eastWest: Boolean) {
         val selected = if (eastWest) comparison?.eastWest else comparison?.northSouth
@@ -109,6 +124,7 @@ internal class FieldCoverageState(
         val requestedOverlap = overlap.trim().toDouble()
         val requestedHeadland = headland.trim().toDouble()
         val requestedDirection = eastWest
+        comparedSettingsApplied = false
         busy = true
         result = null
         job = scope.launch {
@@ -153,6 +169,7 @@ internal fun FieldCoverageInputs(state: FieldCoverageState) {
     Column(Modifier.fillMaxWidth().testTag("coverage-inputs"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("Field coverage preview", style = MaterialTheme.typography.titleMedium)
         Text("Uses your Field outline. Enter the tool's working width to preview separate passes. This preview is not saved as a route.")
+        if (state.comparedSettingsApplied) Text("Tool settings updated · generate a new preview", modifier = Modifier.testTag("coverage-options-applied"))
         if (state.inputError == null) Text("Tool: ${state.width} m · Overlap: ${state.overlap}% · Headland: ${state.headland} m · Single preview direction: ${if (state.eastWest) "East / west" else "North / south"}", modifier = Modifier.testTag("coverage-settings-summary"))
         if (!state.available) Text("Wait for the field draft to load before previewing coverage.")
         Button(onClick = { showSettings = true }, enabled = state.available && !state.busy,

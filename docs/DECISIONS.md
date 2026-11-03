@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-156-01: Explicitly apply a compared tool setting
+
+- Date: 2026-11-03. User approved Phase 156. Baseline clean `38a0e58a96286df54c5092381ab526882bf8e398`; model/version unavailable.
+- Context: Phase 155 compares settings but requires manual re-entry into the normal preview. Both the field and shared settings may change between calculation and a tap.
+- Choice: add explicit Use option A/B actions only for successfully calculated options. At application, recheck the comparison's field, base width/overlap, direction and headland against current coverage state, and validate the original bounded input strings. Atomically replace only volatile normal-preview width and overlap, cancel/clear prior previews and maps, and prompt the user to generate a new preview. A stale, invalid, unavailable or busy choice has no effect. Clear the comparison after successful use, including when its values are unchanged.
+- Alternative: automatically select a seemingly better result, generate a route, or silently retain old preview/map data. Modeled ranges can overlap and do not prove physical coverage; automatic selection and stale results would mislead. The action is local only and does not save a draft, alter the field or send a vehicle command. Revisit if persistence or vehicle integration is separately designed and approved.
+- Verify both options, exact inputs, unchanged direction/headland/field, invalid/stale choices and preview/map invalidation with targeted tests and an emulator screen check; retain previous emulator failures honestly.
+- Result: five targeted JVM tests passed; the selection and comparison-regression emulator checks passed with Android healthy, and both the option buttons and applied-state screenshots were reviewed. Earlier emulator startups produced System UI ANRs and a Bluetooth system-process crash before a later healthy retry; no root cause is established.
+
 ## D-155-01: Compare two local coverage settings
 
 - Date: 2026-11-03. User approved Phase 155. Baseline clean `5212ff4c07c03b04f6c65943ed7798315c2ef257`; model/version unavailable.

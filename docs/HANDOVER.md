@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-03 — Phase 156 use compared settings
+
+- Done: added explicit **Use option A/B** actions for valid, current comparisons. A selected option copies only volatile width/overlap, preserves field/direction/headland, clears previous preview/map and prompts a new preview. Stale, invalid, busy and unavailable choices are rejected. See [Phase 156](phase-156-report.md) and D-156-01.
+- Verification: five targeted JVM tests passed; build/lint succeeded with 27 warnings. The new both-options UI test and existing comparison regression each passed on the disposable emulator with Android healthy; both option and applied-state screenshots were reviewed. Earlier emulator startups had System UI ANRs and a Bluetooth system-process crash; after the user closed unused apps a later health preflight passed. No full regression ran.
+- In progress: owner walkthrough, broader regression, release acceptance and physical field/hardware validation. A selected option changes only temporary preview inputs; it does not establish accurate physical coverage.
+- Broken or risky: emulator/Compose instability and Cube heartbeat remain unresolved. No root cause for the emulator errors is established.
+- Next: review the scoped change and use the updated practice guide; resume hardware work only when requested.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-03 — Phase 155 compare tool settings
 
 - Done: added a volatile coverage comparison for two width/overlap options using the same field, direction and headland. Separate cards show modeled passes, length and unplanned range; input or field changes invalidate old results. It selects and saves nothing, changes no route and sends no command. See [Phase 155](phase-155-report.md) and D-155-01.

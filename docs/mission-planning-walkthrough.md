@@ -46,7 +46,7 @@ These three points make a small triangular practice field. A real field needs it
 
 Use the implement's actual working width when planning a real field. Overlap is a planning assumption, not a guarantee: GPS accuracy, steering, tool position, obstacles and field edges affect real coverage. The preview shows separate modeled passes; **turns are not planned**, and the preview is **not saved as a route**. It cannot confirm that any soil has been ploughed or that the whole field will be covered.
 
-To compare two alternatives, tap **Compare tool settings**, enter a width and overlap for options A and B, and tap **Compare**. Both use the current field, direction and headland. Review each option's modeled passes, length and unplanned range; overlapping ranges cannot establish which option has fewer gaps. The comparison does not select or save either setting. To use a particular value for your normal preview, enter it separately in **Coverage settings**.
+To compare two alternatives, tap **Compare tool settings**, enter a width and overlap for options A and B, and tap **Compare**. Both use the current field, direction and headland. Review each option's modeled passes, length and unplanned range; overlapping ranges cannot establish which option has fewer gaps. To copy a valid option into **Coverage settings**, tap **Use option A** or **Use option B**. This clears old previews; tap **Coverage settings → Generate preview** to calculate again. Choosing an option does not save a route or send anything to a rover.
 
 ## 5. Save and export the local draft
 
