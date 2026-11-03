@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-158-01: Check tool comparison with enlarged text
+
+- Date: 2026-11-03. User requested the next phase after the enlarged-text proposal. Baseline clean `7cb8525a38fee0e242867b10ebaa123b95a55317`; model/version unavailable.
+- Context: Phase 157 checked enlarged-text direction comparison but not the newer tool-settings dialog, validation, cards and use actions at that scale.
+- Choice: add a synthetic UI test on the existing 320 dp / 2× font fixture. Enter both options, check an invalid value is explained and prevents comparison, correct it, inspect both option actions, apply one and verify the exact resulting settings and unchanged draft. Review synthetic screenshots and Android health. Fix a confirmed UI issue in scope without weakening assertions.
+- Alternative: assume normal-size results apply at large text or relax checks when content is off-screen. Those would not establish that users can reach controls. This is a bounded software check, not universal accessibility certification or physical field validation. Emulator instability and interruption can still block the run; preserve failures.
+- Result: the synthetic test passed both with its 2× Compose font fixture and with the disposable emulator's Android system font temporarily set to 2×; the original system value was restored and checked. Both runs had healthy post-test gates. The initial startup ANR and a later Bluetooth-system error remain recorded, without a diagnosed root cause.
+- Follow-up: at the user's request to complete the work, extend the same narrow-screen check to generate a preview after using B, then compare again and apply A. Verify each exact setting, preserved draft and lack of mission actions; rerun with actual Android 2× system font and restore the previous emulator setting. Preserve the existing passing results and any new failures.
+
 ## D-157-01: Focused mission-planning regression after coverage changes
 
 - Date: 2026-11-03. User approved Phase 157. Starting revision `a4762605385c8af0106222587ea24f6a90a1f38b`, clean `main`; model/version unavailable.

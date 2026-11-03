@@ -474,6 +474,47 @@ class FieldCoverageUiTest {
         assertTrue(actions.isEmpty())
     }
 
+    @Test fun enlargedTextToolComparisonShowsErrorsAndAppliesOption() {
+        val original = MissionDraft(keepInFence = coverageTestOutline())
+        val draft = mutableStateOf(original)
+        show(largeText = true, draft = draft)
+        node("coverage-options-open").performClick()
+        compose.onNodeWithTag("coverage-options-width-a").performScrollTo().performTextReplacement("2")
+        compose.onNodeWithTag("coverage-options-overlap-a").performScrollTo().performTextReplacement("10")
+        compose.onNodeWithTag("coverage-options-width-b").performScrollTo().performTextReplacement("1.25")
+        compose.onNodeWithTag("coverage-options-overlap-b").performScrollTo().apply { performTextReplacement("81"); performImeAction() }
+        compose.onNodeWithTag("coverage-options-compare").assertIsNotEnabled()
+        compose.onNodeWithTag("coverage-options-error-b").performScrollTo().assertTextContains("0 to 80", substring = true)
+        capture("phase158-invalid.png")
+        compose.onNodeWithTag("coverage-options-overlap-b").performScrollTo().apply { performTextReplacement("25"); performImeAction() }
+        compose.onNodeWithTag("coverage-options-compare").assertIsEnabled().performClick()
+        compose.waitUntil(30_000) { compose.onAllNodes(hasTestTag("coverage-options-open") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+        node("coverage-option-use-a").assertIsDisplayed()
+        node("coverage-option-use-b").assertIsDisplayed()
+        capture("phase158-options.png")
+        node("coverage-option-use-b").performClick()
+        node("coverage-options-applied").assertIsDisplayed()
+        node("coverage-settings-summary").assertTextContains("Tool: 1.25 m · Overlap: 25%", substring = true)
+        node("coverage-empty").assertIsDisplayed()
+        capture("phase158-applied.png")
+        generate()
+        node("coverage-pass-count").assertIsDisplayed()
+        node("coverage-spacing").assertTextEquals("Maximum pass spacing: 0.94 m")
+        capture("phase158-regenerated.png")
+        node("coverage-options-open").performClick()
+        compose.onNodeWithTag("coverage-options-width-a").performScrollTo().performTextReplacement("2")
+        compose.onNodeWithTag("coverage-options-overlap-a").performScrollTo().apply { performTextReplacement("10"); performImeAction() }
+        compose.onNodeWithTag("coverage-options-compare").assertIsEnabled().performClick()
+        compose.waitUntil(30_000) { compose.onAllNodes(hasTestTag("coverage-options-open") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+        node("coverage-option-use-a").performClick()
+        node("coverage-options-applied").assertIsDisplayed()
+        node("coverage-settings-summary").assertTextContains("Tool: 2 m · Overlap: 10%", substring = true)
+        node("coverage-empty").assertIsDisplayed()
+        capture("phase158-applied-a.png")
+        assertTrue("Comparison must not dispatch a mission action", actions.isEmpty())
+        assertEquals(original, draft.value)
+    }
+
     @Test fun useComparedToolSettingsUpdatesPreviewInputsAndClearsOldPreview() {
         val draft = mutableStateOf(MissionDraft(keepInFence = coverageTestOutline()))
         show(draft = draft)

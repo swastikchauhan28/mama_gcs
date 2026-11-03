@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-03 — Phase 158 enlarged-text tool comparison
+
+- Done: added and extended a 320 dp / 2× font synthetic test for tool-comparison validation, applying options B and A, and regenerating the preview after B. No production app code changed. See [Phase 158](phase-158-report.md) and D-158-01.
+- Verification: latest test APK build/lint passed with 27 warnings; the extended test passed with Android healthy at system font 2× (25.124 s). An initial System UI ANR was recorded before a healthy retry. Screenshots show scrolling content can pass behind the fixed header at 2×. Earlier focused tests passed twice with Android healthy: once with the Compose 2× fixture and once with Android's system font also temporarily set to 2×. The emulator's original 1.0 font scale was restored and verified; screenshots were reviewed. A startup Google Play services ANR and a later Bluetooth-system error were recorded before healthy retries. No full regression ran.
+- In progress: broader accessibility and software regression, owner walkthrough, release acceptance, and physical field/hardware validation. One viewport/font scale does not certify accessibility.
+- Broken or risky: emulator/Compose instability and Cube heartbeat remain unresolved. Coverage remains a model, not measured soil treatment.
+- Next: review the test and evidence, then continue risk-based software checks or owner walkthrough. Resume hardware work only when requested.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-03 — Phase 157 mission and coverage regression
 
 - Done: ran focused mission/coverage regression and corrected the enlarged-text test to scroll to the lazily composed comparison, swipe its horizontal row and assert the second range fits. No production app code changed. See [Phase 157](phase-157-report.md), D-157-01 and D-157-02.
