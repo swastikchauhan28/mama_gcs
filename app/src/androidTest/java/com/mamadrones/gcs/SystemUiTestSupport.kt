@@ -57,12 +57,16 @@ internal fun ComposeTestRule.awaitSystemScreenshot(): Bitmap {
  * replace the platform keyboard with a fixture or accept a hidden keyboard.
  */
 internal fun ComposeTestRule.awaitRealKeyboard(visible: () -> Boolean, refocus: () -> Unit) {
+    fun keyboardVisible(): Boolean {
+        acknowledgeFullscreenEducation()
+        return visible()
+    }
     try {
-        waitUntil(5_000) { visible() }
+        waitUntil(5_000) { keyboardVisible() }
     } catch (_: androidx.compose.ui.test.ComposeTimeoutException) {
         println("IME not visible after initial focus; retrying the same field once")
         refocus()
-        waitUntil(20_000) { visible() }
+        waitUntil(20_000) { keyboardVisible() }
     }
 }
 

@@ -1,5 +1,23 @@
 # Current handover
 
+## 2026-11-03 — Phase 148 regression continuation
+
+- Done: reconciled 211 software Android test methods against passing instrumentation results across batches and retries; the four physical remote methods were excluded. The interrupted navigation, mission, map and visual batches had failures or stalls that later passed individually or in a healthy retry. See [Phase 148](phase-148-report.md).
+- Verification: coverage `OK (18 tests)`, final visual `OK (12 tests)`, keyboard `OK (9 tests)`, large-font map `OK (1 test)` and affected workflows `OK (3 tests)` passed with Android health gates. Final test APK build/lint succeeded (9 executed, 60 up-to-date). Earlier 478 JVM tests were fresh on 2026-11-02. The final synthetic large-font map screenshot was reviewed at ignored `app/build/phase148/large-map-final.png`.
+- In progress: owner review and release gates. Passing results came from multiple batches/retries, not one uninterrupted clean suite. The test-only fullscreen education handler was added after a failure capture showed that prompt dimming the map.
+- Broken or risky: original Compose snapshot exception and Android System UI/Bluetooth instability remain unexplained; a passing retry is not a root-cause fix. Hardware heartbeat, physical coverage and release acceptance remain open.
+- Next: review the test helper diff and recorded failures; resume TELEM1 diagnosis when hardware work restarts.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
+## 2026-11-02 — Phase 148 broader software regression (incomplete)
+
+- Done: a fresh JVM run passed 478 tests; two emulator batches passed 50 telemetry/RC and 27 BLE software tests with Android health gates. See [Phase 148](phase-148-report.md).
+- Follow-up: the stalled parameter search test passed on a separate clean emulator userdata image with the Android health gate passing. Its first isolated run had passing assertions but a Google Play services ANR, so that run failed the health gate. The incomplete 42-test batch is not counted as passed.
+- In progress: settings/navigation, mission, coverage and map instrumentation remain incomplete; the earlier System UI ANRs and interrupted batch remain recorded.
+- Broken or risky: emulator ANRs occurred with both default and software-renderer launch options; the original Compose snapshot exception remains unresolved. Hardware, physical coverage and release gates remain open.
+- Next: use a healthy disposable emulator to run the remaining reviewed batches and reconcile counts. Do not infer a parameter-screen defect from the earlier ANRs alone.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-02 — Phase 147 emulator retry
 
 - Done: launched the disposable emulator with a temporary four-core setting and ran the affected coverage comparison test three times; all passed. See [Phase 147](phase-147-report.md).

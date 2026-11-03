@@ -212,6 +212,7 @@ class MissionMapWorkflowAcceptanceTest {
                 compose.onAllNodesWithTag("mission-fit").assertCountEquals(0)
             }
             compose.waitUntil(35_000) {
+                acknowledgeFullscreenEducation()
                 val projected = mutableListOf<Pair<Int, Int>>()
                 val mapBounds = Rect()
                 var labels = false

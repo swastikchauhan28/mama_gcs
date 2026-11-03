@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-148-01: Handle Android fullscreen education during acceptance checks
+
+- Date: 2026-11-03. The user asked to complete the approved Phase 148 regression. Baseline `a0161c5`; the Phase 148 report and handover were already uncommitted and are preserved. Model: gpt-6.1-terra.
+- Context: the large-font map failure capture shows Android's fullscreen education prompt dimming the visible map marker. Coordinate tests also timed out waiting for the system keyboard, but their cause is not yet established.
+- Choice: call the existing narrowly scoped `acknowledgeFullscreenEducation` helper while waiting for actual map screenshots and keyboard visibility. It checks Android's specific education window and does not dismiss app dialogs or ANRs. Keep all existing pixel, keyboard and health assertions unchanged.
+- Alternative: manually tap during instrumentation or weaken pixel thresholds. Manual interaction interferes with automated evidence; relaxed thresholds would not verify visible markers. Cost: this test-only handling depends on Android's education window identifiers. Revisit if the prompt changes or failures recur without it.
+- Verification: rebuild and lint test APK; rerun affected keyboard and large-font map tests and retain prior failures. Compare the result with Android health evidence.
+- Result: test APK build/lint and the affected keyboard, large-font map and normal-font workflow checks passed with Android health gates. The final pass did not explicitly verify that the education prompt was present and clicked, so the precise cause remains an inference from the earlier capture.
+
 ## D-144-01: Verify invalid import through Android DocumentsUI
 
 - Date: 2026-11-02. User approved Phase 144. Baseline `39c575f`, clean `main`; model gpt-6.1-terra.
