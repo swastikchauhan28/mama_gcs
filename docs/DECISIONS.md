@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-152-01: Exercise recovery across a stopped app process
+
+- Date: 2026-11-03. User approved Phase 152. Starting revision `49022493c0a15639345d7eb11c90d3266bae02ec`, clean `main`. Model/version unavailable.
+- Context: Phase 151 checked activity recreation, not loss of the app process while edits are unsaved.
+- Choice: use a disposable emulator and two instrumentation stages. The first creates and verifies a synthetic recovery draft, then signals the host while the editor and process remain running. The host stops that process; a new instrumentation invocation checks recovered data and explicitly saves it. Confirm process termination rather than treating an activity close as process death.
+- Alternative: use `ActivityScenario.recreate()` or repository-only tests; neither proves a fresh process. Force-stop is a controlled abrupt termination, not a complete simulation of all Android low-memory and crash scenarios. Interrupted tests may leave synthetic data on the disposable image. No real phone or hardware is involved.
+- Revisit if process termination cannot be independently observed or the recovery storage races: record failure instead of declaring success.
+- The two instrumentation stages require the explicit `phase152=enabled` argument: without it they are skipped, because the preparation deliberately waits for an external process stop and both stages replace disposable data. The host must clear the disposable readiness marker before launching preparation, verify it appears, then record the process ID and confirm no process remains after force-stop. The preparation runner's interrupted result is expected, not a JUnit pass.
+
 ## D-151-01: Verify local route recovery after closing and reopening the editor
 
 - Date: 2026-11-03. The user approved Phase 151. Baseline `13e5b88`, clean `main` aligned with locally recorded `origin/main`. Model: gpt-6.1-terra.

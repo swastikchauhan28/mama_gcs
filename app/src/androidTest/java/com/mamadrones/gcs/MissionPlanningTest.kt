@@ -11,6 +11,7 @@ import com.mamadrones.gcs.domain.model.MissionDraft
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
@@ -18,6 +19,62 @@ import java.io.File
 /** Uses the device-local draft store only; no vehicle socket or command is opened. */
 class MissionPlanningTest {
     @get:Rule val compose = createEmptyComposeRule()
+
+    // The host deliberately force-stops this process after the marker appears.
+    // Run only on a disposable emulator: the second stage replaces the local draft.
+    @Test fun phase152PrepareForProcessStop() {
+        assumeTrue("Requires the disposable Phase 152 host procedure", InstrumentationRegistry.getArguments().getString("phase152") == "enabled")
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val repository = LocalMissionDraftRepository(context)
+        val marker = File(context.filesDir, "phase152-ready")
+        marker.delete()
+        runBlocking { repository.save(MissionDraft(name = "Phase 152 baseline")) }
+        val scenario = androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java)
+        try {
+            compose.openWorkspace("mission")
+            compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+            addPoint("-35.36326", "149.16523")
+            addPoint("-35.36330", "149.16527")
+            addFenceVertex("-35.36335", "149.16520")
+            addFenceVertex("-35.36335", "149.16535")
+            addFenceVertex("-35.36320", "149.16535")
+            compose.waitUntil(15_000) { runBlocking { repository.loadRecovery()?.let { it.waypoints.size == 2 && it.keepInFence.size == 3 } == true } }
+            assertEquals("Phase 152 baseline", runBlocking { repository.load().name })
+            assertEquals(0, runBlocking { repository.load().waypoints.size })
+            marker.writeText("ready")
+            // An ordinary return would close the activity; require the host to stop us.
+            Thread.sleep(180_000)
+            throw AssertionError("Host did not stop the app after recovery was prepared")
+        } finally { marker.delete(); scenario.close() }
+    }
+
+    @Test fun phase152VerifyAfterProcessStop() {
+        assumeTrue("Requires the disposable Phase 152 host procedure", InstrumentationRegistry.getArguments().getString("phase152") == "enabled")
+        val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val expectedPoints = listOf(-35.36326 to 149.16523, -35.36330 to 149.16527)
+        val expectedOutline = listOf(-35.36335 to 149.16520, -35.36335 to 149.16535, -35.36320 to 149.16535)
+        assertEquals("Phase 152 baseline", runBlocking { repository.load().name })
+        assertEquals(0, runBlocking { repository.load().waypoints.size })
+        val scenario = androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java)
+        try {
+            compose.openWorkspace("mission")
+            compose.waitUntil(15_000) { compose.onAllNodesWithText("Recovered unsaved changes · review and save").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("mission-save").assertIsEnabled()
+            val recovery = requireNotNull(runBlocking { repository.loadRecovery() })
+            assertEquals(expectedPoints, recovery.waypoints.map { it.latitude to it.longitude })
+            assertEquals(expectedOutline, recovery.keepInFence.map { it.latitude to it.longitude })
+            scrollToTag("mission-edit-0").performClick()
+            compose.onNodeWithTag("mission-latitude").assertTextContains("-35.36326", substring = true)
+            compose.onNodeWithTag("mission-longitude").assertTextContains("149.16523", substring = true)
+            compose.onNodeWithText("Cancel").performClick()
+            scrollToTag("mission-remove-fence-2").assertIsDisplayed()
+            compose.onNodeWithTag("mission-save").performClick()
+            compose.waitUntil(15_000) { runBlocking { repository.load().waypoints.size == 2 && repository.loadRecovery() == null } }
+            val saved = runBlocking { repository.load() }
+            assertEquals(expectedPoints, saved.waypoints.map { it.latitude to it.longitude })
+            assertEquals(expectedOutline, saved.keepInFence.map { it.latitude to it.longitude })
+        } finally { scenario.close() }
+    }
 
     @Test fun unsavedRouteAndOutlineRecoverAfterClosingAndReopeningEditor() {
         val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)

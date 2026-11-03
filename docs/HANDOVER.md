@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-03 — Phase 152 stopped-process recovery
+
+- Done: added opt-in disposable-emulator instrumentation stages for an unsaved synthetic route and field outline. The host confirmed the app PID vanished after force-stop; a fresh process recovered the draft and explicitly saved it. No production code changed. See [Phase 152](phase-152-report.md) and D-152-01.
+- Verification: guarded test APK build/lint succeeded (9 tasks executed, 60 up-to-date). The guard was skipped without its explicit argument. The final enabled verification returned `OK (1 test)` in 27.713 s; no new ANRs, crash lines or error dialog across the test interval. An earlier guarded run passed assertions but had seven background-service ANRs and failed its health gate; startup failures and the first successful unguarded run are retained in the report.
+- In progress: owner walkthrough, release acceptance and testing other Android process-loss circumstances. Force-stop is a controlled abrupt stop, not proof of all low-memory, reboot or crash behavior.
+- Broken or risky: prior emulator/Compose instability remains unexplained; hardware heartbeat and physical coverage remain unverified. The test stages intentionally skip unless separately enabled and replace synthetic data on a disposable emulator only.
+- Next: review the Phase 152 test and evidence; investigate remaining emulator instability or perform the owner's local-planning walkthrough. Resume TELEM1 diagnosis only when hardware work restarts.
+- Do not touch: phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-03 — Phase 151 editor recovery check
 
 - Done: added a real-activity emulator test creating two unsaved waypoints and a three-vertex outline, closing/reopening the editor, verifying recovered state and explicitly saving it. See [Phase 151](phase-151-report.md) and D-151-01. No production code changed.
