@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-03 — Phase 154 mission-planning walkthrough
+
+- Done: added a plain-language [mission-planning walkthrough](mission-planning-walkthrough.md) covering synthetic waypoints, field outline, coverage preview, save and GeoJSON exchange, with local-data and physical-coverage limits. Linked it from README. See [Phase 154](phase-154-report.md) and D-154-01.
+- Verification: the existing automated real-app create/preview/save/export/import journey passed `OK (1 test)` in 70.466 s with Android healthy. Reviewed the synthetic coverage diagram screenshot. Two prior 30-second preflights detected Google Play services ANRs; a later quiet interval passed. No fresh app build or full regression ran.
+- In progress: owner-operated walkthrough and release acceptance; the automated test is not a manual owner validation or proof of physical coverage.
+- Broken or risky: emulator/Compose instability and hardware heartbeat remain unresolved; coverage is a model, not confirmed soil treatment or a rover mission.
+- Next: review and use the walkthrough on a disposable installation; preserve real drafts before practicing. Resume TELEM1 diagnosis only when hardware work restarts.
+- Do not touch: phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-03 — Phase 153 emulator stability preflight
 
 - Done: reviewed Phase 148/152 failures and added a read-only, emulator-only preflight requiring a monitored healthy interval before acceptance. It does not replace or relax the existing post-test health gate. See [Phase 153](phase-153-report.md), D-153-01 and [testing guidance](TESTING.md).

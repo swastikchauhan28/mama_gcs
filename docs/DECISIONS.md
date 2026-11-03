@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-154-01: Document and verify the local mission-planning journey
+
+- Date: 2026-11-03. User approved Phase 154. Starting revision `fece9c7d20cf37f51e35cccde17dc52a189acd3b`, clean `main`; model/version unavailable.
+- Context: the app supports local route and field planning, coverage preview, and file exchange, but the owner needs an easy, accurate walkthrough and a current emulator check. Hardware integration remains on hold.
+- Choice: write a standalone step-by-step guide using the existing synthetic Phase 150 coordinates and current UI labels; run its corresponding real-app route/coverage/GeoJSON journey on the isolated emulator, using the Phase 153 preflight and existing acceptance health gate. Record actual outcomes and visually inspect the synthetic coverage capture.
+- Alternative: rely only on older Phase 150 evidence or describe rover execution. Historical output would not be a fresh check; rover upload/execution is unavailable. The automated journey is not a human walkthrough and the modeled preview does not establish physical coverage. An interrupted test can leave synthetic emulator data.
+- No production code, phone data, hardware, vehicle command, dependency or security boundary changes. Revisit the guide when the UI or the supported upload/coverage behavior changes.
+- Result: the automated synthetic journey passed with Android healthy and its coverage screenshot was inspected. Two earlier preflights detected Google Play services ANRs; a later quiet interval passed. This does not resolve emulator instability or replace an owner's manual walkthrough.
+
 ## D-153-01: Observe emulator stability before targeted acceptance
 
 - Date: 2026-11-03. User approved Phase 153. Baseline clean `f8c938d4d804f492ee65d48f93ab25367c938f32`. Model/version unavailable.
