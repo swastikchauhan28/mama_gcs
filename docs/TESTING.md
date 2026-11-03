@@ -67,6 +67,13 @@ if ($LASTEXITCODE -ne 0) { throw 'Test APK installation failed.' }
 
 Confirm boot returned `1` and inspect the launcher/window for crashes before proceeding. Map tests need [map configuration](maplibre-maptiler.md); do not expose its key. The [acceptance runner](../scripts/Test-AndroidAcceptance.ps1) requires a booted emulator, rejects pre-existing ANR/crash dialogs, checks JUnit output rather than just the ADB exit code, and refuses a green result if post-run Android boot/window or new crash/ANR-log checks fail. It records the matched AVD's `-gpu` launch option and the health result in ignored `app/build/acceptance-*/android-health.txt`, with new crash/ANR lines in sibling evidence files. It does not install APKs or clear Android logs. An unavailable GPU option is recorded honestly; log-buffer rollover and same-second pre-existing events are limitations, so preserve any concurrent logs when diagnosing an unstable AVD.
 
+After boot and before starting the runner, the read-only preflight below observes a 30-second quiet interval. A failure blocks that attempt: preserve evidence and investigate; it does not dismiss dialogs, clear logs or retry. It supplements the runner's existing post-test gate and cannot establish future stability, detect events lost to log rollover, or prove the cause of previous ANRs. Same-second old log entries can conservatively fail the check. Use only a verified disposable emulator.
+
+```powershell
+./scripts/Test-EmulatorHealthPreflight.ps1  # Controlled fake-ADB checks of the preflight itself.
+./scripts/Wait-AndroidEmulatorHealthy.ps1 -Serial $testEmulatorSerial -Adb $testAdb -QuietSeconds 30
+```
+
 On this machine, a no-wipe Pixel 3a API 34 emulator run with `-gpu host` produced a System UI `HardwareRenderer` finalizer crash and aborted a monolithic software suite. A separately restarted disposable AVD with the installed emulator's `-gpu swiftshader_indirect` option completed the same 130 software methods once; see [Phase 55's dated follow-up](phase-55-report.md#2026-10-24-follow-up--phase-56-emulator-graphics-comparison). For repeatable local acceptance, launch only the verified disposable AVD with that software-renderer option and the established no-snapshot/no-wipe options, verify its actual process command line and boot/error-window state, then run the unmodified suite. Preserve both failed and passing logs. This is a test-environment workaround, not an app fix or proof of renderer stability, real-phone compatibility or physical rover safety. Never dismiss an ANR or restart an operator's device to force a pass.
 
 Focused regression (not the full suite):

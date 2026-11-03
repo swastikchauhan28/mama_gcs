@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-03 — Phase 153 emulator stability preflight
+
+- Done: reviewed Phase 148/152 failures and added a read-only, emulator-only preflight requiring a monitored healthy interval before acceptance. It does not replace or relax the existing post-test health gate. See [Phase 153](phase-153-report.md), D-153-01 and [testing guidance](TESTING.md).
+- Verification: nine controlled fake-ADB cases passed, including ANR, crash, unavailable logs, invalid clock, error dialog and physical-serial rejection. A disposable emulator passed a 30-second preflight, then the focused mission recovery test passed `OK (1 test)` in 57.273 s with Android healthy. No app build or full regression ran.
+- In progress: diagnose the actual System UI/Google-service ANR causes and assess stability over repeated runs; one quiet interval and passing test are not proof of a fix. Log rollover, clock changes and unavailable device evidence limit the preflight.
+- Broken or risky: earlier emulator/Compose failures, physical heartbeat and physical coverage remain unresolved. The preflight waits but neither restarts the emulator nor clears logs or dialogs.
+- Next: review the preflight diff and evidence; continue the owner's mission-planning walkthrough or diagnose instability using new evidence. Resume hardware work only when requested.
+- Do not touch: phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-03 — Phase 152 stopped-process recovery
 
 - Done: added opt-in disposable-emulator instrumentation stages for an unsaved synthetic route and field outline. The host confirmed the app PID vanished after force-stop; a fresh process recovered the draft and explicitly saved it. No production code changed. See [Phase 152](phase-152-report.md) and D-152-01.

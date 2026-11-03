@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-153-01: Observe emulator stability before targeted acceptance
+
+- Date: 2026-11-03. User approved Phase 153. Baseline clean `f8c938d4d804f492ee65d48f93ab25367c938f32`. Model/version unavailable.
+- Context: Phase 152 recorded System UI and Google-service ANRs around startup and testing; Phase 148 also recorded System UI failures. Available records do not establish a root cause or prove a specific renderer, RAM size or boot delay fixes them.
+- Choice: add a read-only, emulator-only preflight requiring a configurable healthy observation interval, checking boot, error windows, and ANR/crash logs. Use a separate helper before the existing acceptance runner, whose post-run health gate remains unchanged. Fail on observed errors or unavailable evidence; retain run logs and do not clear log buffers or restart devices automatically.
+- Alternative: immediately start after `sys.boot_completed`, use a blind sleep, disable Android services, or weaken the health gate. Those approaches either miss observed instability or change the test environment without evidence. The quiet interval costs time and cannot guarantee later stability; log rollover or clock changes can hide events. Revisit with evidence from additional clean runs or a demonstrated root cause.
+- Verify with controlled fake-ADB cases and a focused disposable-emulator mission test; explicitly distinguish no detected events from a diagnosis or fix. No app, phone data, hardware, build dependencies or vehicle behavior changes.
+- Result: nine controlled cases passed. On the disposable emulator, a 30-second observation passed and the targeted mission test passed with the acceptance health gate. This is one run, not evidence that the underlying freezes have been fixed.
+
 ## D-152-01: Exercise recovery across a stopped app process
 
 - Date: 2026-11-03. User approved Phase 152. Starting revision `49022493c0a15639345d7eb11c90d3266bae02ec`, clean `main`. Model/version unavailable.
