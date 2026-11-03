@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-03 — Phase 155 compare tool settings
+
+- Done: added a volatile coverage comparison for two width/overlap options using the same field, direction and headland. Separate cards show modeled passes, length and unplanned range; input or field changes invalidate old results. It selects and saves nothing, changes no route and sends no command. See [Phase 155](phase-155-report.md) and D-155-01.
+- Verification: final targeted JVM tests passed 2/2; final build and lint succeeded with 27 warnings. The final comparison emulator check passed with Android healthy, including precise-width display, and its screenshot was reviewed. The direction regression passed before the final display-only correction. Emulator preflights detected Google Play services/System UI ANRs and a Bluetooth-system crash before later quiet intervals; those failures remain unresolved. No full regression ran.
+- In progress: broader regression, owner walkthrough, release acceptance and hardware/field validation. Model ranges cannot establish actual soil coverage or accuracy; canceled bounded calculations may finish in the background without publishing.
+- Broken or risky: existing emulator/Compose instability and Cube heartbeat remain unresolved. Results are temporary and can clear when the panel is disposed; a comparison does not change the normal coverage settings.
+- Next: review the scoped feature and test evidence, then use the updated practice guide. Resume hardware work only when requested.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-03 — Phase 154 mission-planning walkthrough
 
 - Done: added a plain-language [mission-planning walkthrough](mission-planning-walkthrough.md) covering synthetic waypoints, field outline, coverage preview, save and GeoJSON exchange, with local-data and physical-coverage limits. Linked it from README. See [Phase 154](phase-154-report.md) and D-154-01.

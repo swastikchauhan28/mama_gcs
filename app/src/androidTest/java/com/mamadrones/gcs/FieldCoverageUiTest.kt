@@ -464,6 +464,33 @@ class FieldCoverageUiTest {
         assertTrue(actions.isEmpty())
     }
 
+    @Test fun compareToolSettingsShowsBothOptionsAndInvalidatesOnEdit() {
+        val draft = mutableStateOf(MissionDraft(keepInFence = coverageTestOutline()))
+        show(draft = draft)
+        node("coverage-width").performTextReplacement("2")
+        node("coverage-overlap").apply { performTextReplacement("0"); performImeAction() }
+        compose.onNodeWithTag("coverage-close-settings").performClick()
+        node("coverage-options-open").performClick()
+        compose.onNodeWithTag("coverage-options-width-b").performScrollTo().performTextReplacement("2.004")
+        compose.onNodeWithTag("coverage-options-overlap-b").performScrollTo().apply { performTextReplacement("50"); performImeAction() }
+        compose.onNodeWithTag("coverage-options-compare").assertIsEnabled().performClick()
+        compose.waitUntil(30_000) { compose.onAllNodesWithTag("coverage-option-a").fetchSemanticsNodes().isNotEmpty() }
+        node("coverage-option-a").assertIsDisplayed()
+        compose.onNodeWithText("5 working passes").assertExists()
+        node("coverage-option-b").assertIsDisplayed()
+        compose.onNodeWithText("Tool 2.004 m · Overlap 50.0%").assertExists()
+        compose.onNodeWithText("9 working passes").assertExists()
+        capture("phase155-tool-comparison.png")
+        node("coverage-options-open").performClick()
+        compose.onNodeWithTag("coverage-options-overlap-b").performScrollTo().apply { performTextReplacement("81"); performImeAction() }
+        compose.onNodeWithTag("coverage-options-compare").assertIsNotEnabled()
+        compose.onNodeWithTag("coverage-options-error-b").assertTextContains("0 to 80", substring = true)
+        compose.onNodeWithText("Close").performClick()
+        compose.onAllNodesWithTag("coverage-option-a").assertCountEquals(0)
+        assertTrue("Comparison must not dispatch a mission action", actions.isEmpty())
+        assertEquals(coverageTestOutline(), draft.value.keepInFence)
+    }
+
     @Test fun compareDirectionsShowsIndependentCardsAndClearsAfterChanges() {
         val metres = 6_371_000.0
         fun field(xy: List<Pair<Double, Double>>) = xy.mapIndexed { i, (x, y) -> DraftWaypoint("d$i", Math.toDegrees(y / metres), Math.toDegrees(x / metres)) }

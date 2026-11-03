@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-155-01: Compare two local coverage settings
+
+- Date: 2026-11-03. User approved Phase 155. Baseline clean `5212ff4c07c03b04f6c65943ed7798315c2ef257`; model/version unavailable.
+- Context: direction comparison exists, but an operator cannot compare two tool-width/overlap choices together on the same field.
+- Choice: offer two independent volatile width/overlap inputs with the current shared direction and headland. Reuse the bounded field planner for each option off the UI thread; present separate invalid results, pass counts, working lengths and modeled unplanned ranges. Input, shared setting or outline changes immediately invalidate results and cancel work; canceled results cannot publish. No automatic choice, map selection, route mutation, persistence or command.
+- Alternative: change the active draft/settings or create route waypoints from modeled passes. That would conflate comparison with selection and imply unplanned turns can be executed. Costs include two bounded area calculations and potentially overlapping uncertainty ranges; retain explicit model/physical-coverage limitations. Revisit if a supported, separately validated mission-generation design is approved.
+- Verification: targeted domain/cancellation and UI tests, build/lint, emulator health preflight, focused synthetic screen test and visual inspection. No phone data, hardware or vehicle commands.
+- Result: two targeted JVM checks and the focused comparison and existing direction-comparison emulator checks passed. Final review found that rounded displayed inputs could misrepresent a precise width; the display was corrected and the focused test rerun. Earlier preflights recorded Google Play services/System UI ANRs and a Bluetooth-system crash; later quiet intervals and test health gates passed. No full regression or physical field check ran.
+
 ## D-154-01: Document and verify the local mission-planning journey
 
 - Date: 2026-11-03. User approved Phase 154. Starting revision `fece9c7d20cf37f51e35cccde17dc52a189acd3b`, clean `main`; model/version unavailable.
