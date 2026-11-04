@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-04 — Phase 164 clear-outline confirmation
+
+- Done: added draft-bound confirmation for clearing a field outline, with cancel, stale-draft guard, count and save/preview explanation. Existing clear action and recovery behavior remain; see [Phase 164](phase-164-report.md) and D-164-01.
+- Verification: build/lint passed (27 executed, 70 up-to-date; 0 errors, 27 warnings); 484 JVM tests passed. Stale-snapshot test and two real-app tests passed with Android healthy. Real-app confirmation passed at 2× text; unobscured screenshot reviewed and temporary emulator settings restored. Several earlier emulator preflight ANRs are retained.
+- In progress: broader Android regression, owner walkthrough, release acceptance and physical coverage validation. Tests used synthetic disposable-emulator data.
+- Broken or risky: emulator startup ANRs and Cube heartbeat remain unresolved. The confirmation protects the editor path; coverage remains a model, not physical verification.
+- Next: review dialog wording, snapshot guard and tests; continue risk-based software testing or owner walkthrough. Hardware remains on hold.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-04 — Phase 163 field vertex reordering
 
 - Done: added local field vertex Move up/Move down with boundary controls, stable IDs and existing draft recovery/save behavior. Outline changes clear coverage preview. Updated walkthrough; see [Phase 163](phase-163-report.md) and D-163-01.

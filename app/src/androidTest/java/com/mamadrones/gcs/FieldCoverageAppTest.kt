@@ -42,6 +42,56 @@ class FieldCoverageAppTest {
         }
     }
 
+    @Test fun clearOutlineRequiresConfirmationAndPreservesRoute() {
+        val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val before = runBlocking { repository.load() }
+        val beforeRecovery = runBlocking { repository.loadRecovery() }
+        val points = listOf(DraftWaypoint("route-a", -35.36326, 149.16523), DraftWaypoint("route-b", -35.36330, 149.16527))
+        val original = MissionDraft("Clear field test", points, coverageTestOutline())
+        try {
+            runBlocking { repository.save(original) }
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+                compose.openWorkspace("mission")
+                compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+                compose.selectMissionTab("Coverage")
+                node("coverage-width").performTextReplacement("2")
+                node("coverage-overlap").apply { performTextReplacement("10"); performImeAction() }
+                node("coverage-generate").assertIsEnabled().performClick()
+                compose.waitUntil(20_000) { compose.onAllNodes(hasTestTag("coverage-settings") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+                node("coverage-diagram").assertIsDisplayed()
+                compose.selectMissionTab("Field outline")
+                node("mission-clear-fence").performClick()
+                compose.onNodeWithText("Clear field outline?").assertIsDisplayed()
+                compose.onNodeWithText("Remove all 4 outline vertices from the working draft? Route waypoints stay. The saved draft changes only after Save draft, and the coverage preview will clear.").assertIsDisplayed()
+                capture("phase164-confirm.png")
+                compose.onNodeWithTag("mission-cancel-clear-fence").performClick()
+                node("mission-remove-fence-3").assertIsDisplayed()
+                assertEquals(original, runBlocking { repository.load() })
+                compose.selectMissionTab("Coverage")
+                node("coverage-diagram").assertIsDisplayed()
+                compose.selectMissionTab("Field outline")
+                node("mission-clear-fence").performClick()
+                compose.onNodeWithTag("mission-confirm-clear-fence").assertIsEnabled().performClick()
+                node("mission-clear-fence").assertIsNotEnabled()
+                assertEquals(original, runBlocking { repository.load() })
+                compose.selectMissionTab("Coverage")
+                node("coverage-empty").assertIsDisplayed()
+                compose.selectMissionTab("Route")
+                for ((index, point) in points.withIndex()) {
+                    node("mission-edit-$index").performClick()
+                    compose.onNodeWithTag("mission-latitude").assertTextContains(point.latitude.toString(), substring = true)
+                    compose.onNodeWithTag("mission-longitude").assertTextContains(point.longitude.toString(), substring = true)
+                    compose.onNodeWithText("Cancel").performClick()
+                }
+                compose.onNodeWithTag("mission-save").assertIsEnabled().performClick()
+                compose.waitUntil(15_000) { runBlocking { repository.load() == original.copy(keepInFence = emptyList()) } }
+            }
+        } finally {
+            runBlocking { repository.save(before); beforeRecovery?.let { repository.saveRecovery(it) } }
+        }
+    }
+
     @Test fun reorderFieldVerticesClearsPreviewAndPreservesRoute() {
         val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         val before = runBlocking { repository.load() }
@@ -138,6 +188,7 @@ class FieldCoverageAppTest {
                 capture("phase162-app-crossing.png")
                 compose.selectMissionTab("Field outline")
                 node("mission-clear-fence").performClick()
+                compose.onNodeWithTag("mission-confirm-clear-fence").performClick()
                 vertices.forEach(::addVertex)
                 compose.selectMissionTab("Coverage")
                 node("coverage-empty").assertIsDisplayed()

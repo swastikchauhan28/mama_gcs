@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-164-01: Confirm clearing the local field outline
+
+- Date: 2026-11-04. User approved Phase 164; clean baseline `ea00b5a9b58136e7dd45e2c0ac0acc7e44badd13`; model/version unavailable.
+- Context: Clear outline immediately removes all local field vertices, so an accidental tap can discard working edits and invalidate coverage.
+- Choice: capture the current draft when opening a confirmation, state the vertex count, route and save behavior, and dispatch the existing clear action only on explicit confirmation while the editable draft still matches the captured draft. Cancel/dismiss has no side effects. Discard the pending dialog on recreation; avoid storing another draft snapshot in saved state.
+- Alternative: immediate clear with undo requires new recovery behavior; an unconditional confirmation could clear a different draft after a state change. The snapshot is bounded by the existing draft limits and held only while the dialog is open. This does not protect non-UI callers or create vehicle commands.
+- Verification: real-activity cancel/clear/save test and existing field-recovery regression on the disposable emulator, stale-state test, build/lint, screenshots. Prior emulator startup ANRs may prevent testing; preserve evidence. Rollback is a reviewed inverse source change; no released artifact is identified.
+
 ### 2026-11-04 follow-up: investigate emulator startup
 
 - Context: the broader mission regression was blocked by System UI and Google Play services ANRs before instrumentation; the existing AVD config requests eight cores.

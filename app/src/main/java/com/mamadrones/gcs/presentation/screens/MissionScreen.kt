@@ -124,6 +124,7 @@ fun MissionScreen(
     var initialLongitude by rememberSaveable { mutableStateOf("") }
     var showRename by rememberSaveable { mutableStateOf(false) }
     var showNewConfirmation by rememberSaveable { mutableStateOf(false) }
+    var pendingOutlineClear by remember { mutableStateOf<MissionDraft?>(null) }
     var pendingWaypointRemovalId by rememberSaveable { mutableStateOf<String?>(null) }
     var showLibrary by rememberSaveable { mutableStateOf(false) }
     var librarySearchQuery by rememberSaveable { mutableStateOf("") }
@@ -370,7 +371,7 @@ fun MissionScreen(
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         OutlinedButton(onClick = ::openFenceEditor, enabled = canAddFenceVertex,
                             modifier = Modifier.testTag("mission-add-fence-vertex")) { Text("Add outline coordinate") }
-                        TextButton(onClick = { onAction(MissionPlanAction.ClearFence) },
+                        TextButton(onClick = { pendingOutlineClear = plan.draft },
                             enabled = plan.editable && plan.draft.keepInFence.isNotEmpty(),
                             modifier = Modifier.testTag("mission-clear-fence")) { Text("Clear outline") }
                     }
@@ -466,6 +467,22 @@ fun MissionScreen(
         confirmButton = { TextButton(onClick = { onAction(MissionPlanAction.New); showNewConfirmation = false }) { Text("New draft") } },
         dismissButton = { TextButton(onClick = { showNewConfirmation = false }) { Text("Cancel") } }
     )
+    pendingOutlineClear?.let { requestedDraft ->
+        val stillCurrent = plan.editable && plan.draft == requestedDraft && requestedDraft.keepInFence.isNotEmpty()
+        AlertDialog(
+            onDismissRequest = { pendingOutlineClear = null },
+            title = { Text("Clear field outline?") },
+            text = { Text(if (stillCurrent)
+                "Remove all ${requestedDraft.keepInFence.size} outline vertices from the working draft? Route waypoints stay. The saved draft changes only after Save draft, and the coverage preview will clear."
+            else "The working draft changed. Close this dialog and review the outline before trying again.") },
+            confirmButton = { TextButton(
+                onClick = { if (plan.editable && plan.draft == requestedDraft) onAction(MissionPlanAction.ClearFence); pendingOutlineClear = null },
+                enabled = stillCurrent, modifier = Modifier.testTag("mission-confirm-clear-fence")
+            ) { Text("Clear outline") } },
+            dismissButton = { TextButton(onClick = { pendingOutlineClear = null },
+                modifier = Modifier.testTag("mission-cancel-clear-fence")) { Text("Cancel") } },
+        )
+    }
     pendingWaypointRemovalId?.let { id ->
         val index = plan.draft.waypoints.indexOfFirst { it.id == id }
         val waypoint = plan.draft.waypoints.getOrNull(index)

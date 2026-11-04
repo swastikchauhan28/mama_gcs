@@ -409,6 +409,21 @@ class FieldCoverageUiTest {
         assertTrue(actions.isEmpty())
     }
 
+    @Test fun clearOutlineConfirmationRejectsChangedDraft() {
+        val original = MissionDraft(keepInFence = coverageTestOutline())
+        val draft = mutableStateOf(original)
+        show(draft = draft)
+        compose.selectMissionTab("Field outline")
+        node("mission-clear-fence").performClick()
+        compose.onNodeWithTag("mission-confirm-clear-fence").assertIsEnabled()
+        compose.runOnIdle { draft.value = original.copy(name = "Changed draft") }
+        compose.onNodeWithTag("mission-confirm-clear-fence").assertIsNotEnabled()
+        compose.onNodeWithText("The working draft changed. Close this dialog and review the outline before trying again.").assertIsDisplayed()
+        compose.onNodeWithTag("mission-cancel-clear-fence").performClick()
+        assertTrue("Stale confirmation must not dispatch an action", actions.isEmpty())
+        assertEquals(original.keepInFence, draft.value.keepInFence)
+    }
+
     @Test fun selfCrossingOutlineClearsPreviewAndRecoversWithoutChangingRoute() {
         val outline = coverageTestOutline()
         val waypoints = listOf(DraftWaypoint("route-1", 0.0, 0.0), DraftWaypoint("route-2", 0.0001, 0.0001))
