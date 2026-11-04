@@ -77,6 +77,18 @@ class RouteDocumentPickerTest {
                     assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, it))
                 }
             } finally { screenshot.recycle() }
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("coverage-options-open"))
+            compose.onNodeWithTag("coverage-options-open").performClick()
+            compose.onNodeWithTag("coverage-options-width-a").performScrollTo().performTextReplacement("2")
+            compose.onNodeWithTag("coverage-options-overlap-a").performScrollTo().performTextReplacement("10")
+            compose.onNodeWithTag("coverage-options-width-b").performScrollTo().performTextReplacement("1.25")
+            compose.onNodeWithTag("coverage-options-overlap-b").performScrollTo().apply { performTextReplacement("25"); performImeAction() }
+            compose.onNodeWithTag("coverage-options-compare").assertIsEnabled().performClick()
+            compose.waitUntil(30_000) { compose.onAllNodesWithTag("coverage-option-a").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("coverage-option-a"))
+            compose.onNode(hasText("Tool 2.0 m · Overlap 10.0%") and hasAnyAncestor(hasTestTag("coverage-option-a"))).assertExists()
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("coverage-option-b"))
+            compose.onNode(hasText("Tool 1.25 m · Overlap 25.0%") and hasAnyAncestor(hasTestTag("coverage-option-b"))).assertExists()
             compose.onNodeWithTag("mission-save").assertIsEnabled().performClick()
             compose.waitUntil(15_000) { runBlocking { repository.load().let { it.name == name && it.waypoints.size == 2 && it.keepInFence.size == 3 } } }
             val saved = runBlocking { repository.load() }

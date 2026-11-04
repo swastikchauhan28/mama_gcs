@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-160-01: Exercise coverage comparison during local route round-trip
+
+- Date: 2026-11-04. User approved Phase 160; clean baseline `eabbcdd9cc846200146723c9c4c0713157c37529`; model/version unavailable.
+- Context: the existing real-app DocumentsUI journey creates a route and field, generates a preview and round-trips GeoJSON, but does not cover the newer comparison in that same journey.
+- Choice: extend that existing disposable-emulator test with two explicit tool options and verify both comparison results before saving and exchanging the route. Retain existing assertions and cleanup. Alternatives: separate fixture-only tests would not establish the integrated journey; changing production logic without a reproduced failure would add unnecessary risk.
+- Trade-off: this test temporarily overwrites the disposable emulator draft and creates then removes its unique test file; interruption can prevent cleanup. It exercises synthetic data and does not establish physical coverage or mission upload. Existing emulator ANRs may block the run; preserve failure evidence.
+
 ## D-159-01: Verify coverage controls against the fixed toolbar
 
 - Date: 2026-11-03. User approved Phase 159; baseline clean `221c59a3e8f518c9ca08f35bb00a6f94d450ac74`. Model/version unavailable.

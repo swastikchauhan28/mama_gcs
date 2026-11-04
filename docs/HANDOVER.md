@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-04 — Phase 160 mission-planning regression
+
+- Done: extended the existing disposable-emulator route, field, preview, GeoJSON export/import journey with tool-settings comparison. No production code changed; see [Phase 160](phase-160-report.md) and D-160-01.
+- Verification: build and lint succeeded (9 executed, 79 up-to-date). After three failed emulator preflights, the updated real-app route and GeoJSON journey passed in 92.798 seconds with Android healthy; preview screenshot reviewed. Earlier failures and diagnostics were preserved.
+- In progress: broader software regression, owner walkthrough, release acceptance and physical coverage validation. The completed run used synthetic data.
+- Broken or risky: emulator startup ANRs and Cube heartbeat remain unresolved. The test temporarily replaces a disposable emulator draft and creates a unique temporary file; interruption can prevent cleanup. Coverage is modeled, not physical verification.
+- Next: review the scoped test change and continue risk-based software testing or owner walkthrough. Hardware remains on hold.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-03 — Phase 159 toolbar visibility
 
 - Done: added fixture checks for coverage controls relative to the toolbar at normal and enlarged text, plus a real-activity check at 2×. Tested controls scroll fully into view; no production code changed. See [Phase 159](phase-159-report.md) and D-159-01.
