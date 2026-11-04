@@ -74,7 +74,7 @@ class FieldCoverageUiTest {
             node("coverage-overlap").apply { performTextReplacement("0"); performImeAction() }
             compose.onNodeWithTag("coverage-close-settings").performClick()
             node("coverage-compare").performClick()
-            compose.waitUntil(30_000) { compose.onAllNodesWithTag("coverage-comparison").fetchSemanticsNodes().isNotEmpty() }
+            awaitComparisonCard()
             for (eastWest in listOf(false, true)) {
                 val calculation = FieldCoveragePlanner.calculate(outline, 2.0, 0.0, eastWest)
                 assertTrue("Synthetic field should yield a preview: $calculation", calculation is CoverageCalculation.Ready)
@@ -233,7 +233,7 @@ class FieldCoverageUiTest {
             node("coverage-overlap").apply { performTextReplacement("0"); performImeAction() }
             compose.onNodeWithTag("coverage-close-settings").performClick()
             node("coverage-compare").performClick()
-            compose.waitUntil(30_000) { compose.onAllNodesWithTag("coverage-comparison").fetchSemanticsNodes().isNotEmpty() }
+            awaitComparisonCard()
             node("coverage-comparison-north-map").performClick()
             verifySelectedMap(landscape, eastWest = false, expectedCount = 5)
             node("coverage-comparison-east-map").performClick()
@@ -722,7 +722,7 @@ class FieldCoverageUiTest {
         node("coverage-sideways-error").assertIsDisplayed().apply { performTextReplacement("0.05"); performImeAction() }
         compose.onNodeWithTag("coverage-close-settings").performClick()
         node("coverage-compare").assertIsEnabled().performClick()
-        compose.waitUntil(30_000) { compose.onAllNodesWithTag("coverage-comparison").fetchSemanticsNodes().isNotEmpty() }
+        awaitComparisonCard()
         node("coverage-sideways-result").assertIsDisplayed().assertTextContains("Remaining ideal overlap margin: 0.100 m", substring = true)
         node("coverage-sideways-warning").assertIsDisplayed().assertTextContains("not a coverage guarantee", substring = true)
         capture("phase90-large-sideways.png")
@@ -730,7 +730,7 @@ class FieldCoverageUiTest {
         compose.onNodeWithTag("coverage-close-settings").performClick()
         compose.onAllNodesWithTag("coverage-comparison").assertCountEquals(0)
         node("coverage-compare").performClick()
-        compose.waitUntil(30_000) { compose.onAllNodesWithTag("coverage-comparison").fetchSemanticsNodes().isNotEmpty() }
+        awaitComparisonCard()
         node("coverage-sideways-result").assertIsDisplayed().assertTextContains("not provided", substring = true)
         assertTrue("Local comparison must not dispatch mission actions", actions.isEmpty())
     }
@@ -843,6 +843,12 @@ class FieldCoverageUiTest {
                 target.isDisplayed() && bounds.top >= viewport.top && bounds.bottom <= viewport.bottom)
         }
         return target
+    }
+
+    private fun awaitComparisonCard() {
+        // The result is a separate lazy item; waiting for it without scrolling may never compose it.
+        compose.waitUntil(30_000) { compose.onAllNodes(hasTestTag("coverage-compare") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+        node("coverage-comparison").assertIsDisplayed()
     }
 
     private fun generate(expectError: Boolean = false) {

@@ -377,13 +377,19 @@ fun MissionScreen(
                 }
                 itemsIndexed(plan.draft.keepInFence, key = { _, point -> "fence-${point.id}" }) { index, point ->
                     Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.small) {
-                        Row(Modifier.fillMaxWidth().padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Column {
-                                Text("Outline vertex ${index + 1}", style = MaterialTheme.typography.titleSmall)
-                                Text(String.format(Locale.US, "%.7f, %.7f", point.latitude, point.longitude), style = MaterialTheme.typography.bodySmall)
+                        Column(Modifier.fillMaxWidth().padding(10.dp).testTag("mission-fence-row-$index")) {
+                            Text("Outline vertex ${index + 1}", style = MaterialTheme.typography.titleSmall)
+                            Text(String.format(Locale.US, "%.7f, %.7f", point.latitude, point.longitude), style = MaterialTheme.typography.bodySmall)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                TextButton(onClick = { onAction(MissionPlanAction.MoveFenceVertex(point.id, -1)) },
+                                    enabled = plan.editable && index > 0,
+                                    modifier = Modifier.testTag("mission-up-fence-$index").semantics { contentDescription = "Move outline vertex ${index + 1} up" }) { Text("Move up") }
+                                TextButton(onClick = { onAction(MissionPlanAction.MoveFenceVertex(point.id, 1)) },
+                                    enabled = plan.editable && index < plan.draft.keepInFence.lastIndex,
+                                    modifier = Modifier.testTag("mission-down-fence-$index").semantics { contentDescription = "Move outline vertex ${index + 1} down" }) { Text("Move down") }
+                                TextButton(onClick = { onAction(MissionPlanAction.RemoveFenceVertex(point.id)) },
+                                    enabled = plan.editable, modifier = Modifier.testTag("mission-remove-fence-$index")) { Text("Remove") }
                             }
-                            TextButton(onClick = { onAction(MissionPlanAction.RemoveFenceVertex(point.id)) },
-                                enabled = plan.editable, modifier = Modifier.testTag("mission-remove-fence-$index")) { Text("Remove") }
                         }
                     }
                 }

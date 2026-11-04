@@ -35,6 +35,8 @@ Select **Field outline**, scroll down and tap **Add outline coordinate** for eac
 | 2 | -35.36335 | 149.16535 |
 | 3 | -35.36320 | 149.16535 |
 
+Use **Move up** or **Move down** on a vertex to change its position in the outline. The first and last vertices cannot move beyond the ends. Changing the outline clears any existing coverage preview; generate it again after editing. Reordering can create a crossing, so review the outline before generating a preview.
+
 These three points make a small triangular practice field. A real field needs its own accurately measured boundary; this outline is a local planning reference.
 
 ## 4. Preview coverage

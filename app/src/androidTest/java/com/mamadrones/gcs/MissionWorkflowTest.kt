@@ -64,6 +64,29 @@ class MissionWorkflowTest {
         assertEquals("QA route", storage.saved.name)
     }
 
+    @Test fun fieldVertexMoveUsesDraftRecoveryAndExplicitSave() {
+        val vertices = listOf(DraftWaypoint("a", 0.0, 0.0), DraftWaypoint("b", 0.0, 0.1), DraftWaypoint("c", 0.1, 0.1))
+        val route = listOf(DraftWaypoint("route", 0.0, 0.0))
+        val original = MissionDraft(waypoints = route, keepInFence = vertices)
+        val storage = MemoryStore().apply { saved = original }
+        val vm = model(storage)
+        await { !vm.state.value.loading }
+        vm.act(MissionPlanAction.MoveFenceVertex("b", 1))
+        val reordered = vm.state.value.draft
+        assertEquals(listOf(vertices[0], vertices[2], vertices[1]), reordered.keepInFence)
+        assertEquals(route, reordered.waypoints)
+        assertEquals(original, storage.saved)
+        assertTrue(vm.state.value.dirty)
+        await { vm.state.value.recoverySaved }
+        assertEquals(reordered, storage.recovery)
+        vm.act(MissionPlanAction.MoveFenceVertex("b", 1))
+        assertEquals(reordered, vm.state.value.draft)
+        assertTrue(vm.state.value.recoverySaved)
+        vm.act(MissionPlanAction.Save)
+        await { !vm.state.value.saving && storage.saved == reordered }
+        assertNull(storage.recovery)
+    }
+
     @Test fun invalidEditsDoNotMutateDraft() {
         val vm = model(MemoryStore())
         listOf(MissionPlanAction.Add(91.0, 0.0), MissionPlanAction.Add(0.0, Double.NaN),

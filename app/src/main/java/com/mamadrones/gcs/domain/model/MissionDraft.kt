@@ -54,6 +54,16 @@ data class MissionDraft(
         return copy(waypoints = waypoints.toMutableList().apply { add(to, removeAt(from)) })
     }
 
+    /** Reorders only the local planning outline; vertex identities and route points are retained. */
+    fun moveFenceVertex(id: String, offset: Int): MissionDraft {
+        require(offset == -1 || offset == 1)
+        val from = keepInFence.indexOfFirst { it.id == id }
+        require(from >= 0)
+        val to = from + offset
+        if (to !in keepInFence.indices) return this
+        return copy(keepInFence = keepInFence.toMutableList().apply { add(to, removeAt(from)) })
+    }
+
     /** Spherical straight-line surface distance; not terrain distance or a drivable route. */
     val distanceMeters: Double get() = waypoints.zipWithNext().sumOf { (a, b) ->
         a.distanceMetersTo(b)

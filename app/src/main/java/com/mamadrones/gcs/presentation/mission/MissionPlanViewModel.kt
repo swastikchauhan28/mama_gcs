@@ -44,6 +44,7 @@ sealed interface MissionPlanAction {
     data class Add(val latitude: Double, val longitude: Double) : MissionPlanAction
     data class AddFenceVertex(val latitude: Double, val longitude: Double) : MissionPlanAction
     data class RemoveFenceVertex(val id: String) : MissionPlanAction
+    data class MoveFenceVertex(val id: String, val offset: Int) : MissionPlanAction
     data object ClearFence : MissionPlanAction
     data class Edit(val waypoint: DraftWaypoint) : MissionPlanAction
     data class Remove(val id: String) : MissionPlanAction
@@ -152,6 +153,7 @@ class MissionPlanViewModel @Inject constructor(
                 is MissionPlanAction.RemoveFenceVertex -> current.draft.copy(
                     keepInFence = current.draft.keepInFence.filterNot { it.id == action.id }
                 )
+                is MissionPlanAction.MoveFenceVertex -> current.draft.moveFenceVertex(action.id, action.offset)
                 MissionPlanAction.ClearFence -> current.draft.copy(keepInFence = emptyList())
                 is MissionPlanAction.Edit -> current.draft.edit(action.waypoint)
                 is MissionPlanAction.Remove -> current.draft.remove(action.id)
@@ -160,6 +162,7 @@ class MissionPlanViewModel @Inject constructor(
                 MissionPlanAction.New -> MissionDraft()
                 else -> current.draft
             }
+            if (action is MissionPlanAction.MoveFenceVertex && next == current.draft) return
             mutableState.value = current.copy(
                 draft = next,
                 dirty = next != savedDraft,

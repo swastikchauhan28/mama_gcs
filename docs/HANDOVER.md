@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-04 — Phase 163 field vertex reordering
+
+- Done: added local field vertex Move up/Move down with boundary controls, stable IDs and existing draft recovery/save behavior. Outline changes clear coverage preview. Updated walkthrough; see [Phase 163](phase-163-report.md) and D-163-01.
+- Verification: 484 JVM tests and focused real-app reorder tests passed; a later four-core run had 15 mission tests pass and two opt-in stages skip. A 23-test coverage batch had four lazy-list wait failures; after the test-navigation repair, all four passed together with Android healthy. The full batch was not rerun. Earlier startup failures retained; see Phase 163 report.
+- In progress: broader Android regression, owner walkthrough, release acceptance and physical coverage validation remain open. Test data was synthetic.
+- Broken or risky: emulator startup ANRs and Cube heartbeat remain unresolved. Reordering can create invalid geometry; planner validation remains required. Coverage previews do not establish physical coverage.
+- Next: review the domain action, view-model path and row controls together, and continue risk-based tests or owner walkthrough. Hardware remains on hold.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-04 — Phase 162 real-editor recovery
 
 - Done: added a real-activity synthetic test for invalid field recovery through editor controls; no production code changed. See [Phase 162](phase-162-report.md) and D-162-01.

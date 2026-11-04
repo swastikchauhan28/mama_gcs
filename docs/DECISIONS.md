@@ -1,5 +1,25 @@
 # Decisions and alternatives
 
+### 2026-11-04 follow-up: investigate emulator startup
+
+- Context: the broader mission regression was blocked by System UI and Google Play services ANRs before instrumentation; the existing AVD config requests eight cores.
+- Choice: try the same isolated userdata, software renderer, 2 GB RAM and unchanged health gate with an explicit four-core launch. This is a reversible per-run setting; preserve failure evidence and do not modify the AVD configuration or dismiss errors.
+- Alternative: repeated identical launches or disabling Android services/health checks would not provide useful evidence. A successful run would not prove the underlying cause or fix emulator stability.
+
+### 2026-11-04 follow-up: lazy comparison test navigation
+
+- Context: the coverage regression had four timeouts awaiting a comparison card that belongs to an off-screen LazyColumn item in enlarged-text/landscape cases. Android health passed; other scenarios succeeded.
+- Choice: in the affected tests, wait for the comparison control to become enabled after calculation, then scroll to and assert the comparison card before existing map/content checks. Preserve the failed batch and rerun every affected test.
+- Alternative: increase timeouts or remove assertions. Neither composes an off-screen item nor establishes the same user-visible behavior. This is test navigation only, not evidence of an app or emulator fix.
+
+## D-163-01: Reorder local field vertices
+
+- Date: 2026-11-04. User approved Phase 163; clean baseline `278822a9d382961cf0fbeac0d6c075e9819a5495`; model/version unavailable.
+- Context: coverage reports self-crossing outlines but the field editor requires deleting and re-entering coordinates to change order.
+- Choice: add adjacent up/down actions identified by stable vertex ID, with bounded offsets and disabled end controls, to the existing local draft and recovery path. Outline changes use the existing coverage invalidation. Preserve route waypoints and explicit save behavior. Use wrapping controls for narrow screens and descriptive accessibility labels.
+- Alternative: drag-and-drop or deleting/re-entering points; adjacent buttons are simpler to use and validate, while drag-and-drop needs more gesture and accessibility work. Reordering can create invalid polygons; validation remains necessary. No schema, new dependency, network or vehicle action is introduced.
+- Verification: domain boundary/identity tests, real-activity editor recovery and preview test on an isolated emulator, build/lint and visual review. Earlier emulator ANRs may block checks; preserve failures. Rollback is a reviewed inverse source change from this baseline; no production release is implied.
+
 ## D-162-01: Verify invalid-field recovery through the editor
 
 - Date: 2026-11-04. User approved Phase 162; clean baseline `40c441414450a1ca91c3b089b3de95073cd28806`; model/version unavailable.

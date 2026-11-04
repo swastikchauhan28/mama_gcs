@@ -16,6 +16,21 @@ class MissionDraftTest {
         assertEquals(original, original.move("a", -1))
     }
 
+    @Test fun `field reorder preserves route and vertex identity and validates bounds`() {
+        val route = listOf(DraftWaypoint("route", 0.0, 0.0))
+        val vertices = listOf(DraftWaypoint("a", 0.0, 0.0), DraftWaypoint("b", 0.0, 0.1), DraftWaypoint("c", 0.1, 0.1))
+        val original = MissionDraft(waypoints = route, keepInFence = vertices)
+        val changed = original.moveFenceVertex("b", 1)
+        assertEquals(listOf(vertices[0], vertices[2], vertices[1]), changed.keepInFence)
+        assertEquals(route, changed.waypoints)
+        assertEquals(original, changed.moveFenceVertex("b", -1))
+        assertEquals(original, original.moveFenceVertex("a", -1))
+        assertEquals(original, original.moveFenceVertex("c", 1))
+        assertThrows(IllegalArgumentException::class.java) { original.moveFenceVertex("missing", 1) }
+        assertThrows(IllegalArgumentException::class.java) { original.moveFenceVertex("a", Int.MAX_VALUE) }
+        assertEquals(vertices, original.keepInFence)
+    }
+
     @Test fun `invalid coordinates duplicates and oversized drafts are rejected`() {
         assertThrows(IllegalArgumentException::class.java) { DraftWaypoint("a", Double.NaN, 0.0) }
         assertThrows(IllegalArgumentException::class.java) { DraftWaypoint("a", 90.1, 0.0) }

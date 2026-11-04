@@ -42,6 +42,62 @@ class FieldCoverageAppTest {
         }
     }
 
+    @Test fun reorderFieldVerticesClearsPreviewAndPreservesRoute() {
+        val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val before = runBlocking { repository.load() }
+        val beforeRecovery = runBlocking { repository.loadRecovery() }
+        val points = listOf(DraftWaypoint("route-a", -35.36326, 149.16523), DraftWaypoint("route-b", -35.36330, 149.16527))
+        val vertices = listOf(
+            DraftWaypoint("f0", -35.3634, 149.1651), DraftWaypoint("f1", -35.3634, 149.1653),
+            DraftWaypoint("f2", -35.3632, 149.1653), DraftWaypoint("f3", -35.3632, 149.1651))
+        val original = MissionDraft("Vertex order test", points, vertices)
+        try {
+            runBlocking { repository.save(original) }
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+                compose.openWorkspace("mission")
+                compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+                fun generate() {
+                    node("coverage-width").performTextReplacement("2")
+                    node("coverage-overlap").apply { performTextReplacement("10"); performImeAction() }
+                    node("coverage-generate").assertIsEnabled().performClick()
+                    compose.waitUntil(20_000) { compose.onAllNodes(hasTestTag("coverage-settings") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+                }
+                compose.selectMissionTab("Coverage")
+                generate()
+                node("coverage-diagram").assertIsDisplayed()
+                compose.selectMissionTab("Field outline")
+                node("mission-up-fence-0").assertIsNotEnabled()
+                node("mission-down-fence-3").assertIsNotEnabled()
+                node("mission-down-fence-1").assertIsEnabled().performClick()
+                compose.selectMissionTab("Coverage")
+                node("coverage-empty").assertIsDisplayed()
+                generate()
+                node("coverage-error").assertTextEquals("The field outline crosses or touches itself. Reorder its vertices.")
+                compose.selectMissionTab("Field outline")
+                node("mission-up-fence-2").assertIsEnabled().performClick()
+                node("mission-fence-row-1").assertIsDisplayed()
+                compose.onNode(hasText("-35.3634000, 149.1653000") and hasAnyAncestor(hasTestTag("mission-fence-row-1"))).assertExists()
+                capture("phase163-field-order.png")
+                compose.selectMissionTab("Coverage")
+                node("coverage-empty").assertIsDisplayed()
+                generate()
+                node("coverage-diagram").assertIsDisplayed()
+                capture("phase163-recovered.png")
+                compose.selectMissionTab("Route")
+                for ((index, point) in points.withIndex()) {
+                    node("mission-edit-$index").performClick()
+                    compose.onNodeWithTag("mission-latitude").assertTextContains(point.latitude.toString(), substring = true)
+                    compose.onNodeWithTag("mission-longitude").assertTextContains(point.longitude.toString(), substring = true)
+                    compose.onNodeWithText("Cancel").performClick()
+                }
+                assertEquals(original, runBlocking { repository.load() })
+            }
+        } finally {
+            runBlocking { repository.save(before); beforeRecovery?.let { repository.saveRecovery(it) } }
+        }
+    }
+
     @Test fun fieldEditorRecoversFromCrossingOutlineAndKeepsRoute() {
         val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         val before = runBlocking { repository.load() }
