@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-04 — Phase 161 invalid field recovery
+
+- Done: added an in-memory MissionScreen test for valid → self-crossing → corrected field, verifying preview clearing, error, recovery, preserved route and no dispatched mission actions. No production code changed; see [Phase 161](phase-161-report.md) and D-161-01.
+- Verification: build/lint succeeded (10 executed, 78 up-to-date); focused emulator test passed in 21.871 seconds with Android healthy, and screenshots were reviewed. An earlier System UI ANR preflight failure is retained; the cause is unknown.
+- In progress: broader software regression, actual field-editor gesture-path testing, owner walkthrough, release acceptance and physical coverage validation. The completed test used in-memory synthetic data.
+- Broken or risky: emulator startup ANRs and Cube heartbeat remain unresolved. Coverage is modeled and does not establish physical coverage.
+- Next: review the scoped test change; consider a real-activity field-editor recovery check. Hardware remains on hold.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-04 — Phase 160 mission-planning regression
 
 - Done: extended the existing disposable-emulator route, field, preview, GeoJSON export/import journey with tool-settings comparison. No production code changed; see [Phase 160](phase-160-report.md) and D-160-01.

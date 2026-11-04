@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-161-01: Verify preview recovery after an invalid outline
+
+- Date: 2026-11-04. User approved Phase 161; baseline clean `4d4c790f70362aa219caf21411d9306972466ba9`; model/version unavailable.
+- Context: changing the field recreates volatile coverage state; a self-crossing polygon should not leave the previous preview visible or alter route waypoints.
+- Choice: exercise the production MissionScreen in a synthetic Compose fixture with a valid outline, a self-crossing reorder, and a corrected outline; verify invalidation, explicit validation, regenerated preview, unchanged route and no mission action. Capture screenshots and run the isolated emulator health gate.
+- Alternative: assume the existing missing-outline test covers self-intersection, or alter production behavior without reproduction. Neither verifies this recovery flow. The fixture changes in-memory state directly and does not validate the complete field-editor gesture path, persistence, hardware, or real-world coverage. Emulator startup may fail; preserve evidence.
+
 ## D-160-01: Exercise coverage comparison during local route round-trip
 
 - Date: 2026-11-04. User approved Phase 160; clean baseline `eabbcdd9cc846200146723c9c4c0713157c37529`; model/version unavailable.

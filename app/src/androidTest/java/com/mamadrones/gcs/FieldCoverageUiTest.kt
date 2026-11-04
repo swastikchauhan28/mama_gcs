@@ -409,6 +409,34 @@ class FieldCoverageUiTest {
         assertTrue(actions.isEmpty())
     }
 
+    @Test fun selfCrossingOutlineClearsPreviewAndRecoversWithoutChangingRoute() {
+        val outline = coverageTestOutline()
+        val waypoints = listOf(DraftWaypoint("route-1", 0.0, 0.0), DraftWaypoint("route-2", 0.0001, 0.0001))
+        val original = MissionDraft(waypoints = waypoints, keepInFence = outline)
+        val draft = mutableStateOf(original)
+        show(draft = draft)
+        node("coverage-width").performTextReplacement("2")
+        generate()
+        node("coverage-pass-count").assertIsDisplayed()
+        compose.runOnIdle { draft.value = draft.value.copy(keepInFence = listOf(outline[0], outline[2], outline[1], outline[3])) }
+        node("coverage-empty").assertIsDisplayed()
+        node("coverage-width").performTextReplacement("2")
+        generate(expectError = true)
+        node("coverage-error").assertTextEquals("The field outline crosses or touches itself. Reorder its vertices.")
+        capture("phase161-crossing-error.png")
+        assertEquals(waypoints, draft.value.waypoints)
+        assertTrue("Invalid field must not dispatch a mission action", actions.isEmpty())
+        compose.runOnIdle { draft.value = draft.value.copy(keepInFence = outline) }
+        node("coverage-empty").assertIsDisplayed()
+        node("coverage-width").performTextReplacement("2")
+        generate()
+        node("coverage-pass-count").assertIsDisplayed()
+        node("coverage-diagram").assertIsDisplayed()
+        capture("phase161-corrected-preview.png")
+        assertEquals(original, draft.value)
+        assertTrue("Preview recovery must not dispatch a mission action", actions.isEmpty())
+    }
+
     @Test fun trianglePreviewAndControlsRemainReachableAtLargeText() {
         show(largeText = true, draft = mutableStateOf(MissionDraft(keepInFence = coverageTestOutline(true))))
         node("coverage-width").performTextReplacement("2")
