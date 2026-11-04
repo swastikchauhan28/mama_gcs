@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-162-01: Verify invalid-field recovery through the editor
+
+- Date: 2026-11-04. User approved Phase 162; clean baseline `40c441414450a1ca91c3b089b3de95073cd28806`; model/version unavailable.
+- Context: Phase 161 used an in-memory draft mutation, leaving the actual editor and view-model path unverified.
+- Choice: use the disposable emulator's real activity with a temporary synthetic saved draft. Generate a preview, remove and re-add an outline vertex in crossing order through the UI, verify invalidation and the error, then clear and rebuild the field through the UI and generate again. Verify route coordinates and saved draft, and restore prior draft/recovery in finally.
+- Alternative: repeat the fixture-only test or change production code without a demonstrated issue. These would not exercise editor events. An interrupted test can prevent restoration, so run only on a disposable emulator. Synthetic preview and passing software checks do not verify physical coverage or mission execution; emulator ANRs can block testing.
+
 ## D-161-01: Verify preview recovery after an invalid outline
 
 - Date: 2026-11-04. User approved Phase 161; baseline clean `4d4c790f70362aa219caf21411d9306972466ba9`; model/version unavailable.

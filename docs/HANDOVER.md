@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-04 — Phase 162 real-editor recovery
+
+- Done: added a real-activity synthetic test for invalid field recovery through editor controls; no production code changed. See [Phase 162](phase-162-report.md) and D-162-01.
+- Verification: app/test APK build and lint succeeded (10 executed, 78 up-to-date). The real-editor test passed in 73.034 seconds with Android healthy; screenshots reviewed. Earlier System UI/Google Play services ANRs and a fresh-image boot timeout were recorded; no dialogs dismissed.
+- In progress: broader regression, owner walkthrough and physical validation. The test restores the prior disposable draft/recovery in finally, but did not separately assert post-restoration equality; interruption can prevent cleanup.
+- Broken or risky: emulator startup ANRs and Cube heartbeat remain unresolved. Modeled coverage does not establish physical coverage.
+- Next: review the scoped test change and continue risk-based software regression or the owner walkthrough. Hardware remains on hold.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-04 — Phase 161 invalid field recovery
 
 - Done: added an in-memory MissionScreen test for valid → self-crossing → corrected field, verifying preview clearing, error, recovery, preserved route and no dispatched mission actions. No production code changed; see [Phase 161](phase-161-report.md) and D-161-01.

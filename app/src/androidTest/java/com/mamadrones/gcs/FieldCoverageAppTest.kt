@@ -42,6 +42,66 @@ class FieldCoverageAppTest {
         }
     }
 
+    @Test fun fieldEditorRecoversFromCrossingOutlineAndKeepsRoute() {
+        val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val before = runBlocking { repository.load() }
+        val beforeRecovery = runBlocking { repository.loadRecovery() }
+        val points = listOf(DraftWaypoint("route-a", -35.36326, 149.16523), DraftWaypoint("route-b", -35.36330, 149.16527))
+        val vertices = listOf(
+            DraftWaypoint("f0", -35.3634, 149.1651), DraftWaypoint("f1", -35.3634, 149.1653),
+            DraftWaypoint("f2", -35.3632, 149.1653), DraftWaypoint("f3", -35.3632, 149.1651))
+        val original = MissionDraft("Editor recovery test", points, vertices)
+        try {
+            runBlocking { repository.save(original) }
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+                compose.openWorkspace("mission")
+                compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+                fun generate() {
+                    node("coverage-width").performTextReplacement("2")
+                    node("coverage-overlap").apply { performTextReplacement("10"); performImeAction() }
+                    node("coverage-generate").assertIsEnabled().performClick()
+                    compose.waitUntil(20_000) { compose.onAllNodes(hasTestTag("coverage-settings") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+                }
+                fun addVertex(point: DraftWaypoint) {
+                    node("mission-add-fence-vertex").performClick()
+                    compose.onNodeWithTag("mission-latitude").performTextReplacement(point.latitude.toString())
+                    compose.onNodeWithTag("mission-longitude").performTextReplacement(point.longitude.toString())
+                    compose.onNodeWithTag("mission-confirm-waypoint").performClick()
+                }
+                compose.selectMissionTab("Coverage")
+                generate()
+                node("coverage-diagram").assertIsDisplayed()
+                compose.selectMissionTab("Field outline")
+                node("mission-remove-fence-1").performClick()
+                addVertex(vertices[1])
+                compose.selectMissionTab("Coverage")
+                node("coverage-empty").assertIsDisplayed()
+                generate()
+                node("coverage-error").assertTextEquals("The field outline crosses or touches itself. Reorder its vertices.")
+                capture("phase162-app-crossing.png")
+                compose.selectMissionTab("Field outline")
+                node("mission-clear-fence").performClick()
+                vertices.forEach(::addVertex)
+                compose.selectMissionTab("Coverage")
+                node("coverage-empty").assertIsDisplayed()
+                generate()
+                node("coverage-diagram").assertIsDisplayed()
+                capture("phase162-app-corrected.png")
+                compose.selectMissionTab("Route")
+                for ((index, point) in points.withIndex()) {
+                    node("mission-edit-$index").performClick()
+                    compose.onNodeWithTag("mission-latitude").assertTextContains(point.latitude.toString(), substring = true)
+                    compose.onNodeWithTag("mission-longitude").assertTextContains(point.longitude.toString(), substring = true)
+                    compose.onNodeWithText("Cancel").performClick()
+                }
+                assertEquals("Preview and editor changes must not overwrite the saved draft", original, runBlocking { repository.load() })
+            }
+        } finally {
+            runBlocking { repository.save(before); beforeRecovery?.let { repository.saveRecovery(it) } }
+        }
+    }
+
     @Test fun realPlannerShowsCoverageInPortraitAndLandscapeWithoutSavingIt() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
