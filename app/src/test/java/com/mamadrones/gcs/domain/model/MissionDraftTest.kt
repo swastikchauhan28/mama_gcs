@@ -31,6 +31,19 @@ class MissionDraftTest {
         assertEquals(vertices, original.keepInFence)
     }
 
+    @Test fun `field edit retains identity position and route and rejects unknown vertex`() {
+        val route = listOf(DraftWaypoint("route", 1.0, 2.0))
+        val vertices = listOf(DraftWaypoint("a", 0.1234567890123, 0.0), DraftWaypoint("b", 0.0, 0.1), DraftWaypoint("c", 0.1, 0.1))
+        val original = MissionDraft(waypoints = route, keepInFence = vertices)
+        val edited = original.editFenceVertex(vertices[1].copy(longitude = 0.15))
+        assertEquals(listOf(vertices[0], vertices[1].copy(longitude = 0.15), vertices[2]), edited.keepInFence)
+        assertEquals(route, edited.waypoints)
+        assertEquals(vertices, original.keepInFence)
+        assertEquals(original, original.editFenceVertex(vertices[0]))
+        assertThrows(IllegalArgumentException::class.java) { original.editFenceVertex(DraftWaypoint("missing", 0.0, 0.0)) }
+        assertThrows(IllegalArgumentException::class.java) { vertices[1].copy(latitude = Double.NaN) }
+    }
+
     @Test fun `invalid coordinates duplicates and oversized drafts are rejected`() {
         assertThrows(IllegalArgumentException::class.java) { DraftWaypoint("a", Double.NaN, 0.0) }
         assertThrows(IllegalArgumentException::class.java) { DraftWaypoint("a", 90.1, 0.0) }

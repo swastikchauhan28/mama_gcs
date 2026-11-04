@@ -409,6 +409,24 @@ class FieldCoverageUiTest {
         assertTrue(actions.isEmpty())
     }
 
+    @Test fun editingOutlineRejectsChangedVertex() {
+        val original = MissionDraft(keepInFence = coverageTestOutline())
+        val draft = mutableStateOf(original)
+        show(draft = draft)
+        compose.selectMissionTab("Field outline")
+        node("mission-edit-fence-1").performClick()
+        compose.onNodeWithTag("mission-confirm-waypoint").assertIsEnabled()
+        compose.runOnIdle {
+            draft.value = original.copy(keepInFence = original.keepInFence.toMutableList().apply {
+                this[1] = this[1].copy(latitude = this[1].latitude + 0.00001)
+            })
+        }
+        compose.onNodeWithTag("mission-confirm-waypoint").assertIsNotEnabled()
+        compose.onNodeWithText("This outline vertex changed. Cancel and reopen it.").assertIsDisplayed()
+        compose.onNodeWithText("Cancel").performClick()
+        assertTrue("Stale edit must not dispatch an action", actions.isEmpty())
+    }
+
     @Test fun clearOutlineConfirmationRejectsChangedDraft() {
         val original = MissionDraft(keepInFence = coverageTestOutline())
         val draft = mutableStateOf(original)

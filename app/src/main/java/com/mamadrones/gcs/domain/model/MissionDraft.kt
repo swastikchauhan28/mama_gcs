@@ -54,6 +54,11 @@ data class MissionDraft(
         return copy(waypoints = waypoints.toMutableList().apply { add(to, removeAt(from)) })
     }
 
+    fun editFenceVertex(waypoint: DraftWaypoint): MissionDraft {
+        require(keepInFence.any { it.id == waypoint.id })
+        return copy(keepInFence = keepInFence.map { if (it.id == waypoint.id) waypoint else it })
+    }
+
     /** Reorders only the local planning outline; vertex identities and route points are retained. */
     fun moveFenceVertex(id: String, offset: Int): MissionDraft {
         require(offset == -1 || offset == 1)

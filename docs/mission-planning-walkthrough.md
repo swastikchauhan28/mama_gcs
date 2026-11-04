@@ -37,6 +37,8 @@ Select **Field outline**, scroll down and tap **Add outline coordinate** for eac
 
 To remove the whole field outline, tap **Clear outline** and review the confirmation. **Cancel** keeps it; confirming clears the working outline and its coverage preview. The saved draft changes only after **Save draft**.
 
+Use **Edit** on a vertex to change its latitude or longitude without changing its position. Tap **Apply** to update the working draft or **Cancel** to keep it. If the vertex changes while the dialog is open, cancel and reopen it. Save the draft explicitly when ready.
+
 Use **Move up** or **Move down** on a vertex to change its position in the outline. The first and last vertices cannot move beyond the ends. Changing the outline clears any existing coverage preview; generate it again after editing. Reordering can create a crossing, so review the outline before generating a preview.
 
 These three points make a small triangular practice field. A real field needs its own accurately measured boundary; this outline is a local planning reference.

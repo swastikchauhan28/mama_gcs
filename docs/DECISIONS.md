@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-165-01: Edit local outline vertices
+
+- Date: 2026-11-04. User approved Phase 165; clean baseline `fb6f3ea3a7730de3085462260efd967f82bafe44`; model/version unavailable.
+- Context: correcting a field coordinate currently requires removing and re-entering a vertex, potentially changing its order. Coordinates and geometry affect modeled coverage.
+- Choice: edit a vertex by stable ID through the existing validated coordinate dialog, preserving full input precision, order and route. Reject an edit if its original vertex has changed while the dialog was open; retain existing draft recovery, explicit save and coverage invalidation. Alternative: remove/re-add, or edit by list index; both can target the wrong vertex or alter ordering. The snapshot is bounded to one vertex and existing draft limits. Geometry may still be invalid and must pass existing checks. No schema, dependency, network or hardware operation changes.
+- Verification: domain and workflow tests for identity, invalid input, stale updates and no-op precision; disposable-emulator UI and persistence checks, build/lint and visual review. Emulator startup failures may block UI checks; preserve evidence. Rollback is a reviewed inverse source change; no production release artifact is identified.
+
 ## D-164-01: Confirm clearing the local field outline
 
 - Date: 2026-11-04. User approved Phase 164; clean baseline `ea00b5a9b58136e7dd45e2c0ac0acc7e44badd13`; model/version unavailable.

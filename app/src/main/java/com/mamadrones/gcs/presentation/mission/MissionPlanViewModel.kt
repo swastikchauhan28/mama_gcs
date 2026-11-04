@@ -43,6 +43,7 @@ data class MissionPlanUiState(
 sealed interface MissionPlanAction {
     data class Add(val latitude: Double, val longitude: Double) : MissionPlanAction
     data class AddFenceVertex(val latitude: Double, val longitude: Double) : MissionPlanAction
+    data class EditFenceVertex(val expected: DraftWaypoint, val latitude: Double, val longitude: Double) : MissionPlanAction
     data class RemoveFenceVertex(val id: String) : MissionPlanAction
     data class MoveFenceVertex(val id: String, val offset: Int) : MissionPlanAction
     data object ClearFence : MissionPlanAction
@@ -144,11 +145,20 @@ class MissionPlanViewModel @Inject constructor(
             scheduleRecovery(imported)
             return
         }
+        // A dialog must not overwrite a newer vertex with the same ID.
+        if (action is MissionPlanAction.EditFenceVertex &&
+            current.draft.keepInFence.firstOrNull { it.id == action.expected.id } != action.expected) {
+            mutableState.value = current.copy(error = "The outline vertex changed. Review it and try again.")
+            return
+        }
         try {
             val next = when (action) {
                 is MissionPlanAction.Add -> current.draft.add(DraftWaypoint(UUID.randomUUID().toString(), action.latitude, action.longitude))
                 is MissionPlanAction.AddFenceVertex -> current.draft.copy(
                     keepInFence = current.draft.keepInFence + DraftWaypoint(UUID.randomUUID().toString(), action.latitude, action.longitude)
+                )
+                is MissionPlanAction.EditFenceVertex -> current.draft.editFenceVertex(
+                    action.expected.copy(latitude = action.latitude, longitude = action.longitude)
                 )
                 is MissionPlanAction.RemoveFenceVertex -> current.draft.copy(
                     keepInFence = current.draft.keepInFence.filterNot { it.id == action.id }
@@ -162,7 +172,7 @@ class MissionPlanViewModel @Inject constructor(
                 MissionPlanAction.New -> MissionDraft()
                 else -> current.draft
             }
-            if (action is MissionPlanAction.MoveFenceVertex && next == current.draft) return
+            if ((action is MissionPlanAction.MoveFenceVertex || action is MissionPlanAction.EditFenceVertex) && next == current.draft) return
             mutableState.value = current.copy(
                 draft = next,
                 dirty = next != savedDraft,

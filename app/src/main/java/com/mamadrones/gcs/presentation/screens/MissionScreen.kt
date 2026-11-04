@@ -120,6 +120,7 @@ fun MissionScreen(
     var showEditor by rememberSaveable { mutableStateOf(false) }
     var showFenceEditor by rememberSaveable { mutableStateOf(false) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    var editingFenceId by rememberSaveable { mutableStateOf<String?>(null) }
     var initialLatitude by rememberSaveable { mutableStateOf("") }
     var initialLongitude by rememberSaveable { mutableStateOf("") }
     var showRename by rememberSaveable { mutableStateOf(false) }
@@ -157,9 +158,10 @@ fun MissionScreen(
         initialLongitude = longitude?.let { String.format(Locale.US, "%.7f", it) }.orEmpty()
         showEditor = true
     }
-    fun openFenceEditor() {
-        initialLatitude = ""
-        initialLongitude = ""
+    fun openFenceEditor(point: DraftWaypoint? = null) {
+        editingFenceId = point?.id
+        initialLatitude = point?.latitude?.toString().orEmpty()
+        initialLongitude = point?.longitude?.toString().orEmpty()
         showFenceEditor = true
     }
 
@@ -369,7 +371,7 @@ fun MissionScreen(
                     Text("Enter at least 3 distinct coordinates to draw a planning reference on the map. It stays on this device and is never sent to the rover.",
                         style = MaterialTheme.typography.bodySmall)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        OutlinedButton(onClick = ::openFenceEditor, enabled = canAddFenceVertex,
+                        OutlinedButton(onClick = { openFenceEditor() }, enabled = canAddFenceVertex,
                             modifier = Modifier.testTag("mission-add-fence-vertex")) { Text("Add outline coordinate") }
                         TextButton(onClick = { pendingOutlineClear = plan.draft },
                             enabled = plan.editable && plan.draft.keepInFence.isNotEmpty(),
@@ -382,6 +384,8 @@ fun MissionScreen(
                             Text("Outline vertex ${index + 1}", style = MaterialTheme.typography.titleSmall)
                             Text(String.format(Locale.US, "%.7f, %.7f", point.latitude, point.longitude), style = MaterialTheme.typography.bodySmall)
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                TextButton(onClick = { openFenceEditor(point) }, enabled = plan.editable,
+                                    modifier = Modifier.testTag("mission-edit-fence-$index").semantics { contentDescription = "Edit outline vertex ${index + 1}" }) { Text("Edit") }
                                 TextButton(onClick = { onAction(MissionPlanAction.MoveFenceVertex(point.id, -1)) },
                                     enabled = plan.editable && index > 0,
                                     modifier = Modifier.testTag("mission-up-fence-$index").semantics { contentDescription = "Move outline vertex ${index + 1} up" }) { Text("Move up") }
@@ -444,15 +448,26 @@ fun MissionScreen(
             showEditor = false
         }
     )
-    if (showFenceEditor) WaypointDialog(
-        initialLatitude, initialLongitude, editing = false,
-        enabled = plan.editable,
-        onDismiss = { showFenceEditor = false },
-        onConfirm = { latitude, longitude ->
-            onAction(MissionPlanAction.AddFenceVertex(latitude, longitude))
-            showFenceEditor = false
-        },
-    )
+    if (showFenceEditor) {
+        val id = editingFenceId
+        val original = if (id != null) {
+            val lat = initialLatitude.toDoubleOrNull()
+            val lon = initialLongitude.toDoubleOrNull()
+            if (lat != null && lon != null && lat.isFinite() && lon.isFinite() && lat in -90.0..90.0 && lon in -180.0..180.0)
+                DraftWaypoint(id, lat, lon) else null
+        } else null
+        val stale = id != null && (original == null || plan.draft.keepInFence.firstOrNull { it.id == id } != original)
+        WaypointDialog(
+            initialLatitude, initialLongitude, editing = id != null,
+            enabled = plan.editable && !stale, outline = id != null, stale = stale,
+            onDismiss = { showFenceEditor = false },
+            onConfirm = { latitude, longitude ->
+                if (id == null) onAction(MissionPlanAction.AddFenceVertex(latitude, longitude))
+                else if (original != null) onAction(MissionPlanAction.EditFenceVertex(original, latitude, longitude))
+                showFenceEditor = false
+            },
+        )
+    }
     if (showRename) {
         var name by rememberSaveable { mutableStateOf(plan.draft.name) }
         AlertDialog(onDismissRequest = { showRename = false }, title = { Text("Name this draft") },
@@ -661,7 +676,7 @@ private fun java.io.Reader.readBounded(maxChars: Int): String {
 @Composable
 private fun WaypointDialog(
     initialLatitude: String, initialLongitude: String, editing: Boolean,
-    enabled: Boolean,
+    enabled: Boolean, outline: Boolean = false, stale: Boolean = false,
     onDismiss: () -> Unit, onConfirm: (Double, Double) -> Unit
 ) {
     var latitude by rememberSaveable { mutableStateOf(initialLatitude) }
@@ -671,7 +686,7 @@ private fun WaypointDialog(
     val latitudeInvalid = latitude.isNotBlank() && lat == null
     val longitudeInvalid = longitude.isNotBlank() && lon == null
     AlertDialog(
-        onDismissRequest = onDismiss, title = { Text(if (editing) "Edit waypoint" else "Add waypoint") },
+        onDismissRequest = onDismiss, title = { Text(if (outline) "Edit outline vertex" else if (editing) "Edit waypoint" else "Add waypoint") },
         text = {
             // Resolve against the dialog window that owns the focused text field.
             val keyboardController = LocalSoftwareKeyboardController.current
@@ -682,6 +697,7 @@ private fun WaypointDialog(
                 if (longitudeInvalid && longitudeFocused) longitudeRequester.bringIntoView()
             }
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (stale) Text("This outline vertex changed. Cancel and reopen it.")
                 Text("WGS84 decimal degrees. Use a decimal point; tap ± for south/west.")
                 OutlinedTextField(value = latitude, onValueChange = { latitude = it.take(MAX_COORDINATE_CHARS) }, singleLine = true,
                     label = { Text("Latitude (-90 to 90)") }, isError = latitudeInvalid,

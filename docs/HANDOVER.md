@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-04 — Phase 165 edit outline vertex
+
+- Done: field vertices can be edited by stable ID with full coordinate precision, validation, stale-edit rejection, preview invalidation and existing local save/recovery behavior. Route and vertex order are retained; see [Phase 165](phase-165-report.md) and D-165-01.
+- Verification: build/lint succeeded (30 executed, 67 up-to-date; lint 0 errors, 27 warnings); 485 JVM tests passed. Three focused synthetic emulator tests passed with Android healthy, and the edit-dialog screenshot was reviewed. Two earlier emulator starts failed the health gate; evidence is retained.
+- In progress: broader Android regression, owner walkthrough, release acceptance and physical coverage validation.
+- Broken or risky: emulator startup ANRs and Cube heartbeat remain unresolved. A valid coordinate edit can create invalid field geometry; modeled coverage is not physical verification.
+- Next: review the changes and run broader risk-based regression or owner walkthrough. Hardware remains on hold.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-04 — Phase 164 clear-outline confirmation
 
 - Done: added draft-bound confirmation for clearing a field outline, with cancel, stale-draft guard, count and save/preview explanation. Existing clear action and recovery behavior remain; see [Phase 164](phase-164-report.md) and D-164-01.

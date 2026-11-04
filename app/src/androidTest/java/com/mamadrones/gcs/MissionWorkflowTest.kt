@@ -87,6 +87,33 @@ class MissionWorkflowTest {
         assertNull(storage.recovery)
     }
 
+    @Test fun fieldVertexEditRejectsStaleAndInvalidChangesAndSaves() {
+        val points = listOf(DraftWaypoint("route", 1.0, 2.0))
+        val vertex = DraftWaypoint("v", 0.1234567890123, 0.2)
+        val original = MissionDraft(waypoints = points, keepInFence = listOf(vertex))
+        val storage = MemoryStore().apply { saved = original }
+        val vm = model(storage)
+        await { !vm.state.value.loading }
+        vm.act(MissionPlanAction.EditFenceVertex(vertex, vertex.latitude, vertex.longitude))
+        assertEquals(original, vm.state.value.draft)
+        assertFalse(vm.state.value.dirty)
+        vm.act(MissionPlanAction.EditFenceVertex(vertex, Double.NaN, vertex.longitude))
+        assertEquals(original, vm.state.value.draft)
+        assertNotNull(vm.state.value.error)
+        vm.act(MissionPlanAction.EditFenceVertex(vertex, vertex.latitude, 0.3))
+        val changed = original.copy(keepInFence = listOf(vertex.copy(longitude = 0.3)))
+        assertEquals(changed, vm.state.value.draft)
+        assertEquals(original, storage.saved)
+        await { vm.state.value.recoverySaved }
+        vm.act(MissionPlanAction.EditFenceVertex(vertex, vertex.latitude, 0.4))
+        assertEquals(changed, vm.state.value.draft)
+        assertNotNull(vm.state.value.error)
+        assertEquals(changed, storage.recovery)
+        vm.act(MissionPlanAction.Save)
+        await { !vm.state.value.saving && storage.saved == changed }
+        assertNull(storage.recovery)
+    }
+
     @Test fun invalidEditsDoNotMutateDraft() {
         val vm = model(MemoryStore())
         listOf(MissionPlanAction.Add(91.0, 0.0), MissionPlanAction.Add(0.0, Double.NaN),
