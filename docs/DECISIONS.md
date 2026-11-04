@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-167-01: Explain both ways to correct a crossing field outline
+
+- Date: 2026-11-04. User approved Phase 167; clean baseline `eb1932831aa15e2c2ea926e0a0ead5532e98a911`; model/version unavailable.
+- Context: the crossing error recommends only reordering, although Phase 166 demonstrated correction by editing a coordinate.
+- Choice: update the existing invalid-geometry message to name both Edit and reorder in Field outline; keep the same validation and invalid result. Update exact-message checks and verify the real edit/recovery and reorder paths on a disposable emulator. Alternative: keep the old incomplete guidance or add a navigation control; a wording change is smaller and introduces no state or action. An edit or reorder may still leave the geometry invalid and requires a new preview. No persistence, dependency, network or hardware changes are intended.
+- Verification: JVM/build/lint, focused real-activity and fixture checks with emulator health gate and visual review. Prior startup ANRs may block the run; retain evidence. Rollback is a reviewed inverse source change, with no production-qualified artifact established.
+
 ## D-166-01: Exercise invalid-field recovery through vertex editing
 
 - Date: 2026-11-04. User approved Phase 166; clean baseline `42ba0e5d3413e99fe296170c4341b80178f47492`; model/version unavailable.

@@ -455,7 +455,7 @@ class FieldCoverageUiTest {
         node("coverage-empty").assertIsDisplayed()
         node("coverage-width").performTextReplacement("2")
         generate(expectError = true)
-        node("coverage-error").assertTextEquals("The field outline crosses or touches itself. Reorder its vertices.")
+        node("coverage-error").assertTextEquals("The field outline crosses or touches itself. Edit or reorder its vertices in Field outline.")
         capture("phase161-crossing-error.png")
         assertEquals(waypoints, draft.value.waypoints)
         assertTrue("Invalid field must not dispatch a mission action", actions.isEmpty())

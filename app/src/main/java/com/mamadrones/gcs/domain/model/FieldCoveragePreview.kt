@@ -71,7 +71,7 @@ object FieldCoveragePlanner {
         for (i in outline.indices) for (j in i + 1 until outline.size) {
             if (j == i + 1 || i == 0 && j == outline.lastIndex) continue
             if (intersects(outline[i], outline[(i + 1) % outline.size], outline[j], outline[(j + 1) % outline.size])) {
-                return CoverageCalculation.Invalid("The field outline crosses or touches itself. Reorder its vertices.")
+                return CoverageCalculation.Invalid("The field outline crosses or touches itself. Edit or reorder its vertices in Field outline.")
             }
         }
         val area = abs(outline.indices.sumOf { i ->

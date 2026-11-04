@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-04 — Phase 167 crossing-error guidance
+
+- Done: crossing-field errors now direct users to edit or reorder vertices in Field outline. Geometry validation is unchanged; see [Phase 167](phase-167-report.md) and D-167-01.
+- Verification: build/lint passed (24 executed, 73 up-to-date; 0 errors, 27 warnings); 485 JVM tests passed. Four affected synthetic emulator tests passed with Android healthy; the error screenshot was reviewed.
+- In progress: broader Android regression, owner walkthrough, release acceptance and physical coverage validation.
+- Broken or risky: past emulator startup ANRs and Cube heartbeat remain unresolved. Edited/reordered geometry may still be invalid; modeled coverage is not physical proof.
+- Next: review the wording and continue risk-based regression or the owner walkthrough. Hardware remains on hold.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-04 — Phase 166 edit crossing recovery
 
 - Done: added a synthetic real-activity test that edits one field vertex into crossing geometry, checks the error and preview invalidation, corrects it through Edit, regenerates coverage, saves and reopens. Route, vertex IDs/order and disposable draft/recovery restoration are checked; no production code changed. See [Phase 166](phase-166-report.md) and D-166-01.
