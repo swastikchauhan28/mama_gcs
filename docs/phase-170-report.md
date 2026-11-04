@@ -1,0 +1,20 @@
+# Phase 170 — coverage accessibility at 2x text
+
+Date: 2026-11-04. User approved the scoped coverage-screen accessibility check on a disposable emulator. Baseline was clean at `88c4266502d449cdfc9f2daaf61210f8c0ab7884`; model/version unavailable. Decision D-170-01 and its dated corrections are in `DECISIONS.md`.
+
+## Outcome and execution path
+
+A saved synthetic field outline enters `MissionScreen`, which passes it to `FieldCoverageState`; the generated, volatile `FieldCoverageResult` renders pass count, spacing and the diagram. No mission is uploaded or vehicle command sent. At 2x font in portrait and landscape, the real-app test now reaches the width and overlap inputs, generates a six-pass preview with 1.80 m maximum spacing, and finds the diagram description in Android's accessibility tree. It checks result order and preview-only wording, captures both layouts, and asserts the disposable draft and recovery copy are restored.
+
+The two optional input labels were shortened to `Sideways error (m)` and `Extra margin (m)` so they fit better at large text; their assumed/desired meaning, blank state and limits remain in supporting text. The diagram now has the same short description as visible text before its Canvas and as the Canvas content description. This provides a text route through the short landscape editor viewport while keeping the drawing size and coverage calculations unchanged. No permission, dependency, storage schema, network destination, authentication or hardware path changed.
+
+## Verification and retained failures
+
+- `./gradlew.bat :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --no-daemon --max-workers=1 --console=plain` passed after the final app change: 88 tasks, 22 executed, 66 up-to-date. After the final test-only API guard, `:app:assembleDebugAndroidTest` passed: 60 tasks, 7 executed, 53 up-to-date. The JVM suite and full Android regression were not rerun.
+- `./scripts/Wait-AndroidEmulatorHealthy.ps1 -Serial emulator-5554 -QuietSeconds 30` passed before testing. The final `./scripts/Test-AndroidAcceptance.ps1 -Serial emulator-5554 -TestClass com.mamadrones.gcs.FieldCoverageAccessibilityAppTest` passed `OK (1 test)` with no new crash, ANR or error dialog: `app/build/acceptance-20261104-174443-3cfbd19c/`. The earlier successful pre-guard run is retained at `app/build/acceptance-20261104-173930-d6f3ba06/`. The 2x font was restored to effective 1.0 in the test wrapper.
+- Six final screenshots under ignored `app/build/phase170/phase170-{portrait,landscape}-{inputs,results,diagram}.png` were reviewed. The long scrolling dialog and result item are reachable; text at viewport edges can be partially clipped until scrolled further. The portrait and landscape diagram summaries are legible when brought into view.
+- Earlier runs failed or stopped at raw-node assumptions, partially visible dialog labels and an offscreen diagram. The ineffective extra field semantics were removed. Android's API 34 `UiAutomation.clearCache()` resolved a stale node snapshot that still listed pass count while a later section was on screen. Failed logs remain under `app/build/acceptance-20261104-16*/` and `app/build/acceptance-20261104-17*/`; diagnostic screenshots remain under `app/build/phase170/`. They were not reclassified as passes.
+
+## Limits and next safe step
+
+The pass proves only this API 34 emulator's platform tree and screenshot flow, not a spoken TalkBack or Switch Access session. The direct spoken name of blank optional fields remains unverified; earlier raw-node observations predated cache invalidation. A real assistive-technology pass should check those controls and the long dialog at 2x before accessibility acceptance. Coverage remains a model, not proof of physical work. Hardware telemetry, Cube heartbeat and field execution remain on hold. No phone data or rover settings were changed. A production release still needs owner review, broader regression, physical validation and the defense gate. Rollback is the reviewed inverse of this UI/test change; baseline is not claimed as a production-qualified artifact. Commit and push require a separate request.

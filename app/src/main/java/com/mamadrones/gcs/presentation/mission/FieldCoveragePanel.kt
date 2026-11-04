@@ -210,13 +210,13 @@ internal fun FieldCoverageInputs(state: FieldCoverageState) {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { keyboard?.hide() }),
             modifier = Modifier.fillMaxWidth().testTag("coverage-headland"))
-        OutlinedTextField(state.sidewaysError, state::updateSidewaysError, label = { Text("Assumed sideways error per pass (m)") },
-            supportingText = { Text("Optional · blank means unknown · 0–50 m") }, singleLine = true, enabled = state.available,
+        OutlinedTextField(state.sidewaysError, state::updateSidewaysError, label = { Text("Sideways error (m)") },
+            supportingText = { Text("Assumed per pass · optional · blank means unknown · 0–50 m") }, singleLine = true, enabled = state.available,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { keyboard?.hide() }),
             modifier = Modifier.fillMaxWidth().testTag("coverage-sideways-error"))
-        OutlinedTextField(state.desiredMargin, state::updateDesiredMargin, label = { Text("Desired extra margin (m)") },
-            supportingText = { Text("Optional · blank means unknown · 0–50 m") }, singleLine = true, enabled = state.available,
+        OutlinedTextField(state.desiredMargin, state::updateDesiredMargin, label = { Text("Extra margin (m)") },
+            supportingText = { Text("Desired additional coverage · optional · blank means unknown · 0–50 m") }, singleLine = true, enabled = state.available,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { keyboard?.hide() }),
             modifier = Modifier.fillMaxWidth().testTag("coverage-desired-margin"))
@@ -349,6 +349,8 @@ internal fun FieldCoverageResult(result: CoverageCalculation?, diagramHeight: Dp
                         style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("coverage-area-resolution"))
                 }
                 Text("North ↑ · Local field diagram", style = MaterialTheme.typography.labelLarge)
+                Text(coverageDiagramDescription(preview),
+                    style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("coverage-diagram-summary"))
                 CoverageDiagram(preview, diagramHeight)
                 Text("Green: planned tool strips. Pink: unplanned main area. Amber: reserved headland. Arrows: working direction.")
                 Text("The headland is not worked by these passes. Conservative clearance may leave extra gaps near corners and narrow areas.")
@@ -368,11 +370,14 @@ internal fun coverageRange(minimum: Double, maximum: Double): String {
     return String.format(Locale.US, "%.1f–%.1f", low, high)
 }
 
+private fun coverageDiagramDescription(preview: FieldCoveragePreview): String =
+    "North-up field coverage diagram with ${preview.passes.size} separate working passes; green tool strips, pink unplanned area and amber reserved headland. Turns are not planned."
+
 @Composable
 private fun CoverageDiagram(preview: FieldCoveragePreview, diagramHeight: Dp, tag: String = "coverage-diagram") {
     val outlineColor = MaterialTheme.colorScheme.onSurface
     Canvas(Modifier.fillMaxWidth().height(diagramHeight).testTag(tag).semantics {
-        contentDescription = "North-up field coverage diagram with ${preview.passes.size} separate working passes; green tool strips, pink unplanned area and amber reserved headland. Turns are not planned."
+        contentDescription = coverageDiagramDescription(preview)
     }) {
         val minX = preview.outline.minOf { it.x }; val maxX = preview.outline.maxOf { it.x }
         val minY = preview.outline.minOf { it.y }; val maxY = preview.outline.maxOf { it.y }

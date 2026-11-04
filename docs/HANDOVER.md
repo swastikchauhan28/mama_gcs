@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-04 — Phase 170 coverage accessibility at 2x text (complete for scoped emulator check)
+
+- Done: shortened two optional coverage input labels while retaining their meaning in supporting text; added a visible description before the diagram using its Canvas wording. Added a real-activity 2x-font portrait/landscape test for width/overlap accessibility order, pass count/spacing, preview-only wording, diagram text and disposable draft/recovery restoration. See [Phase 170](phase-170-report.md) and D-170-01.
+- Verification: app/test APK build and lint passed; final focused emulator test passed `OK (1 test)` with Android healthy at `app/build/acceptance-20261104-174443-3cfbd19c/`. Six final screenshots reviewed under ignored `app/build/phase170/`; effective font restored to 1.0. Earlier failed tests and corrections are retained in the report/decision record. No full regression reran.
+- In progress: direct TalkBack/Switch Access check of blank optional fields, broader device regression, owner walkthrough, release acceptance and physical coverage validation.
+- Broken or risky: raw accessibility snapshots were stale until the test cleared the API 34 cache; the optional fields' spoken labels remain unverified. Past emulator startup ANRs and Cube heartbeat remain unresolved. Coverage is modeled, not evidence of worked soil.
+- Next: review the scoped diff and evidence, then run an assistive-technology session for optional inputs when practical. Hardware remains on hold.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-04 — Phase 169 coverage content visibility (complete)
 
 - Done: added real-activity synthetic checks for generated pass count and spacing below the fixed toolbar in portrait/landscape at normal/2x text, with a guard against Android's full-screen tutorial. Repaired tab-dependent setup and an existing lazy comparison regression wait. No production layout change; see [Phase 169](phase-169-report.md) and D-169-01.
