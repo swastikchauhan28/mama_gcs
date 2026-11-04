@@ -42,6 +42,75 @@ class FieldCoverageAppTest {
         }
     }
 
+    @Test fun editingCrossingVertexRecoversCoverageAndPersists() {
+        val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val before = runBlocking { repository.load() }
+        val beforeRecovery = runBlocking { repository.loadRecovery() }
+        val route = listOf(DraftWaypoint("route-a", -35.36326, 149.16523), DraftWaypoint("route-b", -35.36330, 149.16527))
+        val vertices = listOf(
+            DraftWaypoint("f0", -35.3634, 149.1651), DraftWaypoint("f1", -35.3634, 149.1653),
+            DraftWaypoint("f2", -35.3632, 149.1653), DraftWaypoint("f3", -35.3632, 149.1651))
+        val original = MissionDraft("Edit crossing test", route, vertices)
+        val corrected = original.copy(keepInFence = vertices.toMutableList().apply {
+            this[1] = this[1].copy(longitude = 149.16535)
+        })
+        try {
+            runBlocking { repository.clearRecovery(); repository.save(original) }
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+                compose.openWorkspace("mission")
+                compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+                fun generate() {
+                    node("coverage-width").performTextReplacement("2")
+                    node("coverage-overlap").apply { performTextReplacement("10"); performImeAction() }
+                    node("coverage-generate").assertIsEnabled().performClick()
+                    compose.waitUntil(20_000) { compose.onAllNodes(hasTestTag("coverage-settings") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+                }
+                fun edit(latitude: String, longitude: String) {
+                    node("mission-edit-fence-1").performClick()
+                    compose.onNodeWithTag("mission-latitude").performTextReplacement(latitude)
+                    compose.onNodeWithTag("mission-longitude").performTextReplacement(longitude)
+                    compose.onNodeWithTag("mission-confirm-waypoint").assertIsEnabled().performClick()
+                }
+                compose.selectMissionTab("Coverage")
+                generate()
+                node("coverage-diagram").assertIsDisplayed()
+                compose.selectMissionTab("Field outline")
+                edit("-35.36325", "149.16505")
+                assertEquals(original, runBlocking { repository.load() })
+                compose.selectMissionTab("Coverage")
+                node("coverage-empty").assertIsDisplayed()
+                generate()
+                node("coverage-error").assertTextEquals("The field outline crosses or touches itself. Reorder its vertices.")
+                capture("phase166-crossing.png")
+                compose.selectMissionTab("Field outline")
+                edit("-35.3634", "149.16535")
+                compose.selectMissionTab("Coverage")
+                node("coverage-empty").assertIsDisplayed()
+                generate()
+                node("coverage-diagram").assertIsDisplayed()
+                capture("phase166-corrected.png")
+                assertEquals(original, runBlocking { repository.load() })
+                compose.onNodeWithTag("mission-save").assertIsEnabled().performClick()
+                compose.waitUntil(15_000) { runBlocking { repository.load() == corrected } }
+            }
+            ActivityScenario.launch(MainActivity::class.java).use {
+                compose.openWorkspace("mission")
+                compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+                compose.selectMissionTab("Field outline")
+                node("mission-edit-fence-1").performClick()
+                compose.onNodeWithTag("mission-latitude").assertTextContains("-35.3634", substring = true)
+                compose.onNodeWithTag("mission-longitude").assertTextContains("149.16535", substring = true)
+                compose.onNodeWithText("Cancel").performClick()
+                assertEquals(corrected, runBlocking { repository.load() })
+            }
+        } finally {
+            runBlocking { repository.save(before); if (beforeRecovery == null) repository.clearRecovery() else repository.saveRecovery(beforeRecovery) }
+        }
+        assertEquals(before, runBlocking { repository.load() })
+        assertEquals(beforeRecovery, runBlocking { repository.loadRecovery() })
+    }
+
     @Test fun editFieldVertexValidatesClearsPreviewAndPersists() {
         val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         val before = runBlocking { repository.load() }

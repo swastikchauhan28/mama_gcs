@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-04 — Phase 166 edit crossing recovery
+
+- Done: added a synthetic real-activity test that edits one field vertex into crossing geometry, checks the error and preview invalidation, corrects it through Edit, regenerates coverage, saves and reopens. Route, vertex IDs/order and disposable draft/recovery restoration are checked; no production code changed. See [Phase 166](phase-166-report.md) and D-166-01.
+- Verification: app/test APK build and lint succeeded (10 executed, 78 up-to-date; 0 errors, 27 warnings). One focused emulator test passed with Android healthy; error and preview-summary screenshots reviewed. No full regression ran.
+- In progress: broader Android regression, owner walkthrough, release acceptance and physical coverage validation.
+- Broken or risky: past emulator startup ANRs and Cube heartbeat remain unresolved. Model output does not establish actual field coverage.
+- Next: review the test and consider broader risk-based regression or the owner walkthrough. Hardware remains on hold.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-04 — Phase 165 edit outline vertex
 
 - Done: field vertices can be edited by stable ID with full coordinate precision, validation, stale-edit rejection, preview invalidation and existing local save/recovery behavior. Route and vertex order are retained; see [Phase 165](phase-165-report.md) and D-165-01.

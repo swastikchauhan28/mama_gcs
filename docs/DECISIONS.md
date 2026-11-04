@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-166-01: Exercise invalid-field recovery through vertex editing
+
+- Date: 2026-11-04. User approved Phase 166; clean baseline `42ba0e5d3413e99fe296170c4341b80178f47492`; model/version unavailable.
+- Context: earlier real-editor testing created crossing geometry by removing/re-adding vertices; Phase 165 added direct editing but did not test correction of an invalid outline through that path.
+- Choice: add a focused real-activity test on a disposable emulator using a synthetic saved draft. Generate a preview, edit one vertex into crossing geometry, confirm preview invalidation and error, correct the vertex through Edit, regenerate and save/reopen, verifying route and vertex identity/order. Alternative: mutate a fixture directly or repeat remove/re-add; neither exercises the actual edit path. Preserve existing saved/recovery data with finally cleanup; interruption can prevent restoration, so the test must not run on an operator device. No production behavior, schema, network, dependency or hardware operation is planned unless a defect requires a scoped fix.
+- Verification: build/lint and targeted emulator instrumentation with health gate, plus visual screenshots. A preview is a model, not proof of actual coverage. Emulator ANRs may block checks; retain failures. Reviewed inverse source change is the rollback path; no production-qualified artifact is established.
+
 ## D-165-01: Edit local outline vertices
 
 - Date: 2026-11-04. User approved Phase 165; clean baseline `fb6f3ea3a7730de3085462260efd967f82bafe44`; model/version unavailable.
