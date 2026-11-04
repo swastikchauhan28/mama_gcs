@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-04 — Phase 171 optional coverage control investigation
+
+- Done: extended the real-app 2× platform accessibility test to verify adjacency/editability for blank sideways-error and extra-margin inputs in portrait and landscape. No production UI or hardware behavior changed. See [Phase 171](phase-171-report.md) and D-171-01.
+- Verification: test APK build and lint passed; final focused emulator run passed `OK (1 test)` with Android healthy at ignored `app/build/acceptance-20261104-184608-6f6d1b01/`. The disposable draft was restored byte for byte; font returned to 1.0 and TalkBack disabled. Earlier failed TalkBack attempts and an emulator exit are retained in the report. No full JVM/Android regression reran.
+- In progress: real touch-capable TalkBack or human listening check of the blank editors and diagram, broader device regression, owner walkthrough and release acceptance.
+- Broken or risky: instrumentation suppressed TalkBack and ADB input did not move its accessibility focus, so spoken announcements remain unverified. Past emulator instability and Cube heartbeat remain unresolved. Coverage is modeled, not physical proof.
+- Next: review the scoped test/docs diff, then complete a genuine TalkBack listening pass when a touch-capable interface is available. Hardware remains on hold.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-04 — Phase 170 coverage accessibility at 2x text (complete for scoped emulator check)
 
 - Done: shortened two optional coverage input labels while retaining their meaning in supporting text; added a visible description before the diagram using its Canvas wording. Added a real-activity 2x-font portrait/landscape test for width/overlap accessibility order, pass count/spacing, preview-only wording, diagram text and disposable draft/recovery restoration. See [Phase 170](phase-170-report.md) and D-170-01.

@@ -1,5 +1,28 @@
 # Decisions and alternatives
 
+## D-171-01: Check blank coverage controls with TalkBack
+
+- Date: 2026-11-04. User approved Phase 171 after its scoped proposal. Clean baseline `89d423f270e37b26d5f4769654e1ab10675c4f47`; model/version unavailable.
+- Context: Phase 170 verified the platform tree at 2× text but left the blank optional fields' screen-reader focus unverified. The coverage settings and generated diagram are local preview UI; no vehicle output is involved.
+- Choice: use installed TalkBack on a disposable API 34 emulator, with a synthetic local field draft, to focus the two blank optional editors and inspect their accessible names/actions in portrait and landscape. Check the diagram description in the same real-app flow. Alternative: infer speech solely from visible labels or a Compose semantics node; that would miss the platform focus path. Do not change production UI unless a reproducible gap appears.
+- Risk and verification: TalkBack focus and platform events are evidence of the screen-reader path, but cannot by themselves prove audio intelligibility. The emulator's Bluetooth service crashed on startup; disable Bluetooth only there and require a quiet health window. Preserve failures, restore TalkBack/font/draft settings, run focused instrumentation and review screenshots. No phone data, dependency, permission, network destination or hardware setting changes. Rollback is the reviewed inverse of any test/UI diff; baseline is not a production-qualified artifact.
+
+### 2026-11-04 correction: distinguish an existing focus from a failed focus request
+
+- The first TalkBack-focused run failed when `ACTION_ACCESSIBILITY_FOCUS` returned false for the blank sideways-error editor; the editor was visible and editable, and Android had no new crash or ANR. A false action result may mean the editor was already focused. Check that state first and report focusability/actions on a genuine failure; retain the original log under `app/build/acceptance-20261104-180229-1dc70aaa/`.
+
+### 2026-11-04 correction: use touch exploration for TalkBack focus
+
+- The second run found the editor was not already accessibility-focused and advertised focus action 64, but `UiAutomation` still received `false` while TalkBack was bound. Android documents accessibility focus actions for accessibility services; a second automation client is not a faithful TalkBack gesture. Replace the direct action with a single touch-exploration tap and inspect Android's resulting focus. The failed run is retained under `app/build/acceptance-20261104-180428-bf37d288/`.
+
+### 2026-11-04 correction: keep TalkBack running during instrumentation
+
+- The touch-exploration run also found no focused editable node. [Android's `UiAutomation` contract](https://developer.android.com/reference/android/app/UiAutomation) says it suppresses other accessibility services by default; our test was calling the default instance. Request `FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES` for platform-tree reads and focus checks, then rerun. The failed run is retained under `app/build/acceptance-20261104-180640-63cbfe1a/`.
+
+### 2026-11-04 outcome: retain a platform regression, leave spoken focus unverified
+
+- With the no-suppression flag, touch exploration still reported disabled inside the Compose test, and a later attempt lost the Compose hierarchy. Standalone TalkBack became bound with touch exploration enabled, but ADB taps placed an input cursor while its focus rectangle remained on the dialog title. The first disposable emulator process also exited during navigation; the original draft was restored byte for byte after restart. These observations do not prove a production UI defect or a spoken label. Remove the experimental focus test and fixture helper; extend the existing health-gated platform-tree test to cover adjacency/editability for the two blank optional labels at 2× in both orientations. Revisit with a genuine touch-capable TalkBack session or human listening pass. No production behavior change is justified by the evidence.
+
 ## D-170-01: Verify accessibility output for the local coverage preview
 
 - Date: 2026-11-04. User approved Phase 170 after proposal; clean baseline `88c4266502d449cdfc9f2daaf61210f8c0ab7884`; model/version unavailable.
