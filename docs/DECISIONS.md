@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-168-01: Run the mission-planning regression on a disposable emulator
+
+- Date: 2026-11-04. User approved Phase 168; clean baseline `087b7138ea4fa4c22e71aaba65427ae68ece555a`; model/version unavailable.
+- Context: recent changes added field vertex editing, reordering and crossing recovery. Existing real-activity tests cover these paths and the route/coverage/GeoJSON journey separately; they have not been re-run together as this phase.
+- Choice: run the existing synthetic real-app route creation, field/coverage/save/export/import journey and focused field editing/reorder/crossing tests, plus relevant planner/mission workflow checks. In the picker journey restore an originally absent recovery copy explicitly and assert original draft/recovery after cleanup. Alternative: an entirely new end-to-end test would duplicate working paths and increase fragile UI operations; the chosen checks span multiple tests, so do not claim a single uninterrupted combined journey. Temporary test drafts and uniquely named export files are limited to a disposable emulator; interruption can prevent cleanup. No phone, network destination, hardware or production feature change is intended unless a scoped defect is identified.
+- Verification: app/test APK build and lint, Android health preflight and targeted instrumentation, review synthetic screenshots and retain failures. Prior emulator ANRs may block execution. Modeled coverage does not verify physical work or authorize mission execution. Rollback is a reviewed inverse test/documentation change; no production-qualified artifact is established.
+
 ## D-167-01: Explain both ways to correct a crossing field outline
 
 - Date: 2026-11-04. User approved Phase 167; clean baseline `eb1932831aa15e2c2ea926e0a0ead5532e98a911`; model/version unavailable.

@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-04 — Phase 168 mission-planning regression
+
+- Done: ran scoped synthetic route, field, coverage, save/reopen and GeoJSON exchange scenarios on a disposable emulator. Improved picker-test cleanup to restore an absent recovery copy and assert draft/recovery restoration; no production app code changed. See [Phase 168](phase-168-report.md) and D-168-01.
+- Verification: build/lint succeeded (9 executed, 88 up-to-date; 0 errors, 27 warnings). Three emulator batches passed 19 tests with Android healthy; synthetic coverage and crossing screenshots were reviewed. JVM test task was up-to-date; no fresh full JVM or full Android regression is claimed.
+- In progress: broader Android regression, owner walkthrough, release acceptance and physical coverage validation.
+- Broken or risky: emulator first exceeded boot wait then started and passed health preflight; prior ANRs and Cube heartbeat remain unresolved. Coverage is modeled, not proof of physical work.
+- Next: review regression results and test cleanup, and continue owner walkthrough or other risk-based checks. Hardware remains on hold.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-04 — Phase 167 crossing-error guidance
 
 - Done: crossing-field errors now direct users to edit or reorder vertices in Field outline. Geometry validation is unchanged; see [Phase 167](phase-167-report.md) and D-167-01.

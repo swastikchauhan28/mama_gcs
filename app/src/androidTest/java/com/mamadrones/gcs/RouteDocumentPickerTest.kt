@@ -122,9 +122,11 @@ class RouteDocumentPickerTest {
             assertEquals(outline, imported.keepInFence.map { it.latitude to it.longitude })
         } finally {
             scenario?.close()
-            runBlocking { repository.save(previous); recovery?.let { repository.saveRecovery(it) } }
+            runBlocking { repository.save(previous); if (recovery == null) repository.clearRecovery() else repository.saveRecovery(recovery) }
             shell("rm -f ${path(file)}")
         }
+        assertEquals(previous, runBlocking { repository.load() })
+        assertEquals(recovery, runBlocking { repository.loadRecovery() })
     }
 
     @Test fun invalidFileThroughPickerPreservesSavedAndWorkingDraft() {
