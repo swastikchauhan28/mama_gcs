@@ -474,6 +474,28 @@ class FieldCoverageUiTest {
         assertTrue(actions.isEmpty())
     }
 
+    @Test fun normalTextCoverageControlsStayBelowToolbar() = verifyCoverageControlsBelowToolbar(false)
+
+    @Test fun enlargedTextCoverageControlsStayBelowToolbar() = verifyCoverageControlsBelowToolbar(true)
+
+    private fun verifyCoverageControlsBelowToolbar(largeText: Boolean) {
+        val original = MissionDraft(keepInFence = coverageTestOutline())
+        val draft = mutableStateOf(original)
+        show(largeText = largeText, draft = draft)
+        val editor = compose.onNodeWithTag("mission-editor").getUnclippedBoundsInRoot()
+        val save = compose.onNodeWithTag("mission-save").getUnclippedBoundsInRoot()
+        assertTrue("Editor must start below the fixed toolbar", editor.top >= save.bottom)
+        for (tag in listOf("coverage-settings", "coverage-options-open")) {
+            val control = node(tag)
+            val bounds = control.getUnclippedBoundsInRoot()
+            assertTrue("$tag must be fully inside the scrolling editor: $bounds / $editor",
+                control.isDisplayed() && bounds.top >= editor.top && bounds.bottom <= editor.bottom)
+            capture("phase159-${if (largeText) "large" else "normal"}-$tag.png")
+        }
+        assertTrue("Inspection must not dispatch a mission action", actions.isEmpty())
+        assertEquals(original, draft.value)
+    }
+
     @Test fun enlargedTextToolComparisonShowsErrorsAndAppliesOption() {
         val original = MissionDraft(keepInFence = coverageTestOutline())
         val draft = mutableStateOf(original)

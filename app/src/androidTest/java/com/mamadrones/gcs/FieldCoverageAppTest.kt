@@ -21,6 +21,27 @@ import java.io.File
 class FieldCoverageAppTest {
     @get:Rule val compose = createEmptyComposeRule()
 
+    @Test fun enlargedTextCoverageControlsStayBelowToolbarInApp() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity {
+                check(it.resources.configuration.fontScale >= 1.8f) { "System font scale must be >= 1.8" }
+                it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
+            compose.openWorkspace("mission")
+            compose.onNodeWithTag("mission-tab-Coverage").performScrollTo().performClick()
+            val editor = compose.onNodeWithTag("mission-editor").getUnclippedBoundsInRoot()
+            val save = compose.onNodeWithTag("mission-save").getUnclippedBoundsInRoot()
+            assertTrue("Editor must start below the fixed toolbar", editor.top >= save.bottom)
+            for (tag in listOf("coverage-settings", "coverage-options-open")) {
+                val control = node(tag)
+                val bounds = control.getUnclippedBoundsInRoot()
+                assertTrue("$tag must be fully within the editor: $bounds / $editor",
+                    control.isDisplayed() && bounds.top >= editor.top && bounds.bottom <= editor.bottom)
+                capture("phase159-app-$tag.png")
+            }
+        }
+    }
+
     @Test fun realPlannerShowsCoverageInPortraitAndLandscapeWithoutSavingIt() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext

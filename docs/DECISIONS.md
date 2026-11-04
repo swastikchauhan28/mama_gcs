@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-159-01: Verify coverage controls against the fixed toolbar
+
+- Date: 2026-11-03. User approved Phase 159; baseline clean `221c59a3e8f518c9ca08f35bb00a6f94d450ac74`. Model/version unavailable.
+- Context: Phase 158 screenshots showed scrolling content clipped at the toolbar boundary. The fixture hosts the production MissionScreen but is not a full application activity.
+- Choice: check bounds and full reachability of coverage controls at normal and enlarged text on the disposable emulator before deciding on a production layout change; retain screenshots and health evidence. Alternatives: change layout from a static screenshot, or rely on semantics alone. Both could misdiagnose normal viewport clipping or miss obstruction.
+- Trade-off: fixture results cover a bounded screen and cannot establish accessibility for every device or the full app shell. If a confirmed production defect appears, fix and retest it within scope; otherwise record the finding without speculative changes.
+- Follow-up: after the fixture checks passed, add a no-draft-write MainActivity check at 2× system font to verify the outer app shell and the same controls; capture screenshots and retain the earlier emulator failures.
+
 ## D-158-01: Check tool comparison with enlarged text
 
 - Date: 2026-11-03. User requested the next phase after the enlarged-text proposal. Baseline clean `7cb8525a38fee0e242867b10ebaa123b95a55317`; model/version unavailable.

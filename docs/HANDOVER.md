@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-03 — Phase 159 toolbar visibility
+
+- Done: added fixture checks for coverage controls relative to the toolbar at normal and enlarged text, plus a real-activity check at 2×. Tested controls scroll fully into view; no production code changed. See [Phase 159](phase-159-report.md) and D-159-01.
+- Verification: both fixture checks and the real-activity check passed individually with Android healthy; original emulator font restored. Screenshots reviewed. Previous emulator ANR, System UI ANR dialog and incomplete boot are preserved. No full regression ran.
+- In progress: broader accessibility and software regression, owner walkthrough and release acceptance. Results cover selected controls and configurations only.
+- Broken or risky: emulator instability and Cube heartbeat remain unresolved. Coverage previews do not establish physical coverage.
+- Next: review this scoped test change and continue risk-based regression or owner walkthrough. Investigate emulator startup failures separately; hardware remains on hold.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-03 — Phase 158 enlarged-text tool comparison
 
 - Done: added and extended a 320 dp / 2× font synthetic test for tool-comparison validation, applying options B and A, and regenerating the preview after B. No production app code changed. See [Phase 158](phase-158-report.md) and D-158-01.
