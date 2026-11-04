@@ -16,10 +16,82 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
+import java.io.FileInputStream
 
 /** Disposable emulator only. Restores its local draft/recovery; no telemetry session is opened. */
 class FieldCoverageAppTest {
     @get:Rule val compose = createEmptyComposeRule()
+
+    @Test fun coverageResultsCanBeReadBelowToolbarAtNormalText() = verifyCoverageResultsBelowToolbar(false)
+
+    @Test fun coverageResultsCanBeReadBelowToolbarAtEnlargedText() = verifyCoverageResultsBelowToolbar(true)
+
+    private fun verifyCoverageResultsBelowToolbar(enlarged: Boolean) {
+        val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val before = runBlocking { repository.load() }
+        val beforeRecovery = runBlocking { repository.loadRecovery() }
+        val original = MissionDraft("Viewport test", keepInFence = coverageTestOutline())
+        try {
+            runBlocking { repository.clearRecovery(); repository.save(original) }
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.onActivity {
+                    if (enlarged) check(it.resources.configuration.fontScale >= 1.8f) { "System font scale must be >= 1.8" }
+                    else check(it.resources.configuration.fontScale < 1.8f) { "Normal system font required" }
+                }
+                for ((orientation, label) in listOf(
+                    ActivityInfo.SCREEN_ORIENTATION_PORTRAIT to "portrait",
+                    ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE to "landscape")) {
+                    scenario.onActivity { it.requestedOrientation = orientation }
+                    compose.waitUntil(15_000) {
+                        var actual = 0
+                        scenario.onActivity { actual = it.resources.configuration.orientation }
+                        actual == if (label == "portrait") Configuration.ORIENTATION_PORTRAIT else Configuration.ORIENTATION_LANDSCAPE
+                    }
+                    compose.openWorkspace("mission")
+                    compose.waitUntil(15_000) { compose.onAllNodesWithTag("mission-editor").fetchSemanticsNodes().isNotEmpty() }
+                    compose.selectMissionTab("Coverage")
+                    node("coverage-width").performTextReplacement("2")
+                    node("coverage-overlap").apply { performTextReplacement("10"); performImeAction() }
+                    node("coverage-generate").assertIsEnabled().performClick()
+                    compose.waitUntil(20_000) { compose.onAllNodes(hasTestTag("coverage-settings") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+                    for (tag in listOf("coverage-pass-count", "coverage-spacing")) {
+                        val result = node(tag)
+                        repeat(12) {
+                            val viewport = compose.onNodeWithTag("mission-editor").getUnclippedBoundsInRoot()
+                            val bounds = result.getUnclippedBoundsInRoot()
+                            if (result.isDisplayed() && bounds.top >= viewport.top && bounds.bottom <= viewport.bottom) return@repeat
+                            compose.onNodeWithTag("mission-editor").performTouchInput {
+                                if (bounds.top < viewport.top) swipeDown(startY = height * 0.25f, endY = height * 0.45f)
+                                else swipeUp(startY = height * 0.75f, endY = height * 0.55f)
+                            }
+                        }
+                        val viewport = compose.onNodeWithTag("mission-editor").getUnclippedBoundsInRoot()
+                        val toolbar = compose.onNodeWithTag("mission-save").getUnclippedBoundsInRoot()
+                        val bounds = result.getUnclippedBoundsInRoot()
+                        assertTrue("Editor must begin below toolbar: $viewport / $toolbar", viewport.top >= toolbar.bottom)
+                        assertTrue("$tag must be fully readable within editor: $bounds / $viewport",
+                            result.isDisplayed() && bounds.top >= viewport.top && bounds.bottom <= viewport.bottom)
+                        assertNoImmersiveOverlay()
+                        capture("phase169-${if (enlarged) "large" else "normal"}-$label-$tag.png")
+                    }
+                    assertEquals(original, runBlocking { repository.load() })
+                }
+            }
+        } finally {
+            runBlocking { repository.save(before); if (beforeRecovery == null) repository.clearRecovery() else repository.saveRecovery(beforeRecovery) }
+        }
+        assertEquals(before, runBlocking { repository.load() })
+        assertEquals(beforeRecovery, runBlocking { repository.loadRecovery() })
+    }
+
+    private fun assertNoImmersiveOverlay() {
+        val descriptor = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("dumpsys window")
+        val windows = try { FileInputStream(descriptor.fileDescriptor).bufferedReader().use { it.readText() } }
+            finally { descriptor.close() }
+        assertFalse("Android full-screen tutorial covers the screenshot", windows.lineSequence().any {
+            it.contains("mCurrentFocus=") && it.contains("ImmersiveModeConfirmation")
+        })
+    }
 
     @Test fun enlargedTextCoverageControlsStayBelowToolbarInApp() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
@@ -357,7 +429,8 @@ class FieldCoverageAppTest {
                 assertWholeDiagramVisible()
                 capture("phase76-app-portrait.png")
                 node("coverage-compare").performClick()
-                compose.waitUntil(20_000) { compose.onAllNodesWithTag("coverage-comparison").fetchSemanticsNodes().isNotEmpty() }
+                compose.waitUntil(30_000) { compose.onAllNodes(hasTestTag("coverage-compare") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+                node("coverage-comparison").assertIsDisplayed()
                 node("coverage-comparison-north-passes")
                 capture("phase80-app-observe.png")
                 node("coverage-comparison-north-passes").assertIsDisplayed()
@@ -389,7 +462,8 @@ class FieldCoverageAppTest {
                 assertWholeDiagramVisible()
                 capture("phase76-app-landscape.png")
                 node("coverage-compare").performClick()
-                compose.waitUntil(20_000) { compose.onAllNodesWithTag("coverage-comparison").fetchSemanticsNodes().isNotEmpty() }
+                compose.waitUntil(30_000) { compose.onAllNodes(hasTestTag("coverage-compare") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+                node("coverage-comparison").assertIsDisplayed()
                 node("coverage-comparison-north-passes").assertIsDisplayed()
                 node("coverage-comparison-east-passes").assertIsDisplayed()
                 capture("phase80-app-landscape.png")

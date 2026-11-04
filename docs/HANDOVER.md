@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-04 — Phase 169 coverage content visibility (complete)
+
+- Done: added real-activity synthetic checks for generated pass count and spacing below the fixed toolbar in portrait/landscape at normal/2x text, with a guard against Android's full-screen tutorial. Repaired tab-dependent setup and an existing lazy comparison regression wait. No production layout change; see [Phase 169](phase-169-report.md) and D-169-01.
+- Verification: initial build/lint passed (0 errors, 27 warnings); final test APK rebuilt. Two final viewport tests and two mission/coverage regressions passed individually on a disposable emulator with Android healthy. Eight unobstructed screenshots reviewed; effective font restored to 1.0. Earlier startup ANRs, test-navigation timeouts and covered screenshots are retained in the report; no full JVM or Android suite reran.
+- In progress: broader accessibility/device checks, full regression, owner walkthrough, release acceptance and physical coverage validation.
+- Broken or risky: emulator startup can still record System UI/Google Play services ANRs. Cube heartbeat remains unresolved. Modeled coverage is not proof of field work.
+- Next: review the focused diff and evidence; continue risk-based software checks or the owner walkthrough. Hardware remains on hold.
+- Do not touch: saved phone data, Cube/radio parameters, motor outputs or vehicle commands. Commit/push only when requested.
+
 ## 2026-11-04 — Phase 168 mission-planning regression
 
 - Done: ran scoped synthetic route, field, coverage, save/reopen and GeoJSON exchange scenarios on a disposable emulator. Improved picker-test cleanup to restore an absent recovery copy and assert draft/recovery restoration; no production app code changed. See [Phase 168](phase-168-report.md) and D-168-01.

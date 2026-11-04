@@ -1,5 +1,27 @@
 # Decisions and alternatives
 
+## D-169-01: Investigate coverage results at the toolbar boundary
+
+- Date: 2026-11-04. User approved Phase 169; clean baseline `778fd55e5764915b029d1f642105bd0992af9fa7`; model/version unavailable.
+- Context: a Phase 168 screenshot showed scrolling coverage content partially clipped at the editor edge below the fixed toolbar. Earlier Phase 159 checks established two controls could be scrolled into view in limited configurations, but did not establish visibility of coverage results in portrait, landscape and system enlarged text.
+- Choice: first add a disposable real-activity synthetic coverage test that scrolls the generated pass count and spacing results fully into the editor viewport beneath the toolbar, checks portrait and landscape at normal and 2x system font, and captures screenshots. A partially visible row while scrolling is not by itself proof of an inaccessible row. Fix production layout only if repeatable evidence shows a row cannot be revealed or a control is blocked. Alternative: blindly add padding/clip or accept a screenshot without testing scrolling; either can hide a real issue or unnecessarily alter the layout. Test setup temporarily replaces only the disposable emulator draft and restores draft/recovery in finally; interruption can prevent cleanup.
+- Verification: app/test APK build/lint, health-gated emulator tests and visual review. Restore system font after enlarged test. Prior emulator ANRs may block checks; retain failure evidence. No hardware, network or production configuration change is intended; modeled coverage is not physical proof. Rollback is a reviewed inverse change; no production-qualified artifact is established.
+
+### 2026-11-04 follow-up: wait for the workspace, not the Route tab
+
+- Context: normal-text Phase 169 passed, but the enlarged-text test timed out before coverage generation because it waited for `mission-add`, which is composed only on Route. The app retained its Coverage tab across test launches. The emulator health gate passed before the run; this is a test navigation error, not evidence of obscured content.
+- Choice: wait for the mission editor and then explicitly select Coverage, independent of the previously selected tab. Alternative: reset app state before each run or force Route first; both add unrelated state changes. Rerun both focused tests and review screenshots. The first enlarged run failed, and the original default font (initially reported `null`) was restored to its effective `1.0` value after Android materialized that setting.
+
+### 2026-11-04 follow-up: unobstructed visual evidence
+
+- Context: after the tab-independent wait, normal and 2x tests each passed with Android healthy and effective font restored to 1.0. All eight captured images nevertheless showed Android's one-time `Viewing full screen` instructional overlay. Compose semantics could inspect underlying nodes, so the passing assertions do not establish visible text to a person. The enlarged-run wrapper also reported a false failure after the acceptance script passed because it searched a redirected file for a `Write-Host` success line; the instrumentation and health files show the actual result.
+- Choice: dismiss only the Android instructional overlay on the disposable emulator, then rerun and inspect unobstructed screenshots. Add an explicit screenshot condition against this overlay if feasible so this test cannot silently pass with invalid visual evidence again. Do not alter the app layout based on obscured images. Alternative: accept semantics-only checks or reuse the covered captures; neither verifies the approved visual goal.
+
+### 2026-11-04 follow-up: lazy comparison regression
+
+- Context: the mission edit/reorder/save regression passed. The existing `realPlannerShowsCoverageInPortraitAndLandscapeWithoutSavingIt` test timed out in landscape at a wait for `coverage-comparison` before scrolling. Android had no new crash or ANR. The comparison is a separate lazy editor item; a matching helper in `FieldCoverageUiTest` first waits for the calculation control to re-enable and then scrolls to the comparison card.
+- Choice: apply that navigation pattern to both portrait and landscape points in the existing real-app coverage regression, retaining the result assertions. Alternative: extend the timeout or drop the comparison check; neither addresses lazy composition. Rerun the affected regression and retain its original failure record.
+
 ## D-168-01: Run the mission-planning regression on a disposable emulator
 
 - Date: 2026-11-04. User approved Phase 168; clean baseline `087b7138ea4fa4c22e71aaba65427ae68ece555a`; model/version unavailable.
