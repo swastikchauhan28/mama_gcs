@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-05 — signed-out TCP phone check
+
+- Done: user-requested data-preserving update of the USB-connected phone succeeded; installed APK matched the current build. TCP opened without an admin prompt and the app showed an autopilot heartbeat. Accounts & audit showed Sign in while the top bar showed Connected. See [Phase 173](phase-173-report.md).
+- Verification: fresh `:app:assembleDebug` succeeded, followed by the read-only phone observation. No unit/emulator suite, command-boundary test or sustained stability test was run. The user confirmed an earlier disconnect was intentional.
+- In progress: investigate the separately observed intermittent Link lost warning and rising decoder counters.
+- Broken or risky: the TCP peer is unauthenticated; the displayed heartbeat does not establish physical identity or safe operation. Brief observations cannot establish sustained reliability.
+- Next: compare the stream with an independent decoder and validate lifecycle and failure handling with controlled data.
+- Do not touch: Cube parameters, actuators, or saved phone data without authorization. Commit/push only when requested.
+
 ## 2026-11-05 — TCP connection without administrator sign-in
 
 - Done: removed the administrator sign-in requirement from the read-only TCP connection screen and view model. Account and UDP policies remain in force; see [Phase 173](phase-173-report.md) and D-173-01.
