@@ -17,12 +17,15 @@ import com.mamadrones.gcs.presentation.dashboard.MavlinkInspectorPanels
 import kotlinx.coroutines.delay
 
 @Composable
-fun MavlinkInspectorScreen(diagnostics: MavlinkDiagnostics) {
+fun MavlinkInspectorScreen(diagnostics: MavlinkDiagnostics, clock: () -> Long = System::currentTimeMillis) {
     var query by rememberSaveable { mutableStateOf("") }
     var observedOnly by rememberSaveable { mutableStateOf(false) }
-    val now by produceState(System.currentTimeMillis()) {
-        while (true) { delay(1_000L); value = System.currentTimeMillis() }
+    val clockTick by produceState(clock(), clock) {
+        while (true) { delay(1_000L); value = clock() }
     }
+    // Incoming snapshots can be newer than the last periodic tick; compare with a
+    // clock read taken after this immutable snapshot was supplied to the screen.
+    val now = remember(diagnostics, clockTick, clock) { clock() }
     ScreenBody {
         ScreenHeader("MAVLink message inspector", "Receive-only message counts · supported telemetry subset")
         Text(when {

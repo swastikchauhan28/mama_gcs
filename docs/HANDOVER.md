@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-05 — Inspector timestamp display repair
+
+- Done: refresh the inspector's display clock on each diagnostics snapshot as well as its periodic tick; keep future/invalid timestamp rejection and session liveness logic intact. See [timestamp investigation](timestamp-inspector-investigation.md).
+- Verification: full JVM suite 491 tests, no failures/errors/skips; debug and Android test APKs built and lint passed. One in-memory phone UI regression passed. Five-minute live TCP observation had 47 Connected samples and 15 visible heartbeat-age samples without the prior unavailable label; 32 rows were not visible.
+- In progress: determine the cause of the independently observed intermittent heartbeat timeout. The display repair is not proven to fix it; sampled monitoring can miss brief gaps.
+- Broken or risky: display ages still depend on wall clock and sampled snapshots; TCP identity and physical safety are unverified.
+- Next: investigate continuous heartbeat timing with bounded diagnostic evidence and compare identical input when the intermittent gap recurs.
+- Do not touch: Cube parameters, actuators, saved phone data, safety thresholds or vehicle commands without authorization. Commit/push only when requested.
+
 ## 2026-11-05 — Phase 174 synthetic MAVLink resynchronization
 
 - Done: reproduced a valid heartbeat hidden by a false incompatible-flag candidate in unsupported data, then added a bounded CRC-aware rescan for unsigned candidates with known invalid checksums. Signed and unknown-CRC candidates keep their full boundaries. See [Phase 174](phase-174-report.md) and D-174-01.

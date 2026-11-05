@@ -1062,3 +1062,9 @@ Record consequential choices before implementing them. Keep dated corrections; d
 ## Future entry format
 
 Use an ID and date, status/approval scope, known model/version (or unavailable), context, affected behavior/files, two or more real alternatives, choice/reason, trade-offs, assumptions, verification, rollback implications and a revisit condition. Reference the relevant phase/bug report rather than duplicating its chronology. Record retrospective reasoning explicitly as retrospective; never attribute it to an earlier developer without evidence.
+
+## D-175-01 — Inspector clock snapshot on telemetry updates (2026-11-05)
+
+- Context: live HEARTBEAT counts advanced while the inspector intermittently displayed TIMESTAMP UNAVAILABLE. The screen ticks its wall clock once per second but accepts newer telemetry snapshots between ticks; the panel rejects a timestamp later than that cached tick.
+- Choice: refresh the inspector's display clock when either the diagnostics snapshot or periodic tick changes, and preserve existing timestamp validation and heartbeat timeout. Alternative: clamp future timestamps to zero; rejected because it would conceal genuinely invalid times or clock rollback. Alternative: replace all age calculations with monotonic time; larger scope and historical-session semantics require separate design.
+- Risk: a wall clock change remains possible, and a fresh clock does not authenticate telemetry or measure each heartbeat interval. Verification: a UI fixture inserts a valid new observation between ticks and a genuinely future observation must remain unavailable; existing expiry and historical cases remain covered. Revisit if elapsed-time age support is separately designed. Model/version: unavailable.

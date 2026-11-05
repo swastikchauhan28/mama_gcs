@@ -64,6 +64,25 @@ class MavlinkInspectorUiTest {
         compose.onNodeWithText("LAST SESSION · HISTORICAL").assertExists()
     }
 
+    @Test fun newTelemetryBetweenClockTicksUsesFreshDisplayTime() {
+        var now = 20_000L
+        val clock: () -> Long = { now }
+        val diagnostics = mutableStateOf(sample(now, active = true))
+        compose.mainClock.autoAdvance = false
+        compose.setContent { MamaGcsTheme { Surface { MavlinkInspectorScreen(diagnostics.value, clock) } } }
+        compose.onNodeWithText("RECENT ACCEPTED MESSAGE").assertExists()
+        compose.runOnIdle {
+            now = 20_500L
+            diagnostics.value = sample(now, active = true)
+        }
+        compose.mainClock.advanceTimeByFrame()
+        compose.onNodeWithText("RECENT ACCEPTED MESSAGE").assertExists()
+        compose.onNodeWithText("ACCEPTED · TIME UNAVAILABLE").assertDoesNotExist()
+        compose.runOnIdle { diagnostics.value = sample(now + 60_000L, active = true) }
+        compose.mainClock.advanceTimeByFrame()
+        compose.onNodeWithText("ACCEPTED · TIME UNAVAILABLE").assertExists()
+    }
+
     private fun capture(name: String) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         File(context.getExternalFilesDir(null), "$name.png").outputStream().use {
