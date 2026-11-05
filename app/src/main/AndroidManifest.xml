@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Required only for the Phase 2 UDP vehicle transport. -->
+    <!-- Network access for telemetry and configured map tiles. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- User-initiated BLE discovery and foreground read-only GATT / paired Classic SPP sessions. -->
     <uses-feature android:name="android.hardware.bluetooth" android:required="false" />

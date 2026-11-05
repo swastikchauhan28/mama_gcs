@@ -18,6 +18,7 @@ import com.mamadrones.gcs.presentation.navigation.MamaGcsApp
 import com.mamadrones.gcs.presentation.mission.MissionPlanViewModel
 import com.mamadrones.gcs.presentation.screens.VescBluetoothDiscoveryViewModel
 import com.mamadrones.gcs.presentation.screens.ClassicBluetoothViewModel
+import com.mamadrones.gcs.presentation.screens.TcpTelemetryViewModel
 import com.mamadrones.gcs.presentation.theme.MamaGcsTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -29,6 +30,7 @@ class MainActivity : ComponentActivity() {
     private val missionPlanViewModel: MissionPlanViewModel by viewModels()
     private val vescBluetoothDiscoveryViewModel: VescBluetoothDiscoveryViewModel by viewModels()
     private val classicBluetoothViewModel: ClassicBluetoothViewModel by viewModels()
+    private val tcpTelemetryViewModel: TcpTelemetryViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,6 +77,7 @@ class MainActivity : ComponentActivity() {
                     onBleStopStabilityTrial = vescBluetoothDiscoveryViewModel::stopStabilityTrial,
                     onBleResetStabilityTrial = vescBluetoothDiscoveryViewModel::resetStabilityTrial,
                     classicBluetooth = classicBluetooth,
+                    tcpTelemetryViewModel = tcpTelemetryViewModel,
                     onClassicRefresh = classicBluetoothViewModel::refresh,
                     onClassicPermissionDenied = classicBluetoothViewModel::permissionDenied,
                     onClassicConnect = classicBluetoothViewModel::connect,

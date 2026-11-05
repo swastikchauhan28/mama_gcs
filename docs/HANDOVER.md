@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-05 — TCP telemetry implementation (runtime verification pending)
+
+- Done: added administrator-initiated IPv4/TCP connection UI and a receive-only transport using the existing MAVLink session and single-link gate. See [Phase 172](phase-172-report.md) and D-172-01.
+- Verification: `:app:assembleDebug` passed after the final source changes, 9 tasks executed and 35 up-to-date. User deferred tests; no emulator, synthetic server or hardware test ran.
+- In progress: runtime verification of TCP framing, connection lifecycle and actual Cube heartbeat.
+- Broken or risky: TCP socket liveness is not a Cube heartbeat or authenticated vehicle identity. A Wi-Fi-to-MAVLink TCP server and physical integration remain unverified. TCP uses Android's default network and has no endpoint audit record.
+- Next: verify the link with a controlled server and the secured, stationary Cube setup; observe telemetry only and inspect heartbeat and decoder counters.
+- Do not touch: saved phone data, Cube parameters, actuators or command paths. Commit/push only when requested.
+
 ## 2026-11-04 — Phase 171 optional coverage control investigation
 
 - Done: extended the real-app 2× platform accessibility test to verify adjacency/editability for blank sideways-error and extra-margin inputs in portrait and landscape. No production UI or hardware behavior changed. See [Phase 171](phase-171-report.md) and D-171-01.

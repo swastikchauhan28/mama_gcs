@@ -1,6 +1,6 @@
 package com.mamadrones.gcs.domain.model
 
-enum class TelemetryLinkKind { UDP, BLE, CLASSIC, OTHER }
+enum class TelemetryLinkKind { UDP, BLE, CLASSIC, TCP, OTHER }
 
 /** Latest radio-generated frame only; raw scales are device-specific and not vehicle health. */
 data class RadioStatusObservation(

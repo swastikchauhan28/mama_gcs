@@ -1,5 +1,15 @@
 # Decisions and alternatives
 
+## D-172-01: Add a receive-only TCP telemetry client
+
+- Date: 2026-11-05. User requested an IP address and port for Wi-Fi TCP and emulator testing. Clean baseline `248d93551d0818b127377a3e256e24e403361434`; model `gpt-6.1-terra`.
+- Choice: connect as a foreground TCP client to a user-entered endpoint, reuse the existing MAVLink decoder and exclusive telemetry gate, and send no vehicle commands. Hold the endpoint in memory for the session. A Wi-Fi-to-MAVLink TCP server is required at the Cube; its hardware and physical behavior remain unverified. Alternative UDP is already supported but does not satisfy the requested TCP server connection.
+- Risk: TCP stream fragmentation, disconnects, timeouts and untrusted unsigned MAVLink must not be mistaken for a valid Cube heartbeat or authenticated identity. Test with a synthetic TCP server and disposable emulator, never live hardware. No credential, saved endpoint, dependency or vehicle-command change is intended. Rollback is a reviewed inverse of the scoped diff; the baseline is not a production-qualified artifact.
+
+### 2026-11-05 update: user deferred testing
+
+- User requested implementation first and deferred testing. The client uses the existing admin authorization and single-link gate, receives only, and stores the IPv4 address and port in memory. Android chooses the network route; the implementation does not bind to Wi-Fi. It does not create a local endpoint audit entry. Build success is not proof of connection, parser behavior, authentication or safe operation. A physical TCP-to-MAVLink bridge remains unverified.
+
 ## D-171-01: Check blank coverage controls with TalkBack
 
 - Date: 2026-11-04. User approved Phase 171 after its scoped proposal. Clean baseline `89d423f270e37b26d5f4769654e1ab10675c4f47`; model/version unavailable.

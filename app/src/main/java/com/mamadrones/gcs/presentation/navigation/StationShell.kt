@@ -31,7 +31,7 @@ private val vehiclePages = listOf(
 private val analyzePages = listOf(WorkspacePage("telemetry", "Instruments"), WorkspacePage("diagnostics", "Link & messages"),
     WorkspacePage("message-inspector", "Message inspector"), WorkspacePage("rc-pwm", "RC & PWM"))
 private val settingsPages = listOf(
-    WorkspacePage("general", "General"), WorkspacePage("settings", "UDP link"),
+    WorkspacePage("general", "General"), WorkspacePage("settings", "UDP link"), WorkspacePage("tcp", "TCP / Wi-Fi"),
     WorkspacePage("classic-bluetooth", "Bluetooth / HC-05"),
     WorkspacePage("vesc-discovery", "Bluetooth / BLE"), WorkspacePage("map-settings", "Maps"),
     WorkspacePage("admin", "Accounts & audit"),

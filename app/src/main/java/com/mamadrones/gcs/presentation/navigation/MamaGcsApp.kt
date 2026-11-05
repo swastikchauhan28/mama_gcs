@@ -62,6 +62,7 @@ fun MamaGcsApp(
     onBleStopStabilityTrial: () -> Unit = {},
     onBleResetStabilityTrial: () -> Unit = {},
     classicBluetooth: ClassicBluetoothUiState = ClassicBluetoothUiState(),
+    tcpTelemetryViewModel: TcpTelemetryViewModel? = null,
     onClassicRefresh: () -> Unit = {},
     onClassicPermissionDenied: () -> Unit = {},
     onClassicConnect: (ClassicBluetoothPeer) -> Unit = {},
@@ -138,6 +139,10 @@ fun MamaGcsApp(
                                     )
                                 },
                             )
+                        }
+                        composable("tcp") {
+                            tcpTelemetryViewModel?.let { TcpTelemetryScreen(vehicle, it) }
+                                ?: Text("TCP telemetry is unavailable in this preview.")
                         }
                         composable("spray") { SprayScreen(vehicle) }
                         composable("hydraulic") { HydraulicScreen(vehicle) }
