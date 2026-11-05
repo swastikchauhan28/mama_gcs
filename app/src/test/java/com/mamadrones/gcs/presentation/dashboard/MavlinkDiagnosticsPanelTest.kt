@@ -7,6 +7,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class MavlinkDiagnosticsPanelTest {
+    @Test fun `heartbeat timing does not confuse open bytes with accepted heartbeats`() {
+        val base = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.TCP,
+            startedAtElapsedMillis = 100, timingHeartbeatAtElapsedMillis = 100,
+            lastBytesAtElapsedMillis = 5_102)
+        assertEquals("ACCEPTED HEARTBEAT RECENT", ConsolePanels.heartbeatTiming(base, 5_100).status)
+        val gap = ConsolePanels.heartbeatTiming(base, 5_102)
+        assertEquals("HEARTBEAT GAP IN PROGRESS", gap.status)
+        assertEquals("OBSERVED", gap.rows.toMap()["Input after 5 seconds in current gap"])
+        assertEquals("NOT OBSERVED", ConsolePanels.heartbeatTiming(base.copy(lastBytesAtElapsedMillis = 100), 5_102)
+            .rows.toMap()["Input after 5 seconds in current gap"])
+        assertEquals("ELAPSED TIME UNAVAILABLE", ConsolePanels.heartbeatTiming(base, 99).status)
+        assertEquals("SESSION CLOSED OR NOT STARTED", ConsolePanels.heartbeatTiming(base.copy(active = false), 5_102).status)
+    }
     @Test fun `initial panel does not claim measured zeros`() {
         val panel = ConsolePanels.mavlinkDiagnostics(MavlinkDiagnostics(), 100)
         assertEquals("NO MAVLINK SESSION", panel.status)

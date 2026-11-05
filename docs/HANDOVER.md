@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-05 — Phase 176 heartbeat timing diagnostics
+
+- Done: added fixed-size, memory-only selected-source heartbeat timing and decoder-input evidence with TCP socket status to the diagnostics screen; five-second liveness behavior and command restrictions are unchanged. See [Phase 176](phase-176-report.md).
+- Verification: 494 JVM tests passed with no failures/errors/skips; final APK and lint build passed (0 lint errors, 27 warnings). A simulated emulator UI fixture passed and its screenshot was inspected. The first broad build failed on a test-only import, which was corrected; an initial emulator startup was stopped under memory pressure.
+- In progress: independently test the summary with the real TCP bridge when authorized.
+- Broken or risky: a sampled or simulated check does not establish live reliability; bytes are not necessarily heartbeats, TCP status and timing are not atomic, and vehicle identity and physical safety are unverified.
+- Next: review the scoped diff, then perform a read-only live TCP observation when authorized.
+- Do not touch: Cube configuration, actuator commands, saved phone data or safety thresholds without specific authorization. Commit/push only when requested.
+
 ## 2026-11-05 — Inspector timestamp display repair
 
 - Done: refresh the inspector's display clock on each diagnostics snapshot as well as its periodic tick; keep future/invalid timestamp rejection and session liveness logic intact. See [timestamp investigation](timestamp-inspector-investigation.md).

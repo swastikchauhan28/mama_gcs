@@ -40,6 +40,13 @@ data class MavlinkDiagnostics(
     // Elapsed values are volatile current-session receipt evidence, never persisted.
     val startedAtElapsedMillis: Long? = null,
     val lastBytesAtElapsedMillis: Long? = null,
+    // Fixed-size receipt evidence; gaps are counted only when the next heartbeat arrives.
+    val timingHeartbeatAtElapsedMillis: Long? = null,
+    val completedHeartbeatGapsOverFiveSeconds: Long = 0,
+    val completedGapsWithInputBeforeRecovery: Long = 0,
+    val longestCompletedHeartbeatIntervalMillis: Long? = null,
+    val lastCompletedHeartbeatIntervalMillis: Long? = null,
+    val lastLongGapHadInputBeforeRecovery: Boolean? = null,
 ) {
     val parserErrors: Long get() = checksumFailures + malformedPayloads
 }

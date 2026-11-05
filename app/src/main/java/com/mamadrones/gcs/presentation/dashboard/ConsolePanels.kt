@@ -14,6 +14,34 @@ fun Double?.reading(unit: String): String = if (this == null || !isFinite()) "UN
 fun Double?.coordinateReading(): String = if (this == null || !isFinite()) "UNKNOWN" else String.format(Locale.US, "%.7f °", this)
 
 object ConsolePanels {
+    fun heartbeatTiming(sample: MavlinkDiagnostics, nowElapsedMillis: Long, tcpStatus: TransportStatus? = null): PanelSpec {
+        val started = sample.startedAtElapsedMillis
+        val last = sample.timingHeartbeatAtElapsedMillis
+        val age = if (sample.active && started != null && last != null && started >= 0 &&
+            last >= started && nowElapsedMillis >= last) nowElapsedMillis - last else null
+        val input = sample.lastBytesAtElapsedMillis
+        val bytesAfterThreshold = age != null && age > 5_000L && input != null && last != null &&
+            input >= last && input <= nowElapsedMillis && input - last > 5_000L
+        val status = when {
+            !sample.active -> "SESSION CLOSED OR NOT STARTED"
+            last == null -> "WAITING FOR ACCEPTED HEARTBEAT"
+            age == null -> "ELAPSED TIME UNAVAILABLE"
+            age > 5_000L -> "HEARTBEAT GAP IN PROGRESS"
+            else -> "ACCEPTED HEARTBEAT RECENT"
+        }
+        fun interval(value: Long?) = value?.let { "$it ms" } ?: "—"
+        return PanelSpec("Heartbeat timing", status, listOf(
+            "TCP socket" to if (sample.linkKind == TelemetryLinkKind.TCP && sample.active) (tcpStatus?.name ?: "UNAVAILABLE") else "—",
+            "Current heartbeat age" to interval(age),
+            "Completed gaps over 5 seconds" to sample.completedHeartbeatGapsOverFiveSeconds.toString(),
+            "Longest completed heartbeat interval" to interval(sample.longestCompletedHeartbeatIntervalMillis),
+            "Latest completed heartbeat interval" to interval(sample.lastCompletedHeartbeatIntervalMillis),
+            "Completed long gaps with input before recovery" to sample.completedGapsWithInputBeforeRecovery.toString(),
+            "Input before recovery in latest long gap" to when (sample.lastLongGapHadInputBeforeRecovery) { true -> "OBSERVED"; false -> "NOT OBSERVED"; null -> "—" },
+            "Input after 5 seconds in current gap" to if (age == null || age <= 5_000L) "—" else if (bytesAfterThreshold) "OBSERVED" else "NOT OBSERVED",
+        ), note = "Receive-only, monotonic session observations. A completed gap is counted when the next selected-autopilot heartbeat arrives; the current gap is separate. Input means bytes reached the decoder, not that they contained a heartbeat. For completed gaps, the recovery chunk is excluded; missing input evidence is not proof no bytes arrived. Memory-only totals reset on a new session and do not authenticate the sender or locate a fault.")
+    }
+
     fun mavlinkDiagnostics(sample: MavlinkDiagnostics, nowEpochMillis: Long = System.currentTimeMillis()): PanelSpec {
         val started = sample.startedAtEpochMillis != null
         fun count(value: Long) = if (started) value.toString() else "—"

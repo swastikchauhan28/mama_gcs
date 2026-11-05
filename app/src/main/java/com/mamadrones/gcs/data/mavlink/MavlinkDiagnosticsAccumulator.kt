@@ -10,11 +10,13 @@ enum class MessageDisposition { ACCEPTED, BEFORE_AUTOPILOT_HEARTBEAT, OTHER_SOUR
 
 /** Owned by one receive coroutine. No packet contents, unbounded history, or device identifiers. */
 class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long, startedAtElapsed: Long? = null) {
+    private var lastInputBeforeChunkElapsed: Long? = null
     var snapshot = MavlinkDiagnostics(active = true, linkKind = kind, startedAtEpochMillis = startedAt, startedAtElapsedMillis = startedAtElapsed)
         private set
 
     fun recordBytes(bytes: ByteArray, receivedAt: Long, receivedAtElapsed: Long? = null) {
         if (bytes.isEmpty()) return
+        lastInputBeforeChunkElapsed = snapshot.lastBytesAtElapsedMillis
         val v1Starts = bytes.count { it == 0xFE.toByte() }
         val v2Starts = bytes.count { it == 0xFD.toByte() }
         snapshot = snapshot.copy(receivedChunks = snapshot.receivedChunks + 1,
@@ -57,8 +59,12 @@ class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long, st
                     messageObservations = (current.messageObservations.filterNot { it.type == type } + observation)
                         .sortedBy { it.type.messageId })
                 when (admission) {
-                    MessageDisposition.ACCEPTED -> decoded.copy(acceptedMessages = decoded.acceptedMessages + 1,
-                        lastAcceptedAtEpochMillis = receivedAt)
+                    MessageDisposition.ACCEPTED -> {
+                        val accepted = decoded.copy(acceptedMessages = decoded.acceptedMessages + 1,
+                            lastAcceptedAtEpochMillis = receivedAt)
+                        if (type == ObservedMavlinkMessage.HEARTBEAT) recordHeartbeatTiming(accepted, receivedAtElapsed)
+                        else accepted
+                    }
                     MessageDisposition.BEFORE_AUTOPILOT_HEARTBEAT -> decoded.copy(ignoredBeforeHeartbeat = decoded.ignoredBeforeHeartbeat + 1)
                     MessageDisposition.OTHER_SOURCE -> decoded.copy(ignoredOtherSource = decoded.ignoredOtherSource + 1)
                 }
@@ -70,6 +76,29 @@ class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long, st
             is MavlinkParseResult.UnsupportedIncompatibilityFlags -> current.copy(unsupportedFlags = current.unsupportedFlags + 1)
             MavlinkParseResult.SignedPacketRejected -> current.copy(signedPacketsRejected = current.signedPacketsRejected + 1)
         }
+    }
+
+    private fun recordHeartbeatTiming(current: MavlinkDiagnostics, now: Long?): MavlinkDiagnostics {
+        val started = current.startedAtElapsedMillis
+        val previous = current.timingHeartbeatAtElapsedMillis
+        if (now == null || started == null || now < started || (previous != null && now < previous))
+            return current.copy(timingHeartbeatAtElapsedMillis = null)
+        if (previous == null) return current.copy(timingHeartbeatAtElapsedMillis = now)
+        val gap = now - previous
+        val longGap = gap > 5_000L
+        // Exclude the recovery chunk itself: its bytes may all belong to that heartbeat.
+        val priorInput = lastInputBeforeChunkElapsed
+        val inputDuringLongGap = longGap && priorInput != null && priorInput > previous &&
+            priorInput < now && priorInput - previous > 5_000L
+        fun increment(value: Long) = if (value == Long.MAX_VALUE) value else value + 1
+        return current.copy(
+            timingHeartbeatAtElapsedMillis = now,
+            lastCompletedHeartbeatIntervalMillis = gap,
+            longestCompletedHeartbeatIntervalMillis = maxOf(current.longestCompletedHeartbeatIntervalMillis ?: 0L, gap),
+            completedHeartbeatGapsOverFiveSeconds = if (longGap) increment(current.completedHeartbeatGapsOverFiveSeconds) else current.completedHeartbeatGapsOverFiveSeconds,
+            completedGapsWithInputBeforeRecovery = if (inputDuringLongGap) increment(current.completedGapsWithInputBeforeRecovery) else current.completedGapsWithInputBeforeRecovery,
+            lastLongGapHadInputBeforeRecovery = if (longGap) inputDuringLongGap else current.lastLongGapHadInputBeforeRecovery,
+        )
     }
 }
 

@@ -144,6 +144,7 @@ fun HydraulicScreen(state: VehicleState, modifier: Modifier = Modifier) = Screen
 
 @Composable
 fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connection: ConnectionUiState = ConnectionUiState(),
+    tcpStatus: com.mamadrones.gcs.domain.model.TransportStatus? = null,
     reportControls: @Composable () -> Unit = {}) = ScreenBody(modifier) {
     val batteryClock = rememberBatteryClock()
     val now by produceState(System.currentTimeMillis()) {
@@ -152,9 +153,17 @@ fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connec
             value = System.currentTimeMillis()
         }
     }
+    val nowElapsed by produceState(android.os.SystemClock.elapsedRealtime()) {
+        while (true) {
+            kotlinx.coroutines.delay(1_000L)
+            value = android.os.SystemClock.elapsedRealtime()
+        }
+    }
     ScreenHeader("Diagnostics", "Vehicle and communication inspection")
     reportControls()
     val link = connection.session.connection
+    val timingNow = remember(state.mavlinkDiagnostics, nowElapsed) { android.os.SystemClock.elapsedRealtime() }
+    SubsystemCard(ConsolePanels.heartbeatTiming(state.mavlinkDiagnostics, timingNow, tcpStatus))
     SubsystemCard(ConsolePanels.mavlinkDiagnostics(state.mavlinkDiagnostics, now))
     Notice("DECODER GUIDANCE", ConsolePanels.mavlinkDiagnosticHints(state.mavlinkDiagnostics))
     CardGrid(listOf(

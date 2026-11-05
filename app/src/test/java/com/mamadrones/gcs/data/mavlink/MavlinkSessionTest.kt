@@ -31,6 +31,57 @@ import org.junit.Test
 
 class MavlinkSessionTest {
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun `TCP heartbeat timing separates active and completed gaps from incoming bytes`() = runTest {
+        val transport = FakeTransport(TelemetryLinkKind.TCP)
+        val repository = VehicleRepositoryImpl()
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository,
+            scope = this, elapsedClock = { testScheduler.currentTime }, epochClock = { 1_000_000L + testScheduler.currentTime })
+        try {
+            session.start()
+            transport.emit(heartbeatFrame(systemId = 42)); runCurrent()
+            advanceTimeBy(5_000); runCurrent()
+            transport.emit(heartbeatFrame(systemId = 42)); runCurrent()
+            assertEquals(0L, repository.vehicleState.value.mavlinkDiagnostics.completedHeartbeatGapsOverFiveSeconds)
+            advanceTimeBy(5_001); runCurrent()
+            transport.emit(byteArrayOf(0)); runCurrent()
+            transport.emit(heartbeatFrame(systemId = 99)); runCurrent()
+            val during = repository.vehicleState.value.mavlinkDiagnostics
+            assertEquals(0L, during.completedHeartbeatGapsOverFiveSeconds)
+            val panel = com.mamadrones.gcs.presentation.dashboard.ConsolePanels.heartbeatTiming(during, testScheduler.currentTime, TransportStatus.OPEN)
+            assertEquals("HEARTBEAT GAP IN PROGRESS", panel.status)
+            assertEquals("OPEN", panel.rows.toMap()["TCP socket"])
+            assertEquals("OBSERVED", panel.rows.toMap()["Input after 5 seconds in current gap"])
+            advanceTimeBy(999); runCurrent()
+            transport.emit(heartbeatFrame(systemId = 42)); runCurrent()
+            val recovered = repository.vehicleState.value.mavlinkDiagnostics
+            assertEquals(1L, recovered.completedHeartbeatGapsOverFiveSeconds)
+            assertEquals(1L, recovered.completedGapsWithInputBeforeRecovery)
+            assertEquals(6_000L, recovered.longestCompletedHeartbeatIntervalMillis)
+            assertEquals(6_000L, recovered.lastCompletedHeartbeatIntervalMillis)
+            assertTrue(repository.vehicleState.value.connected)
+            session.stop(); session.start()
+            assertEquals(0L, repository.vehicleState.value.mavlinkDiagnostics.completedHeartbeatGapsOverFiveSeconds)
+            assertNull(repository.vehicleState.value.mavlinkDiagnostics.timingHeartbeatAtElapsedMillis)
+        } finally { session.stop(); session.close() }
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun `recovery chunk alone is not evidence of earlier input during gap`() = runTest {
+        val transport = FakeTransport(TelemetryLinkKind.TCP)
+        val repository = VehicleRepositoryImpl()
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository,
+            scope = this, elapsedClock = { testScheduler.currentTime }, epochClock = { 1_000_000L + testScheduler.currentTime })
+        try {
+            session.start(); transport.emit(heartbeatFrame()); runCurrent()
+            advanceTimeBy(6_000); runCurrent()
+            transport.emit(heartbeatFrame()); runCurrent()
+            val d = repository.vehicleState.value.mavlinkDiagnostics
+            assertEquals(1L, d.completedHeartbeatGapsOverFiveSeconds)
+            assertEquals(0L, d.completedGapsWithInputBeforeRecovery)
+            assertEquals(false, d.lastLongGapHadInputBeforeRecovery)
+        } finally { session.stop(); session.close() }
+    }
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test fun `recovered heartbeat refreshes liveness but genuine timeout remains degraded`() = runTest {
         val transport = FakeTransport(TelemetryLinkKind.TCP)
         val repository = VehicleRepositoryImpl()

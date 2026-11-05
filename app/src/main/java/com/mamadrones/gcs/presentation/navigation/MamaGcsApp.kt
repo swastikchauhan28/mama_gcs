@@ -148,7 +148,9 @@ fun MamaGcsApp(
                         composable("hydraulic") { HydraulicScreen(vehicle) }
                         composable("diagnostics") {
                             val reportViewModel: TelemetryReportViewModel = hiltViewModel()
+                            val tcpState = tcpTelemetryViewModel?.state?.collectAsStateWithLifecycle()?.value
                             DiagnosticsScreen(vehicle, connection = connection,
+                                tcpStatus = tcpState?.connection?.status,
                                 reportControls = { TelemetryReportControls(vehicle, reportViewModel) })
                         }
                         composable("admin") {
