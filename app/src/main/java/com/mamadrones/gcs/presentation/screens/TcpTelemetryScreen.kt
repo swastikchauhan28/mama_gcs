@@ -11,8 +11,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import android.os.SystemClock
-import com.mamadrones.gcs.core.security.AuthorizationPolicy
 import com.mamadrones.gcs.data.mavlink.MavlinkSessionFactory
 import com.mamadrones.gcs.data.mavlink.VehicleMavlinkSession
 import com.mamadrones.gcs.data.transport.TelemetryLinkGate
@@ -21,8 +19,6 @@ import com.mamadrones.gcs.domain.model.ConnectionState
 import com.mamadrones.gcs.domain.model.TransportStatus
 import com.mamadrones.gcs.domain.model.TelemetryLinkKind
 import com.mamadrones.gcs.domain.model.VehicleState
-import com.mamadrones.gcs.domain.model.Permission
-import com.mamadrones.gcs.domain.repository.AccessRepository
 import com.mamadrones.gcs.presentation.components.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -38,9 +34,7 @@ data class TcpUiState(
 class TcpTelemetryViewModel @Inject constructor(
     private val sessionFactory: MavlinkSessionFactory,
     private val gate: TelemetryLinkGate,
-    private val accessRepository: AccessRepository,
 ) : ViewModel(), DefaultLifecycleObserver {
-    private val authorizationPolicy = AuthorizationPolicy()
     private val mutableState = MutableStateFlow(TcpUiState())
     val state = mutableState.asStateFlow()
     private var generation = 0L
@@ -56,10 +50,6 @@ class TcpTelemetryViewModel @Inject constructor(
 
     fun connect() {
         if (state.value.active) return
-        if (!authorizationPolicy.allows(accessRepository.state.value.session, Permission.CONFIGURE, SystemClock.elapsedRealtime())) {
-            mutableState.update { it.copy(error = "Sign in with an administrator account to connect to a TCP endpoint.") }
-            return
-        }
         val host = state.value.host.trim()
         val parts = host.split('.')
         val validIp = parts.size == 4 && parts.all { part -> part.isNotEmpty() && part.length <= 3 &&
@@ -119,7 +109,7 @@ fun TcpTelemetryScreen(vehicle: VehicleState, model: TcpTelemetryViewModel) {
     val state by model.state.collectAsStateWithLifecycle()
     ScreenBody {
         ScreenHeader("TCP / Wi-Fi", "Receive MAVLink from a TCP server on your Wi-Fi network")
-        Notice("CONNECTION", "Connect the phone to the Wi-Fi network of the TCP-to-MAVLink bridge attached to the Cube. Enter the bridge's IPv4 address and TCP server port. Administrator sign-in is required.")
+        Notice("CONNECTION", "Connect the phone to the Wi-Fi network of the TCP-to-MAVLink bridge attached to the Cube. Enter the bridge's IPv4 address and TCP server port.")
         OutlinedTextField(value = state.host, onValueChange = model::host, label = { Text("IP address") },
             singleLine = true, enabled = !state.active, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
             modifier = Modifier.fillMaxWidth().testTag("tcp-host"))

@@ -1,0 +1,9 @@
+# Phase 173 — TCP monitoring without administrator sign-in
+
+Date: 2026-11-05. The user explicitly selected removing administrator sign-in for TCP connections only. Baseline `f818ceff4ed524f2c5cfa7c0d80b7208c40e469a` had uncommitted Phase 172 observations, which were preserved. Model: `gpt-6.1-terra`. See D-173-01.
+
+The TCP screen no longer asks for administrator sign-in, and its view model no longer checks the local account session before connecting. The input path remains IPv4 address and port → TCP view model → exclusive link gate → receive-only TCP transport → existing MAVLink session and parser. Endpoint validation, volatile storage, connection cleanup, heartbeat timeout and command-transmission prohibition are unchanged. Account-management and UDP policies remain in force.
+
+Any app user can now initiate a TCP handshake to a reachable IPv4 endpoint and consume its unencrypted data without a local sign-in. This does not authenticate the server or vehicle; endpoint use is not locally audited and Android chooses the network route. The TCP link uses a bounded stream buffer and no endpoint is persisted. Existing intermittent link status and parser-counter concerns remain unresolved.
+
+`./gradlew.bat :app:assembleDebug --no-daemon --max-workers=1 --console=plain` passed: 44 tasks, 14 executed and 30 up-to-date. The user previously deferred runtime tests; no unit, UI, emulator, new phone installation or hardware test was run for this authorization change. Build success does not establish runtime or hardware correctness. Review the TCP view-model diff, security boundary and scope before a release; validate both signed-out connection and receive-only behavior with controlled data and the secured hardware setup. Source rollback is a reviewed inverse of the scoped diff; no production-qualified rollback artifact is established.

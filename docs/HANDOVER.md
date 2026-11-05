@@ -1,5 +1,31 @@
 # Current handover
 
+## 2026-11-05 — TCP connection without administrator sign-in
+
+- Done: removed the administrator sign-in requirement from the read-only TCP connection screen and view model. Account and UDP policies remain in force; see [Phase 173](phase-173-report.md) and D-173-01.
+- Verification: `:app:assembleDebug` passed after the change, 14 tasks executed and 30 up-to-date. User previously deferred runtime tests; no unit, emulator or hardware test ran for this change.
+- In progress: validate signed-out TCP connection and receive-only behavior; investigate intermittent TCP heartbeat status using the earlier Phase 172 evidence.
+- Broken or risky: any app user can now initiate a TCP handshake to a reachable IPv4 endpoint. Telemetry remains unencrypted and unauthenticated; the link-status flicker cause is unresolved.
+- Next: review the authorization and security diff, then perform the requested read-only connection check with the secured Cube setup.
+- Do not touch: Cube parameters, actuators or existing phone data without authorization. Commit/push only when requested.
+
+## 2026-11-05 — intermittent TCP telemetry status under investigation
+
+- Done: captured the user-reported top-bar switch from Connected to Link lost and back. The recorded status change lasted approximately 1.6 seconds; accepted heartbeat counts increased across it. The heartbeat age row was not visible at the transition. See [Phase 172](phase-172-report.md).
+- In progress: compare heartbeat age and TCP socket status during another occurrence; investigate parser resynchronization and timing only with evidence.
+- Broken or risky: the cause is unconfirmed, and rising checksum/unsupported-candidate counters cannot be interpreted directly as packet-loss percentages. The inspector's wall-clock freshness display and session's elapsed-time timeout are different measurements.
+- Next: observe the reconnected session with the HEARTBEAT age visible; retain the five-second liveness threshold pending diagnosis.
+- Do not touch: Cube parameters, actuators, or phone data; no command transmission. Commit/push only when requested.
+
+## 2026-11-05 — live TCP telemetry observation
+
+- Done: on the user's USB-connected phone, the active TCP session received valid MAVLink 2 and recent accepted autopilot heartbeats; system ID 1 was displayed. See the dated observation in [Phase 172](phase-172-report.md).
+- Verification: supported decoded messages rose from 3,222 to 3,527; checksum failures rose from 475 to 510 in subsequent observations. This was read-only UI inspection, not a complete software or hardware test.
+- In progress: investigate the rising checksum-failure counter and independently confirm the network source and bridge wiring. RC movement, commands and disconnect handling were not exercised.
+- Broken or risky: CRC-valid telemetry does not authenticate the Cube; the cause and meaning of the checksum-failure count are not yet established. TCP and the bridge remain unqualified for vehicle operation.
+- Next: inspect decoder diagnostics and bridge configuration with the user while maintaining a stationary, secured setup.
+- Do not touch: Cube parameters, actuators or saved phone data without the appropriate authorization. Commit/push only when requested.
+
 ## 2026-11-05 — TCP telemetry implementation (runtime verification pending)
 
 - Done: added administrator-initiated IPv4/TCP connection UI and a receive-only transport using the existing MAVLink session and single-link gate. See [Phase 172](phase-172-report.md) and D-172-01.

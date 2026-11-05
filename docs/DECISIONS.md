@@ -1,5 +1,15 @@
 # Decisions and alternatives
 
+## D-173-01: Allow TCP monitoring without administrator sign-in
+
+- Date: 2026-11-05. User explicitly requested TCP read-only connections without administrator sign-in. Baseline `f818ceff4ed524f2c5cfa7c0d80b7208c40e469a`; existing uncommitted telemetry-observation records are preserved; model `gpt-6.1-terra`.
+- Choice: remove the TCP connection authorization check and its UI prompt while retaining endpoint validation, the single-link gate and the receive-only transport. The endpoint remains volatile. Alternative: extend the 15-minute session, which would still interrupt a later reconnect. Account and UDP policies are outside this initial change while the user clarifies broader scope.
+- Risk: any user of the app can connect it to an arbitrary IPv4 TCP service on a reachable network and receive unauthenticated telemetry; a TCP handshake transmits network traffic even though MAVLink commands remain blocked. Server identity, endpoint audit and enforced Wi-Fi routing are not provided. Compile only unless the user's earlier request to defer runtime tests changes. A reviewed inverse diff is the source rollback; no production-qualified artifact is established.
+
+### Scope confirmed
+
+- The user explicitly selected TCP connections only; account-management and UDP authorization remain in force.
+
 ## D-172-01: Add a receive-only TCP telemetry client
 
 - Date: 2026-11-05. User requested an IP address and port for Wi-Fi TCP and emulator testing. Clean baseline `248d93551d0818b127377a3e256e24e403361434`; model `gpt-6.1-terra`.
