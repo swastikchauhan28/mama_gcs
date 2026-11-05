@@ -78,6 +78,67 @@ class MavlinkParserTest {
     }
 
     @Test
+    fun `false incompatible header inside unsupported data cannot conceal a later heartbeat`() {
+        // The fake candidate claims a frame extending into the following real heartbeat.
+        val falseHeader = byteArrayOf(0xFD.toByte(), 25, 2, 0, 0, 1, 1, 0, 0, 0)
+        val unsupported = mavlinkTestFrame(200, falseHeader, 0)
+        val heartbeat = heartbeatFrame(customMode = 7)
+        val stream = unsupported + heartbeat + ByteArray(4)
+        for (split in 0..stream.size) {
+            val parser = MavlinkParser()
+            val results = parser.feed(stream.copyOfRange(0, split)) + parser.feed(stream.copyOfRange(split, stream.size))
+            assertEquals("split=$split", 7L,
+                (results.filterIsInstance<MavlinkParseResult.Message>().single().message as MavlinkMessage.Heartbeat).customMode)
+        }
+        val bytewise = MavlinkParser()
+        val results = stream.flatMap { bytewise.feed(byteArrayOf(it)) }
+        assertEquals(1, results.filterIsInstance<MavlinkParseResult.Message>().size)
+    }
+
+    @Test
+    fun `valid incompatible candidate cannot expose an embedded heartbeat`() {
+        val payload = ByteArray(51)
+        heartbeatFrame(customMode = 99).copyInto(payload, 4)
+        val frame = mavlinkTestFrame(253, payload, 83).also { it[2] = 2 }
+        val checksum = MavlinkChecksum.calculate(frame.copyOfRange(1, frame.size - 2), 83)
+        frame[frame.lastIndex - 1] = checksum.toByte()
+        frame[frame.lastIndex] = (checksum shr 8).toByte()
+        val results = MavlinkParser().feed(frame + heartbeatFrame(customMode = 7))
+        assertTrue(results.first() is MavlinkParseResult.UnsupportedIncompatibilityFlags)
+        assertEquals(7L, (results.filterIsInstance<MavlinkParseResult.Message>().single().message as MavlinkMessage.Heartbeat).customMode)
+    }
+
+    @Test
+    fun `incompatible candidate with unknown CRC keeps its boundary`() {
+        val frame = mavlinkTestFrame(200, heartbeatFrame(customMode = 99), 0).also { it[2] = 2 }
+        val results = MavlinkParser().feed(frame + heartbeatFrame(customMode = 7))
+        assertTrue(results.first() is MavlinkParseResult.UnsupportedIncompatibilityFlags)
+        assertEquals(7L, (results.filterIsInstance<MavlinkParseResult.Message>().single().message as MavlinkMessage.Heartbeat).customMode)
+    }
+
+    @Test
+    fun `signed incompatible candidate cannot expose an embedded heartbeat even with bad CRC`() {
+        val frame = mavlinkTestFrame(253, heartbeatFrame(customMode = 99), 83).also { it[2] = 3 } + ByteArray(13)
+        val stream = frame + heartbeatFrame(customMode = 7)
+        for (split in 0..stream.size) {
+            val parser = MavlinkParser()
+            val results = parser.feed(stream.copyOfRange(0, split)) + parser.feed(stream.copyOfRange(split, stream.size))
+            assertTrue("split=$split", results.first() is MavlinkParseResult.UnsupportedIncompatibilityFlags)
+            assertEquals("split=$split", 7L,
+                (results.filterIsInstance<MavlinkParseResult.Message>().single().message as MavlinkMessage.Heartbeat).customMode)
+        }
+    }
+
+    @Test
+    fun `rescan of a corrupt unsigned candidate does not open an embedded signed packet`() {
+        val signed = mavlinkTestFrame(253, heartbeatFrame(customMode = 99), 83).also { it[2] = 1 } + ByteArray(13)
+        val corrupt = mavlinkTestFrame(253, signed, 83).also { it[2] = 2 }
+        val results = MavlinkParser().feed(corrupt + heartbeatFrame(customMode = 7))
+        assertTrue(results.any { it is MavlinkParseResult.SignedPacketRejected })
+        assertEquals(7L, (results.filterIsInstance<MavlinkParseResult.Message>().single().message as MavlinkMessage.Heartbeat).customMode)
+    }
+
+    @Test
     fun `reset discards an incomplete frame between sessions`() {
         val parser = MavlinkParser()
         val heartbeat = heartbeatFrame(customMode = 0, baseMode = 0)

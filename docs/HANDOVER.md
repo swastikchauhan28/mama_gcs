@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-05 — Phase 174 synthetic MAVLink resynchronization
+
+- Done: reproduced a valid heartbeat hidden by a false incompatible-flag candidate in unsupported data, then added a bounded CRC-aware rescan for unsigned candidates with known invalid checksums. Signed and unknown-CRC candidates keep their full boundaries. See [Phase 174](phase-174-report.md) and D-174-01.
+- Verification: full JVM suite passed 491 tests in 79 suites, no failures/errors/skips; debug and Android test APK builds and lint passed, with 0 errors/27 warnings. Synthetic session tests preserve genuine heartbeat timeout and signed-frame rejection. No phone, Cube or Android instrumented test ran.
+- In progress: determine whether this synthetic failure mode contributes to the real TCP Link lost warning and rising counters; validate a representative stream against an independent decoder.
+- Broken or risky: CRC is not authentication; false signed or unknown-CRC candidates may still hide later messages. Live link identity, sustained reliability and physical safety remain unverified.
+- Next: review the parser/security diff and independently compare a suitable telemetry stream before live retesting. Keep the five-second timeout and control restrictions.
+- Do not touch: Cube parameters, actuators, saved phone data or vehicle commands without authorization. Commit/push only when requested.
+
 ## 2026-11-05 — signed-out TCP phone check
 
 - Done: user-requested data-preserving update of the USB-connected phone succeeded; installed APK matched the current build. TCP opened without an admin prompt and the app showed an autopilot heartbeat. Accounts & audit showed Sign in while the top bar showed Connected. See [Phase 173](phase-173-report.md).

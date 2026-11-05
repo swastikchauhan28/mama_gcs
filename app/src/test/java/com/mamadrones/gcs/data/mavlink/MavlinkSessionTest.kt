@@ -31,6 +31,30 @@ import org.junit.Test
 
 class MavlinkSessionTest {
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun `recovered heartbeat refreshes liveness but genuine timeout remains degraded`() = runTest {
+        val transport = FakeTransport(TelemetryLinkKind.TCP)
+        val repository = VehicleRepositoryImpl()
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository,
+            heartbeatTimeoutMillis = 100, heartbeatCheckIntervalMillis = 10, scope = this,
+            elapsedClock = { testScheduler.currentTime }, epochClock = { 1_000_000L + testScheduler.currentTime })
+        try {
+            session.start()
+            transport.emit(heartbeatFrame()); runCurrent()
+            assertTrue(repository.vehicleState.value.connected)
+            advanceTimeBy(80); runCurrent()
+            val falseHeader = byteArrayOf(0xFD.toByte(), 25, 2, 0, 0, 1, 1, 0, 0, 0)
+            val stream = mavlinkTestFrame(200, falseHeader, 0) + heartbeatFrame() + ByteArray(4)
+            transport.emit(stream.copyOfRange(0, 15)); runCurrent()
+            transport.emit(stream.copyOfRange(15, stream.size)); runCurrent()
+            assertEquals(80L, repository.vehicleState.value.lastHeartbeatAtElapsedMillis)
+            advanceTimeBy(30); runCurrent()
+            assertTrue("Recovered heartbeat must refresh liveness", repository.vehicleState.value.connected)
+            advanceTimeBy(80); runCurrent()
+            assertEquals(VehicleConnectionState.DEGRADED, repository.vehicleState.value.connectionStatus)
+        } finally { session.stop(); session.close() }
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test fun `calendar clock jumps do not alter elapsed heartbeat timeout or position receipt`() = runTest {
         val transport = FakeTransport()
         val repository = VehicleRepositoryImpl()

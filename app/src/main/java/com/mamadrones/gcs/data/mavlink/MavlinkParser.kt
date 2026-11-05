@@ -35,7 +35,11 @@ class MavlinkParser {
                 SUPPORTED_INCOMPATIBILITY_FLAGS.inv() and SIGNED_FLAG.inv()
             if (unsupportedFlags != 0) {
                 results += MavlinkParseResult.UnsupportedIncompatibilityFlags(unsupportedFlags)
-                cursor += frameSize
+                // A false header inside unverified bytes can claim a length that covers a
+                // later frame. Only rescan when this unsigned candidate's known CRC is bad.
+                // Signed candidates and unknown CRCs retain their whole-frame boundary.
+                val candidate = input.copyOfRange(cursor, cursor + frameSize)
+                cursor += if (!signed && hasInvalidKnownV2Checksum(candidate)) 1 else frameSize
                 continue
             }
             if (signed) {
@@ -72,6 +76,15 @@ class MavlinkParser {
 
     fun reset() {
         pending = ByteArray(0)
+    }
+
+    /** Null/unknown CRC metadata is not evidence that an incompatible candidate is corrupt. */
+    private fun hasInvalidKnownV2Checksum(rawFrame: ByteArray): Boolean {
+        val messageId = rawFrame[7].unsigned() or (rawFrame[8].unsigned() shl 8) or (rawFrame[9].unsigned() shl 16)
+        val extra = crcExtraFor(messageId) ?: return false
+        val checksumOffset = HEADER_SIZE + rawFrame[1].unsigned()
+        val expected = rawFrame[checksumOffset].unsigned() or (rawFrame[checksumOffset + 1].unsigned() shl 8)
+        return MavlinkChecksum.calculate(rawFrame.copyOfRange(1, checksumOffset), extra) != expected
     }
 
     private fun parseFrame(rawFrame: ByteArray): MavlinkParseResult {

@@ -1,5 +1,23 @@
 # Decisions and alternatives
 
+## D-174-01: Investigate MAVLink resynchronization with synthetic frames
+
+- Date: 2026-11-05. User approved Phase 174 with simulated MAVLink data. Starting revision `a00001f897b5c6ae38c4ea7e4a1891906884171e`, clean worktree; model `gpt-6.1-terra`.
+- Context: phone observations showed valid TCP heartbeats, rising unverified frame-candidate counters and a brief Link lost indication. The parser rescans after an unsupported message but skips an entire candidate when unsupported flags or signing are indicated. An apparent header inside unverified bytes could conceal a later heartbeat. Physical cause remains unverified.
+- Choice: reproduce candidate overlap with synthetic frames and chunk boundaries before changing production behavior. Retain CRC validation, source selection, five-second timeout and rejection of signed packets; specifically check that signed frames cannot smuggle embedded heartbeats. Alternative: increase the timeout or rescan every rejected signed frame, which would hide real outages or weaken an existing trust boundary. Record tradeoffs and residual ambiguity before any fix.
+- Verification: focused synthetic parser and session checks, then relevant JVM/build/lint checks. No phone, Cube, live network, credentials or actuator access. Source rollback is a reviewed inverse diff; the baseline is not a production-qualified artifact.
+
+### 2026-11-05: reproduced and selected bounded recovery
+
+- The synthetic test failed on the baseline: an unverified unsupported-message payload contained a false unsigned MAVLink 2 header with incompatible flags and a claimed length spanning the next valid heartbeat. The parser skipped the entire candidate and lost the heartbeat. The failing XML is retained locally at `app/build/phase174/parser-reproduction-failed.xml`; this does not establish the cause of the live link flicker.
+- Choice: for an unsigned incompatible-flag candidate whose message ID has a known CRC extra, check its CRC without decoding. Rescan from the next byte only when that CRC is demonstrably invalid. Continue to skip valid incompatible candidates, unknown-CRC candidates and all signed candidates as complete packets. Alternative: rescan all signed or unverified packets, which could accept a heartbeat embedded in a rejected signed frame. The rule can still rescan inside a corrupt unsigned candidate, as the existing invalid-checksum path already does; unsigned CRC is not authentication. Unknown-CRC and signed false candidates may still hide a heartbeat. Future incompatible formats could have different CRC semantics, so this remains a bounded recovery policy, not universal framing proof.
+- Verify fragmented and unfragmented input, valid incompatible packets containing embedded heartbeats, unknown-CRC candidates, corrupt and signed candidates, and signed-plus-incompatible frames. Preserve CRC/source selection and no-command boundaries.
+
+### 2026-11-05: verification and remaining limits
+
+- The baseline reproduction failed as expected; after the bounded CRC-aware rescan, the same stream passed at every two-chunk split and one byte at a time. Valid incompatible frames and unknown-CRC frames retained their boundaries, and signed or signed-plus-incompatible candidates did not expose embedded heartbeats. A simulated session refreshed liveness after recovery and still became degraded after a genuine timeout.
+- The full JVM suite passed 491 tests in 79 suites; debug and test APK builds and lint passed (0 errors, 27 warnings). No Android instrumented, phone or Cube test was run. This synthetic failure mode is established; whether it caused the real TCP flicker remains unverified. Keep timeout, source selection, signed rejection and vehicle-command boundaries unchanged. Unknown-CRC or signed false candidates can still hide following frames; inspect a representative stream with an independently validated decoder before claiming a complete fix.
+
 ## D-173-01: Allow TCP monitoring without administrator sign-in
 
 - Date: 2026-11-05. User explicitly requested TCP read-only connections without administrator sign-in. Baseline `f818ceff4ed524f2c5cfa7c0d80b7208c40e469a`; existing uncommitted telemetry-observation records are preserved; model `gpt-6.1-terra`.
