@@ -20,6 +20,22 @@ class MavlinkDiagnosticsPanelTest {
         assertEquals("ELAPSED TIME UNAVAILABLE", ConsolePanels.heartbeatTiming(base, 99).status)
         assertEquals("SESSION CLOSED OR NOT STARTED", ConsolePanels.heartbeatTiming(base.copy(active = false), 5_102).status)
     }
+    @Test fun `three simulated link health states stay semantically distinct`() {
+        val steady = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.TCP,
+            startedAtElapsedMillis = 100, timingHeartbeatAtElapsedMillis = 6_000,
+            lastBytesAtElapsedMillis = 6_000)
+        assertEquals("ACCEPTED HEARTBEAT RECENT", ConsolePanels.heartbeatTiming(steady, 6_001).status)
+
+        val delayed = steady.copy(timingHeartbeatAtElapsedMillis = 100, lastBytesAtElapsedMillis = 5_102)
+        val delayedPanel = ConsolePanels.heartbeatTiming(delayed, 5_102)
+        assertEquals("HEARTBEAT GAP IN PROGRESS", delayedPanel.status)
+        assertEquals("OBSERVED", delayedPanel.rows.toMap()["Input after 5 seconds in current gap"])
+
+        val closedPanel = ConsolePanels.heartbeatTiming(steady.copy(active = false), 6_001)
+        assertEquals("SESSION CLOSED OR NOT STARTED", closedPanel.status)
+        assertEquals("—", closedPanel.rows.toMap()["TCP socket"])
+    }
+
     @Test fun `initial panel does not claim measured zeros`() {
         val panel = ConsolePanels.mavlinkDiagnostics(MavlinkDiagnostics(), 100)
         assertEquals("NO MAVLINK SESSION", panel.status)

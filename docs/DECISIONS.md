@@ -1,5 +1,16 @@
 # Decisions and alternatives
 
+## D-177-01: Keep link-health replay scenarios test-only
+
+- Date: 2026-11-06. User approved a no-hardware simulated TCP/MAVLink link-health phase. Starting revision `044da83`, clean worktree; model/version unavailable.
+- Context: Phase 176 introduced a read-only timing summary, but its Android fixture covered only an ongoing heartbeat gap. The requested hardware is not connected, and an operator-facing simulation screen could be mistaken for live telemetry.
+- Choice: add three immutable in-memory scenarios under `androidTest` only—recent heartbeat, delayed heartbeat with decoder input and socket closed—and render the existing shell plus timing card. Assert both header and card language. Alternative: add a production debug/simulation page; that would broaden the shipped UI and risk confusing simulated observations with actual vehicle status.
+- Risk and verification: these states do not exercise a network, session coroutine or Cube. Run focused projection tests, build/lint, a disposable-emulator instrumentation check and visual review. A real read-only TCP observation remains required. Rollback is a reviewed inverse of the test/docs-only diff; no production-quality hardware behavior is claimed.
+
+### 2026-11-06 verification correction
+
+- The first three emulator attempts exposed test-only lifecycle/semantics assertion defects rather than an application-state mismatch: the first used `setContent` twice, the second matched all six em-dash rows, and the third assumed a merged row was searchable as one text string. The final test updates one immutable scenario state within one composition and asserts the independently visible header and timing-card states. Final disposable-emulator run passed two tests with no window ANR; the delayed-heartbeat screenshot was reviewed. The fixture still does not exercise a real transport or Cube.
+
 ## D-174-01: Investigate MAVLink resynchronization with synthetic frames
 
 - Date: 2026-11-05. User approved Phase 174 with simulated MAVLink data. Starting revision `a00001f897b5c6ae38c4ea7e4a1891906884171e`, clean worktree; model `gpt-6.1-terra`.

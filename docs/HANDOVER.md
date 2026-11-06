@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-06 — Phase 177 simulated link-health fixture
+
+- Done: added Android-test-only in-memory scenarios for steady heartbeat, delayed heartbeat with decoder input, and a closed TCP session. The fixture renders the real shell and timing card but opens no socket, reads no device data, saves no data and sends no command. See [Phase 177](phase-177-report.md).
+- Verification: focused JVM projection test, debug/test APK builds and lint passed. Final disposable-emulator fixture passed two tests with no window ANR; delayed-heartbeat screenshot was reviewed. Earlier fixture-only assertion/lifecycle failures are retained in [Phase 177](phase-177-report.md).
+- In progress: no production implementation work; real TCP reliability remains independently unverified while hardware is unavailable.
+- Broken or risky: supplied fixture values are not real telemetry and cannot establish Cube, bridge or TCP reliability. TCP socket and telemetry samples remain separately observed.
+- Next: preserve the test-only boundary; perform an explicitly authorized read-only live observation when hardware is available.
+- Do not touch: Cube configuration, actuator commands, saved phone data or safety thresholds without specific authorization. Commit/push only when requested.
+
 ## 2026-11-05 — Phase 176 heartbeat timing diagnostics
 
 - Done: added fixed-size, memory-only selected-source heartbeat timing and decoder-input evidence with TCP socket status to the diagnostics screen; five-second liveness behavior and command restrictions are unchanged. See [Phase 176](phase-176-report.md).
