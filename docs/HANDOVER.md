@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-06 — Phase 178 simulated heartbeat recovery timeline
+
+- Done: added an Android-test-only recovered-gap scenario and a steady → delayed → recovered timeline check. It uses immutable fixture values only; no socket, saved data, hardware or command path is involved. See [Phase 178](phase-178-report.md).
+- Verification: focused JVM timing-panel test, debug/test APK build and lint passed. Final disposable-emulator fixture passed three tests with no window ANR; the recovered-heartbeat screenshot was reviewed. The earlier assertion-only failure is retained in [Phase 178](phase-178-report.md).
+- In progress: no production implementation work; real TCP reliability remains independently unverified while hardware is unavailable.
+- Broken or risky: simulated completed-gap evidence does not establish TCP, Wi-Fi, bridge or Cube recovery behavior.
+- Next: preserve the test-only boundary; use read-only live observation only when the hardware becomes available and authorization is explicit.
+- Do not touch: Cube configuration, actuator commands, saved phone data or safety thresholds without specific authorization. Commit/push only when requested.
+
 ## 2026-11-06 — Phase 177 simulated link-health fixture
 
 - Done: added Android-test-only in-memory scenarios for steady heartbeat, delayed heartbeat with decoder input, and a closed TCP session. The fixture renders the real shell and timing card but opens no socket, reads no device data, saves no data and sends no command. See [Phase 177](phase-177-report.md).

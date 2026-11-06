@@ -1,5 +1,16 @@
 # Decisions and alternatives
 
+## D-178-01: Exercise heartbeat recovery without simulating a transport
+
+- Date: 2026-11-06. User approved the no-hardware simulated recovery timeline. Starting revision `cf68e93`, clean worktree; model/version unavailable.
+- Context: Phase 177 distinguishes steady, delayed and closed states but did not show the post-gap summary after a heartbeat returns. The production accumulator already records that summary; the gap needs a UI regression check without manufacturing live network behavior.
+- Choice: add a fixed recovered state and transition the existing Android-test fixture through steady, delayed and recovered values in one composition. Alternative: simulate a TCP server or alter production diagnostics; that would add lifecycle/network variability without improving the state-projection question.
+- Risk and verification: supplied values can prove only presentation and test wiring. Run focused JVM, build/lint and disposable-emulator checks; retain the screenshot and report failures accurately. No live reliability, authentication or physical behavior claim follows. Rollback is a reviewed inverse test/docs-only change.
+
+### 2026-11-06 verification correction
+
+- The first recovery run reached the intended state with no window ANR, but the UI correctly rendered two `6100 ms` rows: longest and latest completed interval. The test originally expected one and stopped before screenshot capture. It now asserts both rows. Final disposable-emulator run passed all three fixture tests; visual review confirmed the explicitly simulated recovered state and Connected/recent-heartbeat presentation. This does not verify a real transport or Cube recovery.
+
 ## D-177-01: Keep link-health replay scenarios test-only
 
 - Date: 2026-11-06. User approved a no-hardware simulated TCP/MAVLink link-health phase. Starting revision `044da83`, clean worktree; model/version unavailable.

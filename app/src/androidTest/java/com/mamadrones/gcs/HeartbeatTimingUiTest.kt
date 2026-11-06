@@ -44,4 +44,26 @@ class HeartbeatTimingUiTest {
         compose.onNodeWithText("Disconnected · Connect").assertExists()
         compose.onNodeWithText("SESSION CLOSED OR NOT STARTED").assertExists()
     }
+
+    @Test fun delayedHeartbeatRecoveryShowsCompletedGapEvidence() {
+        val scenario = mutableStateOf(LinkHealthScenarios.steadyHeartbeat)
+        compose.setContent { LinkHealthScenarioFixture(scenario.value) }
+        compose.onNodeWithText("ACCEPTED HEARTBEAT RECENT").assertExists()
+
+        compose.runOnIdle { scenario.value = LinkHealthScenarios.delayedHeartbeat }
+        compose.onNodeWithText("HEARTBEAT GAP IN PROGRESS").assertExists()
+        compose.onNodeWithText("Link lost · Setup").assertExists()
+
+        compose.runOnIdle { scenario.value = LinkHealthScenarios.recoveredLongGap }
+        compose.onNodeWithText("Recovered heartbeat after long gap · no socket, saved data, or vehicle command").assertExists()
+        compose.onNodeWithText("● Connected").assertExists()
+        compose.onNodeWithText("ACCEPTED HEARTBEAT RECENT").assertExists()
+        compose.onNodeWithText("Completed gaps over 5 seconds").assertExists()
+        compose.onNodeWithText("Completed long gaps with input before recovery").assertExists()
+        compose.onAllNodesWithText("6100 ms").assertCountEquals(2)
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        File(context.getExternalFilesDir(null), "heartbeat-recovery-simulated.png").outputStream().use {
+            assertTrue(compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it))
+        }
+    }
 }

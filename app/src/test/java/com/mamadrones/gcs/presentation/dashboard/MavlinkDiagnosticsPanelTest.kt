@@ -34,6 +34,21 @@ class MavlinkDiagnosticsPanelTest {
         val closedPanel = ConsolePanels.heartbeatTiming(steady.copy(active = false), 6_001)
         assertEquals("SESSION CLOSED OR NOT STARTED", closedPanel.status)
         assertEquals("—", closedPanel.rows.toMap()["TCP socket"])
+
+        val recovered = steady.copy(
+            timingHeartbeatAtElapsedMillis = 6_200,
+            lastBytesAtElapsedMillis = 6_200,
+            completedHeartbeatGapsOverFiveSeconds = 1,
+            completedGapsWithInputBeforeRecovery = 1,
+            longestCompletedHeartbeatIntervalMillis = 6_100,
+            lastCompletedHeartbeatIntervalMillis = 6_100,
+            lastLongGapHadInputBeforeRecovery = true,
+        )
+        val recoveredPanel = ConsolePanels.heartbeatTiming(recovered, 6_201)
+        assertEquals("ACCEPTED HEARTBEAT RECENT", recoveredPanel.status)
+        assertEquals("1", recoveredPanel.rows.toMap()["Completed gaps over 5 seconds"])
+        assertEquals("6100 ms", recoveredPanel.rows.toMap()["Latest completed heartbeat interval"])
+        assertEquals("OBSERVED", recoveredPanel.rows.toMap()["Input before recovery in latest long gap"])
     }
 
     @Test fun `initial panel does not claim measured zeros`() {

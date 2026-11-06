@@ -59,6 +59,25 @@ internal object LinkHealthScenarios {
         tcpStatus = TransportStatus.OPEN,
     )
 
+    val recoveredLongGap = LinkHealthScenario(
+        name = "Recovered heartbeat after long gap",
+        vehicleStatus = VehicleConnectionState.CONNECTED,
+        diagnostics = MavlinkDiagnostics(
+            active = true,
+            linkKind = TelemetryLinkKind.TCP,
+            startedAtElapsedMillis = 100,
+            timingHeartbeatAtElapsedMillis = 6_200,
+            lastBytesAtElapsedMillis = 6_200,
+            completedHeartbeatGapsOverFiveSeconds = 1,
+            completedGapsWithInputBeforeRecovery = 1,
+            longestCompletedHeartbeatIntervalMillis = 6_100,
+            lastCompletedHeartbeatIntervalMillis = 6_100,
+            lastLongGapHadInputBeforeRecovery = true,
+        ),
+        nowElapsedMillis = 6_201,
+        tcpStatus = TransportStatus.OPEN,
+    )
+
     val socketLoss = LinkHealthScenario(
         name = "Socket closed",
         vehicleStatus = VehicleConnectionState.DISCONNECTED,
