@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-14 — Phase 187 outline warning and vertex jump
+
+- Done: Field outline now displays its current local geometry warning and lets the user jump to a numbered highlighted vertex. Portrait Go and landscape keyboard Done were exercised. See [Phase 187](phase-187-report.md).
+- Verification: ten focused JVM tests, app/test APK builds and lint passed. The final focused emulator flow and two existing Review regressions passed with post-run Android health checks; three screenshots were visually inspected.
+- Broken or risky: Google-service startup ANRs blocked the first emulator preflight; a later clean preflight permitted testing. Android's landscape numeric keyboard covers the short editor, so Done is the verified jump path there. A jump is a navigation hint, not a diagnosis or physical-safety verdict.
+- Next: owner review of the scoped UI/test changes. Commit/push only on request; preserve the operator-confirmed TCP record below.
+- Do not touch: operator phone data, Cube parameters, physical rover commands or mission upload in this software-only phase.
+
 ## 2026-11-14 — Phase 186 picker visual guard
 
 - Done: the mission-planning screenshot test now fails if an Android overlay owns focus or an ANR/error dialog is present. The Phase 185 picker screenshot was recaptured unobscured. See [Phase 186](phase-186-report.md).

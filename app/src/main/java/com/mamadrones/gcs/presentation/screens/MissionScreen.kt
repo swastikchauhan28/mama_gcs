@@ -139,12 +139,20 @@ fun MissionScreen(
     var showFileActions by rememberSaveable { mutableStateOf(false) }
     var planningSpeedInput by rememberSaveable { mutableStateOf("") }
     var jumpWaypointInput by rememberSaveable { mutableStateOf("") }
+    var jumpFenceInput by rememberSaveable { mutableStateOf("") }
     var jumpedWaypointId by remember(plan.draft) { mutableStateOf<String?>(null) }
+    // Coordinate/status refreshes should not clear a jump; a changed vertex list does.
+    var jumpedFenceId by remember(plan.draft.keepInFence.map { it.id }) { mutableStateOf<String?>(null) }
     var pendingRouteFocusNumber by remember { mutableStateOf<Int?>(null) }
     var pendingReviewIssue by remember(plan.draft) { mutableStateOf<MissionReviewIssue?>(null) }
     val routeListState = rememberLazyListState()
     val jumpWaypointNumber = jumpWaypointInput.toIntOrNull()
     val waypointCount = plan.draft.waypoints.size
+    val jumpFenceNumber = jumpFenceInput.toIntOrNull()
+    val fenceVertexCount = plan.draft.keepInFence.size
+    val canJumpToFence = !plan.loading && !plan.loadFailed &&
+        jumpFenceNumber != null && jumpFenceNumber in 1..fenceVertexCount
+    val draftReview = remember(plan.draft) { MissionDraftReview.inspect(plan.draft) }
     val canJumpToWaypoint = !plan.loading && !plan.loadFailed &&
         jumpWaypointNumber != null && jumpWaypointNumber in 1..waypointCount
     val timingRouteAvailable = !plan.loading && !plan.loadFailed
@@ -197,6 +205,7 @@ fun MissionScreen(
         val wide = maxWidth >= 680.dp
         // Route items follow one shared header, an optional mobile map, and the route introduction.
         val firstWaypointItemIndex = if (wide) 2 else 3
+        val firstFenceItemIndex = if (wide) 2 else 3
         LaunchedEffect(editorTab, pendingRouteFocusNumber, wide, waypointCount) {
             val number = pendingRouteFocusNumber
             if (editorTab == "Route" && number != null) {
@@ -214,6 +223,15 @@ fun MissionScreen(
             focusManager.clearFocus()
             keyboardController?.hide()
             scope.launch { routeListState.scrollToItem(firstWaypointItemIndex + number - 1) }
+        }
+        fun jumpToFenceVertex() {
+            // Lazy-list callbacks can outlive the composition that calculated validation flags.
+            val number = jumpFenceInput.toIntOrNull() ?: return
+            if (plan.loading || plan.loadFailed || number !in 1..plan.draft.keepInFence.size) return
+            jumpedFenceId = plan.draft.keepInFence[number - 1].id
+            focusManager.clearFocus()
+            keyboardController?.hide()
+            scope.launch { routeListState.scrollToItem(firstFenceItemIndex + number - 1) }
         }
         // Leave room for the local file toolbar and editor padding in a short landscape window.
         val coverageDiagramHeight = (maxHeight - 72.dp).coerceIn(80.dp, 260.dp)
@@ -350,7 +368,7 @@ fun MissionScreen(
                 }
                 if (editorTab == "Review") {
                 item {
-                    val review = MissionDraftReview.inspect(plan.draft)
+                    val review = draftReview
                     val issues = review.issues
                     SubsystemCard(PanelSpec(
                         title = "Local route readiness",
@@ -421,6 +439,11 @@ fun MissionScreen(
                         style = MaterialTheme.typography.titleSmall)
                     Text("Enter at least 3 distinct coordinates to draw a planning reference on the map. It stays on this device and is never sent to the rover.",
                         style = MaterialTheme.typography.bodySmall)
+                    draftReview.keepInOutlineIssue?.let { issue ->
+                        Text("Local outline issue: $issue. Review the vertices; this check cannot identify one cause.",
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.testTag("mission-outline-issue"))
+                    }
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         OutlinedButton(onClick = { openFenceEditor() }, enabled = canAddFenceVertex,
                             modifier = Modifier.testTag("mission-add-fence-vertex")) { Text("Add outline coordinate") }
@@ -428,11 +451,36 @@ fun MissionScreen(
                             enabled = plan.editable && plan.draft.keepInFence.isNotEmpty(),
                             modifier = Modifier.testTag("mission-clear-fence")) { Text("Clear outline") }
                     }
+                    if (fenceVertexCount > 0) {
+                        Text("Jump to outline vertex", style = MaterialTheme.typography.titleSmall)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedTextField(
+                                value = jumpFenceInput,
+                                onValueChange = { jumpFenceInput = it.take(MissionDraft.MAX_FENCE_VERTICES.toString().length) },
+                                label = { Text("Vertex number") },
+                                singleLine = true,
+                                isError = jumpFenceInput.isNotEmpty() && !canJumpToFence,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { jumpToFenceVertex() }),
+                                supportingText = {
+                                    Text(if (jumpFenceInput.isNotEmpty() && !canJumpToFence) "Enter a number from 1 to $fenceVertexCount."
+                                        else "1 to $fenceVertexCount · local outline only")
+                                },
+                                modifier = Modifier.weight(1f).testTag("mission-fence-jump-input"),
+                            )
+                            TextButton(onClick = { jumpToFenceVertex() }, enabled = canJumpToFence,
+                                modifier = Modifier.testTag("mission-fence-jump-go")) { Text("Go to vertex") }
+                        }
+                    }
                 }
                 itemsIndexed(plan.draft.keepInFence, key = { _, point -> "fence-${point.id}" }) { index, point ->
-                    Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.small) {
+                    val jumpTarget = jumpedFenceId == point.id
+                    Surface(color = if (jumpTarget) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                        shape = MaterialTheme.shapes.small) {
                         Column(Modifier.fillMaxWidth().padding(10.dp).testTag("mission-fence-row-$index")) {
                             Text("Outline vertex ${index + 1}", style = MaterialTheme.typography.titleSmall)
+                            if (jumpTarget) Text("Jump target", style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.testTag("mission-fence-jump-target"))
                             Text(String.format(Locale.US, "%.7f, %.7f", point.latitude, point.longitude), style = MaterialTheme.typography.bodySmall)
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 TextButton(onClick = { openFenceEditor(point) }, enabled = plan.editable,

@@ -290,6 +290,67 @@ class MissionPlanningTest {
         }
     }
 
+    @Test fun outlineWarningAndVertexJumpLeaveSavedDraftUntouched() {
+        val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val previous = runBlocking { repository.load() }
+        val previousRecovery = runBlocking { repository.loadRecovery() }
+        val draft = MissionDraft(
+            waypoints = listOf(DraftWaypoint("a", 0.5, 0.5), DraftWaypoint("b", 1.0, 0.5)),
+            keepInFence = listOf(
+                DraftWaypoint("f1", 0.0, 0.0), DraftWaypoint("f2", 3.0, 3.0),
+                DraftWaypoint("f3", 2.0, 0.0), DraftWaypoint("f4", 0.0, 2.0),
+            ),
+        )
+        try {
+            runBlocking { repository.save(draft) }
+            val scenario = androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java)
+            try {
+                compose.openWorkspace("mission")
+                compose.waitUntil(10_000) { compose.onAllNodesWithTag("mission-add").fetchSemanticsNodes().isNotEmpty() }
+                scrollToTag("mission-fix-issue-0").performClick()
+                compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-outline-issue"))
+                compose.onNodeWithTag("mission-outline-issue").assertIsDisplayed()
+                compose.onNodeWithText("Local outline issue: OUTLINE CROSSES ITSELF. Review the vertices; this check cannot identify one cause.")
+                    .assertExists()
+                capture("mission-outline-warning")
+                compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-fence-jump-input"))
+                compose.onNodeWithTag("mission-fence-jump-go").assertIsNotEnabled()
+                compose.onNodeWithTag("mission-fence-jump-input").performTextReplacement("5")
+                compose.onNodeWithTag("mission-fence-jump-go").assertIsNotEnabled()
+                compose.onNodeWithTag("mission-fence-jump-input").performTextReplacement("4")
+                compose.onNodeWithTag("mission-fence-jump-go").assertIsEnabled()
+                compose.onNodeWithTag("mission-fence-jump-go").performClick()
+                compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-fence-row-3"))
+                compose.onNodeWithTag("mission-fence-row-3").assertIsDisplayed()
+                capture("mission-outline-vertex-jump")
+                compose.onNodeWithTag("mission-fence-jump-target").assertIsDisplayed()
+                assertEquals(draft, runBlocking { repository.load() })
+                scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+                compose.waitUntil(10_000) {
+                    var landscape = false
+                    scenario.onActivity { landscape = it.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE }
+                    landscape
+                }
+                val rotatedRoot = compose.onRoot().fetchSemanticsNode().boundsInRoot
+                assertTrue("Outline editor must render in landscape", rotatedRoot.width > rotatedRoot.height)
+                compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-fence-jump-input"))
+                compose.onNodeWithTag("mission-fence-jump-input").performTextReplacement("2")
+                // Android's landscape numeric IME can cover the short editor; Done stays available.
+                compose.onNodeWithTag("mission-fence-jump-input").performImeAction()
+                compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-fence-row-1"))
+                compose.onNodeWithTag("mission-fence-row-1").assertIsDisplayed()
+                compose.onNodeWithTag("mission-fence-jump-target").assertIsDisplayed()
+                capture("mission-outline-vertex-jump-landscape")
+                assertEquals(draft, runBlocking { repository.load() })
+            } finally { scenario.close() }
+        } finally {
+            runBlocking {
+                repository.save(previous)
+                previousRecovery?.let { repository.saveRecovery(it) }
+            }
+        }
+    }
+
     @Test fun screenshotWindowGuardRejectsSystemOverlays() {
         val app = "com.mamadrones.gcs"
         assertTrue(appOwnsFocusedWindow("mCurrentFocus=Window{123 u0 $app/$app.MainActivity}", app))

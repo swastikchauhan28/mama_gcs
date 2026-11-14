@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-187-01: Show the outline warning at its editor and allow numbered vertex navigation
+
+- Date: 2026-11-14. User approved Phase 187. Baseline `790ae85`, clean worktree; model/version unavailable.
+- Context: Review navigates an outline warning to Field outline, but the explanation stays in Review. An outline can contain up to 64 vertices, and the editor has no direct way to reach a numbered row.
+- Choice: render the current `MissionDraftReview` outline issue beside the Field outline controls; accept a bounded one-based vertex number, then scroll to and highlight that existing row. Keep jump selection in UI memory, keyed to the ordered vertex IDs, and dispatch no edit or save action. Alternative: infer a culprit vertex from a self-crossing polygon; that would overstate what the existing geometry warning proves. Reusing the warning and stable vertex ID keeps the hint current after edits.
+- Risk and revisit: a jump is only navigation; the chosen vertex may not cause the geometry issue. The lazy-list item offset differs in narrow and wide layouts, so test both where feasible and reject blank/out-of-range input. Verify warning navigation, invalid input, a later vertex, unchanged draft, build/lint and a visual check on a disposable emulator. No vehicle, telemetry, permission, dependency, schema or external-destination path changes.
+- Verification correction: the first Go button sat below the focused text field and could be covered by Android's keyboard. The test showed an enabled button but no selected row, while keyboard Done successfully selected it. Moving Go beside the field made the portrait button path pass without relaxing the highlight assertion. A landscape numeric keyboard fills the short editor; the test uses Done there. One landscape click attempt stalled and the disposable test app was deliberately force-stopped after preserving the display; a subsequent run passed portrait button, landscape Done, unchanged saved draft, and two existing Review regressions. The startup service ANRs occurred before the clean 30-second preflight; see [Phase 187](phase-187-report.md). Revisit if the landscape keyboard/button layout changes.
+
 ## D-186-01: Fail a mission-planning screenshot when Android owns the foreground window
 
 - Date: 2026-11-14. User approved Phase 186. Baseline `6b006cc`, clean worktree; model/version unavailable.
