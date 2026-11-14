@@ -1,5 +1,12 @@
 # Current handover
 
+## 2026-11-14 — Phase 182 readiness warning editor shortcuts
+
+- Done: Review warnings now expose Route and Field outline tab shortcuts without editing or sending anything. See [Phase 182](phase-182-report.md).
+- Verification: debug app/test APK build and lint passed; the disposable-emulator shortcut/correction flow passed, and the warning screenshot was visually reviewed.
+- Broken or risky: shortcuts open a tab but do not identify a unique point or vertex. Local readiness remains distinct from upload or physical route approval.
+- Next: owner review of the scoped UI/test diff; commit/push only on request. Preserve the operator-confirmed TCP record below.
+
 ## 2026-11-14 — Phase 181 route readiness warning coverage
 
 - Done: added focused domain and real-app emulator checks for duplicate legs and outline conflicts, including correction back to local review readiness. Production behavior was unchanged. See [Phase 181](phase-181-report.md).

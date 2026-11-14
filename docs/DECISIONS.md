@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-182-01: Navigate from local readiness warnings to the existing editors
+
+- Date: 2026-11-14. User approved Phase 182. Baseline `3b5eef6`, clean worktree; model/version unavailable.
+- Context: the Review card names route and outline problems, but correction requires manually changing editor tabs. Existing Route and Field outline tabs already own the edit controls; the card has no command or upload behavior.
+- Choice: show a Route shortcut for missing/duplicate/outside waypoints or legs and a Field outline shortcut for an invalid local outline. Each shortcut only switches the existing tab. Alternative: automatically edit a point or outline vertex from the warning; that would require selection assumptions and could alter a draft unintentionally.
+- Risk and revisit: a tab shortcut does not identify a unique vertex in complex cases and does not approve mission upload or physical safety. Verify warning persistence after navigation and correction through the real app on a disposable emulator. Revisit if a safe, explicit affected-item selection flow is later designed.
+- Verification: debug app/test APK build and lint passed. The disposable-emulator test opened Route and Field outline through the shortcuts, returned to Review with warnings intact, then corrected the synthetic draft. The Review screenshot was visually checked; no command or saved-data path changed.
+
 ## D-181-01: Exercise route readiness warnings through existing draft flows
 
 - Date: 2026-11-14. User approved Phase 181. Baseline `fb1bb81`, clean worktree; model/version unavailable.

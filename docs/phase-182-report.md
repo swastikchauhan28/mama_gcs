@@ -1,0 +1,7 @@
+# Phase 182 — Readiness warning editor shortcuts
+
+The local route readiness card now offers `Go to route` for missing or duplicate waypoints and route points or straight legs outside the optional outline. It offers `Go to field outline` when the outline itself is invalid. These controls switch only the existing editor tab; they do not select or change a waypoint, save the draft, upload a mission, or send a vehicle command. The card still makes no Cube or execution safety claim.
+
+The affected path is the current local draft → `MissionDraftReview.inspect` → Review card → tab state. No new stored data, dependency, permission, external destination or transport behavior was introduced. Baseline revision `3b5eef6`, clean worktree. See D-182-01.
+
+Verification on 2026-11-14: `:app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --no-daemon --max-workers=1 --console=plain` passed in 10m 17s (88 tasks, 21 executed, 67 up-to-date). `MissionPlanningTest#localRouteReadinessWarningsClearAfterEdits` passed on the disposable emulator (1 test, 61.937 s). It confirmed Route and Field outline navigation, warning persistence, and return to local readiness after edits. `app/build/reports/phase-182-readiness-actions.png` was visually inspected and shows the warning and Route shortcut. No physical hardware or mission upload was tested. Rollback is a reviewed revert of the scoped UI/test/record diff; no migration is needed.

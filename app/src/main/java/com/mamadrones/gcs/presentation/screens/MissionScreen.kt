@@ -339,6 +339,20 @@ fun MissionScreen(
                         ) else review.readinessIssues.mapIndexed { index, issue -> "Fix ${index + 1}" to issue },
                         note = "This is a local drafting check. Vehicle mission settings, Cube acceptance, turns, obstacles and execution safety are not checked. Mission upload is unavailable.",
                     ), Modifier.testTag("mission-route-readiness"))
+                    val routeFixNeeded = !review.hasRouteGeometry || review.zeroLengthLegs.isNotEmpty() ||
+                        review.waypointsOutsideKeepIn.isNotEmpty() || review.legsOutsideKeepIn.isNotEmpty()
+                    if (routeFixNeeded || review.keepInOutlineIssue != null) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (routeFixNeeded) TextButton(
+                                onClick = { editorTab = "Route" },
+                                modifier = Modifier.testTag("mission-fix-route"),
+                            ) { Text("Go to route") }
+                            if (review.keepInOutlineIssue != null) TextButton(
+                                onClick = { editorTab = "Field outline" },
+                                modifier = Modifier.testTag("mission-fix-outline"),
+                            ) { Text("Go to field outline") }
+                        }
+                    }
                     SubsystemCard(PanelSpec(
                         title = "Local route review",
                         status = if (review.hasRouteGeometry) "ROUTE SHAPE DEFINED · REVIEW REQUIRED" else "INCOMPLETE · ADD WAYPOINTS",

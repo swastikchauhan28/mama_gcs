@@ -175,6 +175,12 @@ class MissionPlanningTest {
                 scrollToTag("mission-route-readiness").assertIsDisplayed()
                 compose.onNodeWithText("NEEDS CHANGES").assertIsDisplayed()
                 compose.onNodeWithText("Edit or remove identical consecutive points at legs 1.").assertExists()
+                scrollToTag("mission-fix-route").assertIsDisplayed()
+                capture("mission-readiness-actions")
+                compose.onNodeWithTag("mission-fix-route").performClick()
+                compose.onNodeWithTag("mission-add").assertExists()
+                scrollToTag("mission-route-readiness").assertIsDisplayed()
+                compose.onNodeWithText("Edit or remove identical consecutive points at legs 1.").assertExists()
 
                 scrollToTag("mission-edit-1").performClick()
                 compose.onNodeWithTag("mission-latitude").performTextReplacement("-35.3634000")
@@ -184,12 +190,22 @@ class MissionPlanningTest {
 
                 addFenceVertex("-35.3640000", "149.1640000")
                 addFenceVertex("-35.3640000", "149.1660000")
+                scrollToTag("mission-route-readiness").assertIsDisplayed()
+                compose.onNodeWithText("Fix the local outline: ADD AT LEAST 3 DISTINCT VERTICES.").assertExists()
+                scrollToTag("mission-fix-outline").performClick()
+                compose.onNodeWithTag("mission-add-fence-vertex").assertExists()
+                scrollToTag("mission-route-readiness").assertIsDisplayed()
+                compose.onNodeWithText("Fix the local outline: ADD AT LEAST 3 DISTINCT VERTICES.").assertExists()
                 addFenceVertex("-35.3620000", "149.1650000")
                 addPoint("-35.3700000", "149.1650000")
                 scrollToTag("mission-route-readiness").assertIsDisplayed()
                 compose.onNodeWithText("NEEDS CHANGES").assertIsDisplayed()
                 compose.onNodeWithText("Move route points inside the outline: 3.").assertExists()
                 compose.onNodeWithText("Revise straight legs leaving the outline: 2.").assertExists()
+                scrollToTag("mission-fix-route").performClick()
+                scrollToTag("mission-edit-2").assertIsDisplayed()
+                scrollToTag("mission-route-readiness").assertIsDisplayed()
+                compose.onNodeWithText("Move route points inside the outline: 3.").assertExists()
 
                 scrollToTag("mission-edit-2").performClick()
                 compose.onNodeWithTag("mission-latitude").performTextReplacement("-35.3632000")
@@ -304,7 +320,7 @@ class MissionPlanningTest {
     private fun scrollToTag(tag: String): SemanticsNodeInteraction {
         if (tag == "mission-save") return compose.onNodeWithTag(tag)
         compose.selectMissionTab(when {
-            tag == "mission-route-review" || tag == "mission-route-readiness" -> "Review"
+            tag == "mission-route-review" || tag == "mission-route-readiness" || tag.startsWith("mission-fix-") -> "Review"
             tag.contains("fence") -> "Field outline"
             else -> "Route"
         })
