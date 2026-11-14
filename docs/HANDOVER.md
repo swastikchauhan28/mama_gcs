@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-14 — Phase 186 picker visual guard
+
+- Done: the mission-planning screenshot test now fails if an Android overlay owns focus or an ANR/error dialog is present. The Phase 185 picker screenshot was recaptured unobscured. See [Phase 186](phase-186-report.md).
+- Verification: Android-test APK build and lint passed; a 30-second emulator preflight, two focused emulator tests and post-run health gate passed. The saved picker image was visually inspected.
+- Broken or risky: the focused-window check depends on Android's `dumpsys window` format. This is targeted software evidence, not full regression, Cube acceptance, mission upload or physical route safety.
+- Next: owner review of the scoped test/record diff; commit/push only on request. Preserve the operator-confirmed TCP record below.
+- Do not touch: operator phone data, physical rover commands or Cube parameters for this software-only phase.
+
 ## 2026-11-14 — Phase 185 affected-item picker
 
 - Done: aggregated route warnings now let the operator choose each affected point or leg in a lazy picker; single-target actions still navigate directly. See [Phase 185](phase-185-report.md).

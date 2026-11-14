@@ -7,6 +7,7 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.graphics.RectF
+import android.os.ParcelFileDescriptor
 import android.view.View
 import android.view.ViewGroup
 import androidx.test.platform.app.InstrumentationRegistry
@@ -18,6 +19,7 @@ import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
@@ -288,6 +290,17 @@ class MissionPlanningTest {
         }
     }
 
+    @Test fun screenshotWindowGuardRejectsSystemOverlays() {
+        val app = "com.mamadrones.gcs"
+        assertTrue(appOwnsFocusedWindow("mCurrentFocus=Window{123 u0 $app/$app.MainActivity}", app))
+        assertFalse(appOwnsFocusedWindow("mCurrentFocus=Window{123 u0 ImmersiveModeConfirmation}", app))
+        assertFalse(appOwnsFocusedWindow("mCurrentFocus=null", app))
+        assertFalse(appOwnsFocusedWindow("Window #2: Application Not Responding: com.android.systemui\n" +
+            "mCurrentFocus=Window{123 u0 $app/$app.MainActivity}", app))
+        assertFalse(appOwnsFocusedWindow("Window #2: Application Error: com.android.systemui\n" +
+            "mCurrentFocus=Window{123 u0 $app/$app.MainActivity}", app))
+    }
+
     @Test fun routeShortcutFocusesStartOfLegLeavingConcaveOutline() {
         val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         val previous = runBlocking { repository.load() }
@@ -525,15 +538,32 @@ class MissionPlanningTest {
     private fun capture(name: String) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         compose.waitForIdle()
+        val expectedPackage = instrumentation.targetContext.packageName
+        fun windowDump() = ParcelFileDescriptor.AutoCloseInputStream(
+            instrumentation.uiAutomation.executeShellCommand("dumpsys window")
+        ).bufferedReader().use { it.readText() }
+        val windowBefore = windowDump()
         var screenshot: Bitmap? = null
         compose.waitUntil(10_000) {
             screenshot = instrumentation.uiAutomation.takeScreenshot()
             screenshot != null
         }
+        val windowAfter = windowDump()
         val image = requireNotNull(screenshot)
         try {
             val directory = requireNotNull(instrumentation.targetContext.getExternalFilesDir("qa")).apply { mkdirs() }
             File(directory, "$name.png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG, 100, it) }
         } finally { image.recycle() }
+        // Compose can remain idle beneath an Android error dialog; keep its screenshot as evidence, then fail closed.
+        assertTrue("Another window covered the app before screenshot $name", appOwnsFocusedWindow(windowBefore, expectedPackage))
+        assertTrue("Another window covered the app after screenshot $name", appOwnsFocusedWindow(windowAfter, expectedPackage))
+    }
+
+    private fun appOwnsFocusedWindow(windowDump: String, packageName: String): Boolean {
+        val focus = windowDump.lineSequence().firstOrNull {
+            it.trimStart().startsWith("mCurrentFocus=")
+        } ?: return false
+        return focus.contains(" $packageName/") &&
+            !windowDump.contains("Application Not Responding:") && !windowDump.contains("Application Error:")
     }
 }

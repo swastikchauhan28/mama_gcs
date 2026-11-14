@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-186-01: Fail a mission-planning screenshot when Android owns the foreground window
+
+- Date: 2026-11-14. User approved Phase 186. Baseline `6b006cc`, clean worktree; model/version unavailable.
+- Context: the Phase 185 picker assertions passed while a System UI ANR dialog covered the saved screenshot. The existing acceptance runner catches post-run Android errors, but the `MissionPlanningTest` screenshot helper itself accepted any non-null bitmap.
+- Choice: capture the active accessibility-window package immediately before and after the screenshot, save the image for diagnosis, then require both packages to match Mama GCS. Keep the documented 30-second emulator preflight and post-run ANR gate for whole-run health. Alternative: image/OCR matching of specific dialog text is brittle across Android versions and languages; a screenshot-only pixel heuristic could miss a different system overlay.
+- Risk and revisit: an inaccessible or transient active-window root fails closed and may require investigation; a same-package app overlay is still governed by test assertions and visual review. This test-only guard does not fix Android System UI or prove emulator health. Verify compilation and a normal screenshot on a healthy disposable emulator; preserve ANR failures instead of dismissing dialogs.
+- Correction after emulator evidence: `UiAutomation.rootInActiveWindow` returned null even with an unobscured app picker, so the initial guard failed two healthy Android runs (the first also exposed a one-time `ImmersiveModeConfirmation` tip). Use the focused-window entry in `dumpsys window` instead, matching the existing preflight's window source. Reject missing/non-app focus and any ANR/error window; validate the parser against synthetic app, immersive-tip and error-dialog dumps before rerunning.
+- Verification correction: the first regular expression for the focused-window entry failed to compile on Android. A plain line scan replaced it; the synthetic overlay cases and the real picker both passed on the disposable emulator. The final screenshot is unobscured and the post-run Android health gate passed. Revisit if Android changes the `dumpsys window` focus format.
+
 ## D-185-01: Select one affected item from an aggregated route warning
 
 - Date: 2026-11-14. User approved Phase 185. Baseline `6589171`, clean worktree; model/version unavailable.
