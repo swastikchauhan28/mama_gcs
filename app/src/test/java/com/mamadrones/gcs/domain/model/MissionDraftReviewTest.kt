@@ -2,6 +2,7 @@ package com.mamadrones.gcs.domain.model
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -9,6 +10,7 @@ class MissionDraftReviewTest {
     @Test fun `empty and single waypoint drafts are structurally incomplete`() {
         assertFalse(MissionDraftReview.inspect(MissionDraft()).hasRouteGeometry)
         assertFalse(MissionDraftReview.inspect(MissionDraft(waypoints = listOf(point("a", 1.0, 2.0)))).hasRouteGeometry)
+        assertNull(MissionDraftReview.inspect(MissionDraft()).firstRouteFixWaypointNumber)
     }
 
     @Test fun `two distinct points define route geometry but not safety`() {
@@ -19,6 +21,7 @@ class MissionDraftReviewTest {
         assertTrue(review.hasRouteGeometry)
         assertTrue(review.zeroLengthLegs.isEmpty())
         assertTrue(review.readinessIssues.isEmpty())
+        assertNull(review.firstRouteFixWaypointNumber)
     }
 
     @Test fun `readiness lists actionable local issues without assuming an outline`() {
@@ -39,6 +42,7 @@ class MissionDraftReviewTest {
         assertTrue(review.hasRouteGeometry)
         assertEquals(listOf(1, 3), review.zeroLengthLegs)
         assertEquals(listOf("Edit or remove identical consecutive points at legs 1, 3."), review.readinessIssues)
+        assertEquals(2, review.firstRouteFixWaypointNumber)
     }
 
     @Test fun `keep in outline classifies waypoint positions with boundary treated as inside`() {
@@ -53,6 +57,7 @@ class MissionDraftReviewTest {
         assertTrue(review.hasUsableKeepInOutline)
         assertEquals(listOf(2), review.waypointsOutsideKeepIn)
         assertTrue(review.readinessIssues.contains("Move route points inside the outline: 2."))
+        assertEquals(2, review.firstRouteFixWaypointNumber)
     }
 
     @Test fun `short or coordinate-degenerate outlines do not claim a containment check`() {
@@ -81,6 +86,7 @@ class MissionDraftReviewTest {
         assertTrue(review.waypointsOutsideKeepIn.isEmpty())
         assertEquals(listOf(1), review.legsOutsideKeepIn)
         assertEquals(listOf("Revise straight legs leaving the outline: 1."), review.readinessIssues)
+        assertEquals(1, review.firstRouteFixWaypointNumber)
     }
 
     @Test fun `self crossing fence is rejected for containment review`() {

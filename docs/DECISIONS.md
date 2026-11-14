@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-183-01: Focus the first route point implicated by a local warning
+
+- Date: 2026-11-14. User approved Phase 183. Baseline `02ad6ac`, clean worktree; model/version unavailable.
+- Context: the Phase 182 Route shortcut opens the editor tab but does not locate the affected point. The Route tab already supports keyed waypoint rows, scrolling and a temporary jump highlight.
+- Choice: derive one-based first-fix point from existing review findings. A duplicate leg focuses its endpoint, an outside point focuses that point, and a leg leaving the outline focuses its start. Missing route geometry focuses add-point controls. Reuse the existing jump highlight and scroll after the Route tab composes. Alternative: open an edit dialog automatically; that assumes the intended correction and increases accidental-change risk.
+- Risk: the first issue is a navigation hint, not a complete fix or safety verdict. Multiple issues may require further review. Test the mapping, visible row and unchanged draft on a disposable emulator. Revisit if issue-specific correction flows are designed.
+- Verification correction: the first combined build stopped at a duplicate `DraftWaypoint` import in the new Android test after the focused JVM task passed. Removing the duplicate import allowed the test APK and lint to pass. Three focused emulator flows then passed; the synthetic concave-outline draft remained unchanged after focusing its first leg.
+
 ## D-182-01: Navigate from local readiness warnings to the existing editors
 
 - Date: 2026-11-14. User approved Phase 182. Baseline `3b5eef6`, clean worktree; model/version unavailable.

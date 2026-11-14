@@ -26,6 +26,15 @@ data class MissionDraftReview(
         if (legsOutsideKeepIn.isNotEmpty()) add("Revise straight legs leaving the outline: ${legsOutsideKeepIn.joinToString()}.")
     }
 
+    /** One-based Route tab focus hint; null means use the add-point controls. */
+    val firstRouteFixWaypointNumber: Int? get() = when {
+        !hasRouteGeometry -> null
+        zeroLengthLegs.isNotEmpty() -> zeroLengthLegs.first() + 1
+        waypointsOutsideKeepIn.isNotEmpty() -> waypointsOutsideKeepIn.first()
+        legsOutsideKeepIn.isNotEmpty() -> legsOutsideKeepIn.first()
+        else -> null
+    }
+
     companion object {
         fun inspect(draft: MissionDraft): MissionDraftReview {
             val geometry = LocalFenceGeometry.create(draft.keepInFence)

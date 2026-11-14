@@ -146,6 +146,8 @@ class MissionPlanningTest {
                 compose.waitUntil(10_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
                 scrollToTag("mission-route-readiness").assertIsDisplayed()
                 compose.onNodeWithText("NEEDS CHANGES").assertIsDisplayed()
+                scrollToTag("mission-fix-route").performClick()
+                compose.onNodeWithTag("mission-add").assertIsDisplayed()
                 addPoint("-35.3632621", "149.1652374")
                 addPoint("-35.3635000", "149.1660000")
                 scrollToTag("mission-route-readiness").assertIsDisplayed()
@@ -176,9 +178,12 @@ class MissionPlanningTest {
                 compose.onNodeWithText("NEEDS CHANGES").assertIsDisplayed()
                 compose.onNodeWithText("Edit or remove identical consecutive points at legs 1.").assertExists()
                 scrollToTag("mission-fix-route").assertIsDisplayed()
+                compose.onNodeWithText("Go to waypoint 2").assertIsDisplayed()
                 capture("mission-readiness-actions")
                 compose.onNodeWithTag("mission-fix-route").performClick()
-                compose.onNodeWithTag("mission-add").assertExists()
+                compose.waitUntil(10_000) { compose.onAllNodesWithTag("mission-waypoint-row-1").fetchSemanticsNodes().isNotEmpty() }
+                compose.onNodeWithTag("mission-waypoint-row-1").assertIsDisplayed()
+                compose.onNodeWithTag("mission-jump-target").assertIsDisplayed()
                 scrollToTag("mission-route-readiness").assertIsDisplayed()
                 compose.onNodeWithText("Edit or remove identical consecutive points at legs 1.").assertExists()
 
@@ -203,7 +208,9 @@ class MissionPlanningTest {
                 compose.onNodeWithText("Move route points inside the outline: 3.").assertExists()
                 compose.onNodeWithText("Revise straight legs leaving the outline: 2.").assertExists()
                 scrollToTag("mission-fix-route").performClick()
-                scrollToTag("mission-edit-2").assertIsDisplayed()
+                compose.waitUntil(10_000) { compose.onAllNodesWithTag("mission-waypoint-row-2").fetchSemanticsNodes().isNotEmpty() }
+                compose.onNodeWithTag("mission-waypoint-row-2").assertIsDisplayed()
+                compose.onNodeWithTag("mission-jump-target").assertIsDisplayed()
                 scrollToTag("mission-route-readiness").assertIsDisplayed()
                 compose.onNodeWithText("Move route points inside the outline: 3.").assertExists()
 
@@ -213,6 +220,45 @@ class MissionPlanningTest {
                 scrollToTag("mission-route-readiness").assertIsDisplayed()
                 compose.onNodeWithText("READY FOR REVIEW · LOCAL ONLY").assertIsDisplayed()
                 compose.onNodeWithText("LOCAL CHECK PASSED").assertExists()
+            } finally { scenario.close() }
+        } finally {
+            runBlocking {
+                repository.save(previous)
+                previousRecovery?.let { repository.saveRecovery(it) }
+            }
+        }
+    }
+
+    @Test fun routeShortcutFocusesStartOfLegLeavingConcaveOutline() {
+        val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val previous = runBlocking { repository.load() }
+        val previousRecovery = runBlocking { repository.loadRecovery() }
+        fun point(id: String, y: Double, x: Double) =
+            DraftWaypoint(id, -35.364 + y * 0.001, 149.164 + x * 0.001)
+        val draft = MissionDraft(
+            waypoints = listOf(point("left", 2.0, 0.5), point("right", 2.0, 3.5)),
+            keepInFence = listOf(
+                point("f1", 0.0, 0.0), point("f2", 4.0, 0.0),
+                point("f3", 4.0, 1.0), point("f4", 1.0, 1.0),
+                point("f5", 1.0, 3.0), point("f6", 4.0, 3.0),
+                point("f7", 4.0, 4.0), point("f8", 0.0, 4.0),
+            ),
+        )
+        try {
+            runBlocking { repository.save(draft) }
+            val scenario = androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java)
+            try {
+                compose.openWorkspace("mission")
+                scrollToTag("mission-route-readiness").assertIsDisplayed()
+                compose.onNodeWithText("Revise straight legs leaving the outline: 1.").assertExists()
+                scrollToTag("mission-fix-route").assertIsDisplayed()
+                compose.onNodeWithText("Go to waypoint 1").assertIsDisplayed()
+                compose.onNodeWithTag("mission-fix-route").performClick()
+                compose.waitUntil(10_000) { compose.onAllNodesWithTag("mission-waypoint-row-0").fetchSemanticsNodes().isNotEmpty() }
+                compose.onNodeWithTag("mission-waypoint-row-0").assertIsDisplayed()
+                compose.onNodeWithTag("mission-jump-target").assertIsDisplayed()
+                assertEquals(draft.waypoints, runBlocking { repository.load().waypoints })
+                assertEquals(draft.keepInFence, runBlocking { repository.load().keepInFence })
             } finally { scenario.close() }
         } finally {
             runBlocking {

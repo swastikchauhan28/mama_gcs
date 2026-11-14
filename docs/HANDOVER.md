@@ -1,5 +1,12 @@
 # Current handover
 
+## 2026-11-14 — Phase 183 affected-waypoint focus
+
+- Done: Review Route shortcuts now focus and highlight the first affected waypoint, or show add-point controls for an incomplete route. See [Phase 183](phase-183-report.md).
+- Verification: focused JVM task passed before an Android-test import error; the corrected Android test APK and lint passed. Three disposable-emulator flows passed, and the updated Review action screenshot was inspected.
+- Broken or risky: focus is a hint for the first issue, not a full correction or upload/safety approval. Multiple issues still require operator review.
+- Next: owner review of the scoped diff; commit/push only on request. Preserve the operator-confirmed TCP record below.
+
 ## 2026-11-14 — Phase 182 readiness warning editor shortcuts
 
 - Done: Review warnings now expose Route and Field outline tab shortcuts without editing or sending anything. See [Phase 182](phase-182-report.md).

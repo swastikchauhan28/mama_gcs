@@ -137,6 +137,7 @@ fun MissionScreen(
     var planningSpeedInput by rememberSaveable { mutableStateOf("") }
     var jumpWaypointInput by rememberSaveable { mutableStateOf("") }
     var jumpedWaypointId by remember(plan.draft) { mutableStateOf<String?>(null) }
+    var pendingRouteFocusNumber by remember { mutableStateOf<Int?>(null) }
     val routeListState = rememberLazyListState()
     val jumpWaypointNumber = jumpWaypointInput.toIntOrNull()
     val waypointCount = plan.draft.waypoints.size
@@ -186,6 +187,16 @@ fun MissionScreen(
         val wide = maxWidth >= 680.dp
         // Route items follow one shared header, an optional mobile map, and the route introduction.
         val firstWaypointItemIndex = if (wide) 2 else 3
+        LaunchedEffect(editorTab, pendingRouteFocusNumber, wide, waypointCount) {
+            val number = pendingRouteFocusNumber
+            if (editorTab == "Route" && number != null) {
+                // Wait for Route content to replace Review content before scrolling its keyed rows.
+                val itemIndex = if (number in 1..waypointCount) firstWaypointItemIndex + number - 1
+                else firstWaypointItemIndex - 1
+                routeListState.scrollToItem(itemIndex)
+                pendingRouteFocusNumber = null
+            }
+        }
         fun jumpToWaypoint() {
             val number = jumpWaypointNumber ?: return
             if (!canJumpToWaypoint) return
@@ -341,12 +352,17 @@ fun MissionScreen(
                     ), Modifier.testTag("mission-route-readiness"))
                     val routeFixNeeded = !review.hasRouteGeometry || review.zeroLengthLegs.isNotEmpty() ||
                         review.waypointsOutsideKeepIn.isNotEmpty() || review.legsOutsideKeepIn.isNotEmpty()
+                    val routeTargetNumber = review.firstRouteFixWaypointNumber
                     if (routeFixNeeded || review.keepInOutlineIssue != null) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             if (routeFixNeeded) TextButton(
-                                onClick = { editorTab = "Route" },
+                                onClick = {
+                                    jumpedWaypointId = routeTargetNumber?.let { plan.draft.waypoints.getOrNull(it - 1)?.id }
+                                    pendingRouteFocusNumber = routeTargetNumber ?: 0
+                                    editorTab = "Route"
+                                },
                                 modifier = Modifier.testTag("mission-fix-route"),
-                            ) { Text("Go to route") }
+                            ) { Text(if (routeTargetNumber == null) "Go to add point" else "Go to waypoint $routeTargetNumber") }
                             if (review.keepInOutlineIssue != null) TextButton(
                                 onClick = { editorTab = "Field outline" },
                                 modifier = Modifier.testTag("mission-fix-outline"),
