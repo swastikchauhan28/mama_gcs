@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-180-01: Check landscape route markers at native map coordinates
+
+- Date: 2026-11-14. User continued with proposed Phase 180. Baseline `e1ab611`, clean worktree; model/version unavailable.
+- Context: the broader planner test timed out after its route readiness assertions while searching a fixed portion of a Compose map bound for orange pixels. That scan does not establish whether the native map actually rendered the route at its projected position.
+- Choice: use the native MapLibre view and waypoint projection to verify visible numbered route markers, then save a screenshot. Preserve a failure frame and measured diagnostic detail if rendering is absent. Alternative: raise the timeout or scan more of the screenshot; either can hide a map defect or count unrelated orange controls and fence pixels.
+- Risk: emulator graphics and native render timing still vary. This is a test-only change; no map behavior, data, dependency or vehicle command changes. Revisit if a projected marker is missing on more than one emulator run or on a physical device.
+- Verification correction: the first revised test run passed, but its screenshot showed overlapping route markers because the synthetic outline spanned kilometres around a 107 m route. The fixture outline was tightened around the route, and the assertion now requires marker separation. The second run passed with a visibly separated numbered route and connecting line. No production map change was needed.
+
 ## D-179-01: Project existing route checks into a local readiness result
 
 - Date: 2026-11-14. User approved Phase 179. Baseline `311e0c8`; two pre-existing uncommitted documentation corrections were preserved. Model/version unavailable.

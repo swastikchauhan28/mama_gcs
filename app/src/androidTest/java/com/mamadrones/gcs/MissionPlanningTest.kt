@@ -5,10 +5,18 @@ import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.graphics.Rect
+import android.graphics.RectF
+import android.view.View
+import android.view.ViewGroup
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mamadrones.gcs.data.local.datastore.LocalMissionDraftRepository
 import com.mamadrones.gcs.domain.model.MissionDraft
+import com.mamadrones.gcs.domain.model.DraftWaypoint
 import kotlinx.coroutines.runBlocking
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapView
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -173,9 +181,10 @@ class MissionPlanningTest {
                 compose.onNodeWithText("ROUTE SHAPE DEFINED · REVIEW REQUIRED").assertIsDisplayed()
                 scrollToTag("mission-route-readiness").assertIsDisplayed()
                 compose.onNodeWithText("READY FOR REVIEW · LOCAL ONLY").assertIsDisplayed()
-                addFenceVertex("-35.3700000", "149.1500000")
-                addFenceVertex("-35.3700000", "149.1800000")
-                addFenceVertex("-35.3500000", "149.1650000")
+                // Keep the synthetic outline near the route so Fit draft shows both markers.
+                addFenceVertex("-35.3645000", "149.1645000")
+                addFenceVertex("-35.3645000", "149.1670000")
+                addFenceVertex("-35.3625000", "149.1655000")
                 scrollToTag("mission-route-review").assertIsDisplayed()
                 compose.onNodeWithText("3 VERTICES · LOCAL ONLY").assertIsDisplayed()
                 compose.onAllNodesWithText("NONE FOUND").assertCountEquals(3)
@@ -205,7 +214,7 @@ class MissionPlanningTest {
                 // A map can report its Compose node before native route layers render.
                 compose.waitUntil(20_000) { compose.onAllNodes(hasTestTag("mission-fit") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
                 compose.onNodeWithTag("mission-fit").performClick()
-                captureRenderedLandscapeRoute()
+                captureRenderedLandscapeRoute(scenario, saved.waypoints)
                 compose.onNodeWithTag("mission-editor").performScrollToNode(hasText("Start mission"))
                 compose.onNodeWithText("Start mission").assertIsNotEnabled()
                 scenario.close()
@@ -257,33 +266,93 @@ class MissionPlanningTest {
         return compose.onNodeWithTag(tag)
     }
 
-    private fun captureRenderedLandscapeRoute() {
+    private fun captureRenderedLandscapeRoute(
+        scenario: androidx.test.core.app.ActivityScenario<MainActivity>,
+        waypoints: List<DraftWaypoint>,
+    ) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val bounds = compose.onNodeWithTag("mission-map").fetchSemanticsNode().boundsInRoot
-        var captured: Bitmap? = null
+        var view: MapView? = null
+        var map: MapLibreMap? = null
+        scenario.onActivity { activity ->
+            view = requireNotNull(findMap(activity.window.decorView))
+            view!!.getMapAsync { map = it }
+        }
+        compose.waitUntil(45_000) {
+            var loaded = false
+            scenario.onActivity { loaded = map?.style?.isFullyLoaded == true }
+            loaded
+        }
+        var last: Bitmap? = null
+        var detail = "No rendered frame"
         try {
-            // Exclude the right-side map controls, whose gold labels are not route evidence.
-            compose.waitUntil(20_000) {
+            compose.waitUntil(35_000) {
+                val projected = mutableListOf<Pair<Int, Int>>()
+                var labels = false
+                scenario.onActivity {
+                    val nativeView = requireNotNull(view)
+                    val loadedMap = requireNotNull(map)
+                    val offset = IntArray(2)
+                    val visible = Rect()
+                    nativeView.getLocationOnScreen(offset)
+                    val shown = nativeView.isShown && nativeView.getGlobalVisibleRect(visible)
+                    labels = shown && waypoints.withIndex().all { (index, waypoint) ->
+                        val position = loadedMap.projection.toScreenLocation(LatLng(waypoint.latitude, waypoint.longitude))
+                        val x = (offset[0] + position.x).toInt()
+                        val y = (offset[1] + position.y).toInt()
+                        projected.add(x to y)
+                        val area = RectF(position.x - 16f, position.y - 16f, position.x + 16f, position.y + 16f)
+                        visible.contains(x, y) && loadedMap.queryRenderedFeatures(area, "mama-draft-labels")
+                            .any { it.getStringProperty("label") == (index + 1).toString() }
+                    }
+                    loadedMap.triggerRepaint()
+                }
                 val frame = instrumentation.uiAutomation.takeScreenshot()
                 if (frame == null) false else {
-                    var orange = 0
-                    val right = (bounds.left + bounds.width * 0.65f).toInt().coerceAtMost(frame.width)
-                    val bottom = bounds.bottom.toInt().coerceAtMost(frame.height)
-                    for (y in bounds.top.toInt().coerceAtLeast(0) until bottom step 3) {
-                        for (x in bounds.left.toInt().coerceAtLeast(0) until right step 3) {
-                            val pixel = frame.getPixel(x, y)
-                            if (android.graphics.Color.red(pixel) >= 235 && android.graphics.Color.green(pixel) in 90..190 &&
-                                android.graphics.Color.blue(pixel) <= 100) orange++
+                    last?.recycle()
+                    last = frame
+                    val orangeCounts = projected.map { (x, y) ->
+                        var orange = 0
+                        if (x >= 18 && y >= 18 && x + 18 < frame.width && y + 18 < frame.height) {
+                            for (dy in -18..18) for (dx in -18..18) {
+                                val pixel = frame.getPixel(x + dx, y + dy)
+                                if (android.graphics.Color.red(pixel) >= 235 &&
+                                    android.graphics.Color.green(pixel) in 90..190 &&
+                                    android.graphics.Color.blue(pixel) <= 100) orange++
+                            }
+                        }
+                        orange
+                    }
+                    val minimumSeparation = 28f * requireNotNull(view).resources.displayMetrics.density
+                    val separated = projected.indices.all { first ->
+                        (first + 1 until projected.size).all { second ->
+                            val dx = (projected[first].first - projected[second].first).toFloat()
+                            val dy = (projected[first].second - projected[second].second).toFloat()
+                            dx * dx + dy * dy >= minimumSeparation * minimumSeparation
                         }
                     }
-                    if (orange >= 12) { captured = frame; true } else { frame.recycle(); false }
+                    detail = "labels=$labels points=$projected orange=$orangeCounts separated=$separated"
+                    labels && separated && projected.size == waypoints.size && orangeCounts.all { it >= 12 }
                 }
             }
             val directory = requireNotNull(instrumentation.targetContext.getExternalFilesDir("qa")).apply { mkdirs() }
             File(directory, "mission-landscape.png").outputStream().use {
-                assertTrue(requireNotNull(captured).compress(Bitmap.CompressFormat.PNG, 100, it))
+                assertTrue(requireNotNull(last).compress(Bitmap.CompressFormat.PNG, 100, it))
             }
-        } finally { captured?.recycle() }
+        } catch (failure: ComposeTimeoutException) {
+            last?.let { frame ->
+                val directory = requireNotNull(instrumentation.targetContext.getExternalFilesDir("qa")).apply { mkdirs() }
+                File(directory, "failure-mission-landscape.png").outputStream().use {
+                    frame.compress(Bitmap.CompressFormat.PNG, 100, it)
+                }
+            }
+            throw AssertionError("Landscape route markers did not render: $detail", failure)
+        } finally { last?.recycle() }
+    }
+
+    private fun findMap(view: View): MapView? {
+        if (view is MapView) return view
+        if (view is ViewGroup) for (index in 0 until view.childCount) findMap(view.getChildAt(index))?.let { return it }
+        return null
     }
 
     private fun capture(name: String) {

@@ -1,5 +1,12 @@
 # Current handover
 
+## 2026-11-14 — Phase 180 landscape map test repair
+
+- Done: replaced the planner test's fixed screenshot scan with native map marker checks, tightened the synthetic outline and required visible marker separation. The production map was not changed. See [Phase 180](phase-180-report.md).
+- Verification: debug Android test APK and lint passed; the broader planner emulator test passed after the fixture correction. The saved screenshot visibly shows markers 1 and 2 joined by the route line.
+- Broken or risky: native map render timing still varies by emulator. This is software test evidence only; mission upload and physical route execution remain unavailable.
+- Next: owner review of the test diff; commit/push only on request. Preserve the operator-confirmed TCP record below.
+
 ## 2026-11-14 — Phase 179 local route readiness
 
 - Done: Review tab now projects existing local route checks into an actionable Ready for review / Needs changes card. Missing optional outline is shown as unchecked; vehicle mission settings and Cube acceptance are outside this result. See [Phase 179](phase-179-report.md).
