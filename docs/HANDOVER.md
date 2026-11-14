@@ -1,5 +1,12 @@
 # Current handover
 
+## 2026-11-14 — Phase 181 route readiness warning coverage
+
+- Done: added focused domain and real-app emulator checks for duplicate legs and outline conflicts, including correction back to local review readiness. Production behavior was unchanged. See [Phase 181](phase-181-report.md).
+- Verification: focused JVM tests, Android test APK build and lint passed; the disposable-emulator warning/correction flow passed (1 test).
+- Broken or risky: these are local drafting checks only. Mission upload, Cube acceptance and physical route safety remain unverified and unavailable.
+- Next: owner review of the scoped test diff; commit/push only on request. Preserve the operator-confirmed direct TCP record below.
+
 ## 2026-11-14 — Phase 180 landscape map test repair
 
 - Done: replaced the planner test's fixed screenshot scan with native map marker checks, tightened the synthetic outline and required visible marker separation. The production map was not changed. See [Phase 180](phase-180-report.md).

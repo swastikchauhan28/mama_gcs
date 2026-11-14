@@ -38,6 +38,7 @@ class MissionDraftReviewTest {
 
         assertTrue(review.hasRouteGeometry)
         assertEquals(listOf(1, 3), review.zeroLengthLegs)
+        assertEquals(listOf("Edit or remove identical consecutive points at legs 1, 3."), review.readinessIssues)
     }
 
     @Test fun `keep in outline classifies waypoint positions with boundary treated as inside`() {
@@ -51,6 +52,7 @@ class MissionDraftReviewTest {
 
         assertTrue(review.hasUsableKeepInOutline)
         assertEquals(listOf(2), review.waypointsOutsideKeepIn)
+        assertTrue(review.readinessIssues.contains("Move route points inside the outline: 2."))
     }
 
     @Test fun `short or coordinate-degenerate outlines do not claim a containment check`() {
@@ -78,6 +80,7 @@ class MissionDraftReviewTest {
         assertTrue(review.hasUsableKeepInOutline)
         assertTrue(review.waypointsOutsideKeepIn.isEmpty())
         assertEquals(listOf(1), review.legsOutsideKeepIn)
+        assertEquals(listOf("Revise straight legs leaving the outline: 1."), review.readinessIssues)
     }
 
     @Test fun `self crossing fence is rejected for containment review`() {
@@ -89,6 +92,7 @@ class MissionDraftReviewTest {
 
         assertFalse(review.hasUsableKeepInOutline)
         assertEquals("OUTLINE CROSSES ITSELF", review.keepInOutlineIssue)
+        assertTrue(review.readinessIssues.contains("Fix the local outline: OUTLINE CROSSES ITSELF."))
     }
 
     private fun point(id: String, latitude: Double, longitude: Double) = DraftWaypoint(id, latitude, longitude)

@@ -160,6 +160,52 @@ class MissionPlanningTest {
         }
     }
 
+    @Test fun localRouteReadinessWarningsClearAfterEdits() {
+        val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val previous = runBlocking { repository.load() }
+        val previousRecovery = runBlocking { repository.loadRecovery() }
+        try {
+            runBlocking { repository.save(MissionDraft()) }
+            val scenario = androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java)
+            try {
+                compose.openWorkspace("mission")
+                compose.waitUntil(10_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+                addPoint("-35.3635000", "149.1650000")
+                addPoint("-35.3635000", "149.1650000")
+                scrollToTag("mission-route-readiness").assertIsDisplayed()
+                compose.onNodeWithText("NEEDS CHANGES").assertIsDisplayed()
+                compose.onNodeWithText("Edit or remove identical consecutive points at legs 1.").assertExists()
+
+                scrollToTag("mission-edit-1").performClick()
+                compose.onNodeWithTag("mission-latitude").performTextReplacement("-35.3634000")
+                compose.onNodeWithTag("mission-confirm-waypoint").performClick()
+                scrollToTag("mission-route-readiness").assertIsDisplayed()
+                compose.onNodeWithText("READY FOR REVIEW · LOCAL ONLY").assertIsDisplayed()
+
+                addFenceVertex("-35.3640000", "149.1640000")
+                addFenceVertex("-35.3640000", "149.1660000")
+                addFenceVertex("-35.3620000", "149.1650000")
+                addPoint("-35.3700000", "149.1650000")
+                scrollToTag("mission-route-readiness").assertIsDisplayed()
+                compose.onNodeWithText("NEEDS CHANGES").assertIsDisplayed()
+                compose.onNodeWithText("Move route points inside the outline: 3.").assertExists()
+                compose.onNodeWithText("Revise straight legs leaving the outline: 2.").assertExists()
+
+                scrollToTag("mission-edit-2").performClick()
+                compose.onNodeWithTag("mission-latitude").performTextReplacement("-35.3632000")
+                compose.onNodeWithTag("mission-confirm-waypoint").performClick()
+                scrollToTag("mission-route-readiness").assertIsDisplayed()
+                compose.onNodeWithText("READY FOR REVIEW · LOCAL ONLY").assertIsDisplayed()
+                compose.onNodeWithText("LOCAL CHECK PASSED").assertExists()
+            } finally { scenario.close() }
+        } finally {
+            runBlocking {
+                repository.save(previous)
+                previousRecovery?.let { repository.saveRecovery(it) }
+            }
+        }
+    }
+
     @Test fun editReorderAndSaveDraftSurvivesNewViewModel() {
         val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         val previous = runBlocking { repository.load() }

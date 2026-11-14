@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-181-01: Exercise route readiness warnings through existing draft flows
+
+- Date: 2026-11-14. User approved Phase 181. Baseline `fb1bb81`, clean worktree; model/version unavailable.
+- Context: local readiness reports duplicate legs and optional outline conflicts, but the focused emulator test only covers an empty and a valid two-point route. Domain tests verify geometry fields without checking every user-facing readiness issue.
+- Choice: extend domain assertions for precise affected point/leg text and add one disposable-emulator edit flow that creates and corrects a duplicate leg and an out-of-outline point. Keep the production projection unchanged unless a test reveals an actual defect. Alternative: add new validation rules or upload gating; neither is needed to test the current UI and both would expand the safety contract.
+- Trade-off: the emulator flow temporarily replaces its local draft and restores it in `finally`; an interrupted run may leave a synthetic draft. Native map rendering is outside these Review-tab assertions. Revisit when upload behavior is separately designed and approved.
+- Verification: focused `MissionDraftReviewTest`, Android test APK build and lint passed. The disposable-emulator flow passed after creating and correcting a duplicate leg and a point outside the outline. No production defect was found, so the implementation remained test-only.
+
 ## D-180-01: Check landscape route markers at native map coordinates
 
 - Date: 2026-11-14. User continued with proposed Phase 180. Baseline `e1ab611`, clean worktree; model/version unavailable.
