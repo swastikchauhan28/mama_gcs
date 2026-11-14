@@ -1,5 +1,12 @@
 # Current handover
 
+## 2026-11-14 — Phase 184 warning-specific navigation
+
+- Done: each local readiness warning row now has its own numbered editor action, including separate targets for an outside waypoint and a crossing leg. See [Phase 184](phase-184-report.md).
+- Verification: focused JVM task, debug app/test APK builds and lint passed. Three disposable-emulator flows passed; the Review screenshot shows both warning actions.
+- Broken or risky: aggregated rows focus their first affected index only. Local drafting results do not establish Cube acceptance, vehicle upload or physical route safety.
+- Next: owner review of the scoped diff; commit/push only on request. Preserve the operator-confirmed TCP record below.
+
 ## 2026-11-14 — Phase 183 affected-waypoint focus
 
 - Done: Review Route shortcuts now focus and highlight the first affected waypoint, or show add-point controls for an incomplete route. See [Phase 183](phase-183-report.md).

@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-184-01: Bind one navigation action to each bounded readiness row
+
+- Date: 2026-11-14. User approved Phase 184. Baseline `39360dd`, clean worktree; model/version unavailable.
+- Context: the Review card currently groups findings into at most five warning rows but exposes one generic Route shortcut. When an outside point and an outline-crossing leg coexist, the generic shortcut always focuses the first category.
+- Choice: represent each existing warning row as an immutable message, destination and optional one-based waypoint focus. Render one numbered action per row and reuse the Phase 183 focus/scroll path. Keep the existing category aggregation to bound card size for drafts of up to 250 waypoints. Alternative: parse warning text or create one action per every offending point/leg; parsing is fragile, while per-index rows could create hundreds of controls in one card.
+- Risk: a row listing multiple indices focuses its first affected point or leg; the message still lists the rest. The action only navigates and does not edit, upload or approve a mission. Verify distinct actions for simultaneous point and leg warnings and unchanged draft data on the disposable emulator. Revisit if an indexed issue browser is needed for large drafts.
+- Verification: focused JVM, debug app/test APK builds and lint passed. Three disposable-emulator flows passed, including separate navigation for simultaneous point and leg warnings; the screenshot shows both actions. No physical vehicle or mission upload was tested.
+
 ## D-183-01: Focus the first route point implicated by a local warning
 
 - Date: 2026-11-14. User approved Phase 183. Baseline `02ad6ac`, clean worktree; model/version unavailable.

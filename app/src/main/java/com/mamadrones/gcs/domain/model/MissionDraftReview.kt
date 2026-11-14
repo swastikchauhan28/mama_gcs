@@ -5,6 +5,15 @@ import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 
+enum class MissionReviewDestination { ROUTE, FIELD_OUTLINE }
+
+/** One bounded Review row and its local editor destination; waypoint numbers are one-based. */
+data class MissionReviewIssue(
+    val message: String,
+    val destination: MissionReviewDestination,
+    val waypointNumber: Int? = null,
+)
+
 /** Local geometric observations; never a vehicle-readiness or safety verdict. */
 data class MissionDraftReview(
     val hasRouteGeometry: Boolean,
@@ -17,23 +26,33 @@ data class MissionDraftReview(
     /** One-based leg indices whose straight coordinate segment leaves the polygon. */
     val legsOutsideKeepIn: List<Int>,
 ) {
-    /** Local drafting result only. It does not assess autopilot mission compatibility. */
-    val readinessIssues: List<String> get() = buildList {
-        if (!hasRouteGeometry) add("Add at least two route waypoints.")
-        if (zeroLengthLegs.isNotEmpty()) add("Edit or remove identical consecutive points at legs ${zeroLengthLegs.joinToString()}.")
-        if (keepInOutlineIssue != null) add("Fix the local outline: $keepInOutlineIssue.")
-        if (waypointsOutsideKeepIn.isNotEmpty()) add("Move route points inside the outline: ${waypointsOutsideKeepIn.joinToString()}.")
-        if (legsOutsideKeepIn.isNotEmpty()) add("Revise straight legs leaving the outline: ${legsOutsideKeepIn.joinToString()}.")
+    /** At most five aggregated local warnings, independent of the 250-waypoint draft limit. */
+    val issues: List<MissionReviewIssue> get() = buildList {
+        if (!hasRouteGeometry) add(MissionReviewIssue("Add at least two route waypoints.", MissionReviewDestination.ROUTE))
+        if (zeroLengthLegs.isNotEmpty()) add(MissionReviewIssue(
+            "Edit or remove identical consecutive points at legs ${zeroLengthLegs.joinToString()}.",
+            MissionReviewDestination.ROUTE, zeroLengthLegs.first() + 1,
+        ))
+        if (keepInOutlineIssue != null) add(MissionReviewIssue(
+            "Fix the local outline: $keepInOutlineIssue.", MissionReviewDestination.FIELD_OUTLINE,
+        ))
+        if (waypointsOutsideKeepIn.isNotEmpty()) add(MissionReviewIssue(
+            "Move route points inside the outline: ${waypointsOutsideKeepIn.joinToString()}.",
+            MissionReviewDestination.ROUTE, waypointsOutsideKeepIn.first(),
+        ))
+        if (legsOutsideKeepIn.isNotEmpty()) add(MissionReviewIssue(
+            "Revise straight legs leaving the outline: ${legsOutsideKeepIn.joinToString()}.",
+            MissionReviewDestination.ROUTE, legsOutsideKeepIn.first(),
+        ))
     }
 
+    /** Local drafting result only. It does not assess autopilot mission compatibility. */
+    val readinessIssues: List<String> get() = issues.map { it.message }
+
     /** One-based Route tab focus hint; null means use the add-point controls. */
-    val firstRouteFixWaypointNumber: Int? get() = when {
-        !hasRouteGeometry -> null
-        zeroLengthLegs.isNotEmpty() -> zeroLengthLegs.first() + 1
-        waypointsOutsideKeepIn.isNotEmpty() -> waypointsOutsideKeepIn.first()
-        legsOutsideKeepIn.isNotEmpty() -> legsOutsideKeepIn.first()
-        else -> null
-    }
+    val firstRouteFixWaypointNumber: Int? get() = issues.firstOrNull {
+        it.destination == MissionReviewDestination.ROUTE
+    }?.waypointNumber
 
     companion object {
         fun inspect(draft: MissionDraft): MissionDraftReview {

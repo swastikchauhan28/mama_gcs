@@ -43,6 +43,7 @@ class MissionDraftReviewTest {
         assertEquals(listOf(1, 3), review.zeroLengthLegs)
         assertEquals(listOf("Edit or remove identical consecutive points at legs 1, 3."), review.readinessIssues)
         assertEquals(2, review.firstRouteFixWaypointNumber)
+        assertEquals(MissionReviewIssue(review.readinessIssues.single(), MissionReviewDestination.ROUTE, 2), review.issues.single())
     }
 
     @Test fun `keep in outline classifies waypoint positions with boundary treated as inside`() {
@@ -58,6 +59,8 @@ class MissionDraftReviewTest {
         assertEquals(listOf(2), review.waypointsOutsideKeepIn)
         assertTrue(review.readinessIssues.contains("Move route points inside the outline: 2."))
         assertEquals(2, review.firstRouteFixWaypointNumber)
+        assertEquals(2, review.issues.first { it.message.startsWith("Move route points") }.waypointNumber)
+        assertEquals(1, review.issues.first { it.message.startsWith("Revise straight legs") }.waypointNumber)
     }
 
     @Test fun `short or coordinate-degenerate outlines do not claim a containment check`() {
@@ -87,6 +90,7 @@ class MissionDraftReviewTest {
         assertEquals(listOf(1), review.legsOutsideKeepIn)
         assertEquals(listOf("Revise straight legs leaving the outline: 1."), review.readinessIssues)
         assertEquals(1, review.firstRouteFixWaypointNumber)
+        assertEquals(MissionReviewDestination.ROUTE, review.issues.single().destination)
     }
 
     @Test fun `self crossing fence is rejected for containment review`() {
@@ -99,6 +103,7 @@ class MissionDraftReviewTest {
         assertFalse(review.hasUsableKeepInOutline)
         assertEquals("OUTLINE CROSSES ITSELF", review.keepInOutlineIssue)
         assertTrue(review.readinessIssues.contains("Fix the local outline: OUTLINE CROSSES ITSELF."))
+        assertEquals(MissionReviewDestination.FIELD_OUTLINE, review.issues.first { it.message.startsWith("Fix the local outline") }.destination)
     }
 
     private fun point(id: String, latitude: Double, longitude: Double) = DraftWaypoint(id, latitude, longitude)

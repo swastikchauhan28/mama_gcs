@@ -35,6 +35,7 @@ import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
 import com.mamadrones.gcs.domain.model.MissionLibraryEntry
 import com.mamadrones.gcs.domain.model.MissionDraftReview
+import com.mamadrones.gcs.domain.model.MissionReviewDestination
 import com.mamadrones.gcs.domain.model.MissionTravelEstimate
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.domain.repository.MissionDraftFileFormat
@@ -341,32 +342,34 @@ fun MissionScreen(
                 if (editorTab == "Review") {
                 item {
                     val review = MissionDraftReview.inspect(plan.draft)
+                    val issues = review.issues
                     SubsystemCard(PanelSpec(
                         title = "Local route readiness",
-                        status = if (review.readinessIssues.isEmpty()) "READY FOR REVIEW · LOCAL ONLY" else "NEEDS CHANGES",
-                        rows = if (review.readinessIssues.isEmpty()) listOf(
+                        status = if (issues.isEmpty()) "READY FOR REVIEW · LOCAL ONLY" else "NEEDS CHANGES",
+                        rows = if (issues.isEmpty()) listOf(
                             "Route structure" to "LOCAL CHECKS PASSED",
                             "Outline containment" to if (plan.draft.keepInFence.isEmpty()) "NOT CHECKED · NO OUTLINE" else "LOCAL CHECK PASSED",
-                        ) else review.readinessIssues.mapIndexed { index, issue -> "Fix ${index + 1}" to issue },
+                        ) else issues.mapIndexed { index, issue -> "Fix ${index + 1}" to issue.message },
                         note = "This is a local drafting check. Vehicle mission settings, Cube acceptance, turns, obstacles and execution safety are not checked. Mission upload is unavailable.",
                     ), Modifier.testTag("mission-route-readiness"))
-                    val routeFixNeeded = !review.hasRouteGeometry || review.zeroLengthLegs.isNotEmpty() ||
-                        review.waypointsOutsideKeepIn.isNotEmpty() || review.legsOutsideKeepIn.isNotEmpty()
-                    val routeTargetNumber = review.firstRouteFixWaypointNumber
-                    if (routeFixNeeded || review.keepInOutlineIssue != null) {
+                    if (issues.isNotEmpty()) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            if (routeFixNeeded) TextButton(
-                                onClick = {
-                                    jumpedWaypointId = routeTargetNumber?.let { plan.draft.waypoints.getOrNull(it - 1)?.id }
-                                    pendingRouteFocusNumber = routeTargetNumber ?: 0
-                                    editorTab = "Route"
-                                },
-                                modifier = Modifier.testTag("mission-fix-route"),
-                            ) { Text(if (routeTargetNumber == null) "Go to add point" else "Go to waypoint $routeTargetNumber") }
-                            if (review.keepInOutlineIssue != null) TextButton(
-                                onClick = { editorTab = "Field outline" },
-                                modifier = Modifier.testTag("mission-fix-outline"),
-                            ) { Text("Go to field outline") }
+                            issues.forEachIndexed { index, issue ->
+                                TextButton(onClick = {
+                                    if (issue.destination == MissionReviewDestination.ROUTE) {
+                                        jumpedWaypointId = issue.waypointNumber?.let { plan.draft.waypoints.getOrNull(it - 1)?.id }
+                                        pendingRouteFocusNumber = issue.waypointNumber ?: 0
+                                        editorTab = "Route"
+                                    } else editorTab = "Field outline"
+                                }, modifier = Modifier.testTag("mission-fix-issue-$index")) {
+                                    val destination = when {
+                                        issue.destination == MissionReviewDestination.FIELD_OUTLINE -> "field outline"
+                                        issue.waypointNumber == null -> "add point"
+                                        else -> "waypoint ${issue.waypointNumber}"
+                                    }
+                                    Text("Fix ${index + 1}: Go to $destination")
+                                }
+                            }
                         }
                     }
                     SubsystemCard(PanelSpec(
