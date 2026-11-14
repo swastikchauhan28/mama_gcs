@@ -17,6 +17,15 @@ data class MissionDraftReview(
     /** One-based leg indices whose straight coordinate segment leaves the polygon. */
     val legsOutsideKeepIn: List<Int>,
 ) {
+    /** Local drafting result only. It does not assess autopilot mission compatibility. */
+    val readinessIssues: List<String> get() = buildList {
+        if (!hasRouteGeometry) add("Add at least two route waypoints.")
+        if (zeroLengthLegs.isNotEmpty()) add("Edit or remove identical consecutive points at legs ${zeroLengthLegs.joinToString()}.")
+        if (keepInOutlineIssue != null) add("Fix the local outline: $keepInOutlineIssue.")
+        if (waypointsOutsideKeepIn.isNotEmpty()) add("Move route points inside the outline: ${waypointsOutsideKeepIn.joinToString()}.")
+        if (legsOutsideKeepIn.isNotEmpty()) add("Revise straight legs leaving the outline: ${legsOutsideKeepIn.joinToString()}.")
+    }
+
     companion object {
         fun inspect(draft: MissionDraft): MissionDraftReview {
             val geometry = LocalFenceGeometry.create(draft.keepInFence)

@@ -1,5 +1,9 @@
 # Hardware integration gates
 
+## 14 November 2026 — operator-confirmed sustained direct TCP link
+
+The operator confirms they have proved sustained live Cube → TCP → Mama GCS connection reliability. Record the direct TCP path as user-verified for their setup. This statement does not provide a measured duration, heartbeat timing trace, bridge identity or independent release acceptance record. It does not validate the distinct T12/R12 Bluetooth path, SBUS/RCIN behavior, vehicle commands or physical safety. Earlier brief Link lost observations remain historical and should not be described as a currently reproduced problem without new evidence.
+
 ## 3 November 2026 — historical Mission Planner version observation
 
 The operator-supplied Mission Planner screenshot dated 21 October 2026 shows the title `ArduRover V4.7.1` on `CubeOrangePlus` while Mission Planner displayed a connected vehicle. This is evidence of the version reported in that session, superseding the earlier 4.7.0-only description for that historical observation. It does not establish the installed version today or validate the T12/R12 Bluetooth telemetry path. No firmware or settings were changed during this review.

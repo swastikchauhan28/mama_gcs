@@ -18,6 +18,16 @@ class MissionDraftReviewTest {
 
         assertTrue(review.hasRouteGeometry)
         assertTrue(review.zeroLengthLegs.isEmpty())
+        assertTrue(review.readinessIssues.isEmpty())
+    }
+
+    @Test fun `readiness lists actionable local issues without assuming an outline`() {
+        val incomplete = MissionDraftReview.inspect(MissionDraft())
+        assertEquals(listOf("Add at least two route waypoints."), incomplete.readinessIssues)
+        val duplicate = MissionDraftReview.inspect(MissionDraft(waypoints = listOf(
+            point("a", 1.0, 2.0), point("b", 1.0, 2.0),
+        )))
+        assertTrue(duplicate.readinessIssues.single().contains("legs 1"))
     }
 
     @Test fun `identical consecutive coordinates report one based leg numbers`() {

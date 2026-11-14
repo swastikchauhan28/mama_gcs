@@ -331,6 +331,15 @@ fun MissionScreen(
                 item {
                     val review = MissionDraftReview.inspect(plan.draft)
                     SubsystemCard(PanelSpec(
+                        title = "Local route readiness",
+                        status = if (review.readinessIssues.isEmpty()) "READY FOR REVIEW · LOCAL ONLY" else "NEEDS CHANGES",
+                        rows = if (review.readinessIssues.isEmpty()) listOf(
+                            "Route structure" to "LOCAL CHECKS PASSED",
+                            "Outline containment" to if (plan.draft.keepInFence.isEmpty()) "NOT CHECKED · NO OUTLINE" else "LOCAL CHECK PASSED",
+                        ) else review.readinessIssues.mapIndexed { index, issue -> "Fix ${index + 1}" to issue },
+                        note = "This is a local drafting check. Vehicle mission settings, Cube acceptance, turns, obstacles and execution safety are not checked. Mission upload is unavailable.",
+                    ), Modifier.testTag("mission-route-readiness"))
+                    SubsystemCard(PanelSpec(
                         title = "Local route review",
                         status = if (review.hasRouteGeometry) "ROUTE SHAPE DEFINED · REVIEW REQUIRED" else "INCOMPLETE · ADD WAYPOINTS",
                         rows = listOf(

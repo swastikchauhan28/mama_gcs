@@ -126,6 +126,32 @@ class MissionPlanningTest {
         }
     }
 
+    @Test fun localRouteReadinessUpdatesAsWaypointsAreAdded() {
+        val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val previous = runBlocking { repository.load() }
+        val previousRecovery = runBlocking { repository.loadRecovery() }
+        try {
+            runBlocking { repository.save(MissionDraft()) }
+            val scenario = androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java)
+            try {
+                compose.openWorkspace("mission")
+                compose.waitUntil(10_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+                scrollToTag("mission-route-readiness").assertIsDisplayed()
+                compose.onNodeWithText("NEEDS CHANGES").assertIsDisplayed()
+                addPoint("-35.3632621", "149.1652374")
+                addPoint("-35.3635000", "149.1660000")
+                scrollToTag("mission-route-readiness").assertIsDisplayed()
+                compose.onNodeWithText("READY FOR REVIEW · LOCAL ONLY").assertIsDisplayed()
+                compose.onNodeWithText("NOT CHECKED · NO OUTLINE").assertIsDisplayed()
+            } finally { scenario.close() }
+        } finally {
+            runBlocking {
+                repository.save(previous)
+                previousRecovery?.let { repository.saveRecovery(it) }
+            }
+        }
+    }
+
     @Test fun editReorderAndSaveDraftSurvivesNewViewModel() {
         val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         val previous = runBlocking { repository.load() }
@@ -139,10 +165,14 @@ class MissionPlanningTest {
                 addPoint("91", "149.1652374", invalid = true)
                 scrollToTag("mission-route-review").assertIsDisplayed()
                 compose.onNodeWithText("INCOMPLETE · ADD WAYPOINTS").assertIsDisplayed()
+                scrollToTag("mission-route-readiness").assertIsDisplayed()
+                compose.onNodeWithText("NEEDS CHANGES").assertIsDisplayed()
                 addPoint("-35.3632621", "149.1652374")
                 addPoint("-35.3635000", "149.1660000")
                 scrollToTag("mission-route-review").assertIsDisplayed()
                 compose.onNodeWithText("ROUTE SHAPE DEFINED · REVIEW REQUIRED").assertIsDisplayed()
+                scrollToTag("mission-route-readiness").assertIsDisplayed()
+                compose.onNodeWithText("READY FOR REVIEW · LOCAL ONLY").assertIsDisplayed()
                 addFenceVertex("-35.3700000", "149.1500000")
                 addFenceVertex("-35.3700000", "149.1800000")
                 addFenceVertex("-35.3500000", "149.1650000")
@@ -219,7 +249,7 @@ class MissionPlanningTest {
     private fun scrollToTag(tag: String): SemanticsNodeInteraction {
         if (tag == "mission-save") return compose.onNodeWithTag(tag)
         compose.selectMissionTab(when {
-            tag == "mission-route-review" -> "Review"
+            tag == "mission-route-review" || tag == "mission-route-readiness" -> "Review"
             tag.contains("fence") -> "Field outline"
             else -> "Route"
         })

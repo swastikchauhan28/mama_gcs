@@ -1,5 +1,19 @@
 # Current handover
 
+## 2026-11-14 — Phase 179 local route readiness
+
+- Done: Review tab now projects existing local route checks into an actionable Ready for review / Needs changes card. Missing optional outline is shown as unchecked; vehicle mission settings and Cube acceptance are outside this result. See [Phase 179](phase-179-report.md).
+- Verification: focused JVM, build/lint and the focused emulator readiness test passed. The broader planner test reached the new assertions, then timed out on landscape map rendering; see [Phase 179](phase-179-report.md).
+- Broken or risky: local geometry is not a drivable path or vehicle mission acceptance. Mission upload and commands remain unavailable. Landscape native map rendering timeout remains open.
+- Next: owner review of the Phase 179 diff and separate investigation of the map rendering test. Preserve the operator-confirmed TCP record and pre-existing uncommitted documentation corrections.
+
+## 2026-11-14 — Operator confirms sustained Cube TCP telemetry
+
+- Done: the operator corrects the prior status and confirms they have proved sustained live Cube → TCP → Mama GCS connection reliability in their own test. Treat this path as operator-verified, rather than outstanding solely because the later phases used simulation.
+- Verification: this confirmation is a user report. The duration, heartbeat interval record, build, bridge identity and test conditions were not supplied in this correction; do not invent those measurements or reinterpret Phase 178's emulator test as live evidence.
+- In progress: document quantitative live evidence if needed for release qualification. The separate T12/R12 Bluetooth route and RCIN behavior have not been validated by this TCP result.
+- Next: focus on the remaining hardware integration and mission/control safety gates when authorized; do not repeat the TCP reliability test merely to establish that the operator has already done it.
+
 ## 2026-11-06 — Phase 178 simulated heartbeat recovery timeline
 
 - Done: added an Android-test-only recovered-gap scenario and a steady → delayed → recovered timeline check. It uses immutable fixture values only; no socket, saved data, hardware or command path is involved. See [Phase 178](phase-178-report.md).

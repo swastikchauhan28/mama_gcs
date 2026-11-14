@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-179-01: Project existing route checks into a local readiness result
+
+- Date: 2026-11-14. User approved Phase 179. Baseline `311e0c8`; two pre-existing uncommitted documentation corrections were preserved. Model/version unavailable.
+- Context: the Review tab already computes minimum route geometry, identical consecutive points and optional outline containment, but users must interpret separate rows. There is no mission protocol or vehicle settings model to check.
+- Choice: derive actionable issues from the existing immutable `MissionDraftReview` and display a local-only readiness card. A missing optional outline is shown as unchecked. Vehicle mission settings and Cube acceptance are explicitly outside the result. Alternative: call it upload ready or invent a vehicle configuration profile; either would imply unsupported capability.
+- Verification: focused JVM review test, Android build/lint and a focused planner UI test passed on the disposable emulator. A broader planner test timed out later at landscape native map rendering. No dependency, permission, transport, saved-data schema or command change. Revisit when a mission protocol and approved vehicle profile exist.
+
 ## D-178-01: Exercise heartbeat recovery without simulating a transport
 
 - Date: 2026-11-06. User approved the no-hardware simulated recovery timeline. Starting revision `cf68e93`, clean worktree; model/version unavailable.
