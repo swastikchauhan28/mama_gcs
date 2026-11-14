@@ -240,6 +240,54 @@ class MissionPlanningTest {
         }
     }
 
+    @Test fun aggregatedWarningPickerFocusesEachLegWithoutChangingDraft() {
+        val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val previous = runBlocking { repository.load() }
+        val previousRecovery = runBlocking { repository.loadRecovery() }
+        val draft = MissionDraft(waypoints = listOf(
+            DraftWaypoint("a", -35.3635, 149.1650), DraftWaypoint("b", -35.3635, 149.1650),
+            DraftWaypoint("c", -35.3634, 149.1651), DraftWaypoint("d", -35.3634, 149.1651),
+        ))
+        try {
+            runBlocking { repository.save(draft) }
+            val scenario = androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java)
+            try {
+                compose.openWorkspace("mission")
+                scrollToTag("mission-route-readiness").assertIsDisplayed()
+                compose.onNodeWithText("Edit or remove identical consecutive points at legs 1, 3.").assertExists()
+                scrollToTag("mission-fix-issue-0").assertIsDisplayed()
+                compose.onNodeWithText("Fix 1: Choose affected item (2)").assertIsDisplayed()
+                compose.onNodeWithTag("mission-fix-issue-0").performClick()
+                compose.onNodeWithTag("mission-fix-target-list").assertIsDisplayed()
+                compose.onNodeWithText("Leg 1 → waypoint 2").assertIsDisplayed()
+                compose.onNodeWithText("Leg 3 → waypoint 4").assertIsDisplayed()
+                capture("mission-multi-issue-picker")
+                compose.onNodeWithText("Cancel").performClick()
+                compose.onNodeWithTag("mission-fix-target-list").assertDoesNotExist()
+                compose.onNodeWithText("Edit or remove identical consecutive points at legs 1, 3.").assertExists()
+
+                scrollToTag("mission-fix-issue-0").performClick()
+                compose.onNodeWithTag("mission-fix-target-2").performClick()
+                compose.waitUntil(10_000) { compose.onAllNodesWithTag("mission-waypoint-row-1").fetchSemanticsNodes().isNotEmpty() }
+                compose.onNodeWithTag("mission-waypoint-row-1").assertIsDisplayed()
+                compose.onNodeWithTag("mission-jump-target").assertIsDisplayed()
+
+                scrollToTag("mission-fix-issue-0").performClick()
+                compose.onNodeWithTag("mission-fix-target-4").performClick()
+                compose.waitUntil(10_000) { compose.onAllNodesWithTag("mission-waypoint-row-3").fetchSemanticsNodes().isNotEmpty() }
+                compose.onNodeWithTag("mission-waypoint-row-3").assertIsDisplayed()
+                compose.onNodeWithTag("mission-jump-target").assertIsDisplayed()
+                assertEquals(draft.waypoints, runBlocking { repository.load().waypoints })
+                assertEquals(draft.keepInFence, runBlocking { repository.load().keepInFence })
+            } finally { scenario.close() }
+        } finally {
+            runBlocking {
+                repository.save(previous)
+                previousRecovery?.let { repository.saveRecovery(it) }
+            }
+        }
+    }
+
     @Test fun routeShortcutFocusesStartOfLegLeavingConcaveOutline() {
         val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         val previous = runBlocking { repository.load() }

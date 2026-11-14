@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -36,6 +37,7 @@ import com.mamadrones.gcs.domain.model.MissionDraft
 import com.mamadrones.gcs.domain.model.MissionLibraryEntry
 import com.mamadrones.gcs.domain.model.MissionDraftReview
 import com.mamadrones.gcs.domain.model.MissionReviewDestination
+import com.mamadrones.gcs.domain.model.MissionReviewIssue
 import com.mamadrones.gcs.domain.model.MissionTravelEstimate
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.domain.repository.MissionDraftFileFormat
@@ -139,6 +141,7 @@ fun MissionScreen(
     var jumpWaypointInput by rememberSaveable { mutableStateOf("") }
     var jumpedWaypointId by remember(plan.draft) { mutableStateOf<String?>(null) }
     var pendingRouteFocusNumber by remember { mutableStateOf<Int?>(null) }
+    var pendingReviewIssue by remember(plan.draft) { mutableStateOf<MissionReviewIssue?>(null) }
     val routeListState = rememberLazyListState()
     val jumpWaypointNumber = jumpWaypointInput.toIntOrNull()
     val waypointCount = plan.draft.waypoints.size
@@ -165,6 +168,12 @@ fun MissionScreen(
         initialLatitude = point?.latitude?.toString().orEmpty()
         initialLongitude = point?.longitude?.toString().orEmpty()
         showFenceEditor = true
+    }
+    fun focusReviewWaypoint(number: Int?) {
+        if (number != null && number !in 1..waypointCount) return
+        jumpedWaypointId = number?.let { plan.draft.waypoints[it - 1].id }
+        pendingRouteFocusNumber = number ?: 0
+        editorTab = "Route"
     }
 
     val mapContent: @Composable (Modifier, Boolean) -> Unit = { mapModifier, compactControls ->
@@ -357,9 +366,8 @@ fun MissionScreen(
                             issues.forEachIndexed { index, issue ->
                                 TextButton(onClick = {
                                     if (issue.destination == MissionReviewDestination.ROUTE) {
-                                        jumpedWaypointId = issue.waypointNumber?.let { plan.draft.waypoints.getOrNull(it - 1)?.id }
-                                        pendingRouteFocusNumber = issue.waypointNumber ?: 0
-                                        editorTab = "Route"
+                                        if (issue.targets.size > 1) pendingReviewIssue = issue
+                                        else focusReviewWaypoint(issue.waypointNumber)
                                     } else editorTab = "Field outline"
                                 }, modifier = Modifier.testTag("mission-fix-issue-$index")) {
                                     val destination = when {
@@ -367,7 +375,8 @@ fun MissionScreen(
                                         issue.waypointNumber == null -> "add point"
                                         else -> "waypoint ${issue.waypointNumber}"
                                     }
-                                    Text("Fix ${index + 1}: Go to $destination")
+                                    Text(if (issue.targets.size > 1) "Fix ${index + 1}: Choose affected item (${issue.targets.size})"
+                                        else "Fix ${index + 1}: Go to $destination")
                                 }
                             }
                         }
@@ -479,6 +488,30 @@ fun MissionScreen(
         }
     }
 
+    pendingReviewIssue?.let { issue ->
+        AlertDialog(
+            onDismissRequest = { pendingReviewIssue = null },
+            title = { Text("Choose affected item") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(issue.message, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodyMedium)
+                    LazyColumn(Modifier.heightIn(max = 320.dp).testTag("mission-fix-target-list")) {
+                        items(issue.targets, key = { it.waypointNumber }) { target ->
+                            TextButton(
+                                onClick = {
+                                    pendingReviewIssue = null
+                                    focusReviewWaypoint(target.waypointNumber)
+                                },
+                                modifier = Modifier.fillMaxWidth().testTag("mission-fix-target-${target.waypointNumber}"),
+                            ) { Text(target.label) }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { pendingReviewIssue = null }) { Text("Cancel") } },
+        )
+    }
     if (showEditor) WaypointDialog(
         initialLatitude, initialLongitude, editingId != null,
         enabled = plan.editable,

@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-14 — Phase 185 affected-item picker
+
+- Done: aggregated route warnings now let the operator choose each affected point or leg in a lazy picker; single-target actions still navigate directly. See [Phase 185](phase-185-report.md).
+- Verification: ten focused JVM tests, debug app/test APK builds and lint passed using temporary build outputs outside OneDrive. Three focused emulator UI assertions passed, including Cancel, two targets and unchanged saved draft.
+- In progress: visual acceptance needs an unobscured picker screenshot and a healthy emulator preflight/post-run gate.
+- Broken or risky: the initial screenshot was covered by a System UI ANR; a no-wipe restart and a fresh temporary data directory also logged Android ANRs during health preflight. Local route findings are not Cube acceptance, upload or physical-safety evidence.
+- Next: repeat only the focused visual acceptance on a healthy disposable emulator. Review the scoped diff; commit/push only on request. Preserve the operator-confirmed TCP record below.
+- Do not touch: operator phone data, physical rover commands or Cube parameters for this software-only phase.
+
 ## 2026-11-14 — Phase 184 warning-specific navigation
 
 - Done: each local readiness warning row now has its own numbered editor action, including separate targets for an outside waypoint and a crossing leg. See [Phase 184](phase-184-report.md).

@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-185-01: Select one affected item from an aggregated route warning
+
+- Date: 2026-11-14. User approved Phase 185. Baseline `6589171`, clean worktree; model/version unavailable.
+- Context: each local warning has its own action, but a warning listing several route indices still focuses only its first. `MissionDraft` bounds route length to 250 points, while the Review card bounds warning categories to five.
+- Choice: attach immutable, one-based focus targets to each warning. Keep direct navigation for zero or one target; for multiple targets, open a bounded-height lazy picker with a labelled row for each affected point or leg. Selecting a row reuses the existing Route focus/scroll path. A draft change invalidates the open picker. Alternative: one button per affected index in Review would create up to hundreds of controls; cycling indices would make a specific item harder to select.
+- Risk and limits: each target is a navigation hint, not a correction, upload decision or physical safety check. The picker can contain up to 249 leg targets or 250 point targets but only visible rows are composed. Verify first and later targets, cancel without edits, unchanged draft, and existing one-target shortcuts on a disposable emulator. Revisit if large-draft search or grouping is needed.
+- Verification correction: the first Gradle run failed while snapshotting OneDrive placeholder `.class` files, before tests. A temporary external build directory passed ten focused JVM tests, app/test APK builds and lint. Three focused emulator UI assertions passed, but the screenshot was obscured by a System UI ANR; later no-wipe and fresh-data emulator health preflights also failed from new Android ANRs. Visual acceptance remains open; see [Phase 185](phase-185-report.md).
+
 ## D-184-01: Bind one navigation action to each bounded readiness row
 
 - Date: 2026-11-14. User approved Phase 184. Baseline `39360dd`, clean worktree; model/version unavailable.

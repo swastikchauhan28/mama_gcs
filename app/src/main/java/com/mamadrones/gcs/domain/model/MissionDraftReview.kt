@@ -7,12 +7,17 @@ import kotlin.math.min
 
 enum class MissionReviewDestination { ROUTE, FIELD_OUTLINE }
 
-/** One bounded Review row and its local editor destination; waypoint numbers are one-based. */
+/** One affected point or leg and the one-based Route waypoint that should receive focus. */
+data class MissionReviewTarget(val label: String, val waypointNumber: Int)
+
+/** One bounded Review row and its local editor destination. */
 data class MissionReviewIssue(
     val message: String,
     val destination: MissionReviewDestination,
-    val waypointNumber: Int? = null,
-)
+    val targets: List<MissionReviewTarget> = emptyList(),
+) {
+    val waypointNumber: Int? get() = targets.firstOrNull()?.waypointNumber
+}
 
 /** Local geometric observations; never a vehicle-readiness or safety verdict. */
 data class MissionDraftReview(
@@ -31,18 +36,21 @@ data class MissionDraftReview(
         if (!hasRouteGeometry) add(MissionReviewIssue("Add at least two route waypoints.", MissionReviewDestination.ROUTE))
         if (zeroLengthLegs.isNotEmpty()) add(MissionReviewIssue(
             "Edit or remove identical consecutive points at legs ${zeroLengthLegs.joinToString()}.",
-            MissionReviewDestination.ROUTE, zeroLengthLegs.first() + 1,
+            MissionReviewDestination.ROUTE,
+            zeroLengthLegs.map { MissionReviewTarget("Leg $it → waypoint ${it + 1}", it + 1) },
         ))
         if (keepInOutlineIssue != null) add(MissionReviewIssue(
             "Fix the local outline: $keepInOutlineIssue.", MissionReviewDestination.FIELD_OUTLINE,
         ))
         if (waypointsOutsideKeepIn.isNotEmpty()) add(MissionReviewIssue(
             "Move route points inside the outline: ${waypointsOutsideKeepIn.joinToString()}.",
-            MissionReviewDestination.ROUTE, waypointsOutsideKeepIn.first(),
+            MissionReviewDestination.ROUTE,
+            waypointsOutsideKeepIn.map { MissionReviewTarget("Waypoint $it", it) },
         ))
         if (legsOutsideKeepIn.isNotEmpty()) add(MissionReviewIssue(
             "Revise straight legs leaving the outline: ${legsOutsideKeepIn.joinToString()}.",
-            MissionReviewDestination.ROUTE, legsOutsideKeepIn.first(),
+            MissionReviewDestination.ROUTE,
+            legsOutsideKeepIn.map { MissionReviewTarget("Leg $it → waypoint $it", it) },
         ))
     }
 
