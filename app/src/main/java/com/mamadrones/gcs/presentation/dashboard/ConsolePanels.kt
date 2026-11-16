@@ -178,7 +178,9 @@ object ConsolePanels {
         messages.take(5).mapIndexed { index, message ->
             val age = sampleAge(message.receivedAtEpochMillis)
             "${severityName(message.severity)} · ${index + 1}" to "${message.text} ($age)"
-        },
+        } + listOfNotNull(latestAutopilotWarning(state)?.takeUnless { it in messages.take(5) }?.let {
+            "Last warning · ${severityName(it.severity)}" to "${it.text} (${sampleAge(it.receivedAtEpochMillis)})"
+        }),
         "STATUSTEXT is informational; severity is shown as reported and does not drive a health verdict."
     ) }
     fun motors(state: VehicleState) = PanelSpec("VESC motors", if (state.motors.isEmpty()) "TELEMETRY UNAVAILABLE" else "${state.motors.size} PROVISIONED", listOf(
@@ -243,7 +245,7 @@ private fun String?.orUnknown(): String = this ?: "UNKNOWN"
 
 private fun Long?.hexMask(): String = this?.let { "0x${it.toString(16).uppercase().padStart(8, '0')}" } ?: "UNKNOWN"
 
-private fun severityName(severity: Int): String = when (severity) {
+internal fun severityName(severity: Int): String = when (severity) {
     0 -> "EMERGENCY"
     1 -> "ALERT"
     2 -> "CRITICAL"

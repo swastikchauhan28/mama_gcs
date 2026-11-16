@@ -1,0 +1,86 @@
+package com.mamadrones.gcs
+
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
+import android.graphics.Bitmap
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.test.platform.app.InstrumentationRegistry
+import com.mamadrones.gcs.domain.model.VehicleConnectionState
+import com.mamadrones.gcs.domain.model.VehicleState
+import com.mamadrones.gcs.domain.model.VehicleStatusText
+import com.mamadrones.gcs.presentation.screens.AutopilotWarningBanner
+import com.mamadrones.gcs.presentation.screens.DashboardScreen
+import com.mamadrones.gcs.presentation.theme.MamaGcsTheme
+import java.io.File
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+
+/** Synthetic, read-only message display; no connection or Cube command is opened. */
+class AutopilotWarningUiTest {
+    @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
+
+    @Test fun reportedCompassErrorIsVisibleAndOpensMessages() {
+        val state = mutableStateOf(VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
+            statusTexts = listOf(VehicleStatusText(2, "PreArm: Compass 1 not calibrated", System.currentTimeMillis()))))
+        var opened = 0
+        compose.setContent { MamaGcsTheme { Surface { AutopilotWarningBanner(state.value) { opened++ } } } }
+        compose.onNodeWithTag("autopilot-warning-banner").assertIsDisplayed()
+        compose.onNodeWithText("Autopilot reported CRITICAL").assertIsDisplayed()
+        compose.onNodeWithText("PreArm: Compass 1 not calibrated").assertIsDisplayed()
+        capture("phase188-autopilot-warning")
+        compose.onNodeWithTag("autopilot-warning-banner").performClick()
+        compose.runOnIdle { assertEquals(1, opened) }
+        compose.runOnIdle { state.value = state.value.copy(statusTexts = listOf(
+            VehicleStatusText(4, "New warning", System.currentTimeMillis()))) }
+        compose.onNodeWithText("New warning").assertIsDisplayed()
+        compose.onNodeWithText("Receive time unavailable", substring = true).assertDoesNotExist()
+        compose.runOnIdle { state.value = state.value.copy(connectionStatus = VehicleConnectionState.DEGRADED) }
+        compose.onNodeWithTag("autopilot-warning-banner").assertDoesNotExist()
+    }
+
+    @Test fun operatePlacesWarningBetweenMapAndInstruments() {
+        val state = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
+            statusTexts = listOf(VehicleStatusText(2, "PreArm: Compass 1 not calibrated", System.currentTimeMillis())))
+        var destination: String? = null
+        compose.setContent { MamaGcsTheme { Surface { DashboardScreen(state, onNavigate = { destination = it }) } } }
+        assertWarningBetweenMapAndInstruments()
+        capture("phase188-operate-warning")
+        compose.onNodeWithTag("autopilot-warning-banner").performClick()
+        compose.runOnIdle { assertEquals("diagnostics", destination) }
+    }
+
+    @Test fun portraitOperateKeepsWarningVisibleWithoutCoveringInstruments() {
+        val state = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
+            statusTexts = listOf(VehicleStatusText(2, "PreArm: Compass 1 not calibrated", System.currentTimeMillis())))
+        val priorOrientation = compose.activity.requestedOrientation
+        try {
+            compose.activityRule.scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT }
+            compose.setContent { MamaGcsTheme { Surface { DashboardScreen(state, onNavigate = {}) } } }
+            assertWarningBetweenMapAndInstruments()
+            capture("phase188-operate-warning-portrait")
+        } finally {
+            compose.activityRule.scenario.onActivity { it.requestedOrientation = priorOrientation }
+        }
+    }
+
+    private fun assertWarningBetweenMapAndInstruments() {
+        val map = compose.onNodeWithTag("operation-map").fetchSemanticsNode().boundsInRoot
+        val banner = compose.onNodeWithTag("autopilot-warning-banner").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val instruments = compose.onNodeWithTag("rover-instrument-bar").fetchSemanticsNode().boundsInRoot
+        assertTrue(map.bottom <= banner.top && banner.bottom <= instruments.top)
+    }
+
+    private fun capture(name: String) {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        File(context.getExternalFilesDir(null), "$name.png").outputStream().use {
+            assertTrue(compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it))
+        }
+    }
+}

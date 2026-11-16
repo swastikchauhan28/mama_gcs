@@ -1,5 +1,21 @@
 # Current handover
 
+## 2026-11-16 — Phase 188 visual acceptance completed
+
+- Done: the final synthetic warning UI suite passed on the disposable emulator in landscape and portrait, including the receive-age update, navigation and disconnection behavior. The portrait screenshot was visually inspected; see [Phase 188](phase-188-report.md).
+- Verification: `Test-AndroidAcceptance.ps1 -Serial emulator-5554 -TestClass com.mamadrones.gcs.AutopilotWarningUiTest` returned `OK (3 tests)` with no new Android crash or ANR. The final source build, 501 JVM tests and lint (0 errors / 27 warnings) were completed on 2026-11-14. This is synthetic software evidence, not a live Cube test.
+- Broken or risky: a received warning can outlive its physical cause, and unsigned telemetry is not authenticated. The emulator map was black because the synthetic fixture had no map source; the banner and instruments remained visible.
+- Next: review the scoped diff and check a real `STATUSTEXT` from the Cube on authorized bench hardware when available. Commit/push only on request.
+- Do not touch: operator phone data, Cube parameters or physical vehicle commands for this display-only phase.
+
+## 2026-11-14 — Phase 188 autopilot warning display
+
+- Done: Operate now displays the newest reported severity 0–4 `STATUSTEXT` from the selected autopilot, including up to two lines of message text, severity and receive age, with a Diagnostics link. Diagnostics puts recent messages first and keeps the full last warning visible if it has moved beyond the five most recent. See [Phase 188](phase-188-report.md).
+- Verification: 501 JVM tests in 80 suites passed, debug app and Android-test APKs built, and lint passed with 0 errors / 27 warnings. The first two synthetic emulator checks passed with a clean health gate; the component and landscape Operate screenshots were inspected. A portrait test that rotated after content failed from fixture recreation, was corrected, and awaits a new healthy emulator run. Startup ANR logs are retained under ignored `app/build/reports/`.
+- Broken or risky: an unsigned telemetry message can be forged, and the last warning can remain after its physical cause resolves. The banner says last reported and is hidden on link loss; lack of a message does not prove healthy sensors. No live Cube acceptance was performed.
+- Next: rerun the final three synthetic banner UI tests after a clean 30-second emulator health preflight, inspect the portrait screenshot, and review the scoped diff. Commit/push only on request.
+- Do not touch: operator phone data, Cube/rover parameters or physical commands for this display-only phase.
+
 ## 2026-11-14 — Phase 187 outline warning and vertex jump
 
 - Done: Field outline now displays its current local geometry warning and lets the user jump to a numbered highlighted vertex. Portrait Go and landscape keyboard Done were exercised. See [Phase 187](phase-187-report.md).

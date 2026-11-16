@@ -1,6 +1,7 @@
 package com.mamadrones.gcs.presentation.screens
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -28,8 +29,11 @@ import com.mamadrones.gcs.domain.model.MapPositionStatus
 import kotlinx.coroutines.delay
 import com.mamadrones.gcs.presentation.components.*
 import com.mamadrones.gcs.presentation.dashboard.ConsolePanels
+import com.mamadrones.gcs.presentation.dashboard.autopilotWarningAge
 import com.mamadrones.gcs.presentation.dashboard.forDisplay
+import com.mamadrones.gcs.presentation.dashboard.latestAutopilotWarning
 import com.mamadrones.gcs.presentation.dashboard.reading
+import com.mamadrones.gcs.presentation.dashboard.severityName
 import com.mamadrones.gcs.presentation.map.VehicleMap
 import java.util.Locale
 
@@ -54,6 +58,7 @@ fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier:
     var showInstruments by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxSize()) {
         MapWorkspace(state, Modifier.weight(1f).fillMaxWidth(), onNavigate, showOperatorTools = true)
+        AutopilotWarningBanner(state, onOpenMessages = { onNavigate("diagnostics") })
         RoverInstrumentBar(state, onShowInstruments = { showInstruments = true })
     }
     if (showInstruments) AlertDialog(
@@ -77,6 +82,31 @@ fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier:
         },
         confirmButton = { TextButton(onClick = { showInstruments = false }) { Text("Close") } },
     )
+}
+
+/** A received message is historical evidence, not a current fault or readiness verdict. */
+@Composable
+internal fun AutopilotWarningBanner(state: VehicleState, onOpenMessages: () -> Unit) {
+    val message = latestAutopilotWarning(state) ?: return
+    val now by produceState(System.currentTimeMillis()) {
+        while (true) { delay(1_000L); value = System.currentTimeMillis() }
+    }
+    // A new message can arrive between ticks; read a fresh clock for that state change.
+    val displayNow = remember(message, now) { System.currentTimeMillis() }
+    Surface(
+        Modifier.fillMaxWidth().clickable(onClick = onOpenMessages).testTag("autopilot-warning-banner"),
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+            Text("Autopilot reported ${severityName(message.severity)}", style = MaterialTheme.typography.labelMedium)
+            Text(message.text, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Last reported · ${autopilotWarningAge(message, displayNow)}", style = MaterialTheme.typography.labelSmall)
+                Text("Messages ›", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
 }
 
 /** Keep the primary heading fully visible without scrolling on narrow displays. */

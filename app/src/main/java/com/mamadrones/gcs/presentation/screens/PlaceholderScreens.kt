@@ -161,6 +161,7 @@ fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connec
     }
     ScreenHeader("Diagnostics", "Vehicle and communication inspection")
     reportControls()
+    SubsystemCard(ConsolePanels.statusTexts(state))
     val link = connection.session.connection
     val timingNow = remember(state.mavlinkDiagnostics, nowElapsed) { android.os.SystemClock.elapsedRealtime() }
     SubsystemCard(ConsolePanels.heartbeatTiming(state.mavlinkDiagnostics, timingNow, tcpStatus))
@@ -174,8 +175,7 @@ fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connec
             "Transport" to if (connection.savedEndpoint != null) "UDP" else "UNCONFIGURED",
         ), note = "UDP only; BLE raw counters are on the BLE MAVLink screen. Shared decoder counters are shown above. Socket counts do not prove vehicle liveness or command capability."),
         ConsolePanels.vehicle(state), ConsolePanels.gps(state), ConsolePanels.position(state),
-        ConsolePanels.battery(state, batteryClock), ConsolePanels.attitude(state), ConsolePanels.systemStatus(state),
-        ConsolePanels.statusTexts(state)
+        ConsolePanels.battery(state, batteryClock), ConsolePanels.attitude(state), ConsolePanels.systemStatus(state)
     ))
     Notice("PERSISTENT LOGGING NOT IMPLEMENTED", "The latest in-memory STATUSTEXT messages and telemetry receive ages are shown above. They are not saved or exported, and do not constitute a health assessment.")
     UnavailableActions("Export logs")

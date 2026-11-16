@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-188-01: Surface the last reported autopilot warning on Operate
+
+- Date: 2026-11-14. The user requested a Mission Planner-like display for Cube errors such as a compass calibration warning. Baseline `ea1d64d`, clean worktree; model/version unavailable.
+- Context: selected-source MAVLink `STATUSTEXT` already passes parser, assembler and repository into a 50-message session-memory list, but its panel is buried in Diagnostics. A new session clears the list; a disconnected vehicle is hidden by the display projection. There is no verified error-resolution signal in this message type.
+- Choice: display the newest received severity 0–4 message on Operate, with its reported severity, text, receive age and a link to existing Diagnostics. The compact banner caps text at two lines; Diagnostics retains the full message in its bounded list. Label it **last reported** to avoid asserting the fault is still active. Keep info/notice/debug in the existing message list. Alternative: infer compass faults from sensor flags or retain a persistent fault state; either would claim more than the incoming text proves.
+- Risk and revisit: unsigned/unencrypted telemetry can be spoofed, MAVLink CRC is not identity verification, and an old warning can outlive its underlying fault until a session ends or the 50-message buffer evicts it. Absence of a warning is not evidence of health. The banner is read-only and adds no request, parameter change, command, permission, persistence, dependency or network destination. Verify severity selection, disconnection, receive-age wording, navigation and visual layout with synthetic data, plus build/lint; live Cube display remains a separate check.
+- Verification correction: a message arriving between the banner's one-second clock ticks briefly showed an unavailable age; recompute the clock when the selected message changes. A portrait UI test that rotated the fixture after `setContent` lost its Compose tree on activity recreation. Rotate before setting content and preserve the failed test log. The first synthetic component and landscape Operate checks passed; portrait rerun awaits a healthy emulator after Android System UI startup ANRs.
+- 2026-11-16 closeout: the corrected three-test emulator suite passed with a healthy preflight/post-run gate, and the portrait warning screenshot was inspected. The prior ANRs and failed test remain in the phase report as historical failures; live Cube behavior is still unverified.
+
 ## D-187-01: Show the outline warning at its editor and allow numbered vertex navigation
 
 - Date: 2026-11-14. User approved Phase 187. Baseline `790ae85`, clean worktree; model/version unavailable.
