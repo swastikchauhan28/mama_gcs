@@ -161,7 +161,10 @@ fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connec
     }
     ScreenHeader("Diagnostics", "Vehicle and communication inspection")
     reportControls()
-    SubsystemCard(ConsolePanels.statusTexts(state))
+    var warningsOnly by rememberSaveable { mutableStateOf(false) }
+    FilterChip(selected = warningsOnly, onClick = { warningsOnly = !warningsOnly },
+        label = { Text("Warnings only") }, modifier = Modifier.testTag("autopilot-warning-filter"))
+    SubsystemCard(ConsolePanels.statusTexts(state, warningsOnly, now))
     val link = connection.session.connection
     val timingNow = remember(state.mavlinkDiagnostics, nowElapsed) { android.os.SystemClock.elapsedRealtime() }
     SubsystemCard(ConsolePanels.heartbeatTiming(state.mavlinkDiagnostics, timingNow, tcpStatus))

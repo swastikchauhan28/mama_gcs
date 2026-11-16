@@ -173,16 +173,26 @@ object ConsolePanels {
             "Comm errors" to (sample.communicationErrors?.toString() ?: "UNKNOWN")
         ), sampleAge(sample.lastUpdatedAtEpochMillis))
     }
-    fun statusTexts(state: VehicleState) = state.forDisplay().statusTexts.let { messages -> PanelSpec(
-        "Autopilot messages", messages.firstOrNull()?.let { severityName(it.severity) } ?: "NO MESSAGES",
-        messages.take(5).mapIndexed { index, message ->
-            val age = sampleAge(message.receivedAtEpochMillis)
-            "${severityName(message.severity)} · ${index + 1}" to "${message.text} ($age)"
-        } + listOfNotNull(latestAutopilotWarning(state)?.takeUnless { it in messages.take(5) }?.let {
-            "Last warning · ${severityName(it.severity)}" to "${it.text} (${sampleAge(it.receivedAtEpochMillis)})"
-        }),
-        "STATUSTEXT is informational; severity is shown as reported and does not drive a health verdict."
-    ) }
+    fun statusTexts(state: VehicleState, warningsOnly: Boolean = false,
+        nowEpochMillis: Long = System.currentTimeMillis()): PanelSpec {
+        val retained = state.statusTexts
+        val shown = if (warningsOnly) retained.filter { it.severity in 0..4 } else retained
+        val source = when {
+            retained.isEmpty() -> "NO RETAINED MESSAGES"
+            state.connected -> "CURRENT SESSION"
+            state.mavlinkDiagnostics.active -> "LINK NOT LIVE · RETAINED"
+            else -> "LAST SESSION · HISTORICAL"
+        }
+        return PanelSpec("Autopilot messages", "$source · ${shown.size} / ${retained.size} shown",
+            shown.mapIndexed { index, message ->
+                val age = if (message.receivedAtEpochMillis in 1..nowEpochMillis)
+                    "Received ${(nowEpochMillis - message.receivedAtEpochMillis) / 1_000L}s ago"
+                else "Receive time unavailable"
+                "${severityName(message.severity)} · ${index + 1}" to "${message.text} ($age)"
+            },
+            "Newest first · last 50 retained in memory. Reported severity is not a current fault or health verdict."
+        )
+    }
     fun motors(state: VehicleState) = PanelSpec("VESC motors", if (state.motors.isEmpty()) "TELEMETRY UNAVAILABLE" else "${state.motors.size} PROVISIONED", listOf(
         "Motor temperature" to "UNKNOWN", "Controller temperature" to "UNKNOWN", "Fault state" to "UNKNOWN"
     ), "Controller inventory and a validated telemetry route are not configured in this build.")

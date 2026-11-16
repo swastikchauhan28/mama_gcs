@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-189-01: Show bounded autopilot message history with a display filter
+
+- Date: 2026-11-16. User approved a software-only Phase 189 while hardware is unavailable. Baseline `1d88427`, clean worktree; model/version unavailable.
+- Context: the repository retains at most 50 selected-autopilot `STATUSTEXT` messages, but Diagnostics shows only five plus the last warning. The containing page already scrolls. Disconnection retains messages until a new session starts.
+- Choice: show all retained messages newest first in the existing scrolling Diagnostics card, with an in-memory warnings-only filter (severity 0–4). Label connected, link-lost and closed-session states separately, and show filtered/retained counts. Reuse the existing bounded state and receive ages; no new storage or transport. Alternative: a nested lazy list adds scroll contention, while a separate persistent log would expand retention and privacy scope.
+- Risk and revisit: 50 composed rows can make Diagnostics taller, though the repository cap bounds work. Messages are untrusted reports and can be stale after disconnection; absence from this limited history is not a health verdict. Verify selection, labels and UI filtering with synthetic data, builds/lint and visual inspection. Live Cube delivery remains untested.
+
 ## D-188-01: Surface the last reported autopilot warning on Operate
 
 - Date: 2026-11-14. The user requested a Mission Planner-like display for Cube errors such as a compass calibration warning. Baseline `ea1d64d`, clean worktree; model/version unavailable.

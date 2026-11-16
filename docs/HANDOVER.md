@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-16 — Phase 189 bounded autopilot message history
+
+- Done: Diagnostics shows all up to 50 retained selected-autopilot messages, newest first, with a warnings-only filter, shown/retained counts, and current/link-lost/historical labels. See [Phase 189](phase-189-report.md).
+- Verification: 501 JVM tests, debug app and Android-test builds, and lint passed with 0 errors / 20 warnings. Focused disposable-emulator verification was blocked by System UI ANRs on three health preflights before tests ran, including after OneDrive quit. No Cube was connected.
+- Broken or risky: messages are untrusted last reports, may be stale after link loss, and the in-memory list can evict older entries. The 50-row card can be tall on a phone.
+- Next: recover a healthy isolated test device, run the focused UI test and inspect its image. The user explicitly requested commit and push; this does not authorize release or hardware operation.
+- Do not touch: operator phone data, Cube parameters, physical commands, or mission upload for this display-only phase.
+
 ## 2026-11-16 — Phase 188 visual acceptance completed
 
 - Done: the final synthetic warning UI suite passed on the disposable emulator in landscape and portrait, including the receive-age update, navigation and disconnection behavior. The portrait screenshot was visually inspected; see [Phase 188](phase-188-report.md).

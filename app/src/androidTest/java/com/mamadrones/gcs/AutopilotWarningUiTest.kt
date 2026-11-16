@@ -14,6 +14,7 @@ import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.domain.model.VehicleStatusText
 import com.mamadrones.gcs.presentation.screens.AutopilotWarningBanner
 import com.mamadrones.gcs.presentation.screens.DashboardScreen
+import com.mamadrones.gcs.presentation.screens.DiagnosticsScreen
 import com.mamadrones.gcs.presentation.theme.MamaGcsTheme
 import java.io.File
 import org.junit.Assert.assertEquals
@@ -42,6 +43,23 @@ class AutopilotWarningUiTest {
         compose.onNodeWithText("Receive time unavailable", substring = true).assertDoesNotExist()
         compose.runOnIdle { state.value = state.value.copy(connectionStatus = VehicleConnectionState.DEGRADED) }
         compose.onNodeWithTag("autopilot-warning-banner").assertDoesNotExist()
+    }
+
+    @Test fun diagnosticsFilterAndHistoricalLabelKeepRetainedWarningVisible() {
+        val state = mutableStateOf(VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
+            statusTexts = listOf(VehicleStatusText(6, "Routine status", System.currentTimeMillis()),
+                VehicleStatusText(2, "PreArm: Compass 1 not calibrated", System.currentTimeMillis()))))
+        compose.setContent { MamaGcsTheme { Surface { DiagnosticsScreen(state.value) } } }
+        compose.onNodeWithText("CURRENT SESSION · 2 / 2 shown").assertExists()
+        compose.onNodeWithText("Routine status", substring = true).assertExists()
+        compose.onNodeWithTag("autopilot-warning-filter").performClick()
+        compose.onNodeWithText("CURRENT SESSION · 1 / 2 shown").assertExists()
+        compose.onNodeWithText("Routine status", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("PreArm: Compass 1 not calibrated", substring = true).assertExists()
+        capture("phase189-warning-history")
+        compose.runOnIdle { state.value = state.value.copy(connectionStatus = VehicleConnectionState.DISCONNECTED) }
+        compose.onNodeWithText("LAST SESSION · HISTORICAL · 1 / 2 shown").assertExists()
+        compose.onNodeWithText("PreArm: Compass 1 not calibrated", substring = true).assertExists()
     }
 
     @Test fun operatePlacesWarningBetweenMapAndInstruments() {
