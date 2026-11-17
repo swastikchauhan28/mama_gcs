@@ -124,12 +124,14 @@ class ClassicConnectionCheckUiTest {
         val opened = System.currentTimeMillis()
         val openedElapsed = android.os.SystemClock.elapsedRealtime()
         val link = mutableStateOf(ClassicBluetoothUiState(link = ClassicLinkState(peer, true,
-            ConnectionState(TransportStatus.OPEN, connectedAtEpochMillis = opened, connectedAtElapsedMillis = openedElapsed))))
+            ConnectionState(TransportStatus.OPEN, detail = "Serial link open; waiting for MAVLink heartbeat",
+                connectedAtEpochMillis = opened, connectedAtElapsedMillis = openedElapsed))))
         val vehicle = mutableStateOf(VehicleState())
         compose.setContent { MamaGcsTheme {
             ClassicBluetoothScreen(link.value, {}, {}, {}, {}, false, vehicle.value)
         } }
         compose.onNodeWithTag("classic-check-status").performScrollTo()
+        compose.onNodeWithText("Serial link open; waiting for MAVLink heartbeat").performScrollTo().assertIsDisplayed()
         compose.runOnIdle {
             val now = System.currentTimeMillis()
             val elapsed = android.os.SystemClock.elapsedRealtime()
@@ -145,7 +147,13 @@ class ClassicConnectionCheckUiTest {
                             lastDecodedAtElapsedMillis = elapsed, lastAcceptedAtElapsedMillis = elapsed))))
         }
         compose.waitUntil(5_000) { compose.onAllNodesWithText("LIVE RECEIVE EVIDENCE").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Fresh autopilot heartbeat received in this Classic session. Receive-only evidence.")
+            .performScrollTo().assertIsDisplayed()
+        capture("phase197-classic-fresh-detail")
         compose.waitUntil(8_000) { compose.onAllNodesWithText("BYTE STREAM STALE").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("No recent serial bytes in this Classic session; previous telemetry may be stale.")
+            .performScrollTo().assertIsDisplayed()
+        capture("phase197-classic-stale-detail")
         compose.onNodeWithText("all listed measurement receipt checks use elapsed time", substring = true).performScrollTo().assertIsDisplayed()
         capture("phase98-classic-clock-limits")
         compose.runOnIdle { link.value = link.value.copy(link = link.value.link.copy(active = false)) }

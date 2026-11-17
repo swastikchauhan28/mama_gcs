@@ -1,10 +1,40 @@
 package com.mamadrones.gcs.domain.model
 
+import com.mamadrones.gcs.presentation.screens.classicChecklistElapsedNow
+import com.mamadrones.gcs.presentation.screens.classicSerialLinkDetail
 import org.junit.Assert.*
 import org.junit.Test
 
 class ClassicConnectionCheckTest {
     private val now = 20_000L
+
+    @Test fun serialCardDetailTracksWaitingFreshAndStaleEvidence() {
+        val opening = connection.copy(detail = "Serial link open; waiting for MAVLink heartbeat")
+        assertEquals(opening.detail, classicSerialLinkDetail(opening,
+            assess(vehicle.copy(mavlinkDiagnostics = diagnostics.copy(receivedBytes = 0)))))
+        assertEquals("Fresh autopilot heartbeat received in this Classic session. Receive-only evidence.",
+            classicSerialLinkDetail(opening, assess()))
+        assertEquals("Autopilot heartbeat not confirmed from current serial data.",
+            classicSerialLinkDetail(opening, assess(vehicle.copy(lastHeartbeatAtElapsedMillis = now - 5_001))))
+        assertEquals("No recent serial bytes in this Classic session; previous telemetry may be stale.",
+            classicSerialLinkDetail(opening, assess(vehicle.copy(mavlinkDiagnostics =
+                diagnostics.copy(lastBytesAtElapsedMillis = now - 5_001)))))
+        val failure = opening.copy(status = TransportStatus.ERROR, detail = "Bluetooth device disconnected")
+        assertEquals("Bluetooth device disconnected", classicSerialLinkDetail(failure, assess(link = failure)))
+    }
+    @Test fun delayedUiTickDoesNotHideCurrentBytesOrHeartbeat() {
+        val delayedTick = now - 800L
+        assertEquals(ClassicCheckStage.WAITING_BYTES, assess(time = delayedTick).stage)
+        val renderedAt = classicChecklistElapsedNow(delayedTick, now + 10L)
+        val result = assess(time = renderedAt)
+        assertEquals(ClassicCheckStage.RECEIVING, result.stage)
+        assertTrue(result.freshBytes && result.freshHeartbeat)
+        // A truly future receipt and an expired receipt still fail the existing gates.
+        assertEquals(ClassicCheckStage.WAITING_BYTES, assess(vehicle.copy(mavlinkDiagnostics =
+            diagnostics.copy(lastBytesAtElapsedMillis = renderedAt + 1L)), time = renderedAt).stage)
+        assertEquals(ClassicCheckStage.BYTES_STALE, assess(vehicle.copy(mavlinkDiagnostics =
+            diagnostics.copy(lastBytesAtElapsedMillis = renderedAt - 5_001L)), time = renderedAt).stage)
+    }
     private val connection = ConnectionState(TransportStatus.OPEN, connectedAtEpochMillis = 10_000L, connectedAtElapsedMillis = 10_000L)
     private val heartbeat = MavlinkMessageObservation(ObservedMavlinkMessage.HEARTBEAT,
         decodedV2 = 1, accepted = 1, lastDecodedAtEpochMillis = now, lastAcceptedAtEpochMillis = now,

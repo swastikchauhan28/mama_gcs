@@ -1,5 +1,9 @@
 # Hardware integration gates
 
+## 17 November 2026 — live T12_485 Classic receive observation
+
+USB debugging on the physical phone allowed a read-only Mama GCS check. Android listed `T12_485` as previously paired; the operator selected it, and Mama GCS later identified it as the active Classic serial peer. Supported MAVLink and accepted autopilot heartbeats were observed. One earlier session subsequently appeared disconnected for an unknown reason. A later session had a conflicting Classic checklist (`heartbeat NOT CONFIRMED`) and Link & messages timing (`ACCEPTED HEARTBEAT RECENT`); this is a software-display investigation, not proof the Cube stopped sending. See [dated live check](bluetooth-live-check-2026-11-17.md). No RC movement or physical command was tested. This does not establish sustained Bluetooth reliability or rover readiness.
+
 ## 14 November 2026 — operator-confirmed sustained direct TCP link
 
 The operator confirms they have proved sustained live Cube → TCP → Mama GCS connection reliability. Record the direct TCP path as user-verified for their setup. This statement does not provide a measured duration, heartbeat timing trace, bridge identity or independent release acceptance record. It does not validate the distinct T12/R12 Bluetooth path, SBUS/RCIN behavior, vehicle commands or physical safety. Earlier brief Link lost observations remain historical and should not be described as a currently reproduced problem without new evidence.

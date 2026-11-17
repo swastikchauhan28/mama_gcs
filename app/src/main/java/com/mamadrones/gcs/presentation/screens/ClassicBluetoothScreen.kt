@@ -21,6 +21,19 @@ import com.mamadrones.gcs.presentation.components.*
 import com.mamadrones.gcs.presentation.dashboard.ConsolePanels
 import kotlinx.coroutines.delay
 
+/** The UI tick triggers idle refreshes; current receipts need a clock sampled at composition. */
+internal fun classicChecklistElapsedNow(uiTickElapsed: Long, currentElapsed: Long): Long =
+    maxOf(uiTickElapsed, currentElapsed)
+
+/** Decoder evidence can supersede the socket-opening detail without mutating transport state. */
+internal fun classicSerialLinkDetail(connection: ConnectionState, check: ClassicConnectionAssessment): String = when {
+    connection.status != TransportStatus.OPEN -> connection.detail ?: "Classic serial session not open."
+    check.freshHeartbeat -> "Fresh autopilot heartbeat received in this Classic session. Receive-only evidence."
+    check.stage == ClassicCheckStage.BYTES_STALE -> "No recent serial bytes in this Classic session; previous telemetry may be stale."
+    check.stage == ClassicCheckStage.WAITING_HEARTBEAT -> "Autopilot heartbeat not confirmed from current serial data."
+    else -> connection.detail ?: "Waiting for serial data."
+}
+
 @Composable
 fun ClassicBluetoothScreen(
     state: ClassicBluetoothUiState,
@@ -45,7 +58,10 @@ fun ClassicBluetoothScreen(
     val nowElapsed by produceState(android.os.SystemClock.elapsedRealtime()) {
         while (true) { delay(1_000L); value = android.os.SystemClock.elapsedRealtime() }
     }
-    val check = ClassicConnectionCheck.assess(state.link.active, state.link.connection, vehicle, now, nowElapsed)
+    // New packets can be newer than the one-second UI tick. Keep strict future-receipt rejection
+    // in ClassicConnectionCheck, but evaluate it against a fresh monotonic sample.
+    val check = ClassicConnectionCheck.assess(state.link.active, state.link.connection, vehicle,
+        now, classicChecklistElapsedNow(nowElapsed, android.os.SystemClock.elapsedRealtime()))
     ScreenBody {
         ScreenHeader("Bluetooth Classic / HC-05", "Paired serial radio · MAVLink receive only")
         Notice("CONNECT YOUR REMOTE", "Pair the identified HC-05 in Android Bluetooth settings, return here and refresh. Select its name and address. The Flipsky NRF51 module uses a separate BLE connection.")
@@ -90,7 +106,7 @@ fun ClassicBluetoothScreen(
                     "Received chunks" to state.link.connection.packetStatistics.receivedPackets.toString(),
                     "Command transmit" to "DISABLED",
                     "MAVLink heartbeat" to if (check.freshHeartbeat) "FRESH" else "NOT CONFIRMED"),
-                state.link.connection.detail ?: "Waiting for serial data."))
+                classicSerialLinkDetail(state.link.connection, check)))
         }
         if (diagnostics.linkKind == TelemetryLinkKind.CLASSIC && diagnostics.startedAtEpochMillis != null) {
             SubsystemCard(ConsolePanels.mavlinkDiagnostics(diagnostics, now))

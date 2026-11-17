@@ -1,5 +1,29 @@
 # Current handover
 
+## 2026-11-17 — Phase 197 Classic serial-card detail
+
+- Done: the Classic serial card now shows current heartbeat/byte evidence instead of retaining the socket-opening `waiting for MAVLink heartbeat` sentence after a fresh heartbeat. Connection errors remain visible. See [Phase 197](phase-197-report.md).
+- Verification: focused JVM regression and Android-test compilation passed; the full debug app/test build and 505 fresh JVM tests passed with zero failures/errors; lint had zero errors / 20 warnings. The emulator hit an Android System UI ANR before instrumentation. A data-preserving phone update succeeded; the live T12_485 card showed `FRESH` with the matching detail in landscape. The focused synthetic screen test then passed on the USB phone (`OK (1 test)`), and its fresh/stale captures were inspected.
+- Broken or risky: waiting and stale card variants passed synthetic Android UI assertions on the phone; only the fresh state was observed on the real T12_485 link. Live link reliability, RC movement, wiring and physical safety remain unverified by this phase.
+- Next: keep a healthy disposable-emulator UI run as a separate environment check; longer hardware reliability and RC acceptance remain separate. Review the diff before any release; commit/push only on request.
+- Do not touch: operator phone saved routes/settings, Cube/radio parameters, mission upload or vehicle commands for this display-only phase.
+
+## 2026-11-17 — Phase 196 Classic checklist clock alignment
+
+- Done: the Classic receive checklist now compares packet receipts with a monotonic clock sampled during composition, avoiding rejection caused by its cached one-second UI tick. The five-second, current-session and future-timestamp guards remain unchanged. See [Phase 196](phase-196-report.md).
+- Verification: focused regression passed; the full fresh JVM/build/lint command passed with 504 tests, zero failures/errors and lint at zero errors / 20 warnings. Both disposable-emulator starts had Android System UI ANRs before testing. A data-preserving phone update succeeded; a post-fix active T12_485 Classic session showed live bytes, validated MAVLink, a fresh heartbeat and fresh RC_CHANNELS, with 952 chunks. After USB reconnection, four samples across 38 seconds stayed Connected with a fresh accepted heartbeat and RC_CHANNELS. Link & messages showed a 138 ms heartbeat age, zero completed gaps over five seconds and 17,568 decoded supported messages in the active Classic session.
+- Broken or risky: the first prior Classic disconnect remains unexplained. The timed post-fix check resolves the observed checklist contradiction in one active session, but does not prove long-run link stability, RC stick movement, SBUS wiring or hardware safety. The Classic serial card still displays its stale socket-opening detail about waiting for heartbeat beside a FRESH heartbeat.
+- Next: fix the separate stale socket-opening detail in a scoped UI phase, and run the existing Classic UI suite on a healthy disposable emulator. Longer-run hardware reliability and RC-stick acceptance remain separate. Review the diff and evidence before any release; commit/push only on request.
+- Do not touch: Cube/radio parameters, mission upload, RC observation or vehicle commands in this display-only phase.
+
+## 2026-11-17 — USB phone / T12_485 Classic receive check
+
+- Done: the USB-debugging phone was identified and Mama GCS showed an Android pairing record for `T12_485`. The operator selected that remote; the app later confirmed `T12_485` as the open Classic serial peer. In read-only sessions it received bytes, decoded supported MAVLink and showed an accepted autopilot heartbeat. See [live Classic check](bluetooth-live-check-2026-11-17.md).
+- Verification: a first session showed 541,352 input bytes, 6,369 decoded supported messages and a heartbeat age of 795 ms; a later confirmed-`T12_485` session showed 457,702 input bytes, 2,728 chunks and a heartbeat age of 160 ms. The later socket stayed displayed as Connected across a 40-second observation. No RC-stick, vehicle command or physical movement test was run.
+- Broken or risky: the first observed session later showed Disconnected; its cause was not established. In the later session, the Classic checklist said heartbeat NOT CONFIRMED while Link & messages showed an accepted recent heartbeat. A stale UI clock tick is a code-level hypothesis, not yet a verified fix. Pairing, valid MAVLink and a brief connected interval do not prove sustained reliability, remote identity or physical safety.
+- Next: with separate implementation approval, reproduce and fix the Classic checklist inconsistency using a controlled test, then repeat read-only phone acceptance. Investigate any recurring disconnect with timed evidence; keep RC and command acceptance separate.
+- Do not touch: Cube/radio parameters, mission upload, RC observation or physical vehicle commands during this read-only check.
+
 ## 2026-11-17 — Phase 195 warning accessibility and enlarged text
 
 - Done: the Operate warning banner labels its action for accessibility, allows more message lines at enlarged text scale, and wraps its footer. The focused warning history stacks filter and search controls when text is enlarged. See [Phase 195](phase-195-report.md).
