@@ -174,9 +174,13 @@ object ConsolePanels {
         ), sampleAge(sample.lastUpdatedAtEpochMillis))
     }
     fun statusTexts(state: VehicleState, warningsOnly: Boolean = false,
-        nowEpochMillis: Long = System.currentTimeMillis()): PanelSpec {
+        nowEpochMillis: Long = System.currentTimeMillis(), query: String = ""): PanelSpec {
         val retained = state.statusTexts
-        val shown = if (warningsOnly) retained.filter { it.severity in 0..4 } else retained
+        val search = query.trim().take(80)
+        val shown = retained.filter { message ->
+            (!warningsOnly || message.severity in 0..4) &&
+                (search.isEmpty() || message.text.contains(search, ignoreCase = true))
+        }
         val source = when {
             retained.isEmpty() -> "NO RETAINED MESSAGES"
             state.connected -> "CURRENT SESSION"
@@ -190,7 +194,8 @@ object ConsolePanels {
                 else "Receive time unavailable"
                 "${severityName(message.severity)} · ${index + 1}" to "${message.text} ($age)"
             },
-            "Newest first · last 50 retained in memory. Reported severity is not a current fault or health verdict."
+            (if (shown.isEmpty() && retained.isNotEmpty()) "No messages match the active filters. " else "") +
+                "Newest first · last 50 retained in memory. Reported severity is not a current fault or health verdict."
         )
     }
     fun motors(state: VehicleState) = PanelSpec("VESC motors", if (state.motors.isEmpty()) "TELEMETRY UNAVAILABLE" else "${state.motors.size} PROVISIONED", listOf(

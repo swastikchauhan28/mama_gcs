@@ -46,4 +46,25 @@ class AutopilotWarningTest {
             ConsolePanels.statusTexts(state.copy(connectionStatus = VehicleConnectionState.DEGRADED,
                 mavlinkDiagnostics = MavlinkDiagnostics(active = true)), true, 3_000L).status)
     }
+
+    @Test fun `message search combines with severity filter and keeps history intact`() {
+        val state = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED, statusTexts = listOf(
+            VehicleStatusText(6, "Compass status normal", 1_000L),
+            VehicleStatusText(2, "PreArm: Compass 1 not calibrated", 1_000L),
+            VehicleStatusText(4, "GPS warning", 1_000L)))
+        val found = ConsolePanels.statusTexts(state, nowEpochMillis = 2_000L, query = "  cOmPaSs  ")
+        assertEquals("CURRENT SESSION · 2 / 3 shown", found.status)
+        assertEquals(2, found.rows.size)
+        val warnings = ConsolePanels.statusTexts(state, warningsOnly = true, nowEpochMillis = 2_000L,
+            query = "compass")
+        assertEquals("CURRENT SESSION · 1 / 3 shown", warnings.status)
+        assertEquals(true, warnings.rows.single().second.startsWith("PreArm: Compass"))
+        val missing = ConsolePanels.statusTexts(state, warningsOnly = true, nowEpochMillis = 2_000L,
+            query = "motor")
+        assertEquals("CURRENT SESSION · 0 / 3 shown", missing.status)
+        assertEquals(true, missing.rows.isEmpty())
+        assertEquals(true, missing.note!!.startsWith("No messages match the active filters."))
+        assertEquals(3, ConsolePanels.statusTexts(state, nowEpochMillis = 2_000L, query = "").rows.size)
+        assertEquals(3, state.statusTexts.size)
+    }
 }

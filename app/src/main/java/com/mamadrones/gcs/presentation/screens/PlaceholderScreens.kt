@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.verticalScroll
@@ -162,9 +163,18 @@ fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connec
     ScreenHeader("Diagnostics", "Vehicle and communication inspection")
     reportControls()
     var warningsOnly by rememberSaveable { mutableStateOf(false) }
+    var messageQuery by rememberSaveable { mutableStateOf("") }
+    OutlinedTextField(value = messageQuery, onValueChange = { messageQuery = it.take(80) },
+        label = { Text("Search message text") }, singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        trailingIcon = {
+            if (messageQuery.isNotEmpty()) TextButton(onClick = { messageQuery = "" },
+                modifier = Modifier.testTag("autopilot-message-search-clear")) { Text("Clear") }
+        },
+        modifier = Modifier.fillMaxWidth().testTag("autopilot-message-search"))
     FilterChip(selected = warningsOnly, onClick = { warningsOnly = !warningsOnly },
         label = { Text("Warnings only") }, modifier = Modifier.testTag("autopilot-warning-filter"))
-    SubsystemCard(ConsolePanels.statusTexts(state, warningsOnly, now))
+    SubsystemCard(ConsolePanels.statusTexts(state, warningsOnly, now, messageQuery))
     val link = connection.session.connection
     val timingNow = remember(state.mavlinkDiagnostics, nowElapsed) { android.os.SystemClock.elapsedRealtime() }
     SubsystemCard(ConsolePanels.heartbeatTiming(state.mavlinkDiagnostics, timingNow, tcpStatus))

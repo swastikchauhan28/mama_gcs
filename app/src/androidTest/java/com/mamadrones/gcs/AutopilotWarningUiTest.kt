@@ -62,6 +62,34 @@ class AutopilotWarningUiTest {
         compose.onNodeWithText("PreArm: Compass 1 not calibrated", substring = true).assertExists()
     }
 
+    @Test fun portraitDiagnosticsSearchAndWarningsFilterCanBeCleared() {
+        val priorOrientation = compose.activity.requestedOrientation
+        try {
+            compose.activityRule.scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT }
+            val state = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED, statusTexts = listOf(
+                VehicleStatusText(6, "Compass status normal", System.currentTimeMillis()),
+                VehicleStatusText(2, "PreArm: Compass 1 not calibrated", System.currentTimeMillis()),
+                VehicleStatusText(4, "GPS warning", System.currentTimeMillis())))
+            compose.setContent { MamaGcsTheme { Surface { DiagnosticsScreen(state) } } }
+            compose.onNodeWithTag("autopilot-message-search").performTextInput("CoMpAsS")
+            compose.onNodeWithTag("autopilot-message-search").performImeAction()
+            compose.onNodeWithText("CURRENT SESSION · 2 / 3 shown").assertExists()
+            compose.onNodeWithTag("autopilot-warning-filter").performClick()
+            compose.onNodeWithText("CURRENT SESSION · 1 / 3 shown").assertExists()
+            compose.onNodeWithText("Compass status normal", substring = true).assertDoesNotExist()
+            compose.onNodeWithText("PreArm: Compass 1 not calibrated", substring = true).assertExists()
+            capture("phase191-message-search-portrait")
+            compose.onNodeWithTag("autopilot-message-search-clear").performClick()
+            compose.onNodeWithText("CURRENT SESSION · 2 / 3 shown").assertExists()
+            compose.onNodeWithTag("autopilot-message-search").performTextInput("motor")
+            compose.onNodeWithText("CURRENT SESSION · 0 / 3 shown").assertExists()
+            compose.onNodeWithText("No messages match the active filters.", substring = true).assertExists()
+        } finally {
+            compose.activityRule.scenario.onActivity { it.requestedOrientation = priorOrientation }
+        }
+    }
+
     @Test fun operatePlacesWarningBetweenMapAndInstruments() {
         val state = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
             statusTexts = listOf(VehicleStatusText(2, "PreArm: Compass 1 not calibrated", System.currentTimeMillis())))

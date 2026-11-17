@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-191-01: Search the bounded autopilot message list in place
+
+- Date: 2026-11-17. User approved Phase 191 after a bounded proposal. Baseline `744fe5b`, clean worktree; model/version unavailable.
+- Context: Diagnostics already renders up to 50 selected-autopilot `STATUSTEXT` messages and a warnings-only filter. Finding a specific message in that list requires scrolling, especially on a narrow screen. The repository owns the bounded list and clears it at a new receive session.
+- Choice: keep a short, saveable UI query and combine trimmed, case-insensitive message-text matching with the existing severity filter in `ConsolePanels.statusTexts`. Keep shown/retained counts and the query/filter controls visible; show an explicit no-match note. Alternative: persist an indexed search history or add a nested scrolling list, which would expand data or interaction scope for only 50 messages.
+- Risk and revisit: a filter can hide relevant or older evicted messages, and a retained warning is not a current fault verdict. Limit the input to 80 characters; never mutate repository state, send telemetry requests or change session selection. Verify search/filter combinations, no-match/clear behavior, portrait and landscape UI, builds and lint with synthetic data. Live Cube behavior remains separate.
+- 2026-11-17 verification: 502 JVM tests and lint passed; two disposable-emulator starts failed preflight with System UI ANRs, then a memory-relieved start passed preflight, five focused UI tests and post-run health. Portrait and landscape images were inspected. This verifies display behavior with synthetic messages only; see [Phase 191](phase-191-report.md).
+
 ## D-189-01: Show bounded autopilot message history with a display filter
 
 - Date: 2026-11-16. User approved a software-only Phase 189 while hardware is unavailable. Baseline `1d88427`, clean worktree; model/version unavailable.

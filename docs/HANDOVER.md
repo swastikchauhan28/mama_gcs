@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-17 — Phase 191 autopilot message search
+
+- Done: Diagnostics can search the bounded retained `STATUSTEXT` list by message text, combine search with Warnings only, clear the query and show explicit zero matches. No telemetry or stored history is changed. See [Phase 191](phase-191-report.md).
+- Verification: fresh build, 502 JVM tests and lint (0 errors / 20 warnings) passed. After two emulator startup ANRs, a healthy disposable AVD passed five focused UI tests and post-run health. Portrait and landscape screenshots were inspected. No hardware was connected.
+- Broken or risky: active filters can hide messages; the list can evict older entries and reported faults can become stale. Emulator startup instability remains observed, with memory pressure a possible but unproven contributor.
+- Next: owner review of the scoped UI/test/record diff. Real Cube `STATUSTEXT` acceptance is separate when hardware is available. The user separately requested commit and push; this does not authorize release or hardware operation.
+- Do not touch: operator phone data, Cube settings, physical commands or mission upload for this display-only phase.
+
 ## 2026-11-17 — Phase 190 warning-history visual acceptance
 
 - Done: completed Phase 189's targeted warning-history visual check on the verified disposable Pixel 3a API 34 emulator, with no app code changes. See [Phase 190](phase-190-report.md).
