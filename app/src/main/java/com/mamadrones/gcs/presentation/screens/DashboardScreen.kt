@@ -95,8 +95,10 @@ internal fun AutopilotWarningBanner(state: VehicleState, onOpenMessages: () -> U
     }
     // A new message can arrive between ticks; read a fresh clock for that state change.
     val displayNow = remember(message, now) { System.currentTimeMillis() }
+    val enlargedText = LocalDensity.current.fontScale >= 1.8f
     Surface(
-        Modifier.fillMaxWidth().clickable(onClick = onOpenMessages).testTag("autopilot-warning-banner"),
+        Modifier.fillMaxWidth().clickable(onClickLabel = "Open warning history", onClick = onOpenMessages)
+            .testTag("autopilot-warning-banner"),
         color = MaterialTheme.colorScheme.errorContainer,
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
     ) {
@@ -104,8 +106,9 @@ internal fun AutopilotWarningBanner(state: VehicleState, onOpenMessages: () -> U
             Text("Autopilot reported ${severityName(message.severity)}", style = MaterialTheme.typography.labelMedium)
             Text("$reportCount warning report${if (reportCount == 1) "" else "s"} retained (last 50 messages)",
                 style = MaterialTheme.typography.labelSmall)
-            Text(message.text, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(message.text, style = MaterialTheme.typography.bodyMedium,
+                maxLines = if (enlargedText) 4 else 2, overflow = TextOverflow.Ellipsis)
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Last reported · ${autopilotWarningAge(message, displayNow)}", style = MaterialTheme.typography.labelSmall)
                 Text("Messages ›", style = MaterialTheme.typography.labelSmall)
             }

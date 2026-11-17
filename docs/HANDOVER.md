@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-17 — Phase 195 warning accessibility and enlarged text
+
+- Done: the Operate warning banner labels its action for accessibility, allows more message lines at enlarged text scale, and wraps its footer. The focused warning history stacks filter and search controls when text is enlarged. See [Phase 195](phase-195-report.md).
+- Verification: fresh 503 JVM tests, debug app/test builds and lint passed (0 errors / 20 warnings). A disposable Pixel 3a API 34 emulator passed the final 11-test warning UI suite and post-run health. Enlarged-text landscape banner/history and portrait Operate captures were inspected.
+- Broken or risky: the first AVD boot showed a System UI ANR before APK install; its window evidence was preserved and a no-wipe restart passed preflight. Tests inject 2.0 Compose font scale and inspect accessibility semantics, but do not run spoken TalkBack or verify a physical phone. An enlarged banner reduces map area; Cube warning validity remains unproven.
+- Next: owner review of the Phase 195 source/test/record diff; a physical-device TalkBack check and live Cube `STATUSTEXT` acceptance remain separate when authorized. Commit/push only on request.
+- Do not touch: operator phone data, Cube settings, physical commands or mission upload for this UI phase.
+
 ## 2026-11-17 — Phase 194 focused warning history
 
 - Done: Operate's warning banner opens a focused Link & messages view with Warnings only selected and the first retained warning visible immediately. Search opens on demand and clears its query when hidden; normal Diagnostics remains unfiltered and keeps its existing order. See [Phase 194](phase-194-report.md).

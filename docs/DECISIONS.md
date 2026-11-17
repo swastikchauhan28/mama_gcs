@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-195-01: Keep warning history usable with enlarged text and screen readers
+
+- Date: 2026-11-17. User approved Phase 195 accessibility and enlarged-text work after a bounded proposal. Baseline `e234e8c`, clean `main` worktree; model/version unavailable.
+- Context: the Operate warning banner truncates received text after two lines and puts age and navigation text on one row. The focused Diagnostics filter and search action also share a row. At Android enlarged text settings, these layouts can clip or push important controls away. The banner's clickable action has no explicit screen-reader action label.
+- Choice: retain the banner's compact visual summary at ordinary text scale, allow more readable lines and wrapping at enlarged scale, label its click action as opening warning history, and stack focused filter/search controls when text is enlarged. Keep the existing bounded history and selection rules. Alternative: a separate warning detail dialog would add navigation and state while duplicating the existing focused history.
+- Risk and revisit: an enlarged banner may reduce map area, and a long telemetry message remains untrusted and may be stale. Verify portrait and landscape at enlarged font scale, screen-reader semantics, navigation, existing warning tests, build and lint. Revisit if the map or instruments become unusable at supported screen sizes. This does not establish live Cube delivery or fault validity.
+- 2026-11-17 verification: a 2.0 font-scale Compose fixture passed banner action-label, full-text, focused filter/search and portrait Operate layout/navigation checks on a disposable emulator. The complete warning suite passed 11 tests with a healthy post-run gate. Fresh JVM tests (503), debug builds and lint (0 errors / 20 warnings) passed. This checks semantics, not a spoken TalkBack session; see [Phase 195](phase-195-report.md).
 ## D-194-01: Open warning history at the top from the Operate banner
 
 - Date: 2026-11-17. User approved Phase 194 after a bounded proposal. Baseline `ad82142`, clean `main` worktree; model/version unavailable.

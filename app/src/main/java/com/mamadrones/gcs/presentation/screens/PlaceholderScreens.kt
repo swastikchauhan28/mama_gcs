@@ -8,6 +8,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.ImeAction
@@ -180,15 +181,23 @@ fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connec
             label = { Text("Warnings only") }, modifier = Modifier.testTag("autopilot-warning-filter"))
     }
     if (focusWarnings) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            warningFilter()
-            Spacer(Modifier.weight(1f))
+        val enlargedText = LocalDensity.current.fontScale >= 1.8f
+        @Composable fun SearchToggle() {
             TextButton(onClick = {
                 if (showFocusedSearch) messageQuery = "" // Never leave a hidden search filtering messages.
                 showFocusedSearch = !showFocusedSearch
-            },
-                modifier = Modifier.testTag("autopilot-message-search-show")) {
+            }, modifier = Modifier.testTag("autopilot-message-search-show")) {
                 Text(if (showFocusedSearch) "Clear and hide search" else "Search messages")
+            }
+        }
+        if (enlargedText) Column(Modifier.fillMaxWidth()) {
+            warningFilter()
+            SearchToggle()
+        } else {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                warningFilter()
+                Spacer(Modifier.weight(1f))
+                SearchToggle()
             }
         }
         if (showFocusedSearch) searchInput()

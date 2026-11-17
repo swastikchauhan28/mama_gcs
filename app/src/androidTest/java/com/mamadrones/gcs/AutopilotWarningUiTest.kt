@@ -4,10 +4,14 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.unit.Density
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mamadrones.gcs.domain.model.VehicleConnectionState
 import com.mamadrones.gcs.domain.model.VehicleState
@@ -90,6 +94,62 @@ class AutopilotWarningUiTest {
         compose.onNodeWithTag("autopilot-warning-filter").assertIsNotSelected()
         compose.onNodeWithText("CURRENT SESSION · 2 / 2 shown").assertExists()
         compose.onNodeWithText("Routine status", substring = true).assertExists()
+    }
+
+    @Test fun enlargedWarningBannerExposesHistoryActionAndKeepsFullSummaryReachable() {
+        val state = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
+            statusTexts = listOf(VehicleStatusText(2,
+                "PreArm: Compass 1 not calibrated; rotate the vehicle and repeat calibration",
+                System.currentTimeMillis())))
+        var opened = 0
+        compose.setContent { EnlargedText { MamaGcsTheme { Surface {
+            AutopilotWarningBanner(state) { opened++ }
+        } } } }
+        val action = compose.onNodeWithTag("autopilot-warning-banner").assertIsDisplayed()
+            .fetchSemanticsNode().config[SemanticsActions.OnClick]
+        assertEquals("Open warning history", action.label)
+        compose.onNodeWithText("PreArm: Compass 1 not calibrated; rotate the vehicle and repeat calibration")
+            .assertIsDisplayed()
+        capture("phase195-warning-large-text")
+        compose.onNodeWithTag("autopilot-warning-banner").performClick()
+        compose.runOnIdle { assertEquals(1, opened) }
+    }
+
+    @Test fun enlargedFocusedHistoryKeepsFilterSearchAndWarningReachable() {
+        val state = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
+            statusTexts = listOf(VehicleStatusText(2, "PreArm: Compass 1 not calibrated", System.currentTimeMillis()),
+                VehicleStatusText(6, "Routine status", System.currentTimeMillis())))
+        compose.setContent { EnlargedText { MamaGcsTheme { Surface {
+            DiagnosticsScreen(state, focusWarnings = true)
+        } } } }
+        compose.onNodeWithTag("autopilot-warning-filter").assertIsDisplayed().assertIsSelected()
+        compose.onNodeWithTag("autopilot-message-search-show").assertIsDisplayed()
+        compose.onNodeWithText("PreArm: Compass 1 not calibrated", substring = true)
+            .performScrollTo().assertIsDisplayed()
+        capture("phase195-history-large-text")
+        compose.onNodeWithTag("autopilot-message-search-show").performScrollTo().performClick()
+        compose.onNodeWithTag("autopilot-message-search").assertExists()
+    }
+
+    @Test fun enlargedPortraitOperateKeepsWarningBetweenMapAndInstruments() {
+        val priorOrientation = compose.activity.requestedOrientation
+        try {
+            compose.activityRule.scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT }
+            val state = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
+                statusTexts = listOf(VehicleStatusText(2, "PreArm: Compass 1 not calibrated", System.currentTimeMillis())))
+            var destination: String? = null
+            compose.setContent { EnlargedText { MamaGcsTheme { Surface {
+                DashboardScreen(state, onNavigate = { destination = it })
+            } } } }
+            assertWarningBetweenMapAndInstruments()
+            compose.onNodeWithText("PreArm: Compass 1 not calibrated").assertIsDisplayed()
+            capture("phase195-portrait-operate-large-text")
+            compose.onNodeWithTag("autopilot-warning-banner").performClick()
+            compose.runOnIdle { assertEquals("diagnostics/warnings", destination) }
+        } finally {
+            compose.activityRule.scenario.onActivity { it.requestedOrientation = priorOrientation }
+        }
     }
 
     @Test fun portraitWarningEntryShowsWarningWithoutScrolling() {
@@ -234,5 +294,11 @@ class AutopilotWarningUiTest {
         File(context.getExternalFilesDir(null), "$name.png").outputStream().use {
             assertTrue(compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it))
         }
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun EnlargedText(content: @androidx.compose.runtime.Composable () -> Unit) {
+        val density = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(density.density, 2f), content = content)
     }
 }
