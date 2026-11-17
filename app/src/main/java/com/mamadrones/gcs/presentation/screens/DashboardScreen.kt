@@ -32,6 +32,7 @@ import com.mamadrones.gcs.presentation.dashboard.ConsolePanels
 import com.mamadrones.gcs.presentation.dashboard.autopilotWarningAge
 import com.mamadrones.gcs.presentation.dashboard.forDisplay
 import com.mamadrones.gcs.presentation.dashboard.latestAutopilotWarning
+import com.mamadrones.gcs.presentation.dashboard.currentAutopilotWarningReportCount
 import com.mamadrones.gcs.presentation.dashboard.reading
 import com.mamadrones.gcs.presentation.dashboard.severityName
 import com.mamadrones.gcs.presentation.map.VehicleMap
@@ -88,6 +89,7 @@ fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier:
 @Composable
 internal fun AutopilotWarningBanner(state: VehicleState, onOpenMessages: () -> Unit) {
     val message = latestAutopilotWarning(state) ?: return
+    val reportCount = currentAutopilotWarningReportCount(state)
     val now by produceState(System.currentTimeMillis()) {
         while (true) { delay(1_000L); value = System.currentTimeMillis() }
     }
@@ -100,6 +102,8 @@ internal fun AutopilotWarningBanner(state: VehicleState, onOpenMessages: () -> U
     ) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
             Text("Autopilot reported ${severityName(message.severity)}", style = MaterialTheme.typography.labelMedium)
+            Text("$reportCount warning report${if (reportCount == 1) "" else "s"} retained (last 50 messages)",
+                style = MaterialTheme.typography.labelSmall)
             Text(message.text, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Last reported · ${autopilotWarningAge(message, displayNow)}", style = MaterialTheme.typography.labelSmall)

@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-192-01: Count retained warning reports on Operate
+
+- Date: 2026-11-17. User approved the bounded Phase 192 proposal. Baseline `b25d3f1`, clean worktree; model/version unavailable.
+- Context: the Operate banner displays only the newest reported severity 0–4 `STATUSTEXT`, while the selected-autopilot repository retains up to 50 messages from the current receive session. Multiple or repeated warning reports can be present without being visible on Operate.
+- Choice: derive a severity 0–4 count from the same live display projection as the banner and label it as retained **reports**, including repeats. Do not deduplicate by text or infer active/unique faults. Keep the count beside the newest warning in the existing banner; opening it still navigates to Diagnostics. Alternative: a separate fault registry would require resolution semantics that `STATUSTEXT` does not provide.
+- Risk and revisit: the count is bounded by the last 50 retained messages, can shrink through eviction, and can outlive a physical cause while connected. Hide the whole banner on link loss and rely on the existing session reset to clear old reports. Verify count updates, routine-message exclusion, repeated-report behavior, reset/link-loss visibility, build/lint and portrait/landscape visual layout with synthetic messages. This does not establish live Cube delivery or vehicle health.
+- 2026-11-17 verification: 503 JVM tests and lint passed; the disposable emulator passed preflight, five focused UI tests and post-run health. Portrait and landscape images were inspected. Reset behavior was simulated by an empty list; real Cube/session behavior remains unverified. See [Phase 192](phase-192-report.md).
+
 ## D-191-01: Search the bounded autopilot message list in place
 
 - Date: 2026-11-17. User approved Phase 191 after a bounded proposal. Baseline `744fe5b`, clean worktree; model/version unavailable.

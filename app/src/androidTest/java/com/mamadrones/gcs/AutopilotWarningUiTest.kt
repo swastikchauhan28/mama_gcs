@@ -33,14 +33,25 @@ class AutopilotWarningUiTest {
         compose.setContent { MamaGcsTheme { Surface { AutopilotWarningBanner(state.value) { opened++ } } } }
         compose.onNodeWithTag("autopilot-warning-banner").assertIsDisplayed()
         compose.onNodeWithText("Autopilot reported CRITICAL").assertIsDisplayed()
+        compose.onNodeWithText("1 warning report retained (last 50 messages)").assertIsDisplayed()
         compose.onNodeWithText("PreArm: Compass 1 not calibrated").assertIsDisplayed()
         capture("phase188-autopilot-warning")
         compose.onNodeWithTag("autopilot-warning-banner").performClick()
         compose.runOnIdle { assertEquals(1, opened) }
         compose.runOnIdle { state.value = state.value.copy(statusTexts = listOf(
-            VehicleStatusText(4, "New warning", System.currentTimeMillis()))) }
+            VehicleStatusText(4, "New warning", System.currentTimeMillis()),
+            VehicleStatusText(2, "PreArm: Compass 1 not calibrated", System.currentTimeMillis()),
+            VehicleStatusText(6, "Routine status", System.currentTimeMillis()),
+            VehicleStatusText(2, "PreArm: Compass 1 not calibrated", System.currentTimeMillis()))) }
         compose.onNodeWithText("New warning").assertIsDisplayed()
+        compose.onNodeWithText("3 warning reports retained (last 50 messages)").assertIsDisplayed()
+        capture("phase192-warning-report-count")
         compose.onNodeWithText("Receive time unavailable", substring = true).assertDoesNotExist()
+        compose.runOnIdle { state.value = state.value.copy(statusTexts = emptyList()) }
+        compose.onNodeWithTag("autopilot-warning-banner").assertDoesNotExist()
+        compose.runOnIdle { state.value = state.value.copy(statusTexts = listOf(
+            VehicleStatusText(4, "Fresh session warning", System.currentTimeMillis()))) }
+        compose.onNodeWithText("1 warning report retained (last 50 messages)").assertIsDisplayed()
         compose.runOnIdle { state.value = state.value.copy(connectionStatus = VehicleConnectionState.DEGRADED) }
         compose.onNodeWithTag("autopilot-warning-banner").assertDoesNotExist()
     }
@@ -92,25 +103,31 @@ class AutopilotWarningUiTest {
 
     @Test fun operatePlacesWarningBetweenMapAndInstruments() {
         val state = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
-            statusTexts = listOf(VehicleStatusText(2, "PreArm: Compass 1 not calibrated", System.currentTimeMillis())))
+            statusTexts = listOf(VehicleStatusText(2, "PreArm: Compass 1 not calibrated", System.currentTimeMillis()),
+                VehicleStatusText(4, "GPS warning", System.currentTimeMillis()),
+                VehicleStatusText(6, "Routine status", System.currentTimeMillis())))
         var destination: String? = null
         compose.setContent { MamaGcsTheme { Surface { DashboardScreen(state, onNavigate = { destination = it }) } } }
         assertWarningBetweenMapAndInstruments()
-        capture("phase188-operate-warning")
+        compose.onNodeWithText("2 warning reports retained (last 50 messages)").assertIsDisplayed()
+        capture("phase192-warning-report-count-landscape")
         compose.onNodeWithTag("autopilot-warning-banner").performClick()
         compose.runOnIdle { assertEquals("diagnostics", destination) }
     }
 
     @Test fun portraitOperateKeepsWarningVisibleWithoutCoveringInstruments() {
         val state = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
-            statusTexts = listOf(VehicleStatusText(2, "PreArm: Compass 1 not calibrated", System.currentTimeMillis())))
+            statusTexts = listOf(VehicleStatusText(2, "PreArm: Compass 1 not calibrated", System.currentTimeMillis()),
+                VehicleStatusText(4, "GPS warning", System.currentTimeMillis()),
+                VehicleStatusText(6, "Routine status", System.currentTimeMillis())))
         val priorOrientation = compose.activity.requestedOrientation
         try {
             compose.activityRule.scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
             compose.waitUntil(10_000) { compose.activity.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT }
             compose.setContent { MamaGcsTheme { Surface { DashboardScreen(state, onNavigate = {}) } } }
             assertWarningBetweenMapAndInstruments()
-            capture("phase188-operate-warning-portrait")
+            compose.onNodeWithText("2 warning reports retained (last 50 messages)").assertIsDisplayed()
+            capture("phase192-warning-report-count-portrait")
         } finally {
             compose.activityRule.scenario.onActivity { it.requestedOrientation = priorOrientation }
         }

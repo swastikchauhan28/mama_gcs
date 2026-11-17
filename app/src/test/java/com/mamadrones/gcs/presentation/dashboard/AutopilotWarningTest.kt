@@ -23,6 +23,19 @@ class AutopilotWarningTest {
         assertNull(latestAutopilotWarning(state.copy(statusTexts = emptyList())))
     }
 
+    @Test fun `warning report count includes repeats but excludes routine and hidden sessions`() {
+        val warning = VehicleStatusText(2, "PreArm: Compass 1 not calibrated", 1_000L)
+        val state = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
+            statusTexts = listOf(VehicleStatusText(6, "Routine status", 1_100L), warning, warning,
+                VehicleStatusText(4, "GPS warning", 900L)))
+        assertEquals(3, currentAutopilotWarningReportCount(state))
+        assertEquals(warning, latestAutopilotWarning(state))
+        assertEquals(0, currentAutopilotWarningReportCount(state.copy(statusTexts = emptyList())))
+        assertEquals(0, currentAutopilotWarningReportCount(state.copy(connectionStatus = VehicleConnectionState.DEGRADED)))
+        assertEquals(0, currentAutopilotWarningReportCount(state.copy(connectionStatus = VehicleConnectionState.DISCONNECTED)))
+        assertEquals(4, state.statusTexts.size)
+    }
+
     @Test fun `future receive time is not presented as fresh`() {
         assertEquals("Receive time unavailable", autopilotWarningAge(VehicleStatusText(4, "Warning", 5_000L), 4_000L))
     }

@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-17 — Phase 192 retained warning-report count
+
+- Done: Operate shows how many severity 0–4 reports, including repeats, remain in the current selected-autopilot last-50-message history beside the newest warning. No telemetry or stored state changed. See [Phase 192](phase-192-report.md).
+- Verification: fresh build, 503 JVM tests and lint (0 errors / 20 warnings) passed. A healthy disposable emulator passed five focused UI tests and post-run health; portrait and landscape screenshots were inspected. No Cube was connected.
+- Broken or risky: the count is reports, not unique or active faults. Older reports can be evicted, and a warning can outlive its physical cause. The session reset test used a synthetic empty list, not live telemetry.
+- Next: owner review of the scoped UI/test/record diff. Real Cube `STATUSTEXT` acceptance remains separate when hardware is available. The user separately requested commit and push; this does not authorize release or hardware operation.
+- Do not touch: operator phone data, Cube settings, physical commands or mission upload for this display-only phase.
+
 ## 2026-11-17 — Phase 191 autopilot message search
 
 - Done: Diagnostics can search the bounded retained `STATUSTEXT` list by message text, combine search with Warnings only, clear the query and show explicit zero matches. No telemetry or stored history is changed. See [Phase 191](phase-191-report.md).

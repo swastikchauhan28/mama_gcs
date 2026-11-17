@@ -7,6 +7,10 @@ import com.mamadrones.gcs.domain.model.VehicleStatusText
 fun latestAutopilotWarning(state: VehicleState): VehicleStatusText? =
     state.forDisplay().statusTexts.firstOrNull { it.severity in 0..4 }
 
+/** Count reports in the current bounded display history, not distinct or active faults. */
+fun currentAutopilotWarningReportCount(state: VehicleState): Int =
+    state.forDisplay().statusTexts.count { it.severity in 0..4 }
+
 fun autopilotWarningAge(message: VehicleStatusText, nowEpochMillis: Long): String =
     if (message.receivedAtEpochMillis <= 0L || message.receivedAtEpochMillis > nowEpochMillis) {
         "Receive time unavailable"
