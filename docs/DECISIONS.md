@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-193-01: Test the complete warning navigation path with a synthetic app shell
+
+- Date: 2026-11-17. User approved Phase 193; baseline `2962942`, clean `main` worktree; model/version unavailable.
+- Context: component tests check the Operate warning banner and Diagnostics history separately, but do not prove that a banner tap reaches the real Diagnostics route with the same retained messages.
+- Choice: run the production `MamaGcsApp` navigation with an injected in-memory `VehicleState` in the existing debug Hilt activity. Its existing Hilt setup supplies the normal Diagnostics report view model. Alternative: a parallel test-only NavHost would duplicate routing and could pass while production routing broke; a new injection parameter would unnecessarily change production code.
+- Risk and revisit: the fixture does not parse MAVLink, open transport or prove Cube `STATUSTEXT` delivery. Assert route arrival, retained report count, warning-only filter, search and clear using synthetic messages. Inspect the scoped diff, run Android UI acceptance on a healthy emulator, and verify build/lint.
+- 2026-11-17 verification: app/test builds and lint passed, with 503 unchanged JVM tests up-to-date and zero failures. The first emulator boot had a System UI ANR; a no-wipe restart passed preflight. Two intermediate test runs exposed offscreen tap errors, corrected by scrolling to the filter and Clear controls. Final six-test suite and post-run Android health passed; the filtered compass-warning screenshot was inspected. See [Phase 193](phase-193-report.md).
+
 ## D-192-01: Count retained warning reports on Operate
 
 - Date: 2026-11-17. User approved the bounded Phase 192 proposal. Baseline `b25d3f1`, clean worktree; model/version unavailable.

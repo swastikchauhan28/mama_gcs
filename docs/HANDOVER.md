@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-17 — Phase 193 warning path navigation acceptance
+
+- Done: added a synthetic test through the real Operate → Diagnostics route, including retained message count, Warnings only, search and Clear. Production app code is unchanged. See [Phase 193](phase-193-report.md).
+- Verification: 503 unchanged JVM tests were up-to-date with zero failures; debug app/test builds and lint passed (0 errors / 20 warnings). A disposable emulator passed the final six-test warning suite and post-run Android health; the filtered compass-warning screenshot was inspected.
+- Broken or risky: the first emulator boot had a System UI ANR. Two initial test assertions failed because controls were offscreen; the test now scrolls them into view. Synthetic state does not prove live Cube delivery, warning authenticity or physical fault status.
+- Next: owner review of the test/record diff; live Cube `STATUSTEXT` acceptance only when hardware is available and separately authorized. The user subsequently authorized commit and push of Phase 193.
+- Do not touch: operator phone data, Cube settings, physical commands or mission upload for this test-only phase.
+
 ## 2026-11-17 — Phase 192 retained warning-report count
 
 - Done: Operate shows how many severity 0–4 reports, including repeats, remain in the current selected-autopilot last-50-message history beside the newest warning. No telemetry or stored state changed. See [Phase 192](phase-192-report.md).
