@@ -42,12 +42,22 @@ class AutopilotWarningUiTest {
         compose.onNodeWithTag("autopilot-warning-banner").assertIsDisplayed()
         compose.onNodeWithText("2 warning reports retained (last 50 messages)").assertIsDisplayed()
         compose.onNodeWithTag("autopilot-warning-banner").performClick()
-        compose.onNodeWithText("Diagnostics", substring = false).assertExists()
-        compose.onNodeWithText("CURRENT SESSION · 3 / 3 shown").assertExists()
-        compose.onNodeWithText("PreArm: Compass 1 not calibrated", substring = true).assertExists()
+        compose.onNodeWithText("Analyze telemetry", substring = false).assertExists()
+        compose.onNodeWithTag("category-diagnostics").assertExists()
+        compose.onNodeWithTag("autopilot-warning-filter").assertIsDisplayed().assertIsSelected()
+        compose.onNodeWithText("CURRENT SESSION · 2 / 3 shown").assertIsDisplayed()
+        compose.onNodeWithText("PreArm: Compass 1 not calibrated", substring = true).assertIsDisplayed()
+        capture("phase194-warning-focused-landscape")
+        compose.onNodeWithText("Compass status normal", substring = true).assertDoesNotExist()
         compose.onNodeWithTag("autopilot-warning-filter").performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithTag("autopilot-warning-filter").assertIsNotSelected()
+        compose.onNodeWithText("CURRENT SESSION · 3 / 3 shown").assertExists()
+        compose.onNodeWithText("Compass status normal", substring = true).assertExists()
+        compose.onNodeWithTag("autopilot-warning-filter").performClick()
+        compose.onNodeWithTag("autopilot-warning-filter").assertIsSelected()
         compose.onNodeWithText("CURRENT SESSION · 2 / 3 shown").assertExists()
         compose.onNodeWithText("Compass status normal", substring = true).assertDoesNotExist()
+        compose.onNodeWithTag("autopilot-message-search-show").performClick()
         compose.onNodeWithTag("autopilot-message-search").performScrollTo().performTextInput("compass")
         compose.onNodeWithTag("autopilot-message-search").performImeAction()
         compose.onNodeWithText("CURRENT SESSION · 1 / 3 shown").assertExists()
@@ -61,6 +71,48 @@ class AutopilotWarningUiTest {
         compose.onNodeWithTag("autopilot-message-search-clear")
             .performScrollTo().assertIsDisplayed().performClick()
         compose.onNodeWithText("CURRENT SESSION · 2 / 3 shown").assertExists()
+        compose.onNodeWithTag("autopilot-message-search").performTextInput("GPS")
+        compose.onNodeWithText("CURRENT SESSION · 1 / 3 shown").assertExists()
+        compose.onNodeWithTag("autopilot-message-search-show")
+            .performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithTag("autopilot-message-search").assertDoesNotExist()
+        compose.onNodeWithText("CURRENT SESSION · 2 / 3 shown").assertExists()
+    }
+
+    @Test fun normalDiagnosticsEntryKeepsAllMessagesVisible() {
+        val state = VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
+            statusTexts = listOf(VehicleStatusText(6, "Routine status", System.currentTimeMillis()),
+                VehicleStatusText(2, "PreArm: Compass 1 not calibrated", System.currentTimeMillis())))
+        compose.setContent { MamaGcsTheme { Surface {
+            MamaGcsApp(state, SettingsUiState(), onThemeSelected = {})
+        } } }
+        compose.openWorkspace("diagnostics")
+        compose.onNodeWithTag("autopilot-warning-filter").assertIsNotSelected()
+        compose.onNodeWithText("CURRENT SESSION · 2 / 2 shown").assertExists()
+        compose.onNodeWithText("Routine status", substring = true).assertExists()
+    }
+
+    @Test fun portraitWarningEntryShowsWarningWithoutScrolling() {
+        val priorOrientation = compose.activity.requestedOrientation
+        try {
+            compose.activityRule.scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT }
+            val state = mutableStateOf(VehicleState(connectionStatus = VehicleConnectionState.CONNECTED,
+                statusTexts = listOf(VehicleStatusText(2, "PreArm: Compass 1 not calibrated", System.currentTimeMillis()))))
+            compose.setContent { MamaGcsTheme { Surface {
+                MamaGcsApp(state.value, SettingsUiState(), onThemeSelected = {})
+            } } }
+            compose.onNodeWithTag("autopilot-warning-banner").performClick()
+            compose.onNodeWithTag("autopilot-warning-filter").assertIsDisplayed().assertIsSelected()
+            compose.onNodeWithText("PreArm: Compass 1 not calibrated", substring = true).assertIsDisplayed()
+            capture("phase194-warning-focused-portrait")
+            compose.runOnIdle { state.value = state.value.copy(statusTexts = emptyList()) }
+            capture("phase194-warning-cleared")
+            compose.onNodeWithText("NO RETAINED MESSAGES · 0 / 0 shown").assertExists()
+            compose.onNodeWithText("PreArm: Compass 1 not calibrated", substring = true).assertDoesNotExist()
+        } finally {
+            compose.activityRule.scenario.onActivity { it.requestedOrientation = priorOrientation }
+        }
     }
 
     @Test fun reportedCompassErrorIsVisibleAndOpensMessages() {
@@ -149,7 +201,7 @@ class AutopilotWarningUiTest {
         compose.onNodeWithText("2 warning reports retained (last 50 messages)").assertIsDisplayed()
         capture("phase192-warning-report-count-landscape")
         compose.onNodeWithTag("autopilot-warning-banner").performClick()
-        compose.runOnIdle { assertEquals("diagnostics", destination) }
+        compose.runOnIdle { assertEquals("diagnostics/warnings", destination) }
     }
 
     @Test fun portraitOperateKeepsWarningVisibleWithoutCoveringInstruments() {

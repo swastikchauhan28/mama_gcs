@@ -146,7 +146,7 @@ fun HydraulicScreen(state: VehicleState, modifier: Modifier = Modifier) = Screen
 @Composable
 fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connection: ConnectionUiState = ConnectionUiState(),
     tcpStatus: com.mamadrones.gcs.domain.model.TransportStatus? = null,
-    reportControls: @Composable () -> Unit = {}) = ScreenBody(modifier) {
+    reportControls: @Composable () -> Unit = {}, focusWarnings: Boolean = false) = ScreenBody(modifier) {
     val batteryClock = rememberBatteryClock()
     val now by produceState(System.currentTimeMillis()) {
         while (true) {
@@ -160,21 +160,44 @@ fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connec
             value = android.os.SystemClock.elapsedRealtime()
         }
     }
-    ScreenHeader("Diagnostics", "Vehicle and communication inspection")
-    reportControls()
-    var warningsOnly by rememberSaveable { mutableStateOf(false) }
+    if (!focusWarnings) ScreenHeader("Diagnostics", "Vehicle and communication inspection")
+    if (!focusWarnings) reportControls()
+    var warningsOnly by rememberSaveable { mutableStateOf(focusWarnings) }
     var messageQuery by rememberSaveable { mutableStateOf("") }
-    OutlinedTextField(value = messageQuery, onValueChange = { messageQuery = it.take(80) },
-        label = { Text("Search message text") }, singleLine = true,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-        trailingIcon = {
-            if (messageQuery.isNotEmpty()) TextButton(onClick = { messageQuery = "" },
-                modifier = Modifier.testTag("autopilot-message-search-clear")) { Text("Clear") }
-        },
-        modifier = Modifier.fillMaxWidth().testTag("autopilot-message-search"))
-    FilterChip(selected = warningsOnly, onClick = { warningsOnly = !warningsOnly },
-        label = { Text("Warnings only") }, modifier = Modifier.testTag("autopilot-warning-filter"))
+    var showFocusedSearch by rememberSaveable { mutableStateOf(false) }
+    val searchInput: @Composable () -> Unit = {
+        OutlinedTextField(value = messageQuery, onValueChange = { messageQuery = it.take(80) },
+            label = { Text("Search message text") }, singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            trailingIcon = {
+                if (messageQuery.isNotEmpty()) TextButton(onClick = { messageQuery = "" },
+                    modifier = Modifier.testTag("autopilot-message-search-clear")) { Text("Clear") }
+            },
+            modifier = Modifier.fillMaxWidth().testTag("autopilot-message-search"))
+    }
+    val warningFilter: @Composable () -> Unit = {
+        FilterChip(selected = warningsOnly, onClick = { warningsOnly = !warningsOnly },
+            label = { Text("Warnings only") }, modifier = Modifier.testTag("autopilot-warning-filter"))
+    }
+    if (focusWarnings) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            warningFilter()
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = {
+                if (showFocusedSearch) messageQuery = "" // Never leave a hidden search filtering messages.
+                showFocusedSearch = !showFocusedSearch
+            },
+                modifier = Modifier.testTag("autopilot-message-search-show")) {
+                Text(if (showFocusedSearch) "Clear and hide search" else "Search messages")
+            }
+        }
+        if (showFocusedSearch) searchInput()
+    } else {
+        searchInput()
+        warningFilter()
+    }
     SubsystemCard(ConsolePanels.statusTexts(state, warningsOnly, now, messageQuery))
+    if (focusWarnings) reportControls()
     val link = connection.session.connection
     val timingNow = remember(state.mavlinkDiagnostics, nowElapsed) { android.os.SystemClock.elapsedRealtime() }
     SubsystemCard(ConsolePanels.heartbeatTiming(state.mavlinkDiagnostics, timingNow, tcpStatus))

@@ -1,5 +1,15 @@
 # Decisions and alternatives
 
+## D-194-01: Open warning history at the top from the Operate banner
+
+- Date: 2026-11-17. User approved Phase 194 after a bounded proposal. Baseline `ad82142`, clean `main` worktree; model/version unavailable.
+- Context: Phase 193 proved the banner reaches Diagnostics, but the report controls appear before the retained message list, requiring scrolling to see the reported warning. Normal Diagnostics should still open with all messages and its existing report controls first.
+- Choice: give the banner an explicit `diagnostics/warnings` route, normalized to the Diagnostics tab in the station shell. In that route only, initialize the visible Warnings only filter as selected and place message search/filter/history before the report controls. The normal `diagnostics` route keeps its current order and unfiltered default. Reuse the same bounded selected-autopilot `statusTexts` projection; add no storage, telemetry request or command. Alternative: auto-scroll the long card after layout, which is more sensitive to viewport, keyboard and report-control size and can hide the filter above the viewport.
+- Risk and revisit: the warning text can be stale or spoofed, and filtering hides routine messages until the operator turns it off. A warning can disappear between banner tap and screen composition; the focused route must then show an honest empty/no-match state. Verify both routes, visible warning row and filter state in portrait and landscape, filter toggling, build/lint and emulator visual layout. Real Cube acceptance remains separate.
+- Design correction: the first landscape emulator run showed the message card's status below the viewport when the search field was expanded by default. In the focused route, keep Warnings only and a Search messages button in one row; expand the existing search field on demand. Normal Diagnostics keeps its always-visible search field. The first warning and filter remain visible together without automatic scrolling.
+- Second layout correction: even with search collapsed, the normal in-page Diagnostics heading kept the message row below the landscape viewport. The focused route omits that duplicate heading because the station shell already labels Analyze telemetry and Link & messages. Hiding an expanded search clears its query so a hidden filter cannot suppress messages. Retest the visible row and both filter paths.
+- 2026-11-17 verification: the final production source passed 503 JVM tests, app/test builds and lint (0 errors / 20 warnings). The final disposable-emulator run passed eight warning UI tests and post-run Android health; focused landscape, portrait and cleared-history screenshots were inspected. An intermediate exact-text assertion failed on the correct full empty status and was corrected without weakening its requirement. See [Phase 194](phase-194-report.md).
+
 ## D-193-01: Test the complete warning navigation path with a synthetic app shell
 
 - Date: 2026-11-17. User approved Phase 193; baseline `2962942`, clean `main` worktree; model/version unavailable.

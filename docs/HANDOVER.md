@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-17 — Phase 194 focused warning history
+
+- Done: Operate's warning banner opens a focused Link & messages view with Warnings only selected and the first retained warning visible immediately. Search opens on demand and clears its query when hidden; normal Diagnostics remains unfiltered and keeps its existing order. See [Phase 194](phase-194-report.md).
+- Verification: fresh 503 JVM tests, debug app/test builds and lint passed (0 errors / 20 warnings). The disposable emulator passed the final eight-test warning UI suite and post-run health; portrait, landscape and cleared-history screenshots were inspected.
+- Broken or risky: earlier landscape layouts and a partial-string test assertion failed; corrections and logs are recorded in Phase 194. Warnings only hides routine messages, retained text can be stale or spoofed, and synthetic checks do not prove live Cube delivery or physical fault state.
+- Next: owner review of the source/test/record diff. Live Cube `STATUSTEXT` acceptance is separate when hardware is available and authorized. Commit/push only on request.
+- Do not touch: operator phone data, Cube settings, physical commands or mission upload for this UI phase.
+
 ## 2026-11-17 — Phase 193 warning path navigation acceptance
 
 - Done: added a synthetic test through the real Operate → Diagnostics route, including retained message count, Warnings only, search and Clear. Production app code is unchanged. See [Phase 193](phase-193-report.md).

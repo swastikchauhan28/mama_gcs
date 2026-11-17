@@ -80,7 +80,9 @@ fun MamaGcsApp(
         }
     }
     CompositionLocalProvider(LocalBasemapStyle provides settings.preferences.basemap) {
-    StationShell(vehicle, route, navigate, onVehicleDetails = { showVehicles = true }) {
+    // The warning entry is still the Diagnostics workspace; only its initial presentation differs.
+    StationShell(vehicle, if (route == "diagnostics/warnings") "diagnostics" else route,
+        navigate, onVehicleDetails = { showVehicles = true }) {
                     NavHost(navController, startDestination = AppDestination.DASHBOARD.route, modifier = Modifier.fillMaxSize()) {
                         composable("dashboard") { DashboardScreen(vehicle, navigate) }
                         composable("map") { MapScreen(vehicle, onNavigate = navigate) }
@@ -146,12 +148,15 @@ fun MamaGcsApp(
                         }
                         composable("spray") { SprayScreen(vehicle) }
                         composable("hydraulic") { HydraulicScreen(vehicle) }
-                        composable("diagnostics") {
+                        listOf("diagnostics", "diagnostics/warnings").forEach { diagnosticsRoute ->
+                        composable(diagnosticsRoute) {
                             val reportViewModel: TelemetryReportViewModel = hiltViewModel()
                             val tcpState = tcpTelemetryViewModel?.state?.collectAsStateWithLifecycle()?.value
                             DiagnosticsScreen(vehicle, connection = connection,
                                 tcpStatus = tcpState?.connection?.status,
+                                focusWarnings = diagnosticsRoute == "diagnostics/warnings",
                                 reportControls = { TelemetryReportControls(vehicle, reportViewModel) })
+                        }
                         }
                         composable("admin") {
                             val accessViewModel: AccessViewModel = hiltViewModel()

@@ -59,7 +59,7 @@ fun DashboardScreen(state: VehicleState, onNavigate: (String) -> Unit, modifier:
     var showInstruments by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxSize()) {
         MapWorkspace(state, Modifier.weight(1f).fillMaxWidth(), onNavigate, showOperatorTools = true)
-        AutopilotWarningBanner(state, onOpenMessages = { onNavigate("diagnostics") })
+        AutopilotWarningBanner(state, onOpenMessages = { onNavigate("diagnostics/warnings") })
         RoverInstrumentBar(state, onShowInstruments = { showInstruments = true })
     }
     if (showInstruments) AlertDialog(
