@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-17 — Phase 190 warning-history visual acceptance
+
+- Done: completed Phase 189's targeted warning-history visual check on the verified disposable Pixel 3a API 34 emulator, with no app code changes. See [Phase 190](phase-190-report.md).
+- Verification: after two failed startup preflights, a fresh no-wipe software-rendered emulator passed a 30-second health preflight. All four `AutopilotWarningUiTest` tests passed, Android's post-run health gate passed, and the filtered warning screenshot was inspected. The Phase 189 build/JVM/lint results remain historical evidence.
+- Broken or risky: earlier System UI/Google Play services ANRs remain in the record; host memory pressure was observed but its causal role is unproven. This is synthetic UI evidence, not live Cube or full app acceptance.
+- Next: check real Cube `STATUSTEXT` receipt only when hardware is available under an authorized bench procedure. The user separately requested commit and push of this documentation.
+- Do not touch: operator phone data, Cube settings, physical commands or mission upload for this test-only phase.
+
 ## 2026-11-16 — Phase 189 bounded autopilot message history
 
 - Done: Diagnostics shows all up to 50 retained selected-autopilot messages, newest first, with a warnings-only filter, shown/retained counts, and current/link-lost/historical labels. See [Phase 189](phase-189-report.md).
