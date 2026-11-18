@@ -13,10 +13,13 @@ import java.util.Locale
 /** Timer expires old readings even when no new vehicle message causes recomposition. */
 @Composable
 fun RoverSpeedMonitorPanel(state: VehicleState, compact: Boolean = false) {
-    val now by produceState(System.currentTimeMillis()) {
-        while (true) { delay(1_000L); value = System.currentTimeMillis() }
+    val nowElapsed by produceState(android.os.SystemClock.elapsedRealtime()) {
+        while (true) { delay(1_000L); value = android.os.SystemClock.elapsedRealtime() }
     }
-    RoverSpeedPanel(RoverSpeedMonitor.assess(state, now), compact)
+    // Packet receipt can follow the last timer tick; sample again on state recomposition.
+    RoverSpeedPanel(RoverSpeedMonitor.assess(state, remember(state, nowElapsed) {
+        android.os.SystemClock.elapsedRealtime()
+    }), compact)
 }
 
 @Composable
@@ -44,7 +47,7 @@ fun RoverSpeedPanel(assessment: RoverSpeedAssessment, compact: Boolean = false) 
             Text(if (compact) "Display only · no speed control" else "Warning only · no automatic braking or speed limiting",
                 style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.bodySmall)
             if (!compact) Text("Operator maximum: 8 km/h. Source: GLOBAL_POSITION_INT horizontal velocity. " +
-                "Heartbeat and speed must each be no older than 5 seconds; checked about once per second while this screen is open. " +
+                "Heartbeat and speed must each be no older than 5 seconds by receive time; checked about once per second while this screen is open. " +
                 "Below-limit readings do not mean the rover is safe. Values are rounded for display; comparison uses the unrounded speed. " +
                 "This does not change the Cube's cruise setting or verify stop behaviour.", style = MaterialTheme.typography.bodySmall)
         }

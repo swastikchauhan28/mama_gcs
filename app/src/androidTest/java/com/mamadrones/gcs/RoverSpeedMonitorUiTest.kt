@@ -21,10 +21,10 @@ import java.io.File
 class RoverSpeedMonitorUiTest {
     @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
 
-    private fun sample(speed: Double = 4.0, now: Long = System.currentTimeMillis()) = VehicleState(
+    private fun sample(speed: Double = 4.0, now: Long = android.os.SystemClock.elapsedRealtime()) = VehicleState(
         connectionStatus = VehicleConnectionState.CONNECTED,
-        speedMetersPerSecond = speed, lastHeartbeatAtEpochMillis = now,
-        kinematicsLastUpdatedAtEpochMillis = now)
+        speedMetersPerSecond = speed, lastHeartbeatAtElapsedMillis = now,
+        kinematicsLastUpdatedAtElapsedMillis = now)
 
     @Test fun belowAtAndAboveStatesAreExplicitWithoutSafeOrStoppedClaims() {
         val assessment = mutableStateOf(RoverSpeedMonitor.assess(sample(1.0, 10000), 10000))
@@ -57,7 +57,7 @@ class RoverSpeedMonitorUiTest {
         val state = mutableStateOf(VehicleState())
         compose.setContent { MamaGcsTheme { RoverSpeedMonitorPanel(state.value, compact = true) } }
         compose.runOnIdle { state.value = sample() }
-        // The clock is wall time, not the Compose animation clock.
+        // Elapsed realtime continues while Compose is idle.
         compose.waitUntil(5_000) {
             compose.onAllNodesWithText("ABOVE 8 km/h · WARNING").fetchSemanticsNodes().isNotEmpty()
         }

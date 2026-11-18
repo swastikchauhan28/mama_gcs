@@ -6,8 +6,8 @@ import org.junit.Test
 class RoverSpeedMonitorTest {
     private val now = 20_000L
     private fun sample(speed: Double? = 1.0) = VehicleState(
-        connectionStatus = VehicleConnectionState.CONNECTED, lastHeartbeatAtEpochMillis = now,
-        kinematicsLastUpdatedAtEpochMillis = now, speedMetersPerSecond = speed)
+        connectionStatus = VehicleConnectionState.CONNECTED, lastHeartbeatAtElapsedMillis = now,
+        kinematicsLastUpdatedAtElapsedMillis = now, speedMetersPerSecond = speed)
 
     @Test fun convertsMetersPerSecondWithoutChangingVehicleState() {
         val state = sample()
@@ -38,16 +38,23 @@ class RoverSpeedMonitorTest {
         }
     }
     @Test fun heartbeatAndSpeedMustBeIndependentlyFresh() {
-        unavailable(sample().copy(lastHeartbeatAtEpochMillis = now - 5_001))
-        unavailable(sample().copy(kinematicsLastUpdatedAtEpochMillis = now - 5_001))
+        unavailable(sample().copy(lastHeartbeatAtElapsedMillis = now - 5_001))
+        unavailable(sample().copy(kinematicsLastUpdatedAtElapsedMillis = now - 5_001))
         assertEquals(SpeedObservation.BELOW_LIMIT, RoverSpeedMonitor.assess(sample().copy(
-            lastHeartbeatAtEpochMillis = now - 5_000, kinematicsLastUpdatedAtEpochMillis = now - 5_000), now).observation)
+            lastHeartbeatAtElapsedMillis = now - 5_000, kinematicsLastUpdatedAtElapsedMillis = now - 5_000), now).observation)
     }
     @Test fun missingFutureOrNegativeTimestampsAreUnavailable() {
         listOf(null, now + 1, -1L, Long.MIN_VALUE, Long.MAX_VALUE).forEach {
-            unavailable(sample().copy(lastHeartbeatAtEpochMillis = it))
-            unavailable(sample().copy(kinematicsLastUpdatedAtEpochMillis = it))
+            unavailable(sample().copy(lastHeartbeatAtElapsedMillis = it))
+            unavailable(sample().copy(kinematicsLastUpdatedAtElapsedMillis = it))
         }
+    }
+    @Test fun wallClockChangeCannotInvalidateOrReviveElapsedSamples() {
+        val shiftedWall = sample().copy(lastHeartbeatAtEpochMillis = Long.MAX_VALUE,
+            kinematicsLastUpdatedAtEpochMillis = 0L)
+        assertEquals(SpeedObservation.BELOW_LIMIT, RoverSpeedMonitor.assess(shiftedWall, now).observation)
+        unavailable(shiftedWall.copy(lastHeartbeatAtElapsedMillis = null))
+        unavailable(shiftedWall.copy(kinematicsLastUpdatedAtElapsedMillis = null))
     }
     @Test fun elapsedTimeAloneExpiresAnAboveLimitSample() {
         val state = sample(4.0)

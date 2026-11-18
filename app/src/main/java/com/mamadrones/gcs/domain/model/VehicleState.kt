@@ -37,6 +37,7 @@ data class VehicleState(
     val mission: MissionState = MissionState(),
     val mavlinkDiagnostics: MavlinkDiagnostics = MavlinkDiagnostics(),
     val lastHeartbeatAtElapsedMillis: Long? = null,
+    val kinematicsLastUpdatedAtElapsedMillis: Long? = null,
 ) {
     val connected: Boolean get() = connectionStatus == VehicleConnectionState.CONNECTED
 }

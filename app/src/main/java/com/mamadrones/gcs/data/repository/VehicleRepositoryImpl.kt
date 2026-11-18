@@ -118,7 +118,8 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
             headingDegrees = message.headingCentidegrees
                 .takeUnless { it == UINT16_UNKNOWN || it > MAX_HEADING_CENTIDEGREES }
                 ?.div(CENTIDEGREES_PER_DEGREE),
-            kinematicsLastUpdatedAtEpochMillis = receivedAtEpochMillis
+            kinematicsLastUpdatedAtEpochMillis = receivedAtEpochMillis,
+            kinematicsLastUpdatedAtElapsedMillis = receivedAtElapsedMillis
         )
     }
 

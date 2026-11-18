@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-18 — Speed card receive-clock alignment
+
+- Done: the read-only rover speed card now checks the selected `GLOBAL_POSITION_INT` speed and selected-autopilot heartbeat with elapsed receive timestamps. It retains the independent five-second limits, connection/invalid-value gates and existing source. See [speed flicker report](phase-198-report.md) and D-198-01.
+- Verification: on the USB phone before the change, `Connected` coexisted with alternating `0.00 km/h` and `Heartbeat missing or older than 5 seconds`; the elapsed heartbeat card separately showed ages around 80–716 ms and zero completed gaps over five seconds during a 40-second observation. After the change, 506 JVM tests in 80 suites, both debug APK builds, lint (0 errors / 27 warnings), and four focused phone UI tests passed. Twelve live phone snapshots across about 49 seconds stayed `Connected` with speed available; a screenshot was inspected.
+- Broken or risky: the sampled live interval does not prove sustained link reliability or prove every prior flicker had a wall-clock cause. A real five-second heartbeat or speed gap still makes the card unavailable. The phone reported a hardware safety-switch warning; no action was taken. No vehicle command or parameter change was made.
+- Next: if the card flickers again, capture its unavailable reason alongside current heartbeat age and `GLOBAL_POSITION_INT` receive age in the same session; investigate the actual message gap. Review this diff before any release. Commit/push only on request.
+- Do not touch: operator saved data, Cube/radio parameters, mission upload or rover commands for this display-only fix.
+
 ## 2026-11-17 — Phase 197 Classic serial-card detail
 
 - Done: the Classic serial card now shows current heartbeat/byte evidence instead of retaining the socket-opening `waiting for MAVLink heartbeat` sentence after a fresh heartbeat. Connection errors remain visible. See [Phase 197](phase-197-report.md).

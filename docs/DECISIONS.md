@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-198-01: Use elapsed receipt time for the read-only speed card
+
+- Date: 2026-11-18. User reported speed availability flicker and asked to continue investigation. Baseline `d220a6a`, clean `main` worktree; model/version unavailable.
+- Context: the live phone showed `Connected` while the speed card alternated between a value and `Heartbeat missing or older than 5 seconds`. In the same receive session, the elapsed-time heartbeat card showed roughly 80–716 ms ages and zero completed gaps over five seconds during a separate 40-second observation. The speed card compares wall-clock receipt timestamps, unlike the heartbeat timing card. This supports a clock mismatch as a candidate cause, but does not prove every flicker has the same cause.
+- Choice: carry the selected-source `GLOBAL_POSITION_INT` elapsed receipt timestamp into `VehicleState`; compare it and the existing elapsed heartbeat receipt against a freshly sampled elapsed clock. Keep the five-second limit, source, connection gate and invalid-value handling. Alternative: extend the freshness window or retain the last numeric speed, which could label stale data as current. Another alternative: fall back silently to VFR_HUD, which changes source provenance.
+- Risk and revisit: the card may still become unavailable for a real heartbeat or speed-message gap. Check fresh, expired, missing and future timestamps, a wall-clock jump, debug build/lint and visible phone UI. This does not change telemetry source filtering, commands, persistence, permissions or dependencies. Revisit if a fresh elapsed heartbeat and position sample coexist with an unavailable card after this change.
+
 ## D-197-01: Project current Classic receive evidence into the serial-card detail
 
 - Date: 2026-11-17. The user approved Phase 197 after the post-fix T12_485 check. Baseline `9b9b740`; Phase 196 source/tests and live-test records were already uncommitted and remain separate in the worktree. Model/version unavailable.

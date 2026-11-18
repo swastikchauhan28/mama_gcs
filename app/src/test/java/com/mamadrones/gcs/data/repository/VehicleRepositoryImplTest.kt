@@ -92,13 +92,14 @@ class VehicleRepositoryImplTest {
         val repository = VehicleRepositoryImpl()
         repository.onGlobalPositionInt(
             MavlinkMessage.GlobalPositionInt(1, 1, 338_654_321, 1_512_345_678, 12_345, -300, 400, 0, 12_345),
-            2_000L
+            2_000L, 7_000L
         )
         val state = repository.vehicleState.value
         assertEquals(33.8654321, state.position.latitude!!, 0.0000001)
         assertEquals(151.2345678, state.position.longitude!!, 0.0000001)
         assertEquals(12.345, state.position.altitudeMetersMsl!!, 0.001)
         assertEquals(5.0, state.speedMetersPerSecond!!, 0.001)
+        assertEquals(7_000L, state.kinematicsLastUpdatedAtElapsedMillis)
         assertEquals(123.45, state.headingDegrees!!, 0.001)
 
         repository.onGlobalPositionInt(MavlinkMessage.GlobalPositionInt(1, 1, Int.MAX_VALUE, 0, 0, 0, 0, 0, 65_535), 3_000L)

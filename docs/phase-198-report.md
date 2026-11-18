@@ -1,0 +1,22 @@
+# Phase 198 — Read-only speed card flicker
+
+Date: 2026-11-18. Baseline: clean `main` at `d220a6a`. User reported that Analyze telemetry alternated between speed unavailable and the 8 km/h speed label. This is a monitoring display fix, not a speed controller. Model/version unavailable.
+
+## Reproduction and design
+
+- On the USB-connected phone, the app displayed `Connected`; the speed card showed a value, then `SPEED UNAVAILABLE` with `Heartbeat missing or older than 5 seconds`, then a value again. `BELOW 8 km/h` is the configured comparison label; one measured display value was `0.00 km/h`, not 8 km/h.
+- In the same receive session, the app's elapsed heartbeat diagnostics showed a fresh accepted heartbeat. Across a separate roughly 40-second sample, the visible age was about 80–716 ms and completed gaps over five seconds remained zero; the longest completed interval shown was 3,963 ms. These observations support a clock mismatch but do not prove the cause of every past unavailable state.
+- Path: `MavlinkSession` timestamps selected-source frames with wall and elapsed clocks → `VehicleRepositoryImpl.onGlobalPositionInt` stores the speed and its receive time in volatile `VehicleState` → `RoverSpeedMonitorPanel` refreshes the assessment → `RoverSpeedMonitor` gates the label. Previously the panel used wall-clock freshness while diagnostics used elapsed time. The repository now stores the elapsed kinematics receipt and the panel checks it and the existing elapsed heartbeat receipt against a fresh elapsed sample on recomposition. The five-second window, selected `GLOBAL_POSITION_INT` source, and invalid-data handling remain unchanged. Session start resets the volatile state; nothing is persisted.
+- Alternative considered: lengthen the window, retain a stale numeric value, or silently use VFR_HUD. Those would obscure a genuine gap or change source provenance. Decision D-198-01 was drafted before code edits.
+
+## Verification
+
+- `./gradlew.bat :app:testDebugUnitTest --tests com.mamadrones.gcs.domain.model.RoverSpeedMonitorTest --tests com.mamadrones.gcs.data.repository.VehicleRepositoryImplTest :app:compileDebugAndroidTestKotlin --max-workers=1 --console=plain`: passed. Tests cover independent heartbeat/speed expiry, missing/future elapsed timestamps, wall-clock skew, speed boundary, and elapsed receipt propagation.
+- `./gradlew.bat :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug --max-workers=1 --console=plain`: passed. XML results: 506 tests, 80 suites, zero failures/errors/skips. Lint text report: zero errors, 27 warnings. Gradle reused some up-to-date tasks in this second run; the changed source and focused tests compiled and executed in the first run.
+- Data-preserving `adb install -r` updated the app and test package on the USB phone. `adb shell am instrument -w -r -e class com.mamadrones.gcs.RoverSpeedMonitorUiTest com.mamadrones.gcs.test/androidx.test.runner.AndroidJUnitRunner`: `OK (4 tests)`, including timer expiry, disconnect and disabled drive actions. The suite uses synthetic state and temporarily foregrounds its fixture; it does not alter saved routes/settings or send rover commands.
+- After reopening the updated live app, 12 phone UI snapshots from 15:04:12 to 15:05:01 stayed `Connected` with speed available (`0.00`–`0.15 km/h`). The compact card was visually inspected in ignored `app/build/reports/phase-198/phone-speed.png`. This is a short live observation, not endurance or speed-accuracy validation.
+- `git diff --check` passed; changed-file and full production diff were reviewed. No dependency, permission, persistence, network destination, telemetry source filter, command path or Cube setting changed.
+
+## Remaining risk and review
+
+The speed card must still show unavailable when the selected heartbeat or speed sample is genuinely missing for over five seconds. An open socket and accepted unsigned MAVLink do not authenticate the Cube or prove physical speed, vehicle safety or braking. The live phone showed a hardware safety-switch `PreArm` report; no action was taken. Review the source timestamp flow and freshness tests before release; committing and pushing source does not constitute a customer release. If flicker recurs, record the card's reason and the heartbeat and `GLOBAL_POSITION_INT` receive ages at the same moment to distinguish a real receive gap from display behavior.
