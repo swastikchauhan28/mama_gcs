@@ -67,6 +67,38 @@ class RoverSpeedMonitorUiTest {
         compose.onNodeWithTag("rover-speed-value").assertTextEquals("UNKNOWN")
     }
 
+    @Test fun detailedCardShowsBothReceiveAgesAndGapReasons() {
+        val state = mutableStateOf(sample(1.0, 10_000))
+        val now = mutableStateOf(10_000L)
+        compose.setContent { MamaGcsTheme { RoverSpeedPanel(RoverSpeedMonitor.assess(state.value, now.value)) } }
+        compose.onNodeWithTag("rover-speed-heartbeat-age").assertTextEquals("Heartbeat receive age: 0 ms · FRESH")
+        compose.onNodeWithTag("rover-speed-sample-age")
+            .assertTextEquals("GLOBAL_POSITION_INT speed receive age: 0 ms · FRESH")
+        capture("phase199-speed-evidence-fresh")
+        compose.runOnIdle { now.value = 15_001L }
+        compose.onNodeWithTag("rover-speed-status").assertTextEquals("SPEED UNAVAILABLE")
+        compose.onNodeWithTag("rover-speed-heartbeat-age").assertTextEquals("Heartbeat receive age: 5001 ms · STALE")
+        compose.onNodeWithTag("rover-speed-sample-age")
+            .assertTextEquals("GLOBAL_POSITION_INT speed receive age: 5001 ms · STALE")
+        compose.onNodeWithTag("rover-speed-reason")
+            .assertTextContains("Heartbeat older than 5 seconds", substring = true)
+        compose.onNodeWithTag("rover-speed-reason")
+            .assertTextContains("GLOBAL_POSITION_INT speed sample older than 5 seconds", substring = true)
+        capture("phase199-speed-evidence-stale")
+        compose.runOnIdle { state.value = state.value.copy(connectionStatus = VehicleConnectionState.DEGRADED,
+            kinematicsLastUpdatedAtElapsedMillis = 15_000L) }
+        compose.onNodeWithTag("rover-speed-heartbeat-age")
+            .assertTextEquals("Heartbeat receive age: 5001 ms · STALE · LINK NOT CONFIRMED")
+        compose.onNodeWithTag("rover-speed-sample-age")
+            .assertTextEquals("GLOBAL_POSITION_INT speed receive age: 1 ms · RECENT RECEIPT · LINK NOT CONFIRMED")
+        compose.onNodeWithTag("rover-speed-value").assertTextEquals("UNKNOWN")
+        capture("phase199-speed-evidence-link-lost")
+        compose.runOnIdle { state.value = state.value.copy(connectionStatus = VehicleConnectionState.DISCONNECTED) }
+        compose.runOnIdle { state.value = state.value.copy(lastHeartbeatAtElapsedMillis = 15_000L) }
+        compose.onNodeWithTag("rover-speed-heartbeat-age")
+            .assertTextEquals("Heartbeat receive age: 1 ms · RECENT RECEIPT · LINK NOT CONFIRMED")
+    }
+
     @Test fun speedObservationDoesNotEnableDriveActions() {
         compose.setContent { MamaGcsTheme { ControlScreen(sample()) } }
         listOf("Forward", "Reverse", "Stop", "Arm", "Disarm", "Set mode", "Set speed").forEach {

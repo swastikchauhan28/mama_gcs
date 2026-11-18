@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-199-01: Show speed receive evidence from the assessment clock
+
+- Date: 2026-11-18. User approved Phase 199 after the Phase 198 speed-card clock fix. Baseline `ae3a70b`, clean `main` worktree; model/version unavailable.
+- Context: the detailed Analyze telemetry speed card states only the first unavailable reason. During a live gap, the operator cannot see the selected-autopilot heartbeat and `GLOBAL_POSITION_INT` speed receipt ages together at the same assessment instant. Operate uses a compact version of the card with little room for more rows.
+- Choice: calculate two small volatile receive-evidence records in `RoverSpeedMonitor.assess` from its existing elapsed clock: status (`NOT RECEIVED`, `INVALID TIME`, `FRESH`, `STALE`) and non-negative age when valid. Show them and a combined unavailable reason on the detailed card; keep the compact card unchanged. Alternative: derive ages separately inside Compose, which can disagree with the assessment when a packet arrives between clock samples. Alternative: retain prior numeric speed while stale, which could misrepresent old data as current.
+- Risk and revisit: receive age is not speed accuracy, vehicle identity or physical safety. The existing five-second gate, selected message source and command boundaries remain unchanged. Test missing/future/expired/both-expired states, live refresh, compact layout, and link loss; visually inspect the detailed card. Revisit if a real gap shows conflicting ages or statuses.
+- 2026-11-18 live correction: the phone's link changed between Connected and Link lost while the new card was open. Hiding both ages as `LINK CLOSED` erased the exact diagnostic evidence this phase needs. Preserve receipt ages when the vehicle state is not Connected, continue to hide the numeric speed, and retain `No live vehicle connection`. The raw elapsed timestamps remain volatile and reset on a new session. An initial link-closed label was corrected below after further live evidence.
+- 2026-11-18 label correction: the live card showed `GLOBAL_POSITION_INT` receipts continuing while the heartbeat aged past 40 seconds and the app displayed Link lost. `LINK CLOSED` would incorrectly assert that the transport socket closed, and a recent position receipt is not necessarily historical. Use `LINK NOT CONFIRMED` with `RECENT RECEIPT` or `STALE` labels when the vehicle state is not Connected. The speed remains unavailable. The source of the heartbeat gap is unverified.
+
 ## D-198-01: Use elapsed receipt time for the read-only speed card
 
 - Date: 2026-11-18. User reported speed availability flicker and asked to continue investigation. Baseline `d220a6a`, clean `main` worktree; model/version unavailable.

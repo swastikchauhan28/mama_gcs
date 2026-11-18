@@ -1,11 +1,21 @@
 package com.mamadrones.gcs.domain.model
 
 enum class SpeedObservation { UNAVAILABLE, BELOW_LIMIT, AT_LIMIT, ABOVE_LIMIT }
+enum class SpeedReceiptStatus { NOT_RECEIVED, INVALID_TIME, FRESH, STALE }
+
+/** One selected-source receive timestamp assessed against the same elapsed clock as the speed value. */
+data class SpeedReceiptEvidence(
+    val status: SpeedReceiptStatus = SpeedReceiptStatus.NOT_RECEIVED,
+    val ageMillis: Long? = null,
+)
 
 data class RoverSpeedAssessment(
     val observation: SpeedObservation,
     val speedKmh: Double? = null,
     val reason: String? = null,
+    val linkLive: Boolean = false,
+    val heartbeatReceipt: SpeedReceiptEvidence = SpeedReceiptEvidence(),
+    val speedReceipt: SpeedReceiptEvidence = SpeedReceiptEvidence(),
 )
 
 /** Display-only comparison. Never grants drive permission, transmits or changes parameters. */
@@ -15,23 +25,43 @@ object RoverSpeedMonitor {
     const val FRESH_FOR_MILLIS = 5_000L
 
     fun assess(state: VehicleState, nowElapsedMillis: Long): RoverSpeedAssessment {
-        fun unavailable(reason: String) = RoverSpeedAssessment(SpeedObservation.UNAVAILABLE, reason = reason)
+        val heartbeat = receipt(state.lastHeartbeatAtElapsedMillis, nowElapsedMillis)
+        val speedSample = receipt(state.kinematicsLastUpdatedAtElapsedMillis, nowElapsedMillis)
+        fun result(observation: SpeedObservation, speedKmh: Double? = null, reason: String? = null) =
+            RoverSpeedAssessment(observation, speedKmh, reason, state.connected, heartbeat, speedSample)
+        fun unavailable(reason: String) = result(SpeedObservation.UNAVAILABLE, reason = reason)
         if (!state.connected) return unavailable("No live vehicle connection")
-        if (!fresh(state.lastHeartbeatAtElapsedMillis, nowElapsedMillis)) return unavailable("Heartbeat missing or older than 5 seconds")
-        if (!fresh(state.kinematicsLastUpdatedAtElapsedMillis, nowElapsedMillis)) return unavailable("Speed sample missing or older than 5 seconds")
+        val missing = listOfNotNull(
+            receiptIssue("Heartbeat", heartbeat),
+            receiptIssue("GLOBAL_POSITION_INT speed sample", speedSample),
+        )
+        if (missing.isNotEmpty()) return unavailable(missing.joinToString("; "))
         val speed = state.speedMetersPerSecond
             ?.takeIf { it.isFinite() && it >= 0.0 }
             ?: return unavailable("Valid ground speed not received")
         val kmh = speed * 3.6
         if (!kmh.isFinite()) return unavailable("Invalid ground-speed conversion")
-        return RoverSpeedAssessment(when {
+        return result(when {
             kmh > MAXIMUM_KMH -> SpeedObservation.ABOVE_LIMIT
             kmh == MAXIMUM_KMH -> SpeedObservation.AT_LIMIT
             else -> SpeedObservation.BELOW_LIMIT
         }, kmh)
     }
 
-    // Both arguments are elapsed-realtime values; wall-clock changes cannot revive or expire a sample.
-    private fun fresh(receivedAt: Long?, now: Long): Boolean =
-        receivedAt != null && receivedAt >= 0 && now >= receivedAt && now - receivedAt <= FRESH_FOR_MILLIS
+    // Both arguments are elapsed-realtime values; future or invalid times cannot look fresh.
+    private fun receipt(receivedAt: Long?, now: Long): SpeedReceiptEvidence {
+        if (receivedAt == null) return SpeedReceiptEvidence()
+        if (now < 0 || receivedAt < 0 || receivedAt > now)
+            return SpeedReceiptEvidence(SpeedReceiptStatus.INVALID_TIME)
+        val age = now - receivedAt
+        return SpeedReceiptEvidence(if (age <= FRESH_FOR_MILLIS) SpeedReceiptStatus.FRESH
+            else SpeedReceiptStatus.STALE, age)
+    }
+
+    private fun receiptIssue(name: String, evidence: SpeedReceiptEvidence): String? = when (evidence.status) {
+        SpeedReceiptStatus.NOT_RECEIVED -> "$name not received"
+        SpeedReceiptStatus.INVALID_TIME -> "$name has invalid receive time"
+        SpeedReceiptStatus.STALE -> "$name older than 5 seconds"
+        SpeedReceiptStatus.FRESH -> null
+    }
 }

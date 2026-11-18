@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-18 — Phase 199 speed receive evidence
+
+- Done: Analyze telemetry's detailed speed card now shows selected-autopilot heartbeat and `GLOBAL_POSITION_INT` speed receipt ages assessed at the same elapsed instant as speed availability. It names missing, invalid and stale receipts, including both sources when both expire. The compact Operate card and five-second speed gate stay unchanged. See [Phase 199](phase-199-report.md) and D-199-01.
+- Verification: final debug app/test APKs and 508 JVM tests in 80 suites passed with zero failures/errors/skips; lint reported zero errors and 27 warnings. The final five-test speed UI suite passed on the USB phone, and fresh/stale/degraded synthetic images were inspected. A first intermediate five-test phone run had one timer test lose its Compose hierarchy; that test and the full suite passed on rerun. A live intermediate build showed heartbeat age exceeding 40 seconds while speed-position receipts remained under a second and the app showed Link lost. The final label correction was checked synthetically, not with a repeated live gap.
+- Broken or risky: the observed link repeatedly changed between Connected and Link lost; the source of the missing selected-autopilot heartbeat is unresolved. Recent position receipts while degraded do not authenticate the Cube or make speed safe to display. No rover command or parameter change was made.
+- Next: diagnose why selected-autopilot heartbeats stop while `GLOBAL_POSITION_INT` continues, using same-session message observations and transport counters. Keep this as a separate read-only task; do not infer a radio/cable cause from the UI alone. Review the Phase 199 diff before release. Commit/push only on request.
+- Do not touch: operator saved data, Cube/radio parameters, mission upload or rover commands for this diagnostic UI phase.
+
 ## 2026-11-18 — Speed card receive-clock alignment
 
 - Done: the read-only rover speed card now checks the selected `GLOBAL_POSITION_INT` speed and selected-autopilot heartbeat with elapsed receive timestamps. It retains the independent five-second limits, connection/invalid-value gates and existing source. See [speed flicker report](phase-198-report.md) and D-198-01.

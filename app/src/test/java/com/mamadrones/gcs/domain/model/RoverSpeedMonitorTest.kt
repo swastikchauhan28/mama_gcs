@@ -40,8 +40,29 @@ class RoverSpeedMonitorTest {
     @Test fun heartbeatAndSpeedMustBeIndependentlyFresh() {
         unavailable(sample().copy(lastHeartbeatAtElapsedMillis = now - 5_001))
         unavailable(sample().copy(kinematicsLastUpdatedAtElapsedMillis = now - 5_001))
-        assertEquals(SpeedObservation.BELOW_LIMIT, RoverSpeedMonitor.assess(sample().copy(
-            lastHeartbeatAtElapsedMillis = now - 5_000, kinematicsLastUpdatedAtElapsedMillis = now - 5_000), now).observation)
+        val boundary = RoverSpeedMonitor.assess(sample().copy(
+            lastHeartbeatAtElapsedMillis = now - 5_000, kinematicsLastUpdatedAtElapsedMillis = now - 5_000), now)
+        assertEquals(SpeedObservation.BELOW_LIMIT, boundary.observation)
+        assertEquals(SpeedReceiptStatus.FRESH, boundary.heartbeatReceipt.status)
+        assertEquals(5_000L, boundary.speedReceipt.ageMillis)
+    }
+    @Test fun evidenceIdentifiesBothExpiredSourcesAtSameInstant() {
+        val expired = RoverSpeedMonitor.assess(sample().copy(
+            lastHeartbeatAtElapsedMillis = now - 5_001,
+            kinematicsLastUpdatedAtElapsedMillis = now - 7_200), now)
+        assertEquals(SpeedObservation.UNAVAILABLE, expired.observation)
+        assertEquals(SpeedReceiptEvidence(SpeedReceiptStatus.STALE, 5_001), expired.heartbeatReceipt)
+        assertEquals(SpeedReceiptEvidence(SpeedReceiptStatus.STALE, 7_200), expired.speedReceipt)
+        assertTrue(expired.reason!!.contains("Heartbeat"))
+        assertTrue(expired.reason!!.contains("GLOBAL_POSITION_INT speed sample"))
+    }
+    @Test fun missingAndFutureReceiptsAreDistinctFromStaleAges() {
+        val evidence = RoverSpeedMonitor.assess(sample().copy(
+            lastHeartbeatAtElapsedMillis = null,
+            kinematicsLastUpdatedAtElapsedMillis = now + 1), now)
+        assertEquals(SpeedReceiptEvidence(), evidence.heartbeatReceipt)
+        assertEquals(SpeedReceiptEvidence(SpeedReceiptStatus.INVALID_TIME), evidence.speedReceipt)
+        assertNull(evidence.speedKmh)
     }
     @Test fun missingFutureOrNegativeTimestampsAreUnavailable() {
         listOf(null, now + 1, -1L, Long.MIN_VALUE, Long.MAX_VALUE).forEach {
