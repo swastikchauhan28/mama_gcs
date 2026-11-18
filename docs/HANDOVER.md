@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-18 — Phase 200 heartbeat-gap evidence
+
+- Done: Link & messages now shows whether selected position and bytes were received after five seconds of a current heartbeat gap, and retains the latest three completed gaps with elapsed start/recovery/duration and receipt evidence. The record is volatile and excludes the recovery chunk. See [Phase 200](phase-200-report.md) and D-200-01.
+- Verification: 510 JVM tests in 80 suites passed with zero failures/errors/skips; debug app/test APK builds passed; lint reported zero errors and 27 warnings. Three synthetic heartbeat UI tests passed twice on the USB phone; the final completed-gap screenshot was inspected. No live Cube gap was measured in this phase.
+- Broken or risky: the earlier live heartbeat interruption while selected position continued remains unexplained. Receipt evidence is unauthenticated and cannot identify the failed hop or establish safety. A missing observation does not prove no data was sent.
+- Next: observe a natural live gap with the new rows and TCP socket/message evidence in one session; investigate the source without changing the timeout or making vehicle commands. Review the diff before release. Commit/push only on request.
+- Do not touch: saved phone data, Cube/radio parameters, mission upload or rover commands for this diagnostic work.
+
 ## 2026-11-18 — Phase 199 speed receive evidence
 
 - Done: Analyze telemetry's detailed speed card now shows selected-autopilot heartbeat and `GLOBAL_POSITION_INT` speed receipt ages assessed at the same elapsed instant as speed availability. It names missing, invalid and stale receipts, including both sources when both expire. The compact Operate card and five-second speed gate stay unchanged. See [Phase 199](phase-199-report.md) and D-199-01.

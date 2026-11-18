@@ -22,6 +22,10 @@ object ConsolePanels {
         val input = sample.lastBytesAtElapsedMillis
         val bytesAfterThreshold = age != null && age > 5_000L && input != null && last != null &&
             input >= last && input <= nowElapsedMillis && input - last > 5_000L
+        val position = sample.messageObservations.firstOrNull { it.type == ObservedMavlinkMessage.GLOBAL_POSITION_INT }
+            ?.lastAcceptedAtElapsedMillis
+        val positionAfterThreshold = age != null && age > 5_000L && position != null && last != null &&
+            position > last && position <= nowElapsedMillis && position - last > 5_000L
         val status = when {
             !sample.active -> "SESSION CLOSED OR NOT STARTED"
             last == null -> "WAITING FOR ACCEPTED HEARTBEAT"
@@ -30,7 +34,7 @@ object ConsolePanels {
             else -> "ACCEPTED HEARTBEAT RECENT"
         }
         fun interval(value: Long?) = value?.let { "$it ms" } ?: "—"
-        return PanelSpec("Heartbeat timing", status, listOf(
+        val rows = listOf(
             "TCP socket" to if (sample.linkKind == TelemetryLinkKind.TCP && sample.active) (tcpStatus?.name ?: "UNAVAILABLE") else "—",
             "Current heartbeat age" to interval(age),
             "Completed gaps over 5 seconds" to sample.completedHeartbeatGapsOverFiveSeconds.toString(),
@@ -39,7 +43,19 @@ object ConsolePanels {
             "Completed long gaps with input before recovery" to sample.completedGapsWithInputBeforeRecovery.toString(),
             "Input before recovery in latest long gap" to when (sample.lastLongGapHadInputBeforeRecovery) { true -> "OBSERVED"; false -> "NOT OBSERVED"; null -> "—" },
             "Input after 5 seconds in current gap" to if (age == null || age <= 5_000L) "—" else if (bytesAfterThreshold) "OBSERVED" else "NOT OBSERVED",
-        ), note = "Receive-only, monotonic session observations. A completed gap is counted when the next selected-autopilot heartbeat arrives; the current gap is separate. Input means bytes reached the decoder, not that they contained a heartbeat. For completed gaps, the recovery chunk is excluded; missing input evidence is not proof no bytes arrived. Memory-only totals reset on a new session and do not authenticate the sender or locate a fault.")
+            "Selected position after 5 seconds in current gap" to if (age == null || age <= 5_000L) "—" else if (positionAfterThreshold) "OBSERVED" else "NOT OBSERVED",
+        ) + sample.recentHeartbeatGaps.asReversed().flatMapIndexed { index, gap ->
+            val number = index + 1
+            val timing = if (gap.startedAtElapsedMillis >= 0 && gap.recoveredAtElapsedMillis >= gap.startedAtElapsedMillis &&
+                nowElapsedMillis >= gap.recoveredAtElapsedMillis)
+                "started ${nowElapsedMillis - gap.startedAtElapsedMillis} ms ago · recovered ${nowElapsedMillis - gap.recoveredAtElapsedMillis} ms ago · duration ${gap.recoveredAtElapsedMillis - gap.startedAtElapsedMillis} ms"
+            else "ELAPSED TIME UNAVAILABLE"
+            listOf(
+                "Recent gap $number timing" to timing,
+                "Recent gap $number after 5 seconds" to "input ${if (gap.inputAfterFiveSeconds) "OBSERVED" else "NOT OBSERVED"} · selected position ${if (gap.selectedPositionAfterFiveSeconds) "OBSERVED" else "NOT OBSERVED"}",
+            )
+        }
+        return PanelSpec("Heartbeat timing", status, rows, note = "Receive-only, monotonic session observations. Up to three completed gaps are retained in memory; a completed gap is counted when the next selected-autopilot heartbeat arrives. Input means bytes reached the decoder; selected position means an accepted GLOBAL_POSITION_INT receipt. For completed gaps, the recovery chunk is excluded. Missing evidence is not proof that data was absent. A new session resets this record. It does not authenticate the sender or locate a fault.")
     }
 
     fun mavlinkDiagnostics(sample: MavlinkDiagnostics, nowEpochMillis: Long = System.currentTimeMillis()): PanelSpec {

@@ -11,6 +11,14 @@ data class RadioStatusObservation(
     val receivedAtEpochMillis: Long,
 )
 
+/** At most three completed current-session gaps; recovery-chunk receipts do not count as gap evidence. */
+data class HeartbeatGapEvidence(
+    val startedAtElapsedMillis: Long,
+    val recoveredAtElapsedMillis: Long,
+    val inputAfterFiveSeconds: Boolean,
+    val selectedPositionAfterFiveSeconds: Boolean,
+)
+
 /** Fixed-size, memory-only session observations. Not authentication, packet loss, or health. */
 data class MavlinkDiagnostics(
     val active: Boolean = false,
@@ -47,6 +55,7 @@ data class MavlinkDiagnostics(
     val longestCompletedHeartbeatIntervalMillis: Long? = null,
     val lastCompletedHeartbeatIntervalMillis: Long? = null,
     val lastLongGapHadInputBeforeRecovery: Boolean? = null,
+    val recentHeartbeatGaps: List<HeartbeatGapEvidence> = emptyList(),
 ) {
     val parserErrors: Long get() = checksumFailures + malformedPayloads
 }

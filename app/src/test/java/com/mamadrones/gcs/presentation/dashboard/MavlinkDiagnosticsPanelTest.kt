@@ -3,6 +3,7 @@ package com.mamadrones.gcs.presentation.dashboard
 import com.mamadrones.gcs.domain.model.MavlinkDiagnostics
 import com.mamadrones.gcs.domain.model.TelemetryLinkKind
 import com.mamadrones.gcs.domain.model.RadioStatusObservation
+import com.mamadrones.gcs.domain.model.HeartbeatGapEvidence
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -19,6 +20,14 @@ class MavlinkDiagnosticsPanelTest {
             .rows.toMap()["Input after 5 seconds in current gap"])
         assertEquals("ELAPSED TIME UNAVAILABLE", ConsolePanels.heartbeatTiming(base, 99).status)
         assertEquals("SESSION CLOSED OR NOT STARTED", ConsolePanels.heartbeatTiming(base.copy(active = false), 5_102).status)
+    }
+    @Test fun `completed gap panel shows bounded timing and receipt evidence`() {
+        val sample = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.TCP,
+            startedAtElapsedMillis = 0, timingHeartbeatAtElapsedMillis = 6_000,
+            recentHeartbeatGaps = listOf(HeartbeatGapEvidence(0, 6_000, true, false)))
+        val rows = ConsolePanels.heartbeatTiming(sample, 6_100).rows.toMap()
+        assertEquals("started 6100 ms ago · recovered 100 ms ago · duration 6000 ms", rows["Recent gap 1 timing"])
+        assertEquals("input OBSERVED · selected position NOT OBSERVED", rows["Recent gap 1 after 5 seconds"])
     }
     @Test fun `three simulated link health states stay semantically distinct`() {
         val steady = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.TCP,

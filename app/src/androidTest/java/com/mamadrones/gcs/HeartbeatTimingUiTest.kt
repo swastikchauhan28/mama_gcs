@@ -60,7 +60,10 @@ class HeartbeatTimingUiTest {
         compose.onNodeWithText("ACCEPTED HEARTBEAT RECENT").assertExists()
         compose.onNodeWithText("Completed gaps over 5 seconds").assertExists()
         compose.onNodeWithText("Completed long gaps with input before recovery").assertExists()
+        compose.onNodeWithText("Recent gap 1 timing").assertExists()
+        compose.onNodeWithText("input OBSERVED · selected position NOT OBSERVED").assertExists()
         compose.onAllNodesWithText("6100 ms").assertCountEquals(2)
+        compose.onNodeWithText("input OBSERVED · selected position NOT OBSERVED").performScrollTo()
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         File(context.getExternalFilesDir(null), "heartbeat-recovery-simulated.png").outputStream().use {
             assertTrue(compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it))

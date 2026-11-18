@@ -5,18 +5,22 @@ import com.mamadrones.gcs.domain.model.TelemetryLinkKind
 import com.mamadrones.gcs.domain.model.MavlinkMessageObservation
 import com.mamadrones.gcs.domain.model.ObservedMavlinkMessage
 import com.mamadrones.gcs.domain.model.RadioStatusObservation
+import com.mamadrones.gcs.domain.model.HeartbeatGapEvidence
 
 enum class MessageDisposition { ACCEPTED, BEFORE_AUTOPILOT_HEARTBEAT, OTHER_SOURCE }
 
 /** Owned by one receive coroutine. No packet contents, unbounded history, or device identifiers. */
 class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long, startedAtElapsed: Long? = null) {
     private var lastInputBeforeChunkElapsed: Long? = null
+    private var lastPositionBeforeChunkElapsed: Long? = null
     var snapshot = MavlinkDiagnostics(active = true, linkKind = kind, startedAtEpochMillis = startedAt, startedAtElapsedMillis = startedAtElapsed)
         private set
 
     fun recordBytes(bytes: ByteArray, receivedAt: Long, receivedAtElapsed: Long? = null) {
         if (bytes.isEmpty()) return
         lastInputBeforeChunkElapsed = snapshot.lastBytesAtElapsedMillis
+        lastPositionBeforeChunkElapsed = snapshot.messageObservations
+            .firstOrNull { it.type == ObservedMavlinkMessage.GLOBAL_POSITION_INT }?.lastAcceptedAtElapsedMillis
         val v1Starts = bytes.count { it == 0xFE.toByte() }
         val v2Starts = bytes.count { it == 0xFD.toByte() }
         snapshot = snapshot.copy(receivedChunks = snapshot.receivedChunks + 1,
@@ -90,6 +94,9 @@ class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long, st
         val priorInput = lastInputBeforeChunkElapsed
         val inputDuringLongGap = longGap && priorInput != null && priorInput > previous &&
             priorInput < now && priorInput - previous > 5_000L
+        val priorPosition = lastPositionBeforeChunkElapsed
+        val positionDuringLongGap = longGap && priorPosition != null && priorPosition > previous &&
+            priorPosition < now && priorPosition - previous > 5_000L
         fun increment(value: Long) = if (value == Long.MAX_VALUE) value else value + 1
         return current.copy(
             timingHeartbeatAtElapsedMillis = now,
@@ -98,6 +105,9 @@ class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long, st
             completedHeartbeatGapsOverFiveSeconds = if (longGap) increment(current.completedHeartbeatGapsOverFiveSeconds) else current.completedHeartbeatGapsOverFiveSeconds,
             completedGapsWithInputBeforeRecovery = if (inputDuringLongGap) increment(current.completedGapsWithInputBeforeRecovery) else current.completedGapsWithInputBeforeRecovery,
             lastLongGapHadInputBeforeRecovery = if (longGap) inputDuringLongGap else current.lastLongGapHadInputBeforeRecovery,
+            recentHeartbeatGaps = if (longGap) (current.recentHeartbeatGaps + HeartbeatGapEvidence(
+                previous, now, inputDuringLongGap, positionDuringLongGap,
+            )).takeLast(3) else current.recentHeartbeatGaps,
         )
     }
 }

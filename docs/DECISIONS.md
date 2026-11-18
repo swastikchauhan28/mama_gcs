@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-200-01: Retain bounded heartbeat-gap receive evidence
+
+- Date: 2026-11-18. User approved Phase 200. Baseline `c65b6b6`, clean `main`; model/version unavailable.
+- Context: a live selected-autopilot heartbeat aged past 40 seconds while selected `GLOBAL_POSITION_INT` receipts continued. Aggregate counters cannot show the beginning, recovery, or whether position receipts occurred within each gap.
+- Choice: retain at most three completed gaps in the current session, each with elapsed start/recovery times and booleans for bytes and accepted position after five seconds before the recovery chunk. Show current-gap evidence separately. Exclude the recovery chunk from completed-gap evidence. Alternative: persist raw packets or an unbounded log, which adds sensitive data and retention risk; alternative: infer from cumulative counters, which cannot correlate receipts to a gap.
+- Risk and revisit: receipt evidence does not authenticate a vehicle, prove upstream cause, or imply safe movement. Missing evidence does not prove absence. Keep the existing heartbeat timeout and read-only transport behavior. Verify boundary, recovery-chunk exclusion, bounded reset, panel labels and UI; revisit if live evidence contradicts the event record.
+
 ## D-199-01: Show speed receive evidence from the assessment clock
 
 - Date: 2026-11-18. User approved Phase 199 after the Phase 198 speed-card clock fix. Baseline `ae3a70b`, clean `main` worktree; model/version unavailable.

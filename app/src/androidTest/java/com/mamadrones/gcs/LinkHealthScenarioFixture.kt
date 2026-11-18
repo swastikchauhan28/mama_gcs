@@ -3,12 +3,15 @@ package com.mamadrones.gcs
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.mamadrones.gcs.domain.model.MavlinkDiagnostics
+import com.mamadrones.gcs.domain.model.HeartbeatGapEvidence
 import com.mamadrones.gcs.domain.model.TelemetryLinkKind
 import com.mamadrones.gcs.domain.model.TransportStatus
 import com.mamadrones.gcs.domain.model.VehicleConnectionState
@@ -73,6 +76,7 @@ internal object LinkHealthScenarios {
             longestCompletedHeartbeatIntervalMillis = 6_100,
             lastCompletedHeartbeatIntervalMillis = 6_100,
             lastLongGapHadInputBeforeRecovery = true,
+            recentHeartbeatGaps = listOf(HeartbeatGapEvidence(100, 6_200, true, false)),
         ),
         nowElapsedMillis = 6_201,
         tcpStatus = TransportStatus.OPEN,
@@ -106,7 +110,7 @@ internal fun LinkHealthScenarioFixture(scenario: LinkHealthScenario) {
             onVehicleDetails = {},
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text("SIMULATED LINK-HEALTH FIXTURE", style = MaterialTheme.typography.titleMedium)

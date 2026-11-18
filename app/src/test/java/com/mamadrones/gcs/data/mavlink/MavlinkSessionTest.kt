@@ -31,6 +31,24 @@ import org.junit.Test
 
 class MavlinkSessionTest {
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun `recent completed heartbeat gap history is capped at three`() = runTest {
+        val transport = FakeTransport(TelemetryLinkKind.TCP)
+        val repository = VehicleRepositoryImpl()
+        val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository,
+            scope = this, elapsedClock = { testScheduler.currentTime }, epochClock = { 1_000_000L + testScheduler.currentTime })
+        try {
+            session.start(); transport.emit(heartbeatFrame()); runCurrent()
+            repeat(4) {
+                advanceTimeBy(6_000); runCurrent()
+                transport.emit(heartbeatFrame()); runCurrent()
+            }
+            val gaps = repository.vehicleState.value.mavlinkDiagnostics.recentHeartbeatGaps
+            assertEquals(4L, repository.vehicleState.value.mavlinkDiagnostics.completedHeartbeatGapsOverFiveSeconds)
+            assertEquals(3, gaps.size)
+            assertEquals(listOf(6_000L, 12_000L, 18_000L), gaps.map { it.startedAtElapsedMillis })
+        } finally { session.stop(); session.close() }
+    }
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test fun `TCP heartbeat timing separates active and completed gaps from incoming bytes`() = runTest {
         val transport = FakeTransport(TelemetryLinkKind.TCP)
         val repository = VehicleRepositoryImpl()
@@ -45,12 +63,14 @@ class MavlinkSessionTest {
             advanceTimeBy(5_001); runCurrent()
             transport.emit(byteArrayOf(0)); runCurrent()
             transport.emit(heartbeatFrame(systemId = 99)); runCurrent()
+            transport.emit(globalPositionFrame(42, -353_632_621)); runCurrent()
             val during = repository.vehicleState.value.mavlinkDiagnostics
             assertEquals(0L, during.completedHeartbeatGapsOverFiveSeconds)
             val panel = com.mamadrones.gcs.presentation.dashboard.ConsolePanels.heartbeatTiming(during, testScheduler.currentTime, TransportStatus.OPEN)
             assertEquals("HEARTBEAT GAP IN PROGRESS", panel.status)
             assertEquals("OPEN", panel.rows.toMap()["TCP socket"])
             assertEquals("OBSERVED", panel.rows.toMap()["Input after 5 seconds in current gap"])
+            assertEquals("OBSERVED", panel.rows.toMap()["Selected position after 5 seconds in current gap"])
             advanceTimeBy(999); runCurrent()
             transport.emit(heartbeatFrame(systemId = 42)); runCurrent()
             val recovered = repository.vehicleState.value.mavlinkDiagnostics
@@ -58,10 +78,16 @@ class MavlinkSessionTest {
             assertEquals(1L, recovered.completedGapsWithInputBeforeRecovery)
             assertEquals(6_000L, recovered.longestCompletedHeartbeatIntervalMillis)
             assertEquals(6_000L, recovered.lastCompletedHeartbeatIntervalMillis)
+            assertEquals(1, recovered.recentHeartbeatGaps.size)
+            assertTrue(recovered.recentHeartbeatGaps.single().inputAfterFiveSeconds)
+            assertTrue(recovered.recentHeartbeatGaps.single().selectedPositionAfterFiveSeconds)
+            assertEquals(5_000L, recovered.recentHeartbeatGaps.single().startedAtElapsedMillis)
+            assertEquals(11_000L, recovered.recentHeartbeatGaps.single().recoveredAtElapsedMillis)
             assertTrue(repository.vehicleState.value.connected)
             session.stop(); session.start()
             assertEquals(0L, repository.vehicleState.value.mavlinkDiagnostics.completedHeartbeatGapsOverFiveSeconds)
             assertNull(repository.vehicleState.value.mavlinkDiagnostics.timingHeartbeatAtElapsedMillis)
+            assertTrue(repository.vehicleState.value.mavlinkDiagnostics.recentHeartbeatGaps.isEmpty())
         } finally { session.stop(); session.close() }
     }
 
@@ -79,6 +105,8 @@ class MavlinkSessionTest {
             assertEquals(1L, d.completedHeartbeatGapsOverFiveSeconds)
             assertEquals(0L, d.completedGapsWithInputBeforeRecovery)
             assertEquals(false, d.lastLongGapHadInputBeforeRecovery)
+            assertEquals(false, d.recentHeartbeatGaps.single().inputAfterFiveSeconds)
+            assertEquals(false, d.recentHeartbeatGaps.single().selectedPositionAfterFiveSeconds)
         } finally { session.stop(); session.close() }
     }
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
