@@ -17,6 +17,20 @@ class TelemetryReportViewModelTest {
     @Before fun setup() { Dispatchers.setMain(dispatcher) }
     @After fun cleanup() { Dispatchers.resetMain() }
 
+    @Test fun tcpTimelineSnapshotStaysFrozenWhileSourceChanges() = runTest(dispatcher) {
+        val model = TelemetryReportViewModel(dispatcher)
+        val vehicle = VehicleState(mavlinkDiagnostics = MavlinkDiagnostics(active = true,
+            linkKind = TelemetryLinkKind.TCP, startedAtEpochMillis = 1_000,
+            startedAtElapsedMillis = 100))
+        model.prepare(vehicle, 2_000, 300, listOf(TcpSocketTransition(TransportStatus.OPEN, 200)))
+        val frozen = model.state.value.preview!!
+        assertTrue(frozen.contains("TCP OPEN: 100 ms before capture"))
+        assertTrue(model.chooseDestination())
+        model.prepare(vehicle, 3_000, 500, listOf(TcpSocketTransition(TransportStatus.ERROR, 400)))
+        assertEquals(frozen, model.state.value.preview)
+        assertFalse(frozen.contains("TCP ERROR"))
+    }
+
     @Test fun capturedSnapshotDoesNotChangeWhileChoosingOrWriting() = runTest(dispatcher) {
         val model = TelemetryReportViewModel(dispatcher)
         model.prepare(VehicleState(), 1_000)

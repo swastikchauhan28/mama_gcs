@@ -13,9 +13,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mamadrones.gcs.domain.model.VehicleState
+import com.mamadrones.gcs.domain.model.TcpSocketTransition
 
 @Composable
-fun TelemetryReportControls(vehicle: VehicleState, model: TelemetryReportViewModel) {
+fun TelemetryReportControls(vehicle: VehicleState, model: TelemetryReportViewModel,
+    tcpTransitions: List<TcpSocketTransition> = emptyList()) {
     val context = LocalContext.current.applicationContext
     val state by model.state.collectAsStateWithLifecycle()
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
@@ -23,7 +25,8 @@ fun TelemetryReportControls(vehicle: VehicleState, model: TelemetryReportViewMod
         else model.save { context.contentResolver.openOutputStream(uri, "wt") }
     }
     TelemetryReportActions(state,
-        onPrepare = { model.prepare(vehicle, System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime()) },
+        onPrepare = { model.prepare(vehicle, System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime(),
+            tcpTransitions) },
         onDismiss = model::dismiss,
         onSave = {
             if (model.chooseDestination()) {

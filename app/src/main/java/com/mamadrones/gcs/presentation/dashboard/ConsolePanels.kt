@@ -61,28 +61,10 @@ object ConsolePanels {
 
     private fun tcpHeartbeatTimelineRows(sample: MavlinkDiagnostics, now: Long,
         transitions: List<TcpSocketTransition>): List<Pair<String, String>> {
-        val started = sample.startedAtElapsedMillis
-        if (sample.linkKind != TelemetryLinkKind.TCP || started == null || started < 0 || now < started) return emptyList()
-        val events = buildList<Pair<Long, String>> {
-            transitions.forEach { transition ->
-                if (transition.atElapsedMillis in started..now) add(transition.atElapsedMillis to "TCP ${transition.status}")
-            }
-            sample.recentHeartbeatGaps.forEach { gap ->
-                if (gap.startedAtElapsedMillis >= started && gap.recoveredAtElapsedMillis in gap.startedAtElapsedMillis..now &&
-                    gap.recoveredAtElapsedMillis - gap.startedAtElapsedMillis > 5_000L) {
-                    add(gap.startedAtElapsedMillis + 5_000L to "Heartbeat exceeded 5 seconds")
-                    add(gap.recoveredAtElapsedMillis to "Heartbeat recovered")
-                }
-            }
-            val last = sample.timingHeartbeatAtElapsedMillis
-            if (last != null && last in started..now) {
-                if (sample.active && now - last > 5_000L) add(last + 5_000L to "Heartbeat exceeded 5 seconds")
-                else if (sample.recentHeartbeatGaps.none { it.recoveredAtElapsedMillis == last })
-                    add(last to "Latest accepted heartbeat")
-            }
-        }.sortedBy { it.first }.takeLast(8).asReversed()
+        if (!TcpHeartbeatTimeline.sessionAvailable(sample, now)) return emptyList()
+        val events = TcpHeartbeatTimeline.recent(sample, now, transitions)
         return listOf("Recent TCP/heartbeat timeline" to if (events.isEmpty()) "NO EVENTS OBSERVED" else "LATEST ${events.size} EVENTS") +
-            events.mapIndexed { index, event -> "Recent event ${index + 1}" to "${event.second} · ${now - event.first} ms ago" }
+            events.mapIndexed { index, event -> "Recent event ${index + 1}" to "${event.label} · ${now - event.atElapsedMillis} ms ago" }
     }
 
     fun mavlinkDiagnostics(sample: MavlinkDiagnostics, nowEpochMillis: Long = System.currentTimeMillis()): PanelSpec {

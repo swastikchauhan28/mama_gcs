@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-202-01: Include a bounded TCP/heartbeat timeline in the explicit telemetry snapshot
+
+- Date: 2026-11-19. User approved Phase 202 after a bounded proposal. Baseline `3d7b518`, clean `main`; model/version unavailable.
+- Context: Phase 201 displays volatile TCP transitions beside selected-autopilot heartbeat events, but the existing allowlisted telemetry report omits them. The operator needs a reviewable same-session snapshot when a link gap occurs. `TcpTelemetryViewModel` owns socket transitions; `MavlinkDiagnostics` owns heartbeat timing; `TelemetryEvidenceReport` alone builds the text exported by the explicit preview/save flow.
+- Choice: use one bounded, pure event projection for the screen and the report. Pass only TCP status/time pairs to report capture. Include the latest eight combined events from the current or last closed TCP session, with age at the frozen capture and an explicit active/closed label. If elapsed timing or a matching TCP session is unavailable, say so. Alternative: duplicate projection rules in the report, which risks mismatched ordering/session guards. Alternative: persist or continuously share a trace, which adds retention and sensitive-data risk without being requested.
+- Risk and revisit: elapsed observations can be missed or evicted; a saved report is historical and can be shared outside the app. Keep the existing 16 KiB cap, allowlist, preview and explicit Android file picker. Exclude endpoints, error text, coordinates and raw payloads. Test current/closed/empty/mismatched sessions, order, age and privacy. Revisit if live evidence reveals ambiguity; no inference about the failed hardware hop or vehicle safety.
+
 ## D-201-01: Correlate bounded TCP socket transitions with heartbeat gaps
 
 - Date: 2026-11-19. User approved Phase 201 after the bounded proposal. Baseline `c2a7ec6`, clean `main`; model/version unavailable.

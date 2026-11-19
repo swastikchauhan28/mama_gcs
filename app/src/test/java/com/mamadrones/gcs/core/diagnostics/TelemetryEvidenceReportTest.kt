@@ -8,6 +8,62 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class TelemetryEvidenceReportTest {
+    @Test fun tcpReportOrdersOnlyCurrentSessionEventsAndFrozenElapsedAges() {
+        val sample = vehicle.copy(mavlinkDiagnostics = vehicle.mavlinkDiagnostics.copy(
+            linkKind = TelemetryLinkKind.TCP, startedAtElapsedMillis = 100,
+            timingHeartbeatAtElapsedMillis = 6_200,
+            recentHeartbeatGaps = listOf(HeartbeatGapEvidence(200, 6_200, true, true))))
+        val transitions = listOf(TcpSocketTransition(TransportStatus.OPEN, 90),
+            TcpSocketTransition(TransportStatus.CONNECTING, 100),
+            TcpSocketTransition(TransportStatus.OPEN, 150),
+            TcpSocketTransition(TransportStatus.ERROR, 6_202))
+        val text = TelemetryEvidenceReport.capture(sample, 2_000, 6_201, transitions)
+        val section = text.substringAfter("TCP / HEARTBEAT EVENT TIMELINE AT CAPTURE")
+            .substringBefore("DECODER TOTALS")
+        assertTrue(section.contains("Session: ACTIVE AT CAPTURE"))
+        assertTrue(section.contains("Events: LATEST 4 EVENTS"))
+        val recovery = section.indexOf("Heartbeat recovered: 1 ms before capture")
+        val threshold = section.indexOf("Heartbeat exceeded 5 seconds: 1001 ms before capture")
+        val open = section.indexOf("TCP OPEN: 6051 ms before capture")
+        val connecting = section.indexOf("TCP CONNECTING: 6101 ms before capture")
+        assertTrue(recovery >= 0 && recovery < threshold && threshold < open && open < connecting)
+        assertFalse(section.contains("TCP ERROR"))
+        assertFalse(section.contains("6090"))
+        assertTrue(text.toByteArray(Charsets.UTF_8).size < TelemetryEvidenceReport.MAX_BYTES)
+    }
+
+    @Test fun closedSessionIsHistoricalAndMissingOrMismatchedTimingIsExplicit() {
+        val sample = vehicle.copy(mavlinkDiagnostics = vehicle.mavlinkDiagnostics.copy(
+            active = false, linkKind = TelemetryLinkKind.TCP, startedAtElapsedMillis = 100))
+        val event = listOf(TcpSocketTransition(TransportStatus.DISCONNECTED, 200))
+        val closed = TelemetryEvidenceReport.capture(sample, 2_000, 300, event)
+        assertTrue(closed.contains("Session: LAST SESSION - CLOSED"))
+        assertTrue(closed.contains("TCP DISCONNECTED: 100 ms before capture"))
+        val empty = TelemetryEvidenceReport.capture(sample, 2_000, 300)
+        assertTrue(empty.contains("Events: NO EVENTS OBSERVED"))
+        for (text in listOf(
+            TelemetryEvidenceReport.capture(sample, 2_000, null, event),
+            TelemetryEvidenceReport.capture(sample, 2_000, 50, event),
+            TelemetryEvidenceReport.capture(sample.copy(mavlinkDiagnostics = sample.mavlinkDiagnostics.copy(
+                linkKind = TelemetryLinkKind.CLASSIC)), 2_000, 300, event),
+            TelemetryEvidenceReport.capture(VehicleState(), 2_000, 300, event))) {
+            assertTrue(text.contains("Events: UNAVAILABLE (no matching TCP session with elapsed timing)"))
+            assertFalse(text.contains("TCP DISCONNECTED: 100 ms before capture"))
+        }
+    }
+
+    @Test fun timelineExportUsesFixedLabelsAndExcludesEndpointAndPayload() {
+        val sample = vehicle.copy(vehicleId = "private-host-192.0.2.10:5760",
+            statusTexts = listOf(VehicleStatusText(1, "private-raw-message", 1_500)),
+            mavlinkDiagnostics = vehicle.mavlinkDiagnostics.copy(
+                linkKind = TelemetryLinkKind.TCP, startedAtElapsedMillis = 100))
+        val text = TelemetryEvidenceReport.capture(sample, 2_000, 300,
+            listOf(TcpSocketTransition(TransportStatus.OPEN, 200)))
+        assertTrue(text.contains("TCP OPEN: 100 ms before capture"))
+        assertFalse(text.contains("192.0.2.10"))
+        assertFalse(text.contains("private-raw-message"))
+    }
+
     @Test fun rcPwmReportIncludesReceiptTimesButNotControlValues() {
         val text = TelemetryEvidenceReport.capture(VehicleState(
             mavlinkDiagnostics = MavlinkDiagnostics(startedAtEpochMillis = 100),

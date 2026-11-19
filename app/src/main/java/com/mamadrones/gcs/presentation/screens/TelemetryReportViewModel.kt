@@ -3,6 +3,7 @@ package com.mamadrones.gcs.presentation.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mamadrones.gcs.core.diagnostics.TelemetryEvidenceReport
+import com.mamadrones.gcs.domain.model.TcpSocketTransition
 import com.mamadrones.gcs.domain.model.VehicleState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.OutputStream
@@ -28,9 +29,11 @@ class TelemetryReportViewModel(private val ioDispatcher: CoroutineDispatcher) : 
     private val mutableState = MutableStateFlow(TelemetryReportState())
     val state = mutableState.asStateFlow()
 
-    fun prepare(vehicle: VehicleState, now: Long, elapsedNow: Long? = null) {
+    fun prepare(vehicle: VehicleState, now: Long, elapsedNow: Long? = null,
+        tcpTransitions: List<TcpSocketTransition> = emptyList()) {
         if (state.value.writing || state.value.choosingDestination) return
-        mutableState.value = TelemetryReportState(preview = TelemetryEvidenceReport.capture(vehicle, now, elapsedNow))
+        mutableState.value = TelemetryReportState(preview = TelemetryEvidenceReport.capture(vehicle, now, elapsedNow,
+            tcpTransitions))
     }
 
     fun dismiss() {

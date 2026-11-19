@@ -1,6 +1,8 @@
 package com.mamadrones.gcs.core.diagnostics
 
 import com.mamadrones.gcs.domain.model.BatteryEvidence
+import com.mamadrones.gcs.domain.model.TcpHeartbeatTimeline
+import com.mamadrones.gcs.domain.model.TcpSocketTransition
 import com.mamadrones.gcs.domain.model.VehicleState
 import java.io.OutputStream
 import java.time.Instant
@@ -10,7 +12,8 @@ object TelemetryEvidenceReport {
     const val MAX_BYTES = 16 * 1024
     private const val MAX_BATTERY_PACKS = 16
 
-    fun capture(vehicle: VehicleState, capturedAt: Long, capturedAtElapsedMillis: Long? = null): String = buildString {
+    fun capture(vehicle: VehicleState, capturedAt: Long, capturedAtElapsedMillis: Long? = null,
+        tcpTransitions: List<TcpSocketTransition> = emptyList()): String = buildString {
         val d = vehicle.mavlinkDiagnostics
         val started = d.startedAtEpochMillis
         fun count(value: Long) = if (started == null) "NOT RECORDED" else value.toString()
@@ -50,6 +53,21 @@ object TelemetryEvidenceReport {
         } else "NOT OBSERVED"
         appendLine("Observed protocol source (not paired identity): $source")
         appendLine("Last heartbeat: ${timestamp(vehicle.lastHeartbeatAtEpochMillis)}")
+        appendLine()
+        appendLine("TCP / HEARTBEAT EVENT TIMELINE AT CAPTURE")
+        appendLine("Latest observed session only; newest first. Event ages use elapsed time at capture.")
+        appendLine("Session: ${when { started == null -> "NO SESSION"; d.active -> "ACTIVE AT CAPTURE"; else -> "LAST SESSION - CLOSED" }}")
+        if (capturedAtElapsedMillis == null || started == null ||
+            !TcpHeartbeatTimeline.sessionAvailable(d, capturedAtElapsedMillis)) {
+            appendLine("Events: UNAVAILABLE (no matching TCP session with elapsed timing)")
+        } else {
+            val events = TcpHeartbeatTimeline.recent(d, capturedAtElapsedMillis, tcpTransitions)
+            appendLine("Events: ${if (events.isEmpty()) "NO EVENTS OBSERVED" else "LATEST ${events.size} EVENTS"}")
+            events.forEach { event ->
+                appendLine("- ${event.label}: ${capturedAtElapsedMillis - event.atElapsedMillis} ms before capture")
+            }
+        }
+        appendLine("Observed status changes can be skipped or evicted; this is not continuous socket proof.")
         appendLine()
         appendLine("DECODER TOTALS - decoded includes source-filtered messages")
         listOf(

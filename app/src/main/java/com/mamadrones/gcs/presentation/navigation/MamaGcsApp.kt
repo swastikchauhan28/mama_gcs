@@ -156,7 +156,8 @@ fun MamaGcsApp(
                                 tcpStatus = tcpState?.connection?.status,
                                 tcpTransitions = tcpState?.socketTransitions.orEmpty(),
                                 focusWarnings = diagnosticsRoute == "diagnostics/warnings",
-                                reportControls = { TelemetryReportControls(vehicle, reportViewModel) })
+                                reportControls = { TelemetryReportControls(vehicle, reportViewModel,
+                                    tcpState?.socketTransitions.orEmpty()) })
                         }
                         }
                         composable("admin") {

@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-19 — Phase 202 telemetry report timeline
+
+- Done: Prepare telemetry report now includes the current or last closed TCP session's bounded socket/heartbeat events, newest first, with elapsed ages frozen at capture. The report and on-screen card use one event projection; missing or mismatched TCP timing is labeled unavailable. Preview and explicit file-picker save remain unchanged. See [Phase 202](phase-202-report.md) and D-202-01.
+- Verification: 521 JVM tests in 82 suites passed with zero failures/errors/skips, both debug APKs built, lint reported zero errors / 27 warnings. The final three-test report UI suite and Android health gate passed on a healthy disposable emulator; a scrolled synthetic preview screenshot was inspected. An earlier screenshot cut off event rows, so the visual test was revised and rerun.
+- Broken or risky: a saved report is historical; bounded status observations can miss rapid changes and cannot prove continuous socket availability or identify the physical fault. No live Cube gap or operator-phone test occurred in this phase.
+- Next: review the Phase 202 diff; when a natural live gap occurs, prepare a report immediately and compare same-session event ages with heartbeat/position evidence. Keep physical acceptance separate. Commit/push only on request.
+- Do not touch: saved routes/settings, Cube/radio parameters, mission upload or rover commands for this report-only phase.
+
 ## 2026-11-19 — Phase 201 TCP/heartbeat timeline
 
 - Done: Analyze telemetry → Link & messages now places up to eight observed TCP status transitions in elapsed-time order with the existing selected-autopilot heartbeat threshold and recovery events. TCP status history resets on a new connect attempt, stores no endpoint or error text, and does not change the five-second link rule. See [Phase 201](phase-201-report.md) and D-201-01.
