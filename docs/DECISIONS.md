@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-203-01: Process bounded telemetry off the UI dispatcher
+
+- Date: 2026-11-19. User approved the bounded receive-path security phase after the read-only audit. Baseline `74f0308`, clean worktree; model/version unavailable.
+- Context: production TCP, Classic, BLE and UDP sessions receive a caller scope that can be the Android UI scope. The session synchronously parses, routes and publishes diagnostics for each chunk in that scope. Transport queues are already bounded (TCP, Classic and BLE: 128 chunks; UDP: 64); TCP, Classic and BLE fail the connection on overflow rather than silently discarding bytes.
+- Choice: keep the existing single receiver and queue bounds, but dispatch receive and timeout processing to a single-parallelism `Dispatchers.Default` view while retaining the owner scope's job and registering the hot-flow subscription before opening the socket. Stop waits for the receiver to finish cancellation before publishing a disconnected state. Make heartbeat and timeout state updates atomic so processing and timeout cannot overwrite each other's unrelated fields. No new queue, permission, destination, dependency, command path or persistence.
+- Alternatives: processing only the CRC parser off-main leaves routing and per-result diagnostics on the UI; adding an unbounded queue hides overload and consumes memory; dropping chunks would corrupt the MAVLink stream without an explicit link error.
+- Risk and revisit: a saturated bounded transport can disconnect, and synthetic stress cannot predict every live device. Verify owner cancellation, heartbeat/timeout state, no late connected state after stop, high-rate synthetic responsiveness and overflow behavior. Revisit if live timing or overload evidence contradicts the controlled checks. This change does not authenticate telemetry or establish physical safety.
+- 2026-11-19 testability correction: the first JVM TCP overflow test failed before reaching overflow because Android `SystemClock` is not available in plain JVM tests. `TcpTransport` now accepts a defaulted monotonic-clock function; production still uses Android elapsed time, and the local loopback test supplies JVM monotonic time. The targeted retest passed.
+
 ## D-202-01: Include a bounded TCP/heartbeat timeline in the explicit telemetry snapshot
 
 - Date: 2026-11-19. User approved Phase 202 after a bounded proposal. Baseline `3d7b518`, clean `main`; model/version unavailable.

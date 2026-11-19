@@ -12,7 +12,11 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
 /** One receive-only TCP byte stream. Closing the socket aborts both connect and read. */
-class TcpTransport(private val address: String, private val port: Int) : VehicleTransport, AutoCloseable {
+class TcpTransport(
+    private val address: String,
+    private val port: Int,
+    private val elapsedClock: () -> Long = { android.os.SystemClock.elapsedRealtime() }
+) : VehicleTransport, AutoCloseable {
     override val linkKind = TelemetryLinkKind.TCP
     private val lock = Any()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -41,7 +45,7 @@ class TcpTransport(private val address: String, private val port: Int) : Vehicle
                 synchronized(lock) {
                     if (closed) return@launch
                     mutableConnection.value = ConnectionState(TransportStatus.OPEN, "TCP connected; waiting for MAVLink heartbeat",
-                        System.currentTimeMillis(), connectedAtElapsedMillis = android.os.SystemClock.elapsedRealtime())
+                        System.currentTimeMillis(), connectedAtElapsedMillis = elapsedClock())
                     ready.complete(Unit)
                 }
                 val buffer = ByteArray(4096)

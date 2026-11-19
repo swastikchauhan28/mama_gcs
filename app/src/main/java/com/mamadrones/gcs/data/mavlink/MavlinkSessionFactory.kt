@@ -9,6 +9,7 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 
 interface VehicleMavlinkSession : AutoCloseable {
     suspend fun start()
@@ -30,7 +31,9 @@ class DefaultMavlinkSessionFactory @Inject constructor(
             parser = MavlinkParser(),
             router = router,
             vehicleRepository = vehicleRepository,
-            scope = scope
+            // Keep the owner's Job, and serialize receive and timeout work off the UI.
+            // Serial execution preserves the ordering of heartbeat and timeout updates.
+            scope = CoroutineScope(scope.coroutineContext + Dispatchers.Default.limitedParallelism(1))
         )
 }
 

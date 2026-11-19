@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-19 — Phase 203 bounded telemetry processing
+
+- Done: production MAVLink receive and timeout work now runs on a serialized background dispatcher while retaining the caller's cancellation Job. `stop()` joins the receiver; heartbeat/timeout StateFlow updates are atomic. Existing finite transport buffers and read-only command boundaries remain. A local TCP overflow test verifies an explicit link error instead of silent chunk loss. See [Phase 203](phase-203-report.md) and D-203-01.
+- Verification: final full gate passed 523 JVM tests in 83 suites, both debug APK builds and lint (0 errors / 27 warnings). After two preserved Google Play services startup ANR preflight failures, a no-wipe emulator boot allowed a 90-second settling interval, passed the 30-second health preflight, and passed four offline Classic MAVLink UI tests plus post-test Android health. Evidence locations and the earlier test-clock correction are in the phase report.
+- Broken or risky: bounded queues can still overload and disconnect; the UI tests used synthetic frames, not a live Cube. TCP telemetry remains unencrypted and unauthenticated. A non-suspending `close()` cancels in-flight work but does not join it; the receive loop checks cancellation between results. No physical reliability or source identity was established.
+- Next: review the Phase 203 diff; repeat read-only live receive timing when hardware is available. Plan bridge authentication and MAVLink identity separately before trusting telemetry for physical decisions. Commit/push only on request.
+- Do not touch: operator phone data, Cube/radio parameters, rover commands, mission upload or release deployment for this phase.
+
 ## 2026-11-19 — Phase 202 telemetry report timeline
 
 - Done: Prepare telemetry report now includes the current or last closed TCP session's bounded socket/heartbeat events, newest first, with elapsed ages frozen at capture. The report and on-screen card use one event projection; missing or mismatched TCP timing is labeled unavailable. Preview and explicit file-picker save remain unchanged. See [Phase 202](phase-202-report.md) and D-202-01.

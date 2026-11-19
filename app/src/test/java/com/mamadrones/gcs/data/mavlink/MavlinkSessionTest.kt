@@ -10,26 +10,74 @@ import com.mamadrones.gcs.domain.model.ClassicConnectionCheck
 import com.mamadrones.gcs.domain.model.ClassicCheckStage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import java.util.concurrent.Executors
+import kotlin.coroutines.ContinuationInterceptor
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.advanceTimeBy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MavlinkSessionTest {
+    @Test fun `production session retains owner cancellation and decodes off owner dispatcher`() = runBlocking {
+        val ownerDispatcher = Executors.newSingleThreadExecutor { task -> Thread(task, "test-ui-owner") }
+            .asCoroutineDispatcher()
+        val ownerJob = SupervisorJob()
+        val ownerScope = CoroutineScope(ownerJob + ownerDispatcher)
+        val transport = FakeTransport(TelemetryLinkKind.TCP)
+        val repository = VehicleRepositoryImpl()
+        val factory = DefaultMavlinkSessionFactory(MavlinkMessageRouter(repository), repository)
+        val factorySession = factory.create(transport, ownerScope)
+        val scopeField = factorySession.javaClass.getDeclaredField("scope").apply { isAccessible = true }
+        val workerScope = scopeField.get(factorySession) as CoroutineScope
+        try {
+            assertSame(ownerJob, workerScope.coroutineContext[Job])
+            assertFalse(workerScope.coroutineContext[ContinuationInterceptor] === ownerDispatcher)
+
+            // Supply the JVM clock while exercising the same production worker scope and hot flow.
+            val session = MavlinkSession(transport, MavlinkParser(), MavlinkMessageRouter(repository), repository,
+                scope = workerScope, elapsedClock = { System.nanoTime() / 1_000_000 })
+            try {
+                withContext(ownerDispatcher) { session.start() }
+                val flood = launch(Dispatchers.Default) {
+                    transport.emit(heartbeatFrame())
+                    repeat(500) { transport.emit(ByteArray(512) { 0x55 }) }
+                }
+                withTimeout(2_000) { withContext(ownerDispatcher) { assertTrue(ownerJob.isActive) } }
+                flood.join()
+                waitUntil { repository.vehicleState.value.mavlinkDiagnostics.receivedChunks == 501L }
+                assertEquals(VehicleConnectionState.CONNECTED, repository.vehicleState.value.connectionStatus)
+                assertFalse(transport.lastCollectorThread.orEmpty().contains("test-ui-owner"))
+                withContext(ownerDispatcher) { session.stop() }
+                assertEquals(VehicleConnectionState.DISCONNECTED, repository.vehicleState.value.connectionStatus)
+            } finally { session.close() }
+        } finally {
+            factorySession.close()
+            ownerJob.cancel()
+            ownerDispatcher.close()
+        }
+    }
+
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test fun `recent completed heartbeat gap history is capped at three`() = runTest {
         val transport = FakeTransport(TelemetryLinkKind.TCP)
@@ -721,6 +769,7 @@ class MavlinkSessionTest {
     private class FakeTransport(override val linkKind: TelemetryLinkKind = TelemetryLinkKind.BLE) : VehicleTransport {
         override val connectionState = MutableStateFlow(ConnectionState())
         private val packets = MutableSharedFlow<ByteArray>(extraBufferCapacity = 8)
+        @Volatile var lastCollectorThread: String? = null
         override suspend fun connect() {
             connectionState.value = ConnectionState(status = TransportStatus.OPEN)
         }
@@ -728,7 +777,9 @@ class MavlinkSessionTest {
             connectionState.value = ConnectionState()
         }
         override suspend fun send(data: ByteArray) = Unit
-        override fun receive(): Flow<ByteArray> = packets.asSharedFlow()
+        override fun receive(): Flow<ByteArray> = packets.asSharedFlow().onEach {
+            lastCollectorThread = Thread.currentThread().name
+        }
         suspend fun emit(bytes: ByteArray) { packets.emit(bytes) }
     }
 }

@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.isActive
@@ -59,14 +60,16 @@ class MavlinkSession(
                 // Subscribe first so the first datagram received during socket startup is retained.
                 receiverJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
                     transport.receive().collect { bytes ->
+                        if (closed || !isActive) return@collect
                         val receivedAt = epochClock()
                         val receivedElapsed = elapsedClock()
                         diagnostics.recordBytes(bytes, receivedAt, receivedElapsed)
-                        parser.feed(bytes).forEach { result ->
+                        for (result in parser.feed(bytes)) {
+                            if (closed || !isActive) break
                             val disposition = routeSelectedAutopilot(result, receivedAt, receivedElapsed)
                             diagnostics.recordResult(result, disposition, receivedAt, receivedElapsed)
                         }
-                        vehicleRepository.onMavlinkDiagnostics(diagnostics.snapshot)
+                        if (!closed && isActive) vehicleRepository.onMavlinkDiagnostics(diagnostics.snapshot)
                     }
                 }
                 transport.connect()
@@ -109,7 +112,7 @@ class MavlinkSession(
             receiverJob = null
             timeoutJob = null
         }
-        activeReceiver?.cancel()
+        activeReceiver?.cancelAndJoin()
         activeTimeout?.cancel()
         transport.disconnect()
         if (!closed) vehicleRepository.onSessionStopped()

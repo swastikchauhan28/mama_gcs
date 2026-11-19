@@ -58,7 +58,7 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
     }
 
     fun onHeartbeat(heartbeat: MavlinkMessage.Heartbeat, receivedAtEpochMillis: Long, receivedAtElapsedMillis: Long? = null) {
-        _vehicleState.value = _vehicleState.value.copy(
+        _vehicleState.update { current -> current.copy(
             systemId = heartbeat.systemId,
             componentId = heartbeat.componentId,
             connectionStatus = VehicleConnectionState.CONNECTED,
@@ -68,7 +68,7 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
             autopilotType = heartbeat.autopilotType,
             armed = heartbeat.isArmed,
             mode = ArduRoverMode.fromCustomMode(heartbeat.customMode)
-        )
+        ) }
     }
 
     fun onGpsRawInt(message: MavlinkMessage.GpsRawInt, receivedAtEpochMillis: Long, receivedAtElapsedMillis: Long? = null) {
@@ -213,12 +213,10 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
     }
 
     fun onHeartbeatTimeout() {
-        val current = _vehicleState.value
-        if (
-            current.connectionStatus == VehicleConnectionState.CONNECTED ||
+        _vehicleState.update { current ->
+            if (current.connectionStatus == VehicleConnectionState.CONNECTED ||
                 current.connectionStatus == VehicleConnectionState.CONNECTING
-        ) {
-            _vehicleState.value = current.copy(connectionStatus = VehicleConnectionState.DEGRADED)
+            ) current.copy(connectionStatus = VehicleConnectionState.DEGRADED) else current
         }
     }
 
