@@ -78,15 +78,25 @@ object TelemetryEvidenceReport {
             "Decoded MAVLink 1" to d.decodedV1Messages, "Decoded MAVLink 2" to d.decodedV2Messages,
             "Accepted from selected autopilot" to d.acceptedMessages,
             "Ignored before selection" to d.ignoredBeforeHeartbeat, "Ignored other source" to d.ignoredOtherSource,
-            "Checksum failures" to d.checksumFailures, "Malformed payloads" to d.malformedPayloads,
+            "Checksum failures" to d.checksumFailures,
+            "Checksum candidates inside rescan span" to d.overlappingRescanChecksumFailures,
+            "Checksum candidates outside rescan span" to
+                (d.checksumFailures - d.overlappingRescanChecksumFailures),
+            "Malformed payloads" to d.malformedPayloads,
             "Unsupported message candidates" to d.unsupportedMessages, "Unsupported flags" to d.unsupportedFlags,
             "Signed candidates rejected" to d.signedPacketsRejected,
         ).forEach { (label, value) -> appendLine("$label: ${count(value)}") }
+        val pendingLabel = if (started != null && !d.active) {
+            "Pending incomplete candidate bytes before close"
+        } else "Pending incomplete candidate bytes at capture"
+        appendLine("$pendingLabel: ${count(d.pendingIncompleteCandidateBytes.toLong())}")
         appendLine("Last unverified unsupported-ID candidate: ${if (started == null) "NOT RECORDED" else d.lastUnsupportedMessageId ?: "NONE RECORDED"}")
         appendLine("Last input: ${timestamp(d.lastBytesAtEpochMillis)}")
         appendLine("Last accepted message: ${timestamp(d.lastAcceptedAtEpochMillis)}")
         appendLine("Start-byte counts are raw patterns, not validated frames or proof of MAVLink traffic.")
         appendLine("These are not packet-loss measurements. Rejected/unsupported candidates are not authenticated.")
+        appendLine("Rescan-span overlap is parser provenance, not proof of corruption; outside-span failures may also be false starts.")
+        appendLine("Pending bytes are a transient session observation, not a rejected frame.")
         appendLine()
         appendLine("SAMPLE RECEIPT TIMES - do not establish valid sensor readings")
         listOf("GPS" to vehicle.gps.lastUpdatedAtEpochMillis,

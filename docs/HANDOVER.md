@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-19 — Phase 205 explicit parser-context report
+
+- Done: the existing frozen, explicitly saved telemetry report now includes total checksum failures, inside/outside rescan candidate counts and pending incomplete bytes, labeled at capture for active sessions or before close for historical sessions. It explains that these counts are parser evidence, not physical corruption or packet loss. Preview, size limit and save flow are unchanged. See [Phase 205](phase-205-report.md) and D-205-01.
+- Verification: focused report JVM tests passed; the full gate passed 529 JVM tests in 83 suites, both debug APK builds and lint with zero errors / 27 warnings. After an emulator System UI ANR blocked its preflight, a data-preserving USB-phone update and final synthetic preview test passed (`OK (1 test)`); the split-counter screenshot and separate limitation/pending-byte capture were visually inspected. An intermediate third-screenshot attempt stalled and was interrupted; the bounded final test passed.
+- Broken or risky: saved reports are historical snapshots and can be shared manually. Parser counts are influenced by untrusted bytes and cannot identify a failed hop or prove source identity, link quality or rover safety. The emulator visual run remains blocked by the recorded Android environment ANR; the phone visual run passed.
+- Next: review the Phase 205 diff before release. A later real-session report can be compared with the live panel without changing hardware; no physical acceptance is claimed. Commit/push only on request.
+- Do not touch: operator routes/settings, Cube/radio parameters, rover commands, mission upload or release deployment for this report-only phase.
+
 ## 2026-11-19 — Phase 204 parser candidate diagnostics
 
 - Done: Link & messages now separates invalid-CRC candidates that start inside a previously rejected parser rescan span from other CRC candidates and shows the current incomplete-candidate byte count. Existing unsupported candidate and total counters remain. CRC validation, source selection, heartbeat and commands are unchanged. See [Phase 204](phase-204-report.md) and D-204-01.

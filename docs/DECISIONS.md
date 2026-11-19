@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-205-01: Include parser candidate context in explicit telemetry snapshot
+
+- Date: 2026-11-19. User approved Phase 205 after the Phase 204 live and phone checks. Baseline `bb05582`, clean `main`; model/version unavailable.
+- Context: `TelemetryEvidenceReport.capture` already writes total checksum failures into a frozen allowlisted preview, but the new inside/outside rescan counts and transient pending bytes appear only on the diagnostics screen. A shared report is therefore missing the context used to interpret that total.
+- Choice: add the two complementary candidate counts and the pending-byte count to the report's decoder section. Keep the existing capture time and session state; label pending bytes at capture for an active session and before close for a historical session. Explain that overlap is parser provenance rather than proof of corruption. Preserve explicit preview and save; no continuous logging or additional telemetry collection.
+- Alternatives: keep the values on screen only (harder to share one-session evidence); export raw frames (private, unbounded and outside scope); add a new logging system (unnecessary persistence and failure surface).
+- Risk and revisit: a saved report is historical and its counters can be influenced by untrusted input. The output cannot identify a faulty hop, authenticate the Cube or establish packet loss. Check no-session and closed-session wording, counter relationships, bounded output, exclusion of raw data and preview readability. Revisit if a real report is too large or the diagnostic labels confuse operators.
+
 ## D-204-01: Separate overlapping CRC candidates from other receive evidence
 
 - Date: 2026-11-19. User approved the checksum-diagnostics phase after the live Classic observation. Baseline `5fb9f40`, clean `main`; model/version unavailable.

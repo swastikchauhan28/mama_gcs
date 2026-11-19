@@ -93,6 +93,26 @@ class TelemetryEvidenceReportTest {
             "Not authentication", "commands and app emergency stop remain unavailable").forEach { assertTrue(it, text.contains(it)) }
     }
 
+    @Test fun parserCandidateContextIsFrozenAndHistoricalWhenSessionCloses() {
+        val diagnostics = vehicle.mavlinkDiagnostics.copy(checksumFailures = 5,
+            overlappingRescanChecksumFailures = 3, pendingIncompleteCandidateBytes = 8)
+        val active = TelemetryEvidenceReport.capture(vehicle.copy(mavlinkDiagnostics = diagnostics), 2_000)
+        for (line in listOf("Checksum failures: 5", "Checksum candidates inside rescan span: 3",
+            "Checksum candidates outside rescan span: 2", "Pending incomplete candidate bytes at capture: 8",
+            "Rescan-span overlap is parser provenance, not proof of corruption",
+            "Pending bytes are a transient session observation, not a rejected frame")) {
+            assertTrue(line, active.contains(line))
+        }
+        val closed = TelemetryEvidenceReport.capture(vehicle.copy(
+            mavlinkDiagnostics = diagnostics.copy(active = false)), 3_000)
+        assertTrue(closed.contains("State: LAST SESSION - CLOSED"))
+        assertTrue(closed.contains("Checksum candidates inside rescan span: 3"))
+        assertTrue(closed.contains("Pending incomplete candidate bytes before close: 8"))
+        assertFalse(closed.contains("Pending incomplete candidate bytes at capture"))
+        assertTrue(active.contains("Pending incomplete candidate bytes at capture: 8"))
+        assertTrue(active.toByteArray(Charsets.UTF_8).size < TelemetryEvidenceReport.MAX_BYTES)
+    }
+
     @Test fun radioOnlyValuesStayOutOfAllowlistedExport() {
         val withRadio = vehicle.copy(mavlinkDiagnostics = vehicle.mavlinkDiagnostics.copy(
             validatedRadioStatusFrames = 77,
@@ -107,6 +127,9 @@ class TelemetryEvidenceReportTest {
         val text = TelemetryEvidenceReport.capture(VehicleState(), 2_000)
         assertTrue(text.contains("State: NO SESSION"))
         assertTrue(text.contains("Input bytes: NOT RECORDED"))
+        assertTrue(text.contains("Checksum candidates inside rescan span: NOT RECORDED"))
+        assertTrue(text.contains("Checksum candidates outside rescan span: NOT RECORDED"))
+        assertTrue(text.contains("Pending incomplete candidate bytes at capture: NOT RECORDED"))
         assertTrue(text.contains("not paired identity): NOT OBSERVED"))
         assertTrue(text.contains("Last heartbeat: NOT RECEIVED"))
     }

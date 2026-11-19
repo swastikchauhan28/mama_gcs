@@ -17,6 +17,35 @@ import java.io.File
 class TelemetryReportActionsTest {
     @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
 
+    @Test fun parserCandidateExcerptIsReadableBeforeExplicitSave() {
+        val vehicle = VehicleState(mavlinkDiagnostics = MavlinkDiagnostics(active = true,
+            linkKind = TelemetryLinkKind.CLASSIC, startedAtEpochMillis = 1_000,
+            checksumFailures = 5, overlappingRescanChecksumFailures = 3,
+            pendingIncompleteCandidateBytes = 8))
+        val report = TelemetryEvidenceReport.capture(vehicle, 2_000)
+        val decoder = "DECODER TOTALS" + report.substringAfter("DECODER TOTALS")
+            .substringBefore("SAMPLE RECEIPT TIMES")
+        var saves = 0
+        compose.setContent { MaterialTheme {
+            TelemetryReportActions(TelemetryReportState(preview = decoder), {}, {}, { saves++ })
+        } }
+        compose.onNodeWithText("Checksum candidates inside rescan span: 3", substring = true).assertExists()
+        compose.onNodeWithText("Checksum candidates outside rescan span: 2", substring = true).assertExists()
+        compose.onNodeWithText("Pending incomplete candidate bytes at capture: 8", substring = true).assertExists()
+        compose.onNodeWithText("Rescan-span overlap is parser provenance", substring = true).assertExists()
+        compose.runOnIdle { assertEquals(0, saves) }
+        val preview = compose.onNodeWithText("DECODER TOTALS", substring = true)
+        for (name in listOf("phase205-parser-total.png", "phase205-parser-split.png")) {
+            preview.performTouchInput { swipeUp() }
+            val screenshot = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+            try {
+                File(compose.activity.getExternalFilesDir(null), name).outputStream().use {
+                    assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, it))
+                }
+            } finally { screenshot.recycle() }
+        }
+    }
+
     @Test fun tcpTimelineExcerptIsReadableInExplicitPreview() {
         val vehicle = VehicleState(mavlinkDiagnostics = MavlinkDiagnostics(active = true,
             linkKind = TelemetryLinkKind.TCP, startedAtEpochMillis = 1_000,
