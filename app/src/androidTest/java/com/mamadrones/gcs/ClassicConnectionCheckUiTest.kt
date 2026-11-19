@@ -64,6 +64,24 @@ class ClassicConnectionCheckUiTest {
         capture("phase50-radio-decoder")
     }
 
+    @Test fun decoderShowsRescanAndPendingEvidenceWithoutCorruptionClaim() {
+        val sample = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,
+            startedAtEpochMillis = 100, receivedBytes = 100, decodedMessages = 4,
+            checksumFailures = 5, overlappingRescanChecksumFailures = 3,
+            pendingIncompleteCandidateBytes = 8, unsupportedMessages = 2)
+        compose.setContent { MamaGcsTheme {
+            Surface(Modifier.verticalScroll(rememberScrollState())) {
+                SubsystemCard(ConsolePanels.mavlinkDiagnostics(sample, 2_000))
+            }
+        } }
+        compose.onNodeWithText("Checksum candidates inside rescan span").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Checksum candidates outside rescan span").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Pending incomplete candidate bytes").performScrollTo().assertIsDisplayed()
+        capture("phase204-parser-evidence")
+        compose.onNodeWithText("Rescan-span overlap is parser provenance", substring = true)
+            .performScrollTo().assertIsDisplayed()
+    }
+
     @Test fun stagesAndGuidanceRemainReadableInBothThemes() {
         val check = mutableStateOf(ClassicConnectionAssessment(ClassicCheckStage.WAITING_BYTES, socketOpen = true))
         val theme = mutableStateOf(ThemeMode.LIGHT)

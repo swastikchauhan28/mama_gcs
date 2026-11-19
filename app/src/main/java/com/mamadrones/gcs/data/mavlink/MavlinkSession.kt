@@ -69,6 +69,7 @@ class MavlinkSession(
                             val disposition = routeSelectedAutopilot(result, receivedAt, receivedElapsed)
                             diagnostics.recordResult(result, disposition, receivedAt, receivedElapsed)
                         }
+                        if (!closed && isActive) diagnostics.recordPendingCandidateBytes(parser.pendingCandidateBytes)
                         if (!closed && isActive) vehicleRepository.onMavlinkDiagnostics(diagnostics.snapshot)
                     }
                 }

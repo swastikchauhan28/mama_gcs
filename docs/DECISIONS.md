@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-204-01: Separate overlapping CRC candidates from other receive evidence
+
+- Date: 2026-11-19. User approved the checksum-diagnostics phase after the live Classic observation. Baseline `5fb9f40`, clean `main`; model/version unavailable.
+- Context: the updated phone app accepted MAVLink 2 heartbeats and RC messages, while its Classic-session checksum failures rose from 197 to 334. The incremental parser rescans one byte at a time after an unknown-ID or invalid-CRC candidate. A later magic byte inside that unverified span can create another CRC failure. Existing session totals cannot distinguish that overlap from a candidate outside the span. A receive chunk can also end mid-frame without being erroneous.
+- Choice: retain the parser's validation and resynchronization behavior. Mark CRC failures whose start lies inside a previously rejected candidate's claimed span, keep the total and its complementary outside-span count, and expose only the current bounded incomplete-candidate byte count. Project these volatile counts in Link & messages with explicit candidate language. Existing unsupported-ID and flag counts remain separate. No raw bytes, IDs, addresses, payloads or history are retained in the new evidence.
+- Alternatives: capture raw packets or persist a trace (sensitive and out of scope); skip the claimed frame after an unsupported ID (can hide a valid embedded heartbeat); label every CRC failure physical corruption (unsupported by evidence); count every chunk split as a rejected frame (misleading).
+- Risk and revisit: overlap shows parser provenance, not that a CRC candidate is false; an outside-span failure still may be a false start. A claimed length from untrusted bytes is not a verified frame boundary. The pending count is a transient snapshot and can be zero between chunks. Verify splits, overlapping candidates across chunks, clean frames, resets, panel labels, privacy and full software gate. Revisit if comparable live evidence remains ambiguous. No telemetry source policy, trust gate, transport, permission, dependency or command path changes.
+
 ## D-203-01: Process bounded telemetry off the UI dispatcher
 
 - Date: 2026-11-19. User approved the bounded receive-path security phase after the read-only audit. Baseline `74f0308`, clean worktree; model/version unavailable.

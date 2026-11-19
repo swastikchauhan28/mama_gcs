@@ -37,6 +37,8 @@ data class MavlinkDiagnostics(
     val ignoredBeforeHeartbeat: Long = 0,
     val ignoredOtherSource: Long = 0,
     val checksumFailures: Long = 0,
+    val overlappingRescanChecksumFailures: Long = 0,
+    val pendingIncompleteCandidateBytes: Int = 0,
     val malformedPayloads: Long = 0,
     val unsupportedMessages: Long = 0,
     val unsupportedFlags: Long = 0,

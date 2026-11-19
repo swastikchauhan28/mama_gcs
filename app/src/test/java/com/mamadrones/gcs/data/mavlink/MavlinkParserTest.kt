@@ -32,6 +32,43 @@ class MavlinkParserTest {
     }
 
     @Test
+    fun `marks overlapping checksum candidate without changing validation`() {
+        val badHeartbeat = heartbeatFrame().also { it[it.lastIndex] = (it.last().toInt() xor 1).toByte() }
+        val outer = mavlinkTestFrame(200, badHeartbeat, 0)
+        val results = MavlinkParser().feed(outer)
+        assertTrue(results.first() is MavlinkParseResult.UnsupportedMessage)
+        assertTrue(results.any { it == MavlinkParseResult.InvalidChecksum(0, overlappedRescan = true) })
+        assertEquals(MavlinkParseResult.InvalidChecksum(0), MavlinkParser().feed(badHeartbeat).single())
+    }
+
+    @Test
+    fun `incomplete candidate remains transient across chunks and reset`() {
+        val parser = MavlinkParser()
+        val frame = heartbeatFrame()
+        assertTrue(parser.feed(frame.copyOfRange(0, 8)).isEmpty())
+        assertEquals(8, parser.pendingCandidateBytes)
+        assertTrue(parser.feed(frame.copyOfRange(8, 12)).isEmpty())
+        assertEquals(12, parser.pendingCandidateBytes)
+        assertTrue(parser.feed(frame.copyOfRange(12, frame.size)).single() is MavlinkParseResult.Message)
+        assertEquals(0, parser.pendingCandidateBytes)
+        parser.feed(frame.copyOfRange(0, 5))
+        parser.reset()
+        assertEquals(0, parser.pendingCandidateBytes)
+    }
+
+    @Test
+    fun `overlap provenance survives a chunk boundary`() {
+        val inner = heartbeatFrame()
+        val outer = mavlinkTestFrame(200, inner.copyOfRange(0, 10), 0)
+        val parser = MavlinkParser()
+        val first = parser.feed(outer)
+        assertTrue(first.first() is MavlinkParseResult.UnsupportedMessage)
+        assertTrue(parser.pendingCandidateBytes > 0)
+        val second = parser.feed(inner.copyOfRange(10, inner.size))
+        assertTrue(second.any { it is MavlinkParseResult.InvalidChecksum && it.overlappedRescan })
+    }
+
+    @Test
     fun `rejects signed frames when signature verification is not configured`() {
         val unsigned = heartbeatFrame(customMode = 0, baseMode = 0)
         unsigned[2] = 1

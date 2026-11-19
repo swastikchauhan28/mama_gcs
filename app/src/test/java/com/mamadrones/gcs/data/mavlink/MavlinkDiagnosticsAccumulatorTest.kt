@@ -66,6 +66,19 @@ class MavlinkDiagnosticsAccumulatorTest {
         assertEquals(0L, state.acceptedMessages)
     }
 
+    @Test fun `rescan overlap and pending bytes are distinct from checksum total`() {
+        val counters = MavlinkDiagnosticsAccumulator(TelemetryLinkKind.CLASSIC, 100)
+        counters.recordResult(MavlinkParseResult.InvalidChecksum(0), null, 110)
+        counters.recordResult(MavlinkParseResult.InvalidChecksum(0, overlappedRescan = true), null, 120)
+        counters.recordPendingCandidateBytes(11)
+        assertEquals(2L, counters.snapshot.checksumFailures)
+        assertEquals(1L, counters.snapshot.overlappingRescanChecksumFailures)
+        assertEquals(11, counters.snapshot.pendingIncompleteCandidateBytes)
+        counters.recordPendingCandidateBytes(0)
+        assertEquals(0, counters.snapshot.pendingIncompleteCandidateBytes)
+        assertEquals(0L, MavlinkDiagnosticsAccumulator(TelemetryLinkKind.CLASSIC, 200).snapshot.overlappingRescanChecksumFailures)
+    }
+
     @Test fun `new accumulator resets old session observations`() {
         val previous = MavlinkDiagnosticsAccumulator(TelemetryLinkKind.BLE, 100)
         previous.recordBytes(byteArrayOf(0xFD.toByte()), 110)

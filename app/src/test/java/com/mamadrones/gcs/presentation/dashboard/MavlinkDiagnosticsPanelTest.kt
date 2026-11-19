@@ -102,6 +102,21 @@ class MavlinkDiagnosticsPanelTest {
         assertEquals("—", panel.rows.first { it.first == "Parser errors (CRC + payload)" }.second)
     }
 
+    @Test fun `decoder separates overlap and pending candidate from rejected totals`() {
+        val sample = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,
+            startedAtEpochMillis = 100, checksumFailures = 5,
+            overlappingRescanChecksumFailures = 3, pendingIncompleteCandidateBytes = 8,
+            unsupportedMessages = 2)
+        val panel = ConsolePanels.mavlinkDiagnostics(sample)
+        val rows = panel.rows.toMap()
+        assertEquals("5", rows["Checksum failures"])
+        assertEquals("3", rows["Checksum candidates inside rescan span"])
+        assertEquals("2", rows["Checksum candidates outside rescan span"])
+        assertEquals("8", rows["Pending incomplete candidate bytes"])
+        assertEquals("2", rows["Unverified unsupported-ID candidates"])
+        assertTrue(panel.note.orEmpty().contains("not proof of a false frame"))
+    }
+
     @Test fun `closed panel keeps counts but clearly labels historical data`() {
         val panel = ConsolePanels.mavlinkDiagnostics(MavlinkDiagnostics(startedAtEpochMillis = 100,
             linkKind = TelemetryLinkKind.BLE, receivedBytes = 25, checksumFailures = 3,

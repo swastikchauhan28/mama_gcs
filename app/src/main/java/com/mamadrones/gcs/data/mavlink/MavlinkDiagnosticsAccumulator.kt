@@ -30,6 +30,11 @@ class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long, st
             lastBytesAtEpochMillis = receivedAt, lastBytesAtElapsedMillis = receivedAtElapsed)
     }
 
+    fun recordPendingCandidateBytes(count: Int) {
+        require(count in 0..280)
+        snapshot = snapshot.copy(pendingIncompleteCandidateBytes = count)
+    }
+
     fun recordResult(result: MavlinkParseResult, disposition: MessageDisposition?, receivedAt: Long, receivedAtElapsed: Long? = null) {
         val current = snapshot
         snapshot = when (result) {
@@ -73,7 +78,11 @@ class MavlinkDiagnosticsAccumulator(kind: TelemetryLinkKind, startedAt: Long, st
                     MessageDisposition.OTHER_SOURCE -> decoded.copy(ignoredOtherSource = decoded.ignoredOtherSource + 1)
                 }
             }
-            is MavlinkParseResult.InvalidChecksum -> current.copy(checksumFailures = current.checksumFailures + 1)
+            is MavlinkParseResult.InvalidChecksum -> current.copy(
+                checksumFailures = current.checksumFailures + 1,
+                overlappingRescanChecksumFailures = current.overlappingRescanChecksumFailures +
+                    if (result.overlappedRescan) 1 else 0,
+            )
             is MavlinkParseResult.MalformedMessage -> current.copy(malformedPayloads = current.malformedPayloads + 1)
             is MavlinkParseResult.UnsupportedMessage -> current.copy(unsupportedMessages = current.unsupportedMessages + 1,
                 lastUnsupportedMessageId = result.messageId)

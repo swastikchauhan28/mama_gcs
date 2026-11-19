@@ -7,6 +7,11 @@ package com.mamadrones.gcs.data.mavlink
  */
 class MavlinkParser {
     private var pending = ByteArray(0)
+    // Relative to pending[0] after each feed. A claimed span is unverified, but marks
+    // later candidates that were reached only because the parser rescanned its bytes.
+    private var rescanSpanEnd = 0
+    var pendingCandidateBytes: Int = 0
+        private set
 
     fun feed(bytes: ByteArray): List<MavlinkParseResult> {
         if (bytes.isEmpty()) return emptyList()
@@ -39,7 +44,10 @@ class MavlinkParser {
                 // later frame. Only rescan when this unsigned candidate's known CRC is bad.
                 // Signed candidates and unknown CRCs retain their whole-frame boundary.
                 val candidate = input.copyOfRange(cursor, cursor + frameSize)
-                cursor += if (!signed && hasInvalidKnownV2Checksum(candidate)) 1 else frameSize
+                if (!signed && hasInvalidKnownV2Checksum(candidate)) {
+                    rescanSpanEnd = maxOf(rescanSpanEnd, cursor + frameSize)
+                    cursor++
+                } else cursor += frameSize
                 continue
             }
             if (signed) {
@@ -51,14 +59,16 @@ class MavlinkParser {
             val rawFrame = input.copyOfRange(cursor, cursor + frameSize)
             when (val result = parseFrame(rawFrame)) {
                 is MavlinkParseResult.InvalidChecksum -> {
-                    results += result
+                    results += result.copy(overlappedRescan = cursor < rescanSpanEnd)
                     // Rescan from the next byte so a corrupt length cannot consume a later frame.
+                    rescanSpanEnd = maxOf(rescanSpanEnd, cursor + frameSize)
                     cursor++
                 }
                 is MavlinkParseResult.UnsupportedMessage -> {
                     results += result
                     // The CRC extra is unknown, so this is only a header candidate. Its
                     // unverified length must not hide a later valid supported frame.
+                    rescanSpanEnd = maxOf(rescanSpanEnd, cursor + frameSize)
                     cursor++
                 }
                 else -> {
@@ -69,6 +79,8 @@ class MavlinkParser {
         }
 
         pending = input.copyOfRange(cursor, input.size)
+        rescanSpanEnd = (rescanSpanEnd - cursor).coerceAtLeast(0)
+        pendingCandidateBytes = pending.size
         // The pending suffix is at most one incomplete MAVLink 2 frame (280 bytes).
         check(pending.size <= MAX_FRAME_SIZE)
         return results
@@ -76,6 +88,8 @@ class MavlinkParser {
 
     fun reset() {
         pending = ByteArray(0)
+        rescanSpanEnd = 0
+        pendingCandidateBytes = 0
     }
 
     /** Null/unknown CRC metadata is not evidence that an incompatible candidate is corrupt. */
@@ -410,7 +424,7 @@ sealed interface MavlinkParseResult {
         val rssi: Int, val remoteRssi: Int, val txBufferPercent: Int,
         val noise: Int, val remoteNoise: Int, val wireVersion: MavlinkWireVersion,
     ) : MavlinkParseResult
-    data class InvalidChecksum(val messageId: Int) : MavlinkParseResult
+    data class InvalidChecksum(val messageId: Int, val overlappedRescan: Boolean = false) : MavlinkParseResult
     data class UnsupportedMessage(val messageId: Int) : MavlinkParseResult
     data class UnsupportedIncompatibilityFlags(val flags: Int) : MavlinkParseResult
     data object SignedPacketRejected : MavlinkParseResult

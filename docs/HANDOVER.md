@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-19 — Phase 204 parser candidate diagnostics
+
+- Done: Link & messages now separates invalid-CRC candidates that start inside a previously rejected parser rescan span from other CRC candidates and shows the current incomplete-candidate byte count. Existing unsupported candidate and total counters remain. CRC validation, source selection, heartbeat and commands are unchanged. See [Phase 204](phase-204-report.md) and D-204-01.
+- Verification: focused parser/accumulator/panel JVM tests passed; the full gate passed 528 JVM tests in 83 suites, both debug APK builds and lint with 0 errors / 27 warnings. The disposable AVDs hit Android System UI ANRs before instrumentation. A subsequent data-preserving USB-phone update allowed the focused synthetic UI test to pass (`OK (1 test)`), and its screenshot was inspected. In a read-only live Classic T12_485 session, 24-second snapshots showed accepted messages 935 → 1,115, checksum candidates 252 → 286, inside-rescan 250 → 283 and outside-rescan 2 → 3. See the dated follow-up in [Phase 204](phase-204-report.md).
+- Broken or risky: overlap is only parser provenance, not proof of false packets or a physical cause; outside-span CRC failures can also be false starts. Pending bytes are transient. The live sample had a recent heartbeat and valid MAVLink 2 but does not establish long-term reliability or physical safety. The Cube reported `PreArm: Hardware safety switch`.
+- Next: review the Phase 204 diff before release. Investigate any recurring natural link gap in a separately scoped, receive-only session; keep checksum classification and physical diagnosis separate. A healthy disposable-emulator visual run remains optional environment coverage. Commit/push only on request.
+- Do not touch: operator phone data, Cube/radio parameters, rover commands, mission upload or release deployment for this phase.
+
 ## 2026-11-19 — Phase 203 bounded telemetry processing
 
 - Done: production MAVLink receive and timeout work now runs on a serialized background dispatcher while retaining the caller's cancellation Job. `stop()` joins the receiver; heartbeat/timeout StateFlow updates are atomic. Existing finite transport buffers and read-only command boundaries remain. A local TCP overflow test verifies an explicit link error instead of silent chunk loss. See [Phase 203](phase-203-report.md) and D-203-01.

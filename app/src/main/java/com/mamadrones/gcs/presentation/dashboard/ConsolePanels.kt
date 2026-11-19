@@ -96,6 +96,9 @@ object ConsolePanels {
             "Ignored other source" to count(sample.ignoredOtherSource),
             "Parser errors (CRC + payload)" to count(sample.parserErrors),
             "Checksum failures" to count(sample.checksumFailures),
+            "Checksum candidates inside rescan span" to count(sample.overlappingRescanChecksumFailures),
+            "Checksum candidates outside rescan span" to count(sample.checksumFailures - sample.overlappingRescanChecksumFailures),
+            "Pending incomplete candidate bytes" to count(sample.pendingIncompleteCandidateBytes.toLong()),
             "Malformed payloads" to count(sample.malformedPayloads),
             "Unverified unsupported-ID candidates" to count(sample.unsupportedMessages),
             "Last unsupported-ID candidate" to (sample.lastUnsupportedMessageId?.toString() ?: "—"),
@@ -106,7 +109,7 @@ object ConsolePanels {
         ), note = "RADIO_STATUS is checksum-validated radio-only evidence, not a Cube heartbeat, RC sample, authenticated sender or vehicle-health verdict. Radio RSSI/noise scales are device-specific; error counters may wrap. " +
             "Session totals are not packet-loss rates. Decoded supported messages excludes radio-only frames and includes vehicle messages ignored by source selection. " +
             "Raw start-byte counts are only byte-pattern candidates, not validated frames; arbitrary data can contain them. " +
-            "Unsupported/signed candidates are not checksum/authentication verified. Raw noise and incomplete fragments may produce no parser result. " +
+            "Unsupported/signed candidates are not checksum/authentication verified. Rescan-span overlap is parser provenance, not proof of a false frame; outside-span CRC failures also do not prove link corruption. A pending incomplete candidate can be a normal chunk split and is not a rejection. " +
             "Counters remain in memory after disconnect and reset on the next session. Prepare telemetry report allows explicit snapshot export; there is no continuous logging.")
     }
 
