@@ -154,6 +154,7 @@ fun MamaGcsApp(
                             val tcpState = tcpTelemetryViewModel?.state?.collectAsStateWithLifecycle()?.value
                             DiagnosticsScreen(vehicle, connection = connection,
                                 tcpStatus = tcpState?.connection?.status,
+                                tcpTransitions = tcpState?.socketTransitions.orEmpty(),
                                 focusWarnings = diagnosticsRoute == "diagnostics/warnings",
                                 reportControls = { TelemetryReportControls(vehicle, reportViewModel) })
                         }

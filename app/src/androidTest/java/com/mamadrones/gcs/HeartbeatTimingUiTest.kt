@@ -1,11 +1,20 @@
 package com.mamadrones.gcs
 
 import android.graphics.Bitmap
+import android.os.SystemClock
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
+import com.mamadrones.gcs.domain.model.MavlinkDiagnostics
+import com.mamadrones.gcs.domain.model.TcpSocketTransition
+import com.mamadrones.gcs.domain.model.TelemetryLinkKind
+import com.mamadrones.gcs.domain.model.TransportStatus
+import com.mamadrones.gcs.domain.model.VehicleState
+import com.mamadrones.gcs.presentation.screens.DiagnosticsScreen
+import com.mamadrones.gcs.presentation.theme.MamaGcsTheme
 import org.junit.Rule
 import org.junit.Test
 import org.junit.Assert.assertTrue
@@ -14,6 +23,34 @@ import java.io.File
 /** In-memory fixture only; no telemetry socket, device data or vehicle commands. */
 class HeartbeatTimingUiTest {
     @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
+
+    @Test fun realDiagnosticsScreenRefreshesClockWhenTcpTransitionArrives() {
+        val started = SystemClock.elapsedRealtime() - 1_000L
+        val transitions = mutableStateOf(emptyList<TcpSocketTransition>())
+        val vehicle = VehicleState(mavlinkDiagnostics = MavlinkDiagnostics(active = true,
+            linkKind = TelemetryLinkKind.TCP, startedAtElapsedMillis = started))
+        compose.setContent { MamaGcsTheme { Surface {
+            DiagnosticsScreen(vehicle, tcpStatus = TransportStatus.OPEN, tcpTransitions = transitions.value)
+        } } }
+        compose.onNodeWithText("NO EVENTS OBSERVED").assertExists()
+        compose.runOnIdle {
+            transitions.value = listOf(TcpSocketTransition(TransportStatus.OPEN, SystemClock.elapsedRealtime()))
+        }
+        compose.onNodeWithText("TCP OPEN ·", substring = true).assertExists()
+    }
+
+    @Test fun socketAndHeartbeatEventsAreOrderedOnScreen() {
+        compose.setContent { LinkHealthScenarioFixture(LinkHealthScenarios.recoveredLongGap) }
+        compose.onNodeWithText("Recent TCP/heartbeat timeline").assertExists()
+        compose.onNodeWithText("Heartbeat recovered · 1 ms ago").assertExists()
+        compose.onNodeWithText("Heartbeat exceeded 5 seconds · 1101 ms ago").assertExists()
+        compose.onNodeWithText("TCP OPEN · 6051 ms ago").assertExists()
+        compose.onNodeWithText("TCP OPEN · 6051 ms ago").performScrollTo()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        File(context.getExternalFilesDir(null), "tcp-heartbeat-timeline-simulated.png").outputStream().use {
+            assertTrue(compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it))
+        }
+    }
 
     @Test fun ongoingGapAndInputEvidenceAreVisible() {
         compose.setContent { LinkHealthScenarioFixture(LinkHealthScenarios.delayedHeartbeat) }

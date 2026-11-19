@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-19 — Phase 201 TCP/heartbeat timeline
+
+- Done: Analyze telemetry → Link & messages now places up to eight observed TCP status transitions in elapsed-time order with the existing selected-autopilot heartbeat threshold and recovery events. TCP status history resets on a new connect attempt, stores no endpoint or error text, and does not change the five-second link rule. See [Phase 201](phase-201-report.md) and D-201-01.
+- Verification: after the final clock-refresh correction, the full gate passed 517 JVM tests in 82 suites with zero failures/errors/skips, both debug APK builds, and lint with zero errors / 27 warnings. Five synthetic UI tests, including the actual Diagnostics screen update, passed on a healthy disposable emulator with no new crash/ANR during acceptance; the timeline screenshot was inspected. Earlier software-GPU emulator starts failed health checks and are recorded in the phase report.
+- Broken or risky: no live Cube gap was measured in this phase. Rapid socket changes may be missed by state collection; a bounded timeline cannot prove continuous availability or locate the physical fault. The operator phone was unavailable.
+- Next: during a natural live gap, compare the ordered TCP events with the selected heartbeat and position evidence in one session. Keep source/authentication and physical-safety conclusions separate. Review the diff before release; commit/push only on request.
+- Do not touch: saved routes/settings, Cube/radio parameters, mission upload or rover commands for this diagnostic UI phase.
+
 ## 2026-11-18 — Phase 200 heartbeat-gap evidence
 
 - Done: Link & messages now shows whether selected position and bytes were received after five seconds of a current heartbeat gap, and retains the latest three completed gaps with elapsed start/recovery/duration and receipt evidence. The record is volatile and excludes the recovery chunk. See [Phase 200](phase-200-report.md) and D-200-01.

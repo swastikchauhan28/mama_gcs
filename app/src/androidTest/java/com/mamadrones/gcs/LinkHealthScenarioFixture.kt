@@ -14,6 +14,7 @@ import com.mamadrones.gcs.domain.model.MavlinkDiagnostics
 import com.mamadrones.gcs.domain.model.HeartbeatGapEvidence
 import com.mamadrones.gcs.domain.model.TelemetryLinkKind
 import com.mamadrones.gcs.domain.model.TransportStatus
+import com.mamadrones.gcs.domain.model.TcpSocketTransition
 import com.mamadrones.gcs.domain.model.VehicleConnectionState
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.presentation.components.SubsystemCard
@@ -31,6 +32,7 @@ internal data class LinkHealthScenario(
     val diagnostics: MavlinkDiagnostics,
     val nowElapsedMillis: Long,
     val tcpStatus: TransportStatus?,
+    val tcpTransitions: List<TcpSocketTransition> = emptyList(),
 )
 
 internal object LinkHealthScenarios {
@@ -80,6 +82,8 @@ internal object LinkHealthScenarios {
         ),
         nowElapsedMillis = 6_201,
         tcpStatus = TransportStatus.OPEN,
+        tcpTransitions = listOf(TcpSocketTransition(TransportStatus.CONNECTING, 100),
+            TcpSocketTransition(TransportStatus.OPEN, 150)),
     )
 
     val socketLoss = LinkHealthScenario(
@@ -119,6 +123,7 @@ internal fun LinkHealthScenarioFixture(scenario: LinkHealthScenario) {
                     sample = scenario.diagnostics,
                     nowElapsedMillis = scenario.nowElapsedMillis,
                     tcpStatus = scenario.tcpStatus,
+                    tcpTransitions = scenario.tcpTransitions,
                 ))
             }
         }

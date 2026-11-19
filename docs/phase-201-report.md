@@ -1,0 +1,28 @@
+# Phase 201 — TCP socket and heartbeat event timeline
+
+## Goal and baseline
+
+User approved a bounded, read-only timeline to correlate TCP socket changes with the Phase 200 selected-autopilot heartbeat-gap record. Baseline `c2a7ec6`, clean `main` on 2026-11-19; model/version unavailable. The earlier live heartbeat interruption remains unexplained. See D-201-01.
+
+## Design and execution path
+
+`TcpTelemetryViewModel` observes `TcpTransport.connectionState` and owns the explicit Connect/disconnect lifecycle. `TcpUiState.socketTransitions` retains at most eight status and elapsed-time pairs, deduplicates consecutive statuses, rejects time moving backward and resets on each new connection attempt. A normal remote close is retained as `DISCONNECTED`; a failed connect or reported socket error can retain `ERROR` before closure. The list contains no endpoint, error text, payload or location. It is volatile and not exported.
+
+`MamaGcsApp` passes the TCP screen's transitions to `DiagnosticsScreen`, which passes them to `ConsolePanels.heartbeatTiming`. The panel combines those observations with the already retained selected-autopilot heartbeat threshold/recovery times, sorts by elapsed observation time and shows the newest eight combined events. It filters event times outside the current MAVLink session. It leaves the parser, source filtering, five-second heartbeat timeout and transport behavior unchanged. The TCP event recorder does not inspect or authenticate the vehicle stream.
+
+This display records what the app observed, not a continuous socket trace. Android StateFlow collection can conflate rapid changes; the bounded list can omit earlier events. A heartbeat gap alongside `TCP OPEN` does not prove the socket remained open throughout the gap or identify an upstream hardware fault.
+
+## Verification
+
+- Focused JVM tests for the recorder and panel passed before the final normal-close correction. The correction added a targeted state test for normal remote close versus failed connect.
+- The first full gate was already running when that correction was made, so its compiled output was not accepted as final evidence. It later passed with stale compiled sources.
+- The next full run failed before JVM test execution because OneDrive had made a generated class file a reparse-point placeholder under `app/build/intermediates/classes/debugUnitTest/transformDebugUnitTestClassesWithAsm`. Only that verified generated task directory was removed; the source and saved app data were untouched.
+- The repaired final run used `.\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --no-daemon --max-workers=1 --console=plain` and passed. XML reports show 517 JVM tests in 82 suites with zero failures, errors or skips. Both debug APK builds completed; lint reported zero errors and 27 warnings. Some Gradle tasks were up-to-date; the JVM test task executed.
+- The first no-wipe `Pixel_3a_API_34_extension_level_7_x86_64` emulator start with software GPU failed the read-only health preflight because of a System UI ANR dialog. A second no-wipe start with that GPU passed boot/window checks but recorded two new Android ANR events during the 30-second observation. No dialog was dismissed or log buffer cleared. The recent ANR events were preserved in ignored `app/build/phase-201-emulator-anr-events.txt`; no UI test ran on those unhealthy starts.
+- The same disposable AVD was then started without wiping, using the host GPU configuration that had passed an earlier project phase. A 30-second `scripts/Wait-AndroidEmulatorHealthy.ps1 -Serial emulator-5554 -QuietSeconds 30` preflight passed with no new crash/ANR events. Both final APKs were installed with `adb install -r`. `scripts/Test-AndroidAcceptance.ps1 -Serial emulator-5554 -TestClass com.mamadrones.gcs.HeartbeatTimingUiTest` passed `OK (4 tests)` and its Android health gate; evidence is under ignored `app/build/acceptance-20261119-105106-a830a02d/`. The runner could not independently identify the GPU option from the process command line.
+- The final synthetic screenshot at ignored `app/build/tcp-heartbeat-timeline-phase-201.png` was inspected. It shows a readable newest-first order: recovered heartbeat, five-second threshold, then TCP OPEN, alongside the Phase 200 gap evidence. The fixture opens no socket, modifies no saved route and sends no command. This is UI acceptance, not a live Cube test. The operator phone was unavailable.
+- Final 2026-11-19 correction: review found that `DiagnosticsScreen` could reuse a clock sampled before a newly arrived TCP event, briefly filtering that event as future. The composition clock now refreshes when the transition list changes, and a new Android test exercises the actual screen update. The full Gradle gate was rerun after this edit and passed in 7m 14s: 517 JVM tests in 82 suites with zero failures/errors/skips, both debug APK builds, and lint with zero errors / 27 warnings. The same disposable AVD passed a fresh 30-second host-GPU health preflight, then the rebuilt APKs passed `OK (5 tests)` and the Android health gate. Evidence: ignored `app/build/acceptance-20261119-110437-f70aa59b/`. The earlier four-test result remains an intermediate run.
+
+## Remaining and release boundary
+
+The earlier real Cube heartbeat interruption has not been reproduced or diagnosed by this synthetic phase. No hardware settings, user routes, authentication, dependency, command or external destination were changed. The pre-phase `c2a7ec6` is a source recovery point, not a certified release. No rollback was performed; commit and push require a separate user request.

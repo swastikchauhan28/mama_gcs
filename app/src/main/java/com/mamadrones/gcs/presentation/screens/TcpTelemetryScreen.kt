@@ -18,6 +18,8 @@ import com.mamadrones.gcs.data.transport.tcp.TcpTransport
 import com.mamadrones.gcs.domain.model.ConnectionState
 import com.mamadrones.gcs.domain.model.TransportStatus
 import com.mamadrones.gcs.domain.model.TelemetryLinkKind
+import com.mamadrones.gcs.domain.model.TcpSocketTimeline
+import com.mamadrones.gcs.domain.model.TcpSocketTransition
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.presentation.components.*
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,7 +30,17 @@ import kotlinx.coroutines.flow.*
 data class TcpUiState(
     val host: String = "", val port: String = "", val active: Boolean = false,
     val connection: ConnectionState = ConnectionState(), val error: String? = null,
+    val socketTransitions: List<TcpSocketTransition> = emptyList(),
 )
+
+internal fun TcpUiState.afterDisconnect(error: String?, atElapsedMillis: Long): TcpUiState {
+    // A normal remote close may have explanatory detail; it is not a socket ERROR event.
+    val withError = if (active && error != null && connection.status != TransportStatus.DISCONNECTED)
+        TcpSocketTimeline.record(socketTransitions, TransportStatus.ERROR, atElapsedMillis) else socketTransitions
+    return copy(active = false, connection = ConnectionState(), error = error,
+        socketTransitions = if (active) TcpSocketTimeline.record(withError, TransportStatus.DISCONNECTED, atElapsedMillis)
+            else withError)
+}
 
 @HiltViewModel
 class TcpTelemetryViewModel @Inject constructor(
@@ -66,7 +78,9 @@ class TcpTelemetryViewModel @Inject constructor(
             transport = link
             val parser = sessionFactory.create(link, viewModelScope)
             session = parser
-            mutableState.update { it.copy(active = true, connection = ConnectionState(TransportStatus.CONNECTING), error = null) }
+            mutableState.update { it.copy(active = true, connection = ConnectionState(TransportStatus.CONNECTING), error = null,
+                socketTransitions = TcpSocketTimeline.record(emptyList(), TransportStatus.CONNECTING,
+                    android.os.SystemClock.elapsedRealtime())) }
             operation = viewModelScope.launch {
                 try {
                     parser.start()
@@ -74,7 +88,9 @@ class TcpTelemetryViewModel @Inject constructor(
                     observer = viewModelScope.launch {
                         link.connectionState.collect { connection ->
                             if (token == generation) {
-                                mutableState.update { it.copy(connection = connection) }
+                                mutableState.update { it.copy(connection = connection,
+                                    socketTransitions = TcpSocketTimeline.record(it.socketTransitions, connection.status,
+                                        connection.connectedAtElapsedMillis ?: android.os.SystemClock.elapsedRealtime())) }
                                 if (connection.status == TransportStatus.ERROR || connection.status == TransportStatus.DISCONNECTED) {
                                     disconnect(connection.detail ?: "TCP connection ended.")
                                 }
@@ -92,13 +108,14 @@ class TcpTelemetryViewModel @Inject constructor(
     }
 
     fun disconnect(error: String? = null) {
+        val now = android.os.SystemClock.elapsedRealtime()
         ++generation
         operation?.cancel(); operation = null
         observer?.cancel(); observer = null
         runCatching { session?.close() }; session = null
         transport?.close(); transport = null
         lease?.let(gate::release); lease = null
-        mutableState.update { it.copy(active = false, connection = ConnectionState(), error = error) }
+        mutableState.update { it.afterDisconnect(error, now) }
     }
     override fun onStop(owner: LifecycleOwner) = disconnect()
     override fun onCleared() { ProcessLifecycleOwner.get().lifecycle.removeObserver(this); disconnect(); super.onCleared() }

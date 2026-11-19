@@ -14,7 +14,8 @@ fun Double?.reading(unit: String): String = if (this == null || !isFinite()) "UN
 fun Double?.coordinateReading(): String = if (this == null || !isFinite()) "UNKNOWN" else String.format(Locale.US, "%.7f °", this)
 
 object ConsolePanels {
-    fun heartbeatTiming(sample: MavlinkDiagnostics, nowElapsedMillis: Long, tcpStatus: TransportStatus? = null): PanelSpec {
+    fun heartbeatTiming(sample: MavlinkDiagnostics, nowElapsedMillis: Long, tcpStatus: TransportStatus? = null,
+        tcpTransitions: List<TcpSocketTransition> = emptyList()): PanelSpec {
         val started = sample.startedAtElapsedMillis
         val last = sample.timingHeartbeatAtElapsedMillis
         val age = if (sample.active && started != null && last != null && started >= 0 &&
@@ -54,8 +55,34 @@ object ConsolePanels {
                 "Recent gap $number timing" to timing,
                 "Recent gap $number after 5 seconds" to "input ${if (gap.inputAfterFiveSeconds) "OBSERVED" else "NOT OBSERVED"} · selected position ${if (gap.selectedPositionAfterFiveSeconds) "OBSERVED" else "NOT OBSERVED"}",
             )
-        }
-        return PanelSpec("Heartbeat timing", status, rows, note = "Receive-only, monotonic session observations. Up to three completed gaps are retained in memory; a completed gap is counted when the next selected-autopilot heartbeat arrives. Input means bytes reached the decoder; selected position means an accepted GLOBAL_POSITION_INT receipt. For completed gaps, the recovery chunk is excluded. Missing evidence is not proof that data was absent. A new session resets this record. It does not authenticate the sender or locate a fault.")
+        } + tcpHeartbeatTimelineRows(sample, nowElapsedMillis, tcpTransitions)
+        return PanelSpec("Heartbeat timing", status, rows, note = "Receive-only, monotonic session observations. Up to three completed gaps and eight TCP socket changes are retained in memory. The ordered timeline shows observed transitions and selected-heartbeat timing, not continuous socket proof. Status collection may lag or skip rapid changes. For completed gaps, the recovery chunk is excluded; missing evidence is not proof data was absent. A new session resets these records. They do not authenticate the sender or locate a fault.")
+    }
+
+    private fun tcpHeartbeatTimelineRows(sample: MavlinkDiagnostics, now: Long,
+        transitions: List<TcpSocketTransition>): List<Pair<String, String>> {
+        val started = sample.startedAtElapsedMillis
+        if (sample.linkKind != TelemetryLinkKind.TCP || started == null || started < 0 || now < started) return emptyList()
+        val events = buildList<Pair<Long, String>> {
+            transitions.forEach { transition ->
+                if (transition.atElapsedMillis in started..now) add(transition.atElapsedMillis to "TCP ${transition.status}")
+            }
+            sample.recentHeartbeatGaps.forEach { gap ->
+                if (gap.startedAtElapsedMillis >= started && gap.recoveredAtElapsedMillis in gap.startedAtElapsedMillis..now &&
+                    gap.recoveredAtElapsedMillis - gap.startedAtElapsedMillis > 5_000L) {
+                    add(gap.startedAtElapsedMillis + 5_000L to "Heartbeat exceeded 5 seconds")
+                    add(gap.recoveredAtElapsedMillis to "Heartbeat recovered")
+                }
+            }
+            val last = sample.timingHeartbeatAtElapsedMillis
+            if (last != null && last in started..now) {
+                if (sample.active && now - last > 5_000L) add(last + 5_000L to "Heartbeat exceeded 5 seconds")
+                else if (sample.recentHeartbeatGaps.none { it.recoveredAtElapsedMillis == last })
+                    add(last to "Latest accepted heartbeat")
+            }
+        }.sortedBy { it.first }.takeLast(8).asReversed()
+        return listOf("Recent TCP/heartbeat timeline" to if (events.isEmpty()) "NO EVENTS OBSERVED" else "LATEST ${events.size} EVENTS") +
+            events.mapIndexed { index, event -> "Recent event ${index + 1}" to "${event.second} · ${now - event.first} ms ago" }
     }
 
     fun mavlinkDiagnostics(sample: MavlinkDiagnostics, nowEpochMillis: Long = System.currentTimeMillis()): PanelSpec {

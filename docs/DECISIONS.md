@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-201-01: Correlate bounded TCP socket transitions with heartbeat gaps
+
+- Date: 2026-11-19. User approved Phase 201 after the bounded proposal. Baseline `c2a7ec6`, clean `main`; model/version unavailable.
+- Context: the Phase 200 heartbeat-gap card records selected-autopilot receive evidence, but the current TCP socket status alone cannot show whether the socket opened, errored or closed near a gap. `TcpTelemetryViewModel` owns the observed TCP status and disconnect lifecycle; `MavlinkSession` owns heartbeat receipt times.
+- Choice: keep up to eight volatile, timestamped status transitions in `TcpUiState`, reset on each connect attempt, and display them in elapsed-time order with the already retained heartbeat-gap starts and recoveries. Record the explicit Connect attempt and disconnect path as well as observed transport states; de-duplicate repeated statuses. Alternative: have `MavlinkSession` collect transport state in parallel with its receive coroutine, which adds synchronization and cancellation races. Alternative: persist a raw timeline, which adds retention and sensitive-data risk.
+- Risk and revisit: status collection can lag or conflate rapid underlying changes, and a bounded timeline cannot establish that a socket stayed open throughout an interval. It cannot authenticate the source or locate an upstream fault. Keep the existing timeout, parser, transport and command boundaries. Verify transition order, duplicate suppression, cap, reconnect reset, closed/error display and a synthetic UI capture. Revisit if observed live events contradict transport status.
+- 2026-11-19 correction: a normal remote TCP closure can carry explanatory detail. The first disconnect projection incorrectly mapped any detail passed to `disconnect` to `ERROR`; the final state helper now preserves a status already observed as `DISCONNECTED` and records `ERROR` only for an actual error or failed connect. Focused state tests cover both cases.
+- 2026-11-19 display correction: include TCP transitions in the Diagnostics elapsed-clock refresh keys. Otherwise a newly observed transition can be newer than the cached display clock and disappear from the bounded timeline until the next one-second tick.
+
 ## D-200-01: Retain bounded heartbeat-gap receive evidence
 
 - Date: 2026-11-18. User approved Phase 200. Baseline `c65b6b6`, clean `main`; model/version unavailable.

@@ -4,10 +4,46 @@ import com.mamadrones.gcs.domain.model.MavlinkDiagnostics
 import com.mamadrones.gcs.domain.model.TelemetryLinkKind
 import com.mamadrones.gcs.domain.model.RadioStatusObservation
 import com.mamadrones.gcs.domain.model.HeartbeatGapEvidence
+import com.mamadrones.gcs.domain.model.TcpSocketTransition
+import com.mamadrones.gcs.domain.model.TransportStatus
 import org.junit.Assert.*
 import org.junit.Test
 
 class MavlinkDiagnosticsPanelTest {
+    @Test fun `TCP timeline orders observed socket transitions and heartbeat recovery`() {
+        val sample = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.TCP,
+            startedAtElapsedMillis = 100, timingHeartbeatAtElapsedMillis = 6_200,
+            recentHeartbeatGaps = listOf(HeartbeatGapEvidence(200, 6_200, true, true)))
+        val transitions = listOf(TcpSocketTransition(TransportStatus.CONNECTING, 100),
+            TcpSocketTransition(TransportStatus.OPEN, 150))
+        val rows = ConsolePanels.heartbeatTiming(sample, 6_201, TransportStatus.OPEN, transitions).rows.toMap()
+        assertEquals("LATEST 4 EVENTS", rows["Recent TCP/heartbeat timeline"])
+        assertEquals("Heartbeat recovered · 1 ms ago", rows["Recent event 1"])
+        assertEquals("Heartbeat exceeded 5 seconds · 1001 ms ago", rows["Recent event 2"])
+        assertEquals("TCP OPEN · 6051 ms ago", rows["Recent event 3"])
+        assertEquals("TCP CONNECTING · 6101 ms ago", rows["Recent event 4"])
+    }
+
+    @Test fun `TCP timeline labels a current gap without implying a closed socket`() {
+        val sample = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.TCP,
+            startedAtElapsedMillis = 100, timingHeartbeatAtElapsedMillis = 200)
+        val rows = ConsolePanels.heartbeatTiming(sample, 5_300, TransportStatus.OPEN,
+            listOf(TcpSocketTransition(TransportStatus.OPEN, 150))).rows.toMap()
+        assertEquals("Heartbeat exceeded 5 seconds · 100 ms ago", rows["Recent event 1"])
+        assertEquals("TCP OPEN · 5150 ms ago", rows["Recent event 2"])
+    }
+
+    @Test fun `TCP timeline retains error and close after session ends`() {
+        val sample = MavlinkDiagnostics(active = false, linkKind = TelemetryLinkKind.TCP,
+            startedAtElapsedMillis = 100, timingHeartbeatAtElapsedMillis = 200)
+        val transitions = listOf(TcpSocketTransition(TransportStatus.OPEN, 150),
+            TcpSocketTransition(TransportStatus.ERROR, 5_500),
+            TcpSocketTransition(TransportStatus.DISCONNECTED, 5_501))
+        val rows = ConsolePanels.heartbeatTiming(sample, 5_600, TransportStatus.DISCONNECTED, transitions).rows.toMap()
+        assertEquals("TCP DISCONNECTED · 99 ms ago", rows["Recent event 1"])
+        assertEquals("TCP ERROR · 100 ms ago", rows["Recent event 2"])
+        assertEquals("—", rows["TCP socket"])
+    }
     @Test fun `heartbeat timing does not confuse open bytes with accepted heartbeats`() {
         val base = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.TCP,
             startedAtElapsedMillis = 100, timingHeartbeatAtElapsedMillis = 100,
