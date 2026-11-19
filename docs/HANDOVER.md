@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-19 — Phase 207 RC/PWM display timing and stick observation
+
+- Done: RC/PWM samples arriving between 500-ms screen ticks now use a current elapsed-time reading, so a fresh packet is not briefly hidden as a future timestamp. The future-time and five-second freshness guards remain. See [Phase 207](phase-207-report.md) and D-207-01.
+- Verification: 13 focused emulator RC/activity UI tests passed, including the new paused-ticker test; the full gate passed 533 JVM tests in 84 suites, debug app/test APK builds and lint with zero errors / 27 warnings. A data-preserving phone update showed 16 fresh channels over T12_485 Classic. With operator-confirmed disconnected outputs and secured rover, steering-left hold changed RC8 to 1951 µs and centre returned it to 1501 µs; throttle-forward hold changed RC2 to 1051 µs and centre returned it to 1501 µs. See the phase report for limits and local screenshots.
+- Broken or risky: these are Cube-reported channel values, not proof of vehicle control mapping or actuator safety. The older accepted file's `RCMAP_ROLL=1` and `RCMAP_THROTTLE=3` differ from the observed movement channels; present Cube parameters and T12 mapping have not been read back. Source identity, physical output and failsafe remain unverified.
+- Next: read the current Cube RC mapping/calibration and T12 channel assignment before naming controls; keep outputs isolated. Review the diff before release. Commit/push only on request.
+- Do not touch: Cube/radio parameters, physical wiring, motor outputs, vehicle commands, missions or operator saved data for this display fix.
+
 ## 2026-11-19 — Phase 206 decoder observation
 
 - Done: Link & messages has an explicit 30-second, receive-only counter observation for one session. It freezes accepted selected-autopilot and inside/outside CRC-candidate changes on completion, or an incomplete reason if the session changes or counters/clock become inconsistent. See [Phase 206](phase-206-report.md) and D-206-01.

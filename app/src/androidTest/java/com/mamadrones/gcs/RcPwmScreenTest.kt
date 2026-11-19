@@ -121,6 +121,41 @@ class RcPwmScreenTest {
         compose.waitUntil(5_000) { compose.onAllNodesWithText("1500 µs").fetchSemanticsNodes().isNotEmpty() }
     }
 
+    @Test fun newRcAndPwmSamplesBetweenTicksUseFreshElapsedTime() {
+        var clockNow = 20_000L
+        val clock: () -> Long = { clockNow }
+        fun sample(value: Int, time: Long) = VehicleState(
+            systemId = 1, componentId = 1,
+            connectionStatus = VehicleConnectionState.CONNECTED,
+            lastHeartbeatAtElapsedMillis = time,
+            rcInput = RcInputState(1, listOf(value), null, null, time),
+            pwmOutputs = listOf(PwmOutputState(0, listOf(value + 100), null, time)),
+            mavlinkDiagnostics = MavlinkDiagnostics(active = true, linkKind = TelemetryLinkKind.CLASSIC,
+                startedAtElapsedMillis = 19_000,
+                messageObservations = listOf(
+                    MavlinkMessageObservation(ObservedMavlinkMessage.HEARTBEAT, accepted = 1,
+                        lastAcceptedAtElapsedMillis = time),
+                    MavlinkMessageObservation(ObservedMavlinkMessage.RC_CHANNELS, accepted = 1,
+                        lastAcceptedAtElapsedMillis = time),
+                    MavlinkMessageObservation(ObservedMavlinkMessage.SERVO_OUTPUT_RAW, accepted = 1,
+                        lastAcceptedAtElapsedMillis = time))))
+        val state = mutableStateOf(sample(1500, clockNow))
+        compose.mainClock.autoAdvance = false
+        compose.setContent { MaterialTheme { RcPwmScreen(state.value, elapsedRealtime = clock) } }
+        compose.onNodeWithText("1500 µs").assertExists()
+        compose.runOnIdle {
+            clockNow = 20_250L
+            state.value = sample(1600, clockNow)
+        }
+        compose.mainClock.advanceTimeByFrame() // The 500-ms ticker has not fired.
+        compose.onNodeWithText("1600 µs").assertExists()
+        compose.onNodeWithText("1700 µs").assertExists()
+        compose.onAllNodesWithText("CLOCK INCONSISTENT · VALUES HIDDEN").assertCountEquals(0)
+        compose.runOnIdle { state.value = sample(1601, clockNow + 500L) }
+        compose.mainClock.advanceTimeByFrame()
+        compose.onAllNodesWithText("CLOCK INCONSISTENT · VALUES HIDDEN").assertCountEquals(2)
+    }
+
     @Test fun pwmPortFreshnessExpiresIndependentlyAndRecovers() {
         val elapsed = mutableStateOf(10_000L)
         val heartbeat = MavlinkMessageObservation(ObservedMavlinkMessage.HEARTBEAT, accepted = 1, lastAcceptedAtElapsedMillis = 10_000)

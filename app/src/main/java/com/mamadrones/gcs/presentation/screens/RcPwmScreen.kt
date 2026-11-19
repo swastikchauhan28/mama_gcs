@@ -17,11 +17,15 @@ import com.mamadrones.gcs.presentation.dashboard.RcPwmPanels
 import kotlinx.coroutines.delay
 
 @Composable
-fun RcPwmScreen(state: VehicleState, modifier: Modifier = Modifier) {
-    val nowElapsed by produceState(android.os.SystemClock.elapsedRealtime()) {
-        while (true) { delay(500); value = android.os.SystemClock.elapsedRealtime() }
+fun RcPwmScreen(state: VehicleState, modifier: Modifier = Modifier,
+    elapsedRealtime: () -> Long = { android.os.SystemClock.elapsedRealtime() }) {
+    val nowElapsed by produceState(elapsedRealtime()) {
+        while (true) { delay(500); value = elapsedRealtime() }
     }
-    RcPwmContent(state, modifier, nowElapsed)
+    // A packet can arrive between ticks. Read the clock with that new state so a fresh
+    // receipt is not misclassified as a future timestamp and hidden for half a second.
+    val displayNow = remember(state, nowElapsed) { elapsedRealtime() }
+    RcPwmContent(state, modifier, displayNow)
 }
 
 @Composable

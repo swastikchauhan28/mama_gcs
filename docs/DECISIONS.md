@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-207-01: Refresh RC/PWM display time when telemetry state changes
+
+- Date: 2026-11-19. The operator reported blank RC/PWM values during stick checks. Baseline `0994c2f`, clean `main`; model/version unavailable.
+- Context: a live Classic session showed 16 RC channels and recent values, then briefly hid both RC and PWM under `CLOCK INCONSISTENT`. `RcPwmScreen` passes its last 500-ms ticker value to the panels even when a newer telemetry state arrives between ticks. The panels correctly reject a sample timestamp later than their supplied clock, but the supplied clock can lag the real elapsed clock. The same stale value reaches the RC activity check and can interrupt it.
+- Choice: retain the 500-ms refresh for expiry, but sample Android elapsed time again when either the vehicle state or ticker changes. Pass that single current display time to RC, PWM and activity projections. A defaulted clock function permits a deterministic between-ticks UI regression; production still uses Android elapsed time. Keep the guards for genuinely inconsistent or future timestamps. Alternative: add grace to future samples, which weakens clock validation; alternative: wait for the next tick, which leaves visible flicker and can freeze the activity check.
+- Risk and revisit: a display read cannot prove radio identity, RCIN wiring, calibration or physical safety. Test immediate new-sample display, five-second expiry, actual future-timestamp rejection and screen rendering. Do not change telemetry parsing, source selection, hardware parameters or commands. Revisit if a fresh-clock sample still shows missing RC values; then inspect actual `RC_CHANNELS` receipt and source selection.
+
 ## D-206-01: Operator-started decoder counter window
 
 - Date: 2026-11-19. User approved a 30-second read-only observation in Link & messages after Phase 205. Baseline `6ad7601`, clean `main`; model/version unavailable.
