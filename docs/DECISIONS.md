@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-206-01: Operator-started decoder counter window
+
+- Date: 2026-11-19. User approved a 30-second read-only observation in Link & messages after Phase 205. Baseline `6ad7601`, clean `main`; model/version unavailable.
+- Context: decoder counts are session totals, so an operator currently compares separate screenshots to see whether accepted messages and CRC candidates changed during a short interval. Such manual comparisons can accidentally cross a session reset or use wall-clock time after a device clock change.
+- Choice: keep one screen-local start snapshot with the session start timestamps, transport kind, accepted selected-autopilot count and inside/outside CRC candidate counts. Advance it using Android elapsed time and the existing diagnostics StateFlow. At 30 seconds, freeze the measured duration and counter differences. If the session closes/changes, a counter regresses or elapsed time becomes inconsistent, freeze an incomplete result with no counter differences. A new explicit start replaces a previous result. Do not persist or export the window.
+- Alternatives: display continuously rolling rates (can hide the selected interval and suggest packet-loss precision); store raw frames or a long history (privacy and retention costs); keep manual screenshot comparison (easy to cross sessions).
+- Risk and revisit: UI collection is periodic, so completion can occur after 30 seconds and may miss brief status transitions; show actual elapsed duration. A completed window measures counter changes only, not packet loss, physical corruption, authenticated source or vehicle readiness. Screen navigation or recreation discards an unfinished window. Verify active/no-session states, session reset, counter regression, clock reversal, frozen results, simulation and visual readability. No transport, parser, permission, dependency, persistent data or command change.
+
 ## D-205-01: Include parser candidate context in explicit telemetry snapshot
 
 - Date: 2026-11-19. User approved Phase 205 after the Phase 204 live and phone checks. Baseline `bb05582`, clean `main`; model/version unavailable.

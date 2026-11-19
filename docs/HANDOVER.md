@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-19 — Phase 206 decoder observation
+
+- Done: Link & messages has an explicit 30-second, receive-only counter observation for one session. It freezes accepted selected-autopilot and inside/outside CRC-candidate changes on completion, or an incomplete reason if the session changes or counters/clock become inconsistent. See [Phase 206](phase-206-report.md) and D-206-01.
+- Verification: four focused JVM tests passed; the full gate passed 533 JVM tests in 84 suites, both debug APK builds and lint with zero errors / 27 warnings. The synthetic disposable-emulator UI test passed twice (`OK (1 test)` each), and its screenshot was inspected. The dated live phone follow-up completed one Classic observation in 30,072 ms with 232 accepted selected-autopilot messages, 70 inside-rescan CRC candidates and 0 outside; a fresh heartbeat was visible afterward. See [Phase 206](phase-206-report.md).
+- Broken or risky: this is volatile UI evidence, and completion can lag the 30-second target. Counter changes from untrusted input cannot prove packet loss, physical corruption, Cube identity or rover safety. One short live window does not establish sustained reliability or RC/SBUS behavior.
+- Next: review the diff before release. If the operator wants longer reliability evidence, run a separately scoped receive-only observation without changing hardware. Commit/push only on request.
+- Do not touch: operator phone data, Cube/radio parameters, rover commands, mission upload or release deployment for this phase.
+
 ## 2026-11-19 — Phase 205 explicit parser-context report
 
 - Done: the existing frozen, explicitly saved telemetry report now includes total checksum failures, inside/outside rescan candidate counts and pending incomplete bytes, labeled at capture for active sessions or before close for historical sessions. It explains that these counts are parser evidence, not physical corruption or packet loss. Preview, size limit and save flow are unchanged. See [Phase 205](phase-205-report.md) and D-205-01.

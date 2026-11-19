@@ -1,5 +1,9 @@
 # Hardware integration gates
 
+## 19 November 2026 — Phase 206 live Classic decoder observation
+
+On the USB-debugged phone, Mama GCS showed a connected Bluetooth Classic session on the T12_485 tab, increasing accepted MAVLink 2 messages and a recent accepted autopilot heartbeat. An operator-started 30-second decoder observation completed in 30,072 ms with 232 accepted selected-autopilot messages, 70 CRC candidates inside parser rescan spans and 0 outside. A subsequent heartbeat panel showed age 68 ms, latest completed interval 1,012 ms, longest completed interval 4,018 ms and zero completed gaps over five seconds in that session at capture. The retained `PreArm: Hardware safety switch` warning was visible; no arm, mission, motor, wiring or parameter change was made. See [Phase 206 live follow-up](phase-206-report.md). This confirms one short phone-side Classic receive window, not physical source authentication, RCIN behavior, packet loss, a failed hardware hop or sustained/safe operation.
+
 ## 17 November 2026 — live T12_485 Classic receive observation
 
 USB debugging on the physical phone allowed a read-only Mama GCS check. Android listed `T12_485` as previously paired; the operator selected it, and Mama GCS later identified it as the active Classic serial peer. Supported MAVLink and accepted autopilot heartbeats were observed. One earlier session subsequently appeared disconnected for an unknown reason. A later session had a conflicting Classic checklist (`heartbeat NOT CONFIRMED`) and Link & messages timing (`ACCEPTED HEARTBEAT RECENT`); this is a software-display investigation, not proof the Cube stopped sending. See [dated live check](bluetooth-live-check-2026-11-17.md). No RC movement or physical command was tested. This does not establish sustained Bluetooth reliability or rover readiness.

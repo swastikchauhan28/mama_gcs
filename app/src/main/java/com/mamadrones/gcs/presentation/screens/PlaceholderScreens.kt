@@ -212,6 +212,21 @@ fun DiagnosticsScreen(state: VehicleState, modifier: Modifier = Modifier, connec
     val timingNow = remember(state.mavlinkDiagnostics, tcpTransitions, nowElapsed) { android.os.SystemClock.elapsedRealtime() }
     SubsystemCard(ConsolePanels.heartbeatTiming(state.mavlinkDiagnostics, timingNow, tcpStatus, tcpTransitions))
     SubsystemCard(ConsolePanels.mavlinkDiagnostics(state.mavlinkDiagnostics, now))
+    if (!focusWarnings) {
+        var decoderWindow by remember { mutableStateOf<DecoderWindowState?>(null) }
+        LaunchedEffect(state.mavlinkDiagnostics, timingNow) {
+            decoderWindow = DecoderWindowObservation.advance(decoderWindow, state.mavlinkDiagnostics, timingNow)
+        }
+        SubsystemCard(DecoderWindowObservation.panel(decoderWindow, state.mavlinkDiagnostics, timingNow))
+        OutlinedButton(
+            onClick = { decoderWindow = DecoderWindowObservation.start(state.mavlinkDiagnostics, timingNow) },
+            enabled = decoderWindow !is DecoderWindowState.Running &&
+                DecoderWindowObservation.canStart(state.mavlinkDiagnostics, timingNow),
+            modifier = Modifier.testTag("decoder-window-start"),
+        ) {
+            Text(if (decoderWindow == null) "Start 30-second observation" else "Start again")
+        }
+    }
     Notice("DECODER GUIDANCE", ConsolePanels.mavlinkDiagnosticHints(state.mavlinkDiagnostics))
     CardGrid(listOf(
         PanelSpec("UDP socket counters", link.status.name, listOf(
