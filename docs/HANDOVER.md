@@ -1,5 +1,12 @@
 # Current handover
 
+## 2026-11-20 — Phase 208 RC mapping check incomplete
+
+- Done: a read-only live T12_485 Classic RC activity observation on 19 November recorded RC3, RC6, RC7 and RC8 variation during an operator-reported steering sweep; RC1 and RC2 stayed constant in that observation. No parameter or vehicle command was sent. See [Phase 208](phase-208-report.md).
+- Broken or risky: multiple channels varied, so Phase 207's RC8 snapshot is not a unique steering assignment. The older `RCMAP_ROLL=1` and `RCMAP_THROTTLE=3` file values have not been confirmed on the current Cube. The requested live Mission Planner readback was not supplied before interruption; phone and Cube/Mission Planner were unavailable on 20 November.
+- Next: with outputs isolated, read the connected Cube's current `RCMAP_` and relevant `RCx_OPTION` values, then repeat one-control-at-a-time RC observation. Do not change parameters or infer rover readiness. Commit/push only on request.
+- Do not touch: Cube/radio settings, wiring, motor outputs, vehicle commands or saved operator data.
+
 ## 2026-11-19 — Phase 207 RC/PWM display timing and stick observation
 
 - Done: RC/PWM samples arriving between 500-ms screen ticks now use a current elapsed-time reading, so a fresh packet is not briefly hidden as a future timestamp. The future-time and five-second freshness guards remain. See [Phase 207](phase-207-report.md) and D-207-01.

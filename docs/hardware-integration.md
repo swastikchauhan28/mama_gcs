@@ -1,5 +1,9 @@
 # Hardware integration gates
 
+## 20 November 2026 — correction to Phase 207 channel inference
+
+The 19 November Phase 208 receive-only activity check recorded variation on RC3, RC6, RC7 and RC8 during an operator-reported steering sweep; a separate held-left capture showed RC5 and RC7 high while RC8 stayed centred. Therefore Phase 207's RC8 and RC2 snapshots confirm that those values changed during the reported actions but do not establish unique steering/throttle channel assignments. Current Cube `RCMAP_` and relevant `RCx_OPTION` readback remains missing; the accepted file values are historical. See [Phase 208](phase-208-report.md). No physical movement, output, setting or parameter change was made.
+
 ## 19 November 2026 — Phase 207 live RC display observation
 
 After a data-preserving phone update and T12_485 Classic reconnect, Mama GCS showed 16 recently received RC channels from its selected autopilot. The operator confirmed disconnected motor/ESC outputs and a secured rover. With one stick held at a time, steering-left coincided with RC8 1951 µs and its return to centre with RC8 1501 µs; throttle-forward coincided with RC2 1051 µs and its return with RC2 1501 µs. This verifies live reported channel changes on the phone for that session. It does not establish actual RCIN wiring, vehicle-control mapping, actuator movement, failsafe or physical safety. The accepted older parameter file's `RCMAP_ROLL=1` and `RCMAP_THROTTLE=3` are not a current live readback and differ from the observed movement channels. Read current Cube and T12 mapping before assigning vehicle functions; do not change parameters from this observation alone. See [Phase 207](phase-207-report.md).
