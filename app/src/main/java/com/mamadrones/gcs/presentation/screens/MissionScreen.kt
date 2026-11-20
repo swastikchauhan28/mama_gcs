@@ -175,8 +175,8 @@ fun MissionScreen(
     }
     fun openFenceEditor(point: DraftWaypoint? = null) {
         editingFenceId = point?.id
-        initialLatitude = point?.latitude?.toString().orEmpty()
-        initialLongitude = point?.longitude?.toString().orEmpty()
+        initialLatitude = point?.latitude?.let(::formatOutlineEditCoordinate).orEmpty()
+        initialLongitude = point?.longitude?.let(::formatOutlineEditCoordinate).orEmpty()
         showFenceEditor = true
     }
     fun focusReviewWaypoint(number: Int?) {
@@ -798,6 +798,14 @@ fun MissionScreen(
 
 private const val MAX_ROUTE_FILE_CHARS = 256_000
 private const val MAX_COORDINATE_CHARS = 32
+
+private fun formatOutlineEditCoordinate(value: Double): String {
+    val canonical = value.toString()
+    if ('E' !in canonical && 'e' !in canonical) return canonical
+    val plain = java.math.BigDecimal.valueOf(value).toPlainString()
+    // An extreme coordinate may need more characters than the input allows; never truncate it.
+    return plain.takeIf { it.length <= MAX_COORDINATE_CHARS } ?: canonical
+}
 
 private fun canToggleCoordinateSign(value: String): Boolean {
     val text = value.trim()

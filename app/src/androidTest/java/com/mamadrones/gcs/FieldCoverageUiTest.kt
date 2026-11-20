@@ -444,6 +444,31 @@ class FieldCoverageUiTest {
         assertEquals(original.keepInFence, draft.value.keepInFence)
     }
 
+    @Test fun editingSmallOutlineCoordinatesKeepsExactValuesAtLargeText() {
+        val small = DraftWaypoint("small", -0.000000123456789, 0.00008993216059187306)
+        val signedZero = DraftWaypoint("signed-zero", -0.0, 0.0)
+        val original = MissionDraft(keepInFence = listOf(small, signedZero))
+        val draft = mutableStateOf(original)
+        show(largeText = true, draft = draft)
+        compose.selectMissionTab("Field outline")
+
+        node("mission-edit-fence-0").performClick()
+        compose.onNodeWithTag("mission-latitude").assertTextContains("-0.000000123456789", substring = true)
+        compose.onNodeWithTag("mission-longitude").assertTextContains("0.00008993216059187306", substring = true)
+        capture("phase212-plain-outline-edit.png")
+        compose.onNodeWithTag("mission-confirm-waypoint").assertIsEnabled().performClick()
+        assertEquals(listOf(MissionPlanAction.EditFenceVertex(small, small.latitude, small.longitude)), actions)
+
+        node("mission-edit-fence-1").performClick()
+        compose.onNodeWithTag("mission-latitude").assertTextContains("-0.0", substring = true)
+        compose.onNodeWithTag("mission-confirm-waypoint").assertIsEnabled().performClick()
+        assertEquals(listOf(
+            MissionPlanAction.EditFenceVertex(small, small.latitude, small.longitude),
+            MissionPlanAction.EditFenceVertex(signedZero, signedZero.latitude, signedZero.longitude),
+        ), actions)
+        assertEquals(original.keepInFence, draft.value.keepInFence)
+    }
+
     @Test fun coordinateDialogNamesOutlineAndRouteDestinationsAtLargeText() {
         show(largeText = true)
         compose.selectMissionTab("Field outline")
