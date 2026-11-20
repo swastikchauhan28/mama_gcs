@@ -59,6 +59,20 @@ class WaypointKeyboardUiTest {
         exerciseEdit("phase72-edit-ime.png", "phase72-edit-after-done.png", requirePortrait = true)
     }
 
+    @Test fun editingPreciseWaypointWithoutChangesPreservesCoordinatesAtLargeText() {
+        val actions = mutableListOf<MissionPlanAction>()
+        val waypoint = DraftWaypoint("wp-precise", -0.000000123456789, 149.16523456789)
+        showMission(MissionPlanUiState(draft = MissionDraft("Precise route", listOf(waypoint)), loading = false), actions)
+        compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-edit-0"))
+        compose.onNodeWithTag("mission-edit-0").performClick()
+        compose.onNodeWithText("Edit waypoint").assertIsDisplayed()
+        compose.onNodeWithTag("mission-latitude").assertTextContains("-0.000000123456789")
+        compose.onNodeWithTag("mission-longitude").assertTextContains("149.16523456789")
+        captureDisplay("phase213-route-no-change-edit.png", requirePortrait = false)
+        compose.onNodeWithTag("mission-confirm-waypoint").assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals(listOf(MissionPlanAction.Edit(waypoint)), actions) }
+    }
+
     @Test fun invalidCoordinatesExplainRangesAndRecoverInPortrait() = inPortrait {
         exerciseInvalidCoordinates(requirePortrait = true)
     }

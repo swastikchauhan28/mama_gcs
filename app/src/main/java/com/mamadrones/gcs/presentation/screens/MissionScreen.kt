@@ -169,14 +169,14 @@ fun MissionScreen(
 
     fun openEditor(id: String?, latitude: Double?, longitude: Double?) {
         editingId = id
-        initialLatitude = latitude?.let { String.format(Locale.US, "%.7f", it) }.orEmpty()
-        initialLongitude = longitude?.let { String.format(Locale.US, "%.7f", it) }.orEmpty()
+        initialLatitude = latitude?.let { if (id == null) String.format(Locale.US, "%.7f", it) else formatEditableCoordinate(it) }.orEmpty()
+        initialLongitude = longitude?.let { if (id == null) String.format(Locale.US, "%.7f", it) else formatEditableCoordinate(it) }.orEmpty()
         showEditor = true
     }
     fun openFenceEditor(point: DraftWaypoint? = null) {
         editingFenceId = point?.id
-        initialLatitude = point?.latitude?.let(::formatOutlineEditCoordinate).orEmpty()
-        initialLongitude = point?.longitude?.let(::formatOutlineEditCoordinate).orEmpty()
+        initialLatitude = point?.latitude?.let(::formatEditableCoordinate).orEmpty()
+        initialLongitude = point?.longitude?.let(::formatEditableCoordinate).orEmpty()
         showFenceEditor = true
     }
     fun focusReviewWaypoint(number: Int?) {
@@ -799,7 +799,7 @@ fun MissionScreen(
 private const val MAX_ROUTE_FILE_CHARS = 256_000
 private const val MAX_COORDINATE_CHARS = 32
 
-private fun formatOutlineEditCoordinate(value: Double): String {
+private fun formatEditableCoordinate(value: Double): String {
     val canonical = value.toString()
     if ('E' !in canonical && 'e' !in canonical) return canonical
     val plain = java.math.BigDecimal.valueOf(value).toPlainString()

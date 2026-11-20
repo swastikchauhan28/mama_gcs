@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-20 — Phase 213 precise route waypoint edit
+
+- Done: existing route waypoints now prefill edit fields with round-trip decimal values, preventing a no-edit Apply from dispatching seven-decimal-rounded coordinates. Typed Add and map-based Add keep their previous behavior. The full software gate passed: 533 JVM tests in 84 suites, debug app/test APKs and lint with zero errors / 27 warnings. The disposable API 34 emulator passed focused precise Edit, typed Add and map-based Add workflow checks (`OK (1 test)` each), 2×-font screenshot review and all three Android health gates. See [Phase 213](phase-213-report.md) and D-213-01.
+- In progress: owner diff review remains a release gate; source changes are uncommitted until requested.
+- Broken or risky: the precise no-edit check dispatches a synthetic local action, while the separate map workflow verifies real local save behavior; a high-precision saved-route no-edit round trip was not tested. Extreme-value exponent fallback, physical route accuracy and rover safety remain unverified.
+- Next: review the Phase 213 diff and evidence before any release. Keep RC work paused; commit/push only on request.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-20 — Phase 212 plain decimal outline edit values
 
 - Done: stored outline coordinates that would display in scientific notation now use plain decimal text when it fits the existing 32-character input bound; ordinary values and signed zero keep their canonical form. A no-edit Apply preserves the exact tested Double values. The full software gate passed: 533 JVM tests in 84 suites, both debug APK builds and lint with zero errors / 27 warnings. The disposable API 34 emulator passed focused outline round-trip and route Add tests (`OK (1 test)` each), visual 2×-font inspection and both Android health gates. See [Phase 212](phase-212-report.md) and D-212-01.
