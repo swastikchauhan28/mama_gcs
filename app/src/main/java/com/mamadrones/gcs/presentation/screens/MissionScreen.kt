@@ -590,7 +590,7 @@ fun MissionScreen(
         val stale = id != null && (original == null || plan.draft.keepInFence.firstOrNull { it.id == id } != original)
         WaypointDialog(
             initialLatitude, initialLongitude, editing = id != null,
-            enabled = plan.editable && !stale, outline = id != null, stale = stale,
+            enabled = plan.editable && !stale, outline = true, stale = stale,
             onDismiss = { showFenceEditor = false },
             onConfirm = { latitude, longitude ->
                 if (id == null) onAction(MissionPlanAction.AddFenceVertex(latitude, longitude))
@@ -840,7 +840,12 @@ private fun WaypointDialog(
     val latitudeInvalid = latitude.isNotBlank() && lat == null
     val longitudeInvalid = longitude.isNotBlank() && lon == null
     AlertDialog(
-        onDismissRequest = onDismiss, title = { Text(if (outline) "Edit outline vertex" else if (editing) "Edit waypoint" else "Add waypoint") },
+        onDismissRequest = onDismiss, title = { Text(when {
+            outline && editing -> "Edit outline vertex"
+            outline -> "Add outline vertex"
+            editing -> "Edit waypoint"
+            else -> "Add waypoint"
+        }) },
         text = {
             // Resolve against the dialog window that owns the focused text field.
             val keyboardController = LocalSoftwareKeyboardController.current

@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-20 — Phase 211 outline coordinate dialog title
+
+- Done: Add outline coordinate now opens a dialog titled `Add outline vertex`; Edit outline remains `Edit outline vertex`, and route Add remains `Add waypoint`. The shared coordinate validation and local action callbacks are unchanged. The full software build gate passed: 533 JVM tests in 84 suites, debug app/test APKs and lint with zero errors / 27 warnings. A disposable API 34 emulator passed the focused outline and independent route Add tests (`OK (1 test)` each). At the operator's request, the restored combined outline-to-route test also passed `OK (1 test)` after correctly scrolling the horizontally offscreen Route tab and the route Add control into view; its 2×-font route-dialog screenshot and Android health gate passed. See [Phase 211 follow-up](phase-211-report.md#2026-11-20-follow-up--combined-test-rerun) and D-211-01.
+- In progress: owner diff review remains a release gate; source changes are uncommitted until requested.
+- Broken or risky: four earlier combined-test attempts failed on test navigation at enlarged text; their evidence and healthy Android gates are retained in the phase report. The final combined test passed. Physical spoken TalkBack, saved-draft recovery and field/rover behavior are unverified.
+- Next: review the scoped Phase 211 diff and evidence before any release. Keep RC work paused; commit/push only on request.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-20 — Phase 210 accessible outline removal
 
 - Done: each field-outline Remove action now announces its numbered vertex and opens a draft-bound local confirmation; cancel and changed/non-editable drafts cannot dispatch removal. Full software gate passed: 533 JVM tests in 84 suites, both debug APK builds, lint zero errors / 27 warnings. A fresh disposable API 34 emulator passed the focused native accessibility/confirmation test and affected real-activity coverage recovery test (`OK (1 test)` each), 2x-font screenshot review and both post-run Android health gates. See [Phase 210](phase-210-report.md) and D-210-01.

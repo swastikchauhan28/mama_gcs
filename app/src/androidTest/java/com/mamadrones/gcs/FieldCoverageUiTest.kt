@@ -444,6 +444,36 @@ class FieldCoverageUiTest {
         assertEquals(original.keepInFence, draft.value.keepInFence)
     }
 
+    @Test fun coordinateDialogNamesOutlineAndRouteDestinationsAtLargeText() {
+        show(largeText = true)
+        compose.selectMissionTab("Field outline")
+        node("mission-add-fence-vertex").performClick()
+        compose.onNodeWithText("Add outline vertex").assertIsDisplayed()
+        compose.onNodeWithText("Add waypoint").assertDoesNotExist()
+        capture("phase211-add-outline-dialog.png")
+        compose.onNodeWithTag("mission-latitude").performTextReplacement("1")
+        compose.onNodeWithTag("mission-longitude").performTextReplacement("2")
+        compose.onNodeWithTag("mission-confirm-waypoint").assertIsEnabled().performClick()
+        assertEquals(listOf(MissionPlanAction.AddFenceVertex(1.0, 2.0)), actions)
+
+        node("mission-edit-fence-1").performClick()
+        compose.onNodeWithText("Edit outline vertex").assertIsDisplayed()
+        capture("phase211-edit-outline-dialog.png")
+        compose.onNodeWithText("Cancel").performClick()
+
+        compose.onNodeWithTag("mission-editor").performScrollToIndex(0)
+        compose.onNodeWithTag("mission-tab-Route").performScrollTo().performClick()
+        compose.onNodeWithTag("mission-tab-Route").assertIsSelected()
+        // At 2x text the Route chip can be horizontally offscreen after visiting Field outline.
+        compose.onNodeWithTag("mission-editor").performScrollToIndex(1)
+        compose.onNodeWithTag("mission-add").performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithText("Add waypoint").assertIsDisplayed()
+        compose.onNodeWithText("Add outline vertex").assertDoesNotExist()
+        capture("phase211-add-route-dialog.png")
+        compose.onNodeWithText("Cancel").performClick()
+        assertEquals(listOf(MissionPlanAction.AddFenceVertex(1.0, 2.0)), actions)
+    }
+
     @Test fun removingOutlineVertexHasNativeNameAndRequiresCurrentDraftConfirmationAtLargeText() {
         val original = MissionDraft(keepInFence = coverageTestOutline())
         val draft = mutableStateOf(original)
