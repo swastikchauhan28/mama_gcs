@@ -129,6 +129,8 @@ fun MissionScreen(
     var showRename by rememberSaveable { mutableStateOf(false) }
     var showNewConfirmation by rememberSaveable { mutableStateOf(false) }
     var pendingOutlineClear by remember { mutableStateOf<MissionDraft?>(null) }
+    // A stable vertex ID alone is insufficient when the surrounding outline changes before confirmation.
+    var pendingFenceRemoval by remember { mutableStateOf<Pair<MissionDraft, String>?>(null) }
     var pendingWaypointRemovalId by rememberSaveable { mutableStateOf<String?>(null) }
     var showLibrary by rememberSaveable { mutableStateOf(false) }
     var librarySearchQuery by rememberSaveable { mutableStateOf("") }
@@ -491,8 +493,10 @@ fun MissionScreen(
                                 TextButton(onClick = { onAction(MissionPlanAction.MoveFenceVertex(point.id, 1)) },
                                     enabled = plan.editable && index < plan.draft.keepInFence.lastIndex,
                                     modifier = Modifier.testTag("mission-down-fence-$index").semantics { contentDescription = "Move outline vertex ${index + 1} down" }) { Text("Move down") }
-                                TextButton(onClick = { onAction(MissionPlanAction.RemoveFenceVertex(point.id)) },
-                                    enabled = plan.editable, modifier = Modifier.testTag("mission-remove-fence-$index")) { Text("Remove") }
+                                TextButton(onClick = { pendingFenceRemoval = plan.draft to point.id },
+                                    enabled = plan.editable,
+                                    modifier = Modifier.testTag("mission-remove-fence-$index")
+                                        .semantics { contentDescription = "Remove outline vertex ${index + 1}" }) { Text("Remove") }
                             }
                         }
                     }
@@ -623,6 +627,29 @@ fun MissionScreen(
             ) { Text("Clear outline") } },
             dismissButton = { TextButton(onClick = { pendingOutlineClear = null },
                 modifier = Modifier.testTag("mission-cancel-clear-fence")) { Text("Cancel") } },
+        )
+    }
+    pendingFenceRemoval?.let { (requestedDraft, id) ->
+        val index = plan.draft.keepInFence.indexOfFirst { it.id == id }
+        val vertex = plan.draft.keepInFence.getOrNull(index)
+        val stillCurrent = plan.editable && plan.draft == requestedDraft && vertex != null
+        AlertDialog(
+            onDismissRequest = { pendingFenceRemoval = null },
+            title = { Text("Remove outline vertex?") },
+            text = { Text(if (stillCurrent)
+                "Remove outline vertex ${index + 1} (${String.format(Locale.US, "%.7f, %.7f", vertex!!.latitude, vertex.longitude)}) from the working draft? The saved draft changes only after Save draft. Coverage preview will clear."
+            else "The working draft changed. Close this dialog and review the outline before trying again.") },
+            confirmButton = { TextButton(
+                onClick = {
+                    if (plan.editable && plan.draft == requestedDraft && plan.draft.keepInFence.any { it.id == id })
+                        onAction(MissionPlanAction.RemoveFenceVertex(id))
+                    pendingFenceRemoval = null
+                },
+                enabled = stillCurrent,
+                modifier = Modifier.testTag("mission-confirm-remove-fence"),
+            ) { Text("Remove vertex") } },
+            dismissButton = { TextButton(onClick = { pendingFenceRemoval = null },
+                modifier = Modifier.testTag("mission-cancel-remove-fence")) { Text("Cancel") } },
         )
     }
     pendingWaypointRemovalId?.let { id ->

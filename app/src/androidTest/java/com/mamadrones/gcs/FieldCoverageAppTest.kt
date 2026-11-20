@@ -378,6 +378,8 @@ class FieldCoverageAppTest {
                 node("coverage-diagram").assertIsDisplayed()
                 compose.selectMissionTab("Field outline")
                 node("mission-remove-fence-1").performClick()
+                compose.onNodeWithText("Remove outline vertex?").assertIsDisplayed()
+                compose.onNodeWithTag("mission-confirm-remove-fence").performClick()
                 addVertex(vertices[1])
                 compose.selectMissionTab("Coverage")
                 node("coverage-empty").assertIsDisplayed()

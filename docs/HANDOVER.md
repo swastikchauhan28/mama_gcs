@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-20 — Phase 210 accessible outline removal
+
+- Done: each field-outline Remove action now announces its numbered vertex and opens a draft-bound local confirmation; cancel and changed/non-editable drafts cannot dispatch removal. Full software gate passed: 533 JVM tests in 84 suites, both debug APK builds, lint zero errors / 27 warnings. A fresh disposable API 34 emulator passed the focused native accessibility/confirmation test and affected real-activity coverage recovery test (`OK (1 test)` each), 2x-font screenshot review and both post-run Android health gates. See [Phase 210](phase-210-report.md) and D-210-01.
+- In progress: owner diff review remains a release gate; source changes are uncommitted until requested.
+- Broken or risky: the existing AVD showed an Android System UI ANR, and the new AVD showed Google service ANRs during first boot before a quiet preflight passed; those failures are preserved. Spoken TalkBack/Switch Access on a physical phone, actual field coverage and saved-route recovery remain unverified.
+- Next: review the scoped Phase 210 diff and evidence before any release. Keep RC work paused; commit/push only on request.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-20 — Phase 209 waypoint row accessibility
 
 - Done: approved software-only route row update gives Edit, Up, Down and Remove buttons contextual numbered accessibility names. Full production-code gate passed: 533 JVM tests in 84 suites, both debug APK builds, lint zero errors / 27 warnings. A fresh disposable API 34 emulator passed final focused route/native accessibility-tree and Add keyboard tests (`OK (1 test)` each), 2x-font screenshot review and both post-run Android health gates with zero new crash/ANR events. See [Phase 209](phase-209-report.md) and D-209-01.

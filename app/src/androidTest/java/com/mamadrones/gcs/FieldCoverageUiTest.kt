@@ -4,9 +4,11 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.*
@@ -440,6 +442,58 @@ class FieldCoverageUiTest {
         compose.onNodeWithTag("mission-cancel-clear-fence").performClick()
         assertTrue("Stale confirmation must not dispatch an action", actions.isEmpty())
         assertEquals(original.keepInFence, draft.value.keepInFence)
+    }
+
+    @Test fun removingOutlineVertexHasNativeNameAndRequiresCurrentDraftConfirmationAtLargeText() {
+        val original = MissionDraft(keepInFence = coverageTestOutline())
+        val draft = mutableStateOf(original)
+        show(largeText = true, draft = draft)
+        compose.selectMissionTab("Field outline")
+        node("mission-fence-row-1").assertIsDisplayed()
+        val expected = listOf("Edit outline vertex 2", "Move outline vertex 2 up",
+            "Move outline vertex 2 down", "Remove outline vertex 2")
+        listOf("mission-edit-fence-1", "mission-up-fence-1", "mission-down-fence-1", "mission-remove-fence-1")
+            .zip(expected).forEach { (tag, description) ->
+                node(tag).assertIsDisplayed().assertContentDescriptionEquals(description)
+            }
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        var root: AccessibilityNodeInfo? = null
+        compose.waitUntil(10_000) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) automation.clearCache()
+            root = automation.rootInActiveWindow
+            root != null
+        }
+        assertEquals(compose.activity.packageName, root!!.packageName?.toString())
+        val nativeDescriptions = mutableListOf<String>()
+        fun collect(node: AccessibilityNodeInfo?) {
+            if (node == null || !node.isVisibleToUser) return
+            node.contentDescription?.toString()?.let(nativeDescriptions::add)
+            for (child in 0 until node.childCount) collect(node.getChild(child))
+        }
+        collect(root)
+        assertEquals("Android must expose the current vertex actions in route order", expected,
+            nativeDescriptions.filter { it in expected })
+        capture("phase210-outline-actions.png")
+
+        node("mission-remove-fence-1").performClick()
+        compose.onNodeWithText("Remove outline vertex?").assertIsDisplayed()
+        compose.onNodeWithText("Remove outline vertex 2", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("mission-confirm-remove-fence").assertIsEnabled()
+        capture("phase210-outline-remove-confirm.png")
+        compose.onNodeWithTag("mission-cancel-remove-fence").performClick()
+        assertTrue("Cancel must not dispatch a removal", actions.isEmpty())
+
+        node("mission-remove-fence-1").performClick()
+        compose.runOnIdle { draft.value = original.copy(name = "Changed draft") }
+        compose.onNodeWithTag("mission-confirm-remove-fence").assertIsNotEnabled()
+        compose.onNodeWithText("The working draft changed. Close this dialog and review the outline before trying again.").assertIsDisplayed()
+        compose.onNodeWithTag("mission-cancel-remove-fence").performClick()
+        assertTrue("Stale confirmation must not dispatch a removal", actions.isEmpty())
+
+        node("mission-remove-fence-1").performClick()
+        compose.onNodeWithTag("mission-confirm-remove-fence").assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals(listOf(MissionPlanAction.RemoveFenceVertex("f1")), actions) }
+        assertEquals("Synthetic action must not mutate the local draft", original.keepInFence, draft.value.keepInFence)
     }
 
     @Test fun selfCrossingOutlineClearsPreviewAndRecoversWithoutChangingRoute() {
