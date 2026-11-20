@@ -1,7 +1,9 @@
 package com.mamadrones.gcs
 
 import android.graphics.Bitmap
+import android.os.Build
 import android.view.WindowManager
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
@@ -379,12 +381,15 @@ class VisualLayoutRegressionTest {
         }
 
         val rowZero = listOf(
-            "mission-edit-0" to "Edit", "mission-up-0" to "Up",
-            "mission-down-0" to "Down", "mission-remove-0" to "Remove",
+            Triple("mission-edit-0", "Edit", "Edit waypoint 1"),
+            Triple("mission-up-0", "Up", "Move waypoint 1 up"),
+            Triple("mission-down-0", "Down", "Move waypoint 1 down"),
+            Triple("mission-remove-0", "Remove", "Remove waypoint 1"),
         )
-        rowZero.forEach { (tag, label) ->
+        rowZero.forEach { (tag, label, description) ->
             compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag(tag))
             val button = compose.onNodeWithTag(tag).assertIsDisplayed().assertTextEquals(label)
+                .assertContentDescriptionEquals(description)
             val layouts = mutableListOf<TextLayoutResult>()
             button.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
             assertEquals("$label should remain on one line", 1, layouts.single().lineCount)
@@ -398,6 +403,25 @@ class VisualLayoutRegressionTest {
         screenshotFile.outputStream().use { output ->
             assertTrue("Waypoint actions screenshot must be written", screenshot.compress(Bitmap.CompressFormat.PNG, 100, output))
         }
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        var root: AccessibilityNodeInfo? = null
+        compose.waitUntil(10_000) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) automation.clearCache()
+            root = automation.rootInActiveWindow
+            root != null
+        }
+        assertEquals("Unexpected foreground window", compose.activity.packageName, root!!.packageName?.toString())
+        val nativeActions = mutableListOf<String>()
+        fun collectVisibleDescriptions(node: AccessibilityNodeInfo?) {
+            if (node == null || !node.isVisibleToUser) return
+            node.contentDescription?.toString()?.let(nativeActions::add)
+            for (child in 0 until node.childCount) collectVisibleDescriptions(node.getChild(child))
+        }
+        collectVisibleDescriptions(root)
+        val expectedNativeOrder = listOf("Edit waypoint 1", "Move waypoint 1 down", "Remove waypoint 1")
+        val observedNativeOrder = nativeActions.filter { it in expectedNativeOrder }
+        assertEquals("Enabled waypoint actions must be named and follow route order in Android accessibility",
+            expectedNativeOrder, observedNativeOrder)
 
         compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-up-0"))
         compose.onNodeWithTag("mission-up-0").assertIsNotEnabled()
@@ -405,8 +429,10 @@ class VisualLayoutRegressionTest {
         compose.onNodeWithTag("mission-down-0").assertIsEnabled()
         compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-up-1"))
         compose.onNodeWithTag("mission-up-1").assertIsEnabled()
+            .assertContentDescriptionEquals("Move waypoint 2 up")
         compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-down-1"))
         compose.onNodeWithTag("mission-down-1").assertIsEnabled()
+            .assertContentDescriptionEquals("Move waypoint 2 down")
         compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-up-2"))
         compose.onNodeWithTag("mission-up-2").assertIsEnabled()
         compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-down-2"))

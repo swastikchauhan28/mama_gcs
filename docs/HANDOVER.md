@@ -1,5 +1,41 @@
 # Current handover
 
+## 2026-11-20 — Phase 209 waypoint row accessibility
+
+- Done: approved software-only route row update gives Edit, Up, Down and Remove buttons contextual numbered accessibility names. Full production-code gate passed: 533 JVM tests in 84 suites, both debug APK builds, lint zero errors / 27 warnings. A fresh disposable API 34 emulator passed final focused route/native accessibility-tree and Add keyboard tests (`OK (1 test)` each), 2x-font screenshot review and both post-run Android health gates with zero new crash/ANR events. See [Phase 209](phase-209-report.md) and D-209-01.
+- In progress: owner diff review remains a release gate.
+- Broken or risky: the original AVD had Android System UI crashes/ANRs; the fresh AVD's first test pass coincided with Google Play services ANRs before settling, all retained in the phase report. Spoken TalkBack/Switch Access on a physical device remains unverified. The Phase 208 diagnosis is documented separately; RC work is paused.
+- Next: keep RC work paused and review the Phase 209 diff and evidence before any release.
+- Do not touch: paused RC diagnosis, Cube/radio settings, motor outputs, mission upload, saved operator phone data or rover commands.
+
+## 2026-11-20 — Phase 208 RC2/RC3 option and calibration readback
+
+- Done: connected Mission Planner screenshots show `RC2_OPTION=0`, `RC3_OPTION=0`; each has min/trim/max 1100/1500/1900 µs and `REVERSED=0`. The labelled forward stick produced RC2 1051 µs, below its displayed min. See [Phase 208](phase-208-report.md).
+- Broken or risky: RC2/RC3 options do not explain why configured throttle points to RC3 while the reported stick moves RC2. Forward is the low side of RC2 in the observed capture, and output direction, calibration and failsafe are unverified. A one-parameter RCMAP change could conflict with current `RCMAP_PITCH=2`.
+- Next: with outputs isolated, check throttle return/opposite movement on RC2, then review a complete non-conflicting input mapping, transmitter direction/calibration and current failsafe/mode settings before any separately approved write. Commit/push only on request.
+- Do not touch: parameter writes, radio calibration, arming, motor outputs or rover commands in this read-only phase.
+
+## 2026-11-20 — Phase 208 labelled steering/throttle input check
+
+- Done: direct connected Cube Radio Calibration screenshots show centred RC1–RC8 at 1501 µs; steering-left changed RC1 to 1051 µs while RC2/RC3 stayed centred; throttle-forward changed RC2 to 1051 µs while RC1/RC3 stayed centred. Current `RCMAP_ROLL=1` matches the reported steering axis, while `RCMAP_THROTTLE=3` differs from the reported throttle axis. See [Phase 208](phase-208-report.md).
+- Broken or risky: inputs are observed, not rover outputs or safe movement. Relevant `RC2_OPTION`/`RC3_OPTION`, full throttle range, return to centre and failsafe remain unverified. Do not change RCMAP solely from the captures.
+- Next: read those option values and confirm isolated throttle return/full-range channel behavior before reviewing any configuration proposal. Commit/push only on request.
+- Do not touch: calibration, parameter writes, radio configuration, motor outputs or rover commands during diagnosis.
+
+## 2026-11-20 — Phase 208 direct Cube RC input screenshots
+
+- Done: three connected Mission Planner Radio Calibration captures show RC1 at 1926 µs in one, RC2 at 1951 µs with RC4 at 1273 µs in another, and RC5/RC8 at 1951 µs in a third. RC3 is 1501 µs in all three. See [Phase 208](phase-208-report.md).
+- Broken or risky: the captures do not identify which physical stick/switch was moved at each instant. RC1 can change in the direct Cube view, so the earlier phone-only no-RC1 observation is not universal. `RCx_OPTION` and the actual control mapping remain unresolved.
+- Next: correlate each capture with the operator's movement, or repeat one axis at a time with labelled observations; read relevant `RCx_OPTION` before considering a parameter change. Keep outputs isolated. Commit/push only on request.
+- Do not touch: calibration, parameter writes, radio configuration, wiring or rover commands during the read-only check.
+
+## 2026-11-20 — Phase 208 current RCMAP readback received
+
+- Done: operator-supplied connected Mission Planner screenshot reports CubeOrangePlus / ArduRover V4.7.2 with current displayed `RCMAP_ROLL=1`, `RCMAP_PITCH=2`, `RCMAP_THROTTLE=3`, `RCMAP_YAW=4`. It agrees with the older file for roll/throttle. See the dated [Phase 208 follow-up](phase-208-report.md).
+- Broken or risky: the screenshot shows configured channel selection, not a live physical stick-to-channel test. The separate Mama GCS steering sweep showed no RC1 change and variation on multiple other channels. `RCx_OPTION`, T12 mixing and actual Cube response remain unverified. Do not change RCMAP by guessing.
+- Next: on the secured, output-isolated setup, inspect Mission Planner Radio Calibration bars one axis at a time plus relevant `RCx_OPTION` values. Compare those channel movements with RCMAP before considering any parameter change. Commit/push only on request.
+- Do not touch: parameter writes, radio configuration, wiring, motor outputs or rover commands during this read-only diagnosis.
+
 ## 2026-11-20 — Phase 208 RC mapping check incomplete
 
 - Done: a read-only live T12_485 Classic RC activity observation on 19 November recorded RC3, RC6, RC7 and RC8 variation during an operator-reported steering sweep; RC1 and RC2 stayed constant in that observation. No parameter or vehicle command was sent. See [Phase 208](phase-208-report.md).

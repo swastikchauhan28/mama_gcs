@@ -1,0 +1,33 @@
+# Phase 209 — Waypoint row accessibility
+
+## Goal and scope
+
+The user approved a software-only waypoint editor accessibility phase on 2026-11-20 and paused RC work. Baseline `db6ae88`; three Phase 208 documentation files were already modified and are preserved separately. Model/version unavailable. The route editor's visible `Edit`, `Up`, `Down` and `Remove` buttons did not identify their waypoint to accessibility services. The field-outline rows already use numbered action descriptions. See D-209-01.
+
+## Change and data path
+
+`MissionScreen` renders each local draft waypoint by its current list index and stable ID. Each existing button now exposes a one-based waypoint number in its content description. The short visible label, callback, enabled guard, removal confirmation and draft action remain unchanged. The existing 320 dp, 2x-font synthetic route UI test now asserts descriptions for the first and second rows alongside its layout, enabled-boundary, edit, move and remove checks. No route data, persistence, transport, permission, dependency, account or vehicle command behavior changed. Input is the local draft (up to 250 waypoints); rendering is lazy and descriptions are recomputed from the current row order. A screen reader can announce a current number, but an uncommitted reorder action does not prove the saved draft changed.
+
+## Verification and limits
+
+- `git diff --check` passed; Git emitted only working-copy LF/CRLF conversion warnings. Reviewed the Phase 209 source, test and decision diff for scope. The pre-existing Phase 208 documentation changes remain uncommitted and separate.
+- `.\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --no-daemon --max-workers=1 --console=plain`: `BUILD SUCCESSFUL` in 11m 17s; 533 JVM tests in 84 suites, zero failures, errors or skips; both debug APKs built; lint had zero errors and 27 warnings. This compiled the revised Android UI test but did not execute it.
+- Disposable Pixel 3a API 34 emulator attempt one: the required 30-second preflight failed before app installation with 25 new crash lines and 3 ANR events. Crash log identifies `com.android.systemui` and `IllegalArgumentException: subscriptionId 1 is not in the list of valid subscriptions`. Local ignored evidence: `app/build/phase209-emulator-crash-startup.txt`, `phase209-emulator-events-startup.txt`.
+- After preserving evidence, one no-wipe cold-boot retry completed Android boot but its preflight failed with an `Application Not Responding: com.android.systemui` dialog. Local ignored evidence: `app/build/phase209-emulator-crash-retry.txt`, `phase209-emulator-events-retry.txt`. The focused instrumentation and visual inspection were **not run**; their outcome is open. No error dialog was dismissed or test assertion weakened.
+- A fresh disposable API 31 AVD was considered using an already installed system image. The SDK's legacy `tools/bin/avdmanager.bat create avd -n MamaGcs_Phase209_API31 -k 'system-images;android-31;google_apis;x86_64' -d pixel_3a` failed with missing `javax.xml.bind.annotation.XmlSchema` under the installed Java runtime. `emulator -list-avds` confirmed no new AVD was created. No SDK download or AVD data reset was attempted.
+
+### 2026-11-20 emulator completion
+
+The apparent API 31 image directory lacked `kernel-ranchu` and `system.img`; the installed API 34 image contained both. A new empty disposable AVD named `MamaGcs_Phase209_API31` was created from the existing Pixel 3a config, then pointed to the complete API 34 image. The name is historical; its actual image/target is **API 34**. The original AVDs and their data were untouched. A 30-second preflight passed.
+
+The first focused `VisualLayoutRegressionTest#waypointRowActionsFitAndKeepReorderBoundariesAtLargeText` run passed `OK (1 test)` but its overall acceptance gate failed because Google Play services logged three new ANRs during the fresh AVD's initial settling. Evidence: `app/build/acceptance-20261120-112332-b1a4381d/`. After a quiet 30-second preflight, the same test passed with zero new crash/ANR lines and a healthy Android window. Evidence: `app/build/acceptance-20261120-112756-61703ba2/`.
+
+Visual review of the local 2x-font `app/build/phase209-waypoint-actions.png` and `phase209-remove-confirmation.png` showed the short action labels legible, a disabled Up control, and the numbered removal confirmation with Cancel and Remove waypoint actions. The waypoint title was above the captured scroll position, so the screenshot verifies the action row rather than the full editor. These are ignored synthetic evidence files.
+
+To verify the screen reader-facing traversal directly, the focused test gained a native Android accessibility-tree assertion for the enabled first-row actions in order. Its first run failed because `UiAutomation.rootInActiveWindow` was temporarily null; the test now waits up to ten seconds for a real root, clears the API 34 accessibility cache, and verifies the fixture activity package. The subsequent focused run passed `OK (1 test)` with a healthy Android post-run gate and zero new crash/ANR events. Evidence: `app/build/acceptance-20261120-113954-3c74485a/`. This addition did not change production code or weaken the required descriptions/order. The revised test APK and lint passed `BUILD SUCCESSFUL` in 2m 4s; the prior full JVM/build gate remains the current production-code gate.
+
+The existing `WaypointKeyboardUiTest#addWaypointCanDismissImeAndConfirmAtLargeText` then passed `OK (1 test)` on the same disposable AVD with zero new crash/ANR events and a healthy Android window: `app/build/acceptance-20261120-114122-e15f6111/`. `app/build/phase209-add-after-done.png` was visually inspected: latitude, longitude, Cancel and Add remained visible after keyboard dismissal at 2x text. The instructional line is partly above the dialog's scroll position; the screenshot does not establish that all guidance is simultaneously visible. The fixture dispatched only local synthetic actions, with no hardware link or saved operator data.
+
+## Next and recovery
+
+The focused route and Add tests, native accessibility traversal and screenshots now complete the scoped emulator acceptance. Spoken TalkBack or Switch Access on a physical device remains a separate check. This phase does not establish physical rover safety or mission execution readiness. Source rollback is a reviewed inverse of the Phase 209 code/test/doc diff from `db6ae88`, followed by the same software checks; no rollback was performed or known production-qualified artifact claimed. Commit/push only on request.

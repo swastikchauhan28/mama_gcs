@@ -513,13 +513,17 @@ fun MissionScreen(
                             Text(String.format(Locale.US, "%.7f, %.7f", point.latitude, point.longitude), style = MaterialTheme.typography.bodySmall)
                             FlowRow {
                                 TextButton(onClick = { openEditor(point.id, point.latitude, point.longitude) }, enabled = plan.editable,
-                                    modifier = Modifier.testTag("mission-edit-$index")) { Text("Edit") }
+                                    modifier = Modifier.testTag("mission-edit-$index")
+                                        .semantics { contentDescription = "Edit waypoint ${index + 1}" }) { Text("Edit") }
                                 TextButton(onClick = { onAction(MissionPlanAction.Move(point.id, -1)) }, enabled = plan.editable && index > 0,
-                                    modifier = Modifier.testTag("mission-up-$index")) { Text("Up") }
+                                    modifier = Modifier.testTag("mission-up-$index")
+                                        .semantics { contentDescription = "Move waypoint ${index + 1} up" }) { Text("Up") }
                                 TextButton(onClick = { onAction(MissionPlanAction.Move(point.id, 1)) }, enabled = plan.editable && index < plan.draft.waypoints.lastIndex,
-                                    modifier = Modifier.testTag("mission-down-$index")) { Text("Down") }
+                                    modifier = Modifier.testTag("mission-down-$index")
+                                        .semantics { contentDescription = "Move waypoint ${index + 1} down" }) { Text("Down") }
                                 TextButton(onClick = { pendingWaypointRemovalId = point.id }, enabled = plan.editable,
-                                    modifier = Modifier.testTag("mission-remove-$index")) { Text("Remove") }
+                                    modifier = Modifier.testTag("mission-remove-$index")
+                                        .semantics { contentDescription = "Remove waypoint ${index + 1}" }) { Text("Remove") }
                             }
                         }
                     }
