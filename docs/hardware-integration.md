@@ -1,5 +1,21 @@
 # Hardware integration gates
 
+## 20 November 2026 — RC2/RC3 option readback and low-side throttle input
+
+Connected Mission Planner screens show `RC2_OPTION=0`, `RC3_OPTION=0`, `RC2/RC3_MIN=1100`, `TRIM=1500`, `MAX=1900`, `REVERSED=0`; RC2 dead zone 0, RC3 dead zone 30. The operator-labelled forward stick capture showed RC2 1051 µs, below displayed RC2 minimum and below trim, while configured `RCMAP_THROTTLE=3` selects unchanged RC3. This remains an input mapping/direction/calibration diagnosis, not a confirmed rover movement or permission to change settings. A proposed mapping to RC2 must account for the current `RCMAP_PITCH=2` and be reviewed with the hardware owner. See [Phase 208](phase-208-report.md).
+
+## 20 November 2026 — labelled steering and throttle RC inputs
+
+Operator-labelled connected Mission Planner captures show RC1–RC8 at 1501 µs with both sticks centred; steering-left then shows RC1 1051 µs with RC2/RC3 centred; throttle-forward shows RC2 1051 µs with RC1/RC3 centred. This supports steering stick → RC1 and throttle stick → RC2 at the Cube input for those moments. The current displayed `RCMAP_ROLL=1` agrees with the steering input; `RCMAP_THROTTLE=3` points to a different channel than the reported throttle stick. Check `RC2_OPTION`/`RC3_OPTION` and repeat the isolated throttle return/range check before any setting decision. No motor output, failsafe or rover safety was verified. See [Phase 208](phase-208-report.md).
+
+## 20 November 2026 — direct Cube RC input captures
+
+Connected Mission Planner Radio Calibration screenshots show RC1 1926 µs at 10:35:42; RC2 1951 µs and RC4 1273 µs at 10:35:52; and RC5/RC8 1951 µs at 10:36:26. RC3 is 1501 µs in all three static captures. The supplied images do not label which physical stick, switch or knob was moved at each moment. RC1 is demonstrably variable in this direct Cube session, but no steering/throttle assignment is established. Preserve the earlier Mama GCS observation as a separate session; do not reconcile by guessing or writing parameters. See [Phase 208](phase-208-report.md).
+
+## 20 November 2026 — current Cube RCMAP screenshot
+
+An operator-supplied Mission Planner Full Parameter List screenshot shows a connected CubeOrangePlus reporting ArduRover V4.7.2 and `RCMAP_ROLL=1`, `RCMAP_PITCH=2`, `RCMAP_THROTTLE=3`, `RCMAP_YAW=4`. These current displayed values agree with the older accepted file on roll/throttle. The screenshot does not show current `RCx_OPTION`, Radio Calibration movement or physical steering/throttle assignment. Phase 208's phone-side steering sweep did not show RC1 movement and showed several other channel changes. Keep that mismatch open; do not infer a corrected setting or write parameters. See [Phase 208 follow-up](phase-208-report.md).
+
 ## 20 November 2026 — correction to Phase 207 channel inference
 
 The 19 November Phase 208 receive-only activity check recorded variation on RC3, RC6, RC7 and RC8 during an operator-reported steering sweep; a separate held-left capture showed RC5 and RC7 high while RC8 stayed centred. Therefore Phase 207's RC8 and RC2 snapshots confirm that those values changed during the reported actions but do not establish unique steering/throttle channel assignments. Current Cube `RCMAP_` and relevant `RCx_OPTION` readback remains missing; the accepted file values are historical. See [Phase 208](phase-208-report.md). No physical movement, output, setting or parameter change was made.
