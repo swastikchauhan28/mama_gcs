@@ -182,6 +182,75 @@ class RouteDocumentPickerTest {
         }
     }
 
+    @Test fun rejectedGpxImportsPreserveSavedAndWorkingDraft() {
+        val repository = LocalMissionDraftRepository(instrumentation.targetContext)
+        val previous = runBlocking { repository.load() }
+        val recovery = runBlocking { repository.loadRecovery() }
+        val route = MissionDraft("Rejected GPX test", listOf(DraftWaypoint("p", -35.36, 149.16)))
+        val prefix = "qa_route_" + UUID.randomUUID().toString().replace("-", "")
+        val namespace = "http://www.topografix.com/GPX/1/1"
+        val cases = listOf(
+            Triple("${prefix}a.gpx",
+                """<gpx version="1.1" xmlns="$namespace"><rte><rtept lat="invalid" lon="149.16"/></rte></gpx>""",
+                "GPX route point has no valid latitude"),
+            Triple("${prefix}b.gpx",
+                buildString {
+                    append("<gpx version=\"1.1\" xmlns=\"$namespace\"><rte>")
+                    repeat(MissionDraft.MAX_WAYPOINTS + 1) { append("<rtept lat=\"-35.36\" lon=\"149.16\"/>") }
+                    append("</rte></gpx>")
+                },
+                "Route has too many waypoints"),
+        )
+        val resolver = instrumentation.targetContext.contentResolver
+        val fileUris = mutableListOf<android.net.Uri>()
+        var scenario: ActivityScenario<MainActivity>? = null
+        try {
+            cases.forEach { (file, content, _) ->
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, file)
+                    put(MediaStore.Downloads.MIME_TYPE, "application/gpx+xml")
+                }
+                val uri = requireNotNull(resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values))
+                fileUris += uri
+                requireNotNull(resolver.openOutputStream(uri)).bufferedWriter().use { it.write(content) }
+            }
+            runBlocking { repository.save(route) }
+            scenario = ActivityScenario.launch(MainActivity::class.java)
+            awaitApp()
+            compose.openWorkspace("mission")
+            compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-edit-0"))
+            compose.onNodeWithTag("mission-edit-0").performClick()
+            compose.onNodeWithTag("mission-latitude").performTextReplacement("-35.365")
+            compose.onNodeWithTag("mission-confirm-waypoint").performClick()
+
+            cases.forEach { (file, _, error) ->
+                action("Import route file")
+                downloads()
+                clickNative { it.text?.toString() == file }
+                awaitApp()
+                compose.waitUntil(15_000) { compose.onAllNodesWithText(error).fetchSemanticsNodes().isNotEmpty() }
+                compose.onNodeWithTag("mission-editor").performScrollToNode(hasText(error))
+                compose.onNodeWithText(error).assertIsDisplayed()
+                compose.onNodeWithText("Import route preview").assertDoesNotExist()
+                assertEquals(route, runBlocking { repository.load() })
+                compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-edit-0"))
+                compose.onNodeWithTag("mission-edit-0").performClick()
+                compose.onNodeWithTag("mission-latitude").assertTextContains("-35.365", substring = true)
+                compose.onNodeWithText("Cancel").performClick()
+            }
+        } finally {
+            scenario?.close()
+            runBlocking {
+                repository.save(previous)
+                if (recovery == null) repository.clearRecovery() else repository.saveRecovery(recovery)
+            }
+            fileUris.forEach { resolver.delete(it, null, null) }
+        }
+        assertEquals(previous, runBlocking { repository.load() })
+        assertEquals(recovery, runBlocking { repository.loadRecovery() })
+    }
+
     @Test fun exportBothFormatsAndImportThroughSystemPickerWithCancellation() {
         val repository = LocalMissionDraftRepository(instrumentation.targetContext)
         val previous = runBlocking { repository.load() }

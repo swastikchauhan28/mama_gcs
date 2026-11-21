@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-21 — Phase 217 rejected GPX imports
+
+- Done: a disposable-emulator DocumentsUI test rejects an invalid GPX coordinate and a 251-point GPX route, verifies visible errors and no replacement preview, and preserves both saved and unsaved route state. The focused test passed `OK (1 test)` with a healthy Android post-run gate. Build passed; 533 JVM tests were up-to-date, lint zero errors / 27 warnings. No production code changed. See [Phase 217](phase-217-report.md) and D-217-01.
+- In progress: owner diff review remains a release gate. Phase 217 changes are uncommitted pending a specific request. Earlier demo media under `output/` remain separate untracked deliverables.
+- Broken or risky: initial emulator startup showed a System UI ANR, and the restarted emulator logged one Google Play services ANR before a later clean preflight. Synthetic rejection does not establish every third-party GPX's handling or physical navigation accuracy.
+- Next: review the Phase 217 test and evidence before release. Keep RC work paused.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-21 — Phase 216 exact GPX route exchange
 
 - Done: existing GPX codec and DocumentsUI tests now check exact high-precision route coordinates and a visible notice that GPX omits the field outline. Both focused API 31 emulator tests passed `OK (1 test)` with healthy post-run gates. The build passed; the 533-test JVM result was up-to-date, and lint reports zero errors / 27 warnings. No production code changed. See [Phase 216](phase-216-report.md) and D-216-01.

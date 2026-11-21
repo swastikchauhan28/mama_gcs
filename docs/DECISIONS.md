@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-217-01: Verify rejected GPX imports preserve both drafts
+
+- Date: 2026-11-21. User approved Phase 217. Baseline `2293f6d`, with earlier demo media untracked; model/version unavailable.
+- Context: the real DocumentsUI test covers an unsupported GeoJSON file, while GPX parser tests cover some malformed content without checking the app's saved and unsaved route state. The GPX decoder has a 250-waypoint bound and the import action should show an error without opening a replacement preview.
+- Choice: add one disposable-emulator picker test with two unique `.gpx` files: an invalid route-point latitude and a 251-point route. Start with a saved route and a distinct unsaved edit; after each import, verify the expected error, absent replacement preview, unchanged saved route and intact unsaved edit. Restore emulator draft/recovery and remove only the test-created file URIs in `finally`.
+- Alternatives: codec-only tests would miss the picker and working-draft behavior; a separate activity per file would duplicate setup and increase emulator exposure. Reuse the existing document-picker helpers and do not change production code unless a defect appears.
+- Risk and revisit: DocumentsUI or emulator startup may fail separately from GPX validation. Fixtures do not establish arbitrary third-party file handling or field accuracy. If a failure reveals a production defect, review its trust boundary and regression tests before a scoped fix.
+
 ## D-216-01: Verify exact GPX route exchange and outline notice
 
 - Date: 2026-11-21. User approved Phase 216. Baseline `c3b9acf`, with earlier demo media untracked; model/version unavailable.
