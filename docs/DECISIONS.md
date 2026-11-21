@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-218-01: Verify over-limit GeoJSON imports preserve both drafts
+
+- Date: 2026-11-21. User approved Phase 218. Baseline `de731b9`, with earlier demo media untracked; model/version unavailable.
+- Context: Phase 217 checked rejected GPX files through Android DocumentsUI. The GeoJSON decoder limits routes to 250 waypoints and keep-in outlines to 64 vertices, but the picker path has no saved/working draft preservation test for those two limits.
+- Choice: add one disposable-emulator picker test with two uniquely named GeoJSON FeatureCollections: 251 Point features, and one keep-in Polygon with 65 vertices plus its closing coordinate. Begin with a saved route and a different unsaved edit; after each import, check the visible bound error, absent replacement preview, unchanged saved route and retained unsaved edit. Restore prior emulator draft/recovery and delete only test-created document URIs.
+- Alternatives: codec-only checks would miss the picker and draft state; refactoring the prior GPX test into a generic harness increases the changed surface without improving this focused verification. Keep the new case local to the existing picker suite.
+- Risk and revisit: startup ANRs or DocumentsUI can fail independently of GeoJSON handling. Synthetic file rejection does not prove all third-party files or physical field behavior. If a production defect appears, review the file trust boundary before a scoped fix.
+
 ## D-217-01: Verify rejected GPX imports preserve both drafts
 
 - Date: 2026-11-21. User approved Phase 217. Baseline `2293f6d`, with earlier demo media untracked; model/version unavailable.

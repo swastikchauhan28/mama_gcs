@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-21 — Phase 218 over-limit GeoJSON imports
+
+- Done: a disposable-emulator DocumentsUI test rejects a 251-waypoint GeoJSON route and a 65-vertex field outline, verifies visible errors and no replacement preview, and preserves both saved and unsaved route state. The focused test passed `OK (1 test)` with a healthy post-run gate. Build passed; 533 JVM tests were up-to-date, lint zero errors / 27 warnings. No production code changed. See [Phase 218](phase-218-report.md) and D-218-01.
+- In progress: owner diff review remains a release gate. Phase 218 changes are uncommitted pending a specific request. Earlier demo media under `output/` remain separate untracked deliverables.
+- Broken or risky: the first emulator health window caught a Google Play services ANR before a later clean preflight. Synthetic files do not establish every third-party input's handling or physical navigation accuracy.
+- Next: review the Phase 218 test and evidence before release. Keep RC work paused.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-21 — Phase 217 rejected GPX imports
 
 - Done: a disposable-emulator DocumentsUI test rejects an invalid GPX coordinate and a 251-point GPX route, verifies visible errors and no replacement preview, and preserves both saved and unsaved route state. The focused test passed `OK (1 test)` with a healthy Android post-run gate. Build passed; 533 JVM tests were up-to-date, lint zero errors / 27 warnings. No production code changed. See [Phase 217](phase-217-report.md) and D-217-01.

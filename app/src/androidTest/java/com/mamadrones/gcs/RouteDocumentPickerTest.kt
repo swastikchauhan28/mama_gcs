@@ -23,6 +23,8 @@ import org.junit.Test
 import android.os.ParcelFileDescriptor
 import java.util.UUID
 import java.io.File
+import org.json.JSONArray
+import org.json.JSONObject
 
 /** English Android DocumentsUI acceptance. Run on a disposable emulator, not a user's phone.
  * Uses the real system picker and local Downloads provider; no mocked activity results or links.
@@ -209,6 +211,87 @@ class RouteDocumentPickerTest {
                 val values = ContentValues().apply {
                     put(MediaStore.Downloads.DISPLAY_NAME, file)
                     put(MediaStore.Downloads.MIME_TYPE, "application/gpx+xml")
+                }
+                val uri = requireNotNull(resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values))
+                fileUris += uri
+                requireNotNull(resolver.openOutputStream(uri)).bufferedWriter().use { it.write(content) }
+            }
+            runBlocking { repository.save(route) }
+            scenario = ActivityScenario.launch(MainActivity::class.java)
+            awaitApp()
+            compose.openWorkspace("mission")
+            compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-edit-0"))
+            compose.onNodeWithTag("mission-edit-0").performClick()
+            compose.onNodeWithTag("mission-latitude").performTextReplacement("-35.365")
+            compose.onNodeWithTag("mission-confirm-waypoint").performClick()
+
+            cases.forEach { (file, _, error) ->
+                action("Import route file")
+                downloads()
+                clickNative { it.text?.toString() == file }
+                awaitApp()
+                compose.waitUntil(15_000) { compose.onAllNodesWithText(error).fetchSemanticsNodes().isNotEmpty() }
+                compose.onNodeWithTag("mission-editor").performScrollToNode(hasText(error))
+                compose.onNodeWithText(error).assertIsDisplayed()
+                compose.onNodeWithText("Import route preview").assertDoesNotExist()
+                assertEquals(route, runBlocking { repository.load() })
+                compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-edit-0"))
+                compose.onNodeWithTag("mission-edit-0").performClick()
+                compose.onNodeWithTag("mission-latitude").assertTextContains("-35.365", substring = true)
+                compose.onNodeWithText("Cancel").performClick()
+            }
+        } finally {
+            scenario?.close()
+            runBlocking {
+                repository.save(previous)
+                if (recovery == null) repository.clearRecovery() else repository.saveRecovery(recovery)
+            }
+            fileUris.forEach { resolver.delete(it, null, null) }
+        }
+        assertEquals(previous, runBlocking { repository.load() })
+        assertEquals(recovery, runBlocking { repository.loadRecovery() })
+    }
+
+    @Test fun overLimitGeoJsonImportsPreserveSavedAndWorkingDraft() {
+        val repository = LocalMissionDraftRepository(instrumentation.targetContext)
+        val previous = runBlocking { repository.load() }
+        val recovery = runBlocking { repository.loadRecovery() }
+        val route = MissionDraft("Rejected GeoJSON test", listOf(DraftWaypoint("p", -35.36, 149.16)))
+        val prefix = "qa_route_" + UUID.randomUUID().toString().replace("-", "")
+        val pointFeatures = JSONArray().apply {
+            repeat(MissionDraft.MAX_WAYPOINTS + 1) {
+                put(JSONObject().put("type", "Feature").put("geometry", JSONObject()
+                    .put("type", "Point").put("coordinates", JSONArray().put(149.16).put(-35.36))))
+            }
+        }
+        val ring = JSONArray().apply {
+            repeat(MissionDraft.MAX_FENCE_VERTICES + 1) { index ->
+                val angle = 2 * Math.PI * index / (MissionDraft.MAX_FENCE_VERTICES + 1)
+                put(JSONArray().put(149.16 + 0.0001 * Math.cos(angle))
+                    .put(-35.36 + 0.0001 * Math.sin(angle)))
+            }
+            put(getJSONArray(0)) // Close the otherwise valid 65-vertex ring.
+        }
+        val polygon = JSONObject().put("type", "Feature")
+            .put("properties", JSONObject().put("role", "keep-in-fence"))
+            .put("geometry", JSONObject().put("type", "Polygon")
+                .put("coordinates", JSONArray().put(ring)))
+        val cases = listOf(
+            Triple("${prefix}a.geojson", JSONObject().put("type", "FeatureCollection")
+                .put("features", pointFeatures).toString(), "Route has too many waypoints"),
+            Triple("${prefix}b.geojson", JSONObject().put("type", "FeatureCollection")
+                .put("features", JSONArray().put(polygon)).toString(),
+                "Keep-in outline must have 3 to ${MissionDraft.MAX_FENCE_VERTICES} vertices"),
+        )
+        val resolver = instrumentation.targetContext.contentResolver
+        val fileUris = mutableListOf<android.net.Uri>()
+        var scenario: ActivityScenario<MainActivity>? = null
+        try {
+            cases.forEach { (file, content, _) ->
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, file)
+                    put(MediaStore.Downloads.MIME_TYPE, "application/geo+json")
                 }
                 val uri = requireNotNull(resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values))
                 fileUris += uri
