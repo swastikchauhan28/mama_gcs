@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-21 — Phase 225 landscape import preview
+
+- Done: found that a narrow landscape import dialog at 2× text had no visible detail area. Widened only the landscape AlertDialog, and added a test that rotates the preview after selecting a file through real DocumentsUI. GeoJSON/GPX passed at 2× and normal text in a 640 × 320 dp landscape viewport; portrait 2× also passed. All three focused runs had healthy Android gates. Build succeeded; 533 JVM tests passed; lint zero errors / 27 warnings. See [Phase 225](phase-225-report.md) and D-225-01.
+- In progress: owner diff review remains a release gate. Earlier APK/demo outputs remain separate untracked deliverables; check Git history for the Phase 225 commit status.
+- Broken or risky: the first passing run was actually portrait and is not landscape evidence. Full Files-panel usability in the short landscape window was not verified; the targeted preview test deliberately uses the real picker in portrait and rotates the open preview. Other languages, devices and physical mission behavior remain unverified.
+- Next: review the Phase 225 diff and focused evidence before any release. Keep RC work paused.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-21 — Phase 224 small-screen import preview
 
 - Done: reproduced clipped GeoJSON/GPX import details on a disposable 320 × 640 dp API 31 emulator at 2× text. Made the preview details scrollable while keeping both actions available. The real picker test passed at 2× and normal text after the fix, with healthy Android gates and visual screenshots. Build succeeded; 533 JVM tests passed; lint zero errors / 27 warnings. See [Phase 224](phase-224-report.md) and D-224-01.

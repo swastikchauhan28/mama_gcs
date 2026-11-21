@@ -1,5 +1,15 @@
 # Decisions and alternatives
 
+## D-225-01: Check import preview in landscape at 2× text
+
+- Date: 2026-11-21. User approved Phase 225. Baseline `c97a8e0` on `main`; older APK/demo outputs were already untracked. Model/version unavailable.
+- Context: Phase 224 made the GeoJSON/GPX preview body scroll on a 320 × 640 dp portrait viewport. In landscape, the same viewport is about 640 × 320 dp; the title and actions can consume most of the available height.
+- Choice: rotate the disposable API 31 emulator to a reversible 1440 × 720 pixel, 360 dpi viewport at 2× text, run the existing real DocumentsUI picker flow with its synthetic long route name, inspect top and scrolled screenshots for both formats, then check normal text. Fix only a reproducible dialog layout defect; keep import, cancel and explicit-save behavior unchanged.
+- Alternatives: static UI mocks cannot prove the Android picker path or real window constraints; a physical phone adds risk to operator data without helping this synthetic layout check. No hardware link is required.
+- Risk and revisit: Android's short landscape window may constrain the platform dialog independently of the app. The test must distinguish inaccessible actions or details from a picker/emulator failure. This size and language do not cover every device or accessibility service.
+- 2026-11-21 observed defect and design correction: an initial passing picker run produced portrait screenshots, so it was invalid landscape evidence. A dedicated test now rotates the open preview and checks screenshot width. Its landscape screenshot shows a zero-height preview body because Material's narrow default dialog wraps the title and actions into most of the 320 dp height. First try a wider landscape dialog through the existing AlertDialog width properties, preserving the portrait dialog and scrollable body. A custom dialog would add more layout and accessibility surface; use it only if the width adjustment cannot restore readable details.
+- 2026-11-21 outcome: the wider landscape dialog restored a scrollable preview body and kept both actions visible. Real picker tests with landscape screenshot assertions passed at 2× and normal text; portrait 2× regression also passed. The Files panel itself was not accepted at this short landscape height because its separate notice/export controls failed the initial full-flow attempt; revisit it as a separate scoped UI task. One viewport and language do not establish universal accessibility.
+
 ## D-224-01: Check route import on a smaller screen at 2× text
 
 - Date: 2026-11-21. User approved Phase 224 after the Phase 223 fix. Baseline `6c54704` on `main`; separate APK/demo outputs were already untracked. Model/version unavailable.

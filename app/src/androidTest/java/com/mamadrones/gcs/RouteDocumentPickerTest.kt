@@ -1,6 +1,7 @@
 package com.mamadrones.gcs
 
 import android.os.SystemClock
+import android.content.pm.ActivityInfo
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.provider.MediaStore
@@ -480,7 +481,13 @@ class RouteDocumentPickerTest {
         assertEquals(recovery, runBlocking { repository.loadRecovery() })
     }
 
-    @Test fun exportBothFormatsAndImportThroughSystemPickerWithCancellation() {
+    @Test fun exportBothFormatsAndImportThroughSystemPickerWithCancellation() =
+        exportBothFormatsAndImportThroughSystemPickerWithCancellation(landscape = false)
+
+    @Test fun exportBothFormatsAndImportThroughSystemPickerInLandscape() =
+        exportBothFormatsAndImportThroughSystemPickerWithCancellation(landscape = true)
+
+    private fun exportBothFormatsAndImportThroughSystemPickerWithCancellation(landscape: Boolean) {
         val repository = LocalMissionDraftRepository(instrumentation.targetContext)
         val previous = runBlocking { repository.load() }
         val recovery = runBlocking { repository.loadRecovery() }
@@ -549,15 +556,25 @@ class RouteDocumentPickerTest {
             files.forEach { file ->
                 val committedBeforeImport = runBlocking { repository.load() }
                 importFile(file)
+                if (landscape) {
+                    // The file picker can request portrait; rotate after it returns to test the actual preview.
+                    scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+                    compose.waitUntil(10_000) {
+                        val screen = compose.awaitSystemScreenshot()
+                        try { screen.width > screen.height } finally { screen.recycle() }
+                    }
+                }
                 val expectedOutline = if (file.endsWith("geojson")) "Field outline: 3 vertices" else "No field outline"
-                compose.onNode(hasText(name) and hasAnyAncestor(hasTestTag("import-preview-scroll"))).assertIsDisplayed()
                 val preview = compose.awaitSystemScreenshot()
                 try {
+                    if (landscape) assertTrue("Preview screenshot must be landscape", preview.width > preview.height)
                     val imageName = if (file.endsWith("geojson")) "phase221-geojson-preview.png" else "phase221-gpx-preview.png"
                     File(requireNotNull(instrumentation.targetContext.getExternalFilesDir(null)), imageName).outputStream().use {
                         assertTrue(preview.compress(Bitmap.CompressFormat.PNG, 100, it))
                     }
                 } finally { preview.recycle() }
+                if (landscape) compose.onNodeWithTag("import-preview-scroll").performScrollToNode(hasText(name))
+                compose.onNode(hasText(name) and hasAnyAncestor(hasTestTag("import-preview-scroll"))).assertIsDisplayed()
                 compose.onNodeWithTag("import-preview-scroll").performScrollToNode(hasText(expectedOutline))
                 compose.onNodeWithText(expectedOutline).assertIsDisplayed()
                 compose.onNodeWithTag("import-preview-scroll").performScrollToNode(hasText("Saved route changes only after Save draft."))
@@ -572,6 +589,13 @@ class RouteDocumentPickerTest {
                 compose.onNodeWithText("Cancel").assertIsDisplayed()
                 compose.onNodeWithText("Replace working draft").assertIsDisplayed()
                 compose.onNodeWithText("Replace working draft").performClick()
+                if (landscape) {
+                    scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+                    compose.waitUntil(10_000) {
+                        val screen = compose.awaitSystemScreenshot()
+                        try { screen.height > screen.width } finally { screen.recycle() }
+                    }
+                }
                 // Imports remain local working copies until an explicit Save draft.
                 assertEquals(committedBeforeImport, runBlocking { repository.load() })
                 compose.onNodeWithTag("mission-save").assertIsEnabled().performClick()

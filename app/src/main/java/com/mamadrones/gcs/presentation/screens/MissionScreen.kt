@@ -32,6 +32,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
 import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
 import com.mamadrones.gcs.domain.model.MissionLibraryEntry
@@ -784,6 +787,7 @@ fun MissionScreen(
         )
     }
     plan.pendingImport?.let { imported ->
+        val landscapePreview = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
         val outlineSummary = if (imported.keepInFence.isEmpty()) {
             "No field outline"
         } else {
@@ -791,6 +795,9 @@ fun MissionScreen(
         }
         AlertDialog(
             onDismissRequest = { onAction(MissionPlanAction.CancelImport) },
+            // Wider landscape space keeps the title and actions from consuming the entire short window.
+            modifier = if (landscapePreview) Modifier.fillMaxWidth(0.9f) else Modifier,
+            properties = DialogProperties(usePlatformDefaultWidth = !landscapePreview),
             title = { Text("Import route preview") },
             text = {
                 // Keep the preview details reachable when large text leaves little space above the actions.
