@@ -37,8 +37,8 @@ class MissionExchangeTest {
     @Test fun gpxRoundTripsOrderedRoutePointsAndEscapedName() {
         val codec = MissionDraftRouteCodec(MissionDraftGeoJsonCodec(), MissionDraftGpxCodec())
         val source = MissionDraft("North & south <field>", listOf(
-            DraftWaypoint("first", -35.3632621, 149.1652374),
-            DraftWaypoint("second", -35.364, 149.166),
+            DraftWaypoint("first", -0.000000123456789, 149.16523456789),
+            DraftWaypoint("second", -35.36330098765432, 149.16527012345679),
         ), listOf(
             DraftWaypoint("f1", -35.36, 149.16), DraftWaypoint("f2", -35.37, 149.16),
             DraftWaypoint("f3", -35.37, 149.17),
@@ -51,10 +51,8 @@ class MissionExchangeTest {
         assertTrue(file.contains("North &amp; south &lt;field&gt;"))
         assertEquals(source.name, restored.name)
         assertEquals(source.waypoints.size, restored.waypoints.size)
-        source.waypoints.zip(restored.waypoints).forEach { (expected, actual) ->
-            assertEquals(expected.latitude, actual.latitude, 0.00000001)
-            assertEquals(expected.longitude, actual.longitude, 0.00000001)
-        }
+        assertEquals(source.waypoints.map { it.latitude to it.longitude },
+            restored.waypoints.map { it.latitude to it.longitude })
         assertTrue("GPX does not carry the local outline", restored.keepInFence.isEmpty())
     }
 

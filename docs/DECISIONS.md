@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-216-01: Verify exact GPX route exchange and outline notice
+
+- Date: 2026-11-21. User approved Phase 216. Baseline `c3b9acf`, with earlier demo media untracked; model/version unavailable.
+- Context: Phase 215 proved precise GeoJSON route and outline exchange. Existing GPX codec and DocumentsUI checks use mostly short decimal coordinates; the codec test allows a small tolerance. GPX intentionally omits the field outline, and the file menu states this, but the picker test does not check that notice.
+- Choice: strengthen the existing GPX codec fixture and assertions to compare high-precision waypoint Doubles exactly. Strengthen the existing disposable-emulator picker fixture with precise route points and verify the outline notice is visible before export. Retain the exact saved-file and reimport comparisons and unique temporary-file cleanup.
+- Alternatives: create a second picker workflow (duplicates the existing end-to-end path); add an outline to GPX (changes format scope and could mislead users). Neither is needed for this verification goal.
+- Risk and revisit: the emulator's system file picker and map may fail independently of coordinate handling. GPX contains waypoints only; exact file values do not prove physical navigation accuracy. Change production behavior only if testing finds a defect.
+
 ## D-215-01: Verify exact GeoJSON coordinates through file exchange
 
 - Date: 2026-11-21. User approved Phase 215. Baseline `328cdd8`, with the earlier demo media untracked; model/version unavailable.

@@ -188,8 +188,8 @@ class RouteDocumentPickerTest {
         val recovery = runBlocking { repository.loadRecovery() }
         val name = "qa_route_" + UUID.randomUUID().toString().replace("-", "")
         val route = MissionDraft(name, listOf(
-            DraftWaypoint("a", -35.3632621, 149.1652374),
-            DraftWaypoint("b", -35.364, 149.166)), listOf(
+            DraftWaypoint("a", -35.36326212345679, 149.16523749876543),
+            DraftWaypoint("b", -35.36400098765432, 149.16600012345679)), listOf(
             DraftWaypoint("f1", -35.37, 149.16), DraftWaypoint("f2", -35.37, 149.17),
             DraftWaypoint("f3", -35.36, 149.17)))
         val files = listOf("$name.geojson", "$name.gpx")
@@ -204,6 +204,10 @@ class RouteDocumentPickerTest {
             compose.waitUntil(15_000) {
                 compose.onAllNodesWithText("No unsaved changes").fetchSemanticsNodes().isNotEmpty()
             }
+            val gpxNotice = "GPX carries route waypoints only. Use GeoJSON to preserve the local outline."
+            compose.openMissionFiles()
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasText(gpxNotice))
+            compose.onNodeWithText(gpxNotice).assertIsDisplayed()
 
             // Cancellation must return to the same draft and permit another export.
             action("Export GeoJSON")
@@ -261,7 +265,10 @@ class RouteDocumentPickerTest {
             }
         } finally {
             scenario?.close()
-            runBlocking { repository.save(previous); recovery?.let { repository.saveRecovery(it) } }
+            runBlocking {
+                repository.save(previous)
+                if (recovery == null) repository.clearRecovery() else repository.saveRecovery(recovery)
+            }
             files.forEach { shell("rm -f ${path(it)}") }
         }
     }

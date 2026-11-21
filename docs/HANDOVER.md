@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-21 — Phase 216 exact GPX route exchange
+
+- Done: existing GPX codec and DocumentsUI tests now check exact high-precision route coordinates and a visible notice that GPX omits the field outline. Both focused API 31 emulator tests passed `OK (1 test)` with healthy post-run gates. The build passed; the 533-test JVM result was up-to-date, and lint reports zero errors / 27 warnings. No production code changed. See [Phase 216](phase-216-report.md) and D-216-01.
+- In progress: owner diff review remains a release gate. Earlier demo media under `output/` remain separate untracked deliverables. Phase 216 is uncommitted pending a specific request.
+- Broken or risky: the emulator logged two startup ANRs before a clean no-wipe restart and quiet preflight. Exact file values and the emulator picker do not prove physical field accuracy or mission execution.
+- Next: review the Phase 216 diff and evidence before any release. Keep RC work paused.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-21 — Phase 215 exact GeoJSON coordinate exchange
 
 - Done: a focused codec check and the real DocumentsUI export/import workflow now use high-precision route and outline coordinates with exact comparisons. Both fresh API 31 emulator checks passed `OK (1 test)` with healthy Android. The software build gate passed in 2m 18s; 10 tasks executed and 87 were up-to-date, including the existing 533-test JVM result. Lint XML reports zero errors / 27 warnings. No production code changed. See [Phase 215](phase-215-report.md) and D-215-01.
