@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-21 — Phase 219 maximum accepted GeoJSON route
+
+- Done: a disposable-emulator DocumentsUI test imported and explicitly saved 250 ordered waypoints with a closed 64-vertex field outline. It verified the visible preview, unchanged saved draft before Save, and exact stored coordinates. The focused test passed `OK (1 test)` with a healthy post-run gate. Build passed; 533 JVM tests were up-to-date, lint zero errors / 27 warnings. No production code changed. See [Phase 219](phase-219-report.md) and D-219-01.
+- In progress: owner diff review remains a release gate. Phase 219 changes are uncommitted pending a specific request. Earlier demo media and the requested debug APK under `output/` remain separate untracked deliverables.
+- Broken or risky: a synthetic boundary-sized import on one emulator does not establish performance across phones, field navigation accuracy or mission execution.
+- Next: review the Phase 219 test and evidence before release. Keep RC work paused.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-21 — Phase 218 over-limit GeoJSON imports
 
 - Done: a disposable-emulator DocumentsUI test rejects a 251-waypoint GeoJSON route and a 65-vertex field outline, verifies visible errors and no replacement preview, and preserves both saved and unsaved route state. The focused test passed `OK (1 test)` with a healthy post-run gate. Build passed; 533 JVM tests were up-to-date, lint zero errors / 27 warnings. No production code changed. See [Phase 218](phase-218-report.md) and D-218-01.

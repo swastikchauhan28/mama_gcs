@@ -334,6 +334,85 @@ class RouteDocumentPickerTest {
         assertEquals(recovery, runBlocking { repository.loadRecovery() })
     }
 
+    @Test fun maximumGeoJsonRouteImportsAndSavesExactly() {
+        val repository = LocalMissionDraftRepository(instrumentation.targetContext)
+        val previous = runBlocking { repository.load() }
+        val recovery = runBlocking { repository.loadRecovery() }
+        val savedBefore = MissionDraft("Before maximum import", listOf(DraftWaypoint("p", -35.36, 149.16)))
+        val name = "Maximum GeoJSON route"
+        val file = "qa_route_" + UUID.randomUUID().toString().replace("-", "") + ".geojson"
+        val points = (0 until MissionDraft.MAX_WAYPOINTS).map { index ->
+            (-35.36002 + index * 0.0000001) to (149.15998 + index * 0.0000001)
+        }
+        val outline = (0 until MissionDraft.MAX_FENCE_VERTICES).map { index ->
+            val angle = 2 * Math.PI * index / MissionDraft.MAX_FENCE_VERTICES
+            (-35.36 + 0.0002 * Math.sin(angle)) to (149.16 + 0.0002 * Math.cos(angle))
+        }
+        val features = JSONArray().apply {
+            points.forEachIndexed { index, (latitude, longitude) ->
+                put(JSONObject().put("type", "Feature")
+                    .put("properties", JSONObject().put("sequence", index + 1))
+                    .put("geometry", JSONObject().put("type", "Point")
+                        .put("coordinates", JSONArray().put(longitude).put(latitude))))
+            }
+            val ring = JSONArray().apply {
+                outline.forEach { (latitude, longitude) -> put(JSONArray().put(longitude).put(latitude)) }
+                put(JSONArray().put(outline.first().second).put(outline.first().first))
+            }
+            put(JSONObject().put("type", "Feature")
+                .put("properties", JSONObject().put("role", "keep-in-fence"))
+                .put("geometry", JSONObject().put("type", "Polygon")
+                    .put("coordinates", JSONArray().put(ring))))
+        }
+        val content = JSONObject().put("type", "FeatureCollection").put("name", name)
+            .put("properties", JSONObject().put("format", "mama-gcs-route").put("version", 2))
+            .put("features", features).toString()
+        assertTrue("Boundary fixture must fit the file-size limit", content.length <= 256_000)
+        val resolver = instrumentation.targetContext.contentResolver
+        var fileUri: android.net.Uri? = null
+        var scenario: ActivityScenario<MainActivity>? = null
+        try {
+            val values = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, file)
+                put(MediaStore.Downloads.MIME_TYPE, "application/geo+json")
+            }
+            val uri = requireNotNull(resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values))
+            fileUri = uri
+            requireNotNull(resolver.openOutputStream(uri)).bufferedWriter().use { it.write(content) }
+            runBlocking { repository.save(savedBefore) }
+            scenario = ActivityScenario.launch(MainActivity::class.java)
+            awaitApp()
+            compose.openWorkspace("mission")
+            compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+
+            action("Import route file")
+            downloads()
+            clickNative { it.text?.toString() == file }
+            awaitApp()
+            compose.waitUntil(30_000) { compose.onAllNodesWithText("Import route preview").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("250 waypoints", substring = true).assertIsDisplayed()
+            assertEquals(savedBefore, runBlocking { repository.load() })
+            compose.onNodeWithText("Replace working draft").performClick()
+            assertEquals(savedBefore, runBlocking { repository.load() })
+            compose.onNodeWithTag("mission-save").assertIsEnabled().performClick()
+            compose.waitUntil(30_000) {
+                runBlocking { repository.load().let { it.name == name && it.waypoints.size == 250 && it.keepInFence.size == 64 } }
+            }
+            val saved = runBlocking { repository.load() }
+            assertEquals(points, saved.waypoints.map { it.latitude to it.longitude })
+            assertEquals(outline, saved.keepInFence.map { it.latitude to it.longitude })
+        } finally {
+            scenario?.close()
+            runBlocking {
+                repository.save(previous)
+                if (recovery == null) repository.clearRecovery() else repository.saveRecovery(recovery)
+            }
+            fileUri?.let { resolver.delete(it, null, null) }
+        }
+        assertEquals(previous, runBlocking { repository.load() })
+        assertEquals(recovery, runBlocking { repository.loadRecovery() })
+    }
+
     @Test fun exportBothFormatsAndImportThroughSystemPickerWithCancellation() {
         val repository = LocalMissionDraftRepository(instrumentation.targetContext)
         val previous = runBlocking { repository.load() }

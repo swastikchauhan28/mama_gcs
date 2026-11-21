@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-219-01: Verify maximum accepted GeoJSON route through local save
+
+- Date: 2026-11-21. User approved Phase 219. Baseline `4931846`; the earlier demo media and requested debug APK under `output/` were untracked. Model/version unavailable.
+- Context: Phase 218 verified rejection immediately above the 250-waypoint and 64-outline-vertex limits. A successful import and explicit save at both limits has not been checked through Android DocumentsUI.
+- Choice: use a synthetic GeoJSON FeatureCollection with exactly 250 ordered Point features and one closed keep-in Polygon with 64 vertices. Import it through the disposable emulator picker, verify the 250-waypoint preview and unchanged saved draft before confirmation, explicitly replace the working draft and save, then compare every stored route and outline coordinate exactly and in order. Restore the prior emulator draft/recovery and remove only the test document URI.
+- Alternatives: a codec-only test would miss the picker, preview and save; loading a real field file could expose operator data and prove no more about the boundary. Use independently generated JSON values and expected lists rather than encoding with the same app codec under test.
+- Risk and revisit: rendering 250 points and 64 outline vertices may slow or freeze an emulator. A synthetic accepted route does not prove physical navigation accuracy or safe mission execution. Change production behavior only if a reproducible defect appears; preserve failed emulator evidence.
+
 ## D-218-01: Verify over-limit GeoJSON imports preserve both drafts
 
 - Date: 2026-11-21. User approved Phase 218. Baseline `de731b9`, with earlier demo media untracked; model/version unavailable.
