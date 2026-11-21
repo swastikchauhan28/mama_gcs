@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-21 — Phase 214 saved route precision round trip
+
+- Done: a real-activity Android test now verifies a precise waypoint through UI edit, explicit local save, app reopen and no-change edit, with exact stored values and emulator draft restoration. Full software gate passed: 533 JVM tests in 84 suites, both debug APKs, lint zero errors / 27 warnings. The focused API 31 emulator test passed `OK (1 test)` with a healthy post-run gate. See [Phase 214](phase-214-report.md) and D-214-01.
+- In progress: owner diff review remains a release gate. The 2026-11-21 demo media under `output/` are separate untracked user deliverables.
+- Broken or risky: API 34 startup logged Google Play services and System UI ANRs; API 31 initially logged a Google Play services ANR before a later quiet preflight passed. These failures are retained. Physical field accuracy, mission upload and rover behavior remain unverified.
+- Next: review the Phase 214 diff/evidence before release. Keep RC work paused.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-20 — Phase 213 precise route waypoint edit
 
 - Done: existing route waypoints now prefill edit fields with round-trip decimal values, preventing a no-edit Apply from dispatching seven-decimal-rounded coordinates. Typed Add and map-based Add keep their previous behavior. The full software gate passed: 533 JVM tests in 84 suites, debug app/test APKs and lint with zero errors / 27 warnings. The disposable API 34 emulator passed focused precise Edit, typed Add and map-based Add workflow checks (`OK (1 test)` each), 2×-font screenshot review and all three Android health gates. See [Phase 213](phase-213-report.md) and D-213-01.

@@ -32,6 +32,60 @@ class MissionMapDialogTest {
     @get:Rule val compose = createEmptyComposeRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
+    @Test fun preciseWaypointSurvivesSaveReopenAndUnchangedEdit() {
+        val repository = LocalMissionDraftRepository(instrumentation.targetContext)
+        val previous = runBlocking { repository.load() }
+        val previousRecovery = runBlocking { repository.loadRecovery() }
+        val initial = MissionDraft("Precision round trip", listOf(DraftWaypoint("precise", -35.36, 149.16)))
+        val precise = initial.copy(waypoints = listOf(DraftWaypoint("precise", -0.000000123456789, 149.16523456789)))
+        var scenario: ActivityScenario<MainActivity>? = null
+        try {
+            runBlocking { repository.clearRecovery(); repository.save(initial) }
+            val first = ActivityScenario.launch(MainActivity::class.java).also { scenario = it }
+            first.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+            compose.waitUntil(10_000) {
+                var ready = false
+                first.onActivity { ready = it.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE }
+                ready
+            }
+            compose.openWorkspace("mission")
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-edit-0"))
+            compose.onNodeWithTag("mission-edit-0").performClick()
+            awaitDialog("Edit waypoint")
+            compose.onNodeWithTag("mission-latitude").performTextReplacement("-0.000000123456789")
+            compose.onNodeWithTag("mission-longitude").performTextReplacement("149.16523456789")
+            compose.onNodeWithTag("mission-confirm-waypoint").performClick()
+            compose.waitUntil(10_000) { runBlocking { repository.loadRecovery() == precise } }
+            compose.onNodeWithTag("mission-save").assertIsEnabled().performClick()
+            compose.waitUntil(10_000) { runBlocking { repository.load() == precise && repository.loadRecovery() == null } }
+
+            first.close()
+            val reopened = ActivityScenario.launch(MainActivity::class.java).also { scenario = it }
+            reopened.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+            compose.waitUntil(10_000) {
+                var ready = false
+                reopened.onActivity { ready = it.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE }
+                ready
+            }
+            compose.openWorkspace("mission")
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-edit-0"))
+            compose.onNodeWithTag("mission-edit-0").performClick()
+            awaitDialog("Edit waypoint")
+            compose.onNodeWithTag("mission-latitude").assertTextContains("-0.000000123456789")
+            compose.onNodeWithTag("mission-longitude").assertTextContains("149.16523456789")
+            compose.onNodeWithTag("mission-confirm-waypoint").performClick()
+            compose.waitForIdle()
+            assertEquals(precise, runBlocking { repository.load() })
+            compose.onNodeWithTag("mission-save").assertIsNotEnabled()
+        } finally {
+            scenario?.close()
+            runBlocking {
+                repository.save(previous)
+                if (previousRecovery == null) repository.clearRecovery() else repository.saveRecovery(previousRecovery)
+            }
+        }
+    }
+
     @Test fun mapSelectionAndLongPressRequireConfirmationAndExplicitSave() {
         val repository = LocalMissionDraftRepository(instrumentation.targetContext)
         val previous = runBlocking { repository.load() }

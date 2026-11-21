@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-214-01: Verify precise waypoint persistence through the real editor
+
+- Date: 2026-11-21. User approved Phase 214. Baseline `17f5ac2`; demo media are untracked. Model/version unavailable.
+- Context: Phase 213 proved exact coordinates in a synthetic Edit action, while a separate map test proved local save. Neither checked a high-precision point after UI save, activity reopen, and a no-change edit.
+- Choice: extend the existing real-activity mission test with a focused route-editor scenario on a disposable emulator. Enter a precise point, explicitly save, close and relaunch the activity, reopen Edit, confirm unchanged, and compare the stored Double values exactly. Restore the previous test draft and recovery copy in `finally`.
+- Alternatives: another synthetic callback test would not exercise persistence; testing on the operator phone would risk saved data. This phase adds no transport or rover commands.
+- Risk and revisit: emulator test storage is temporary; a crash before cleanup could leave the emulator draft altered. A passing local round trip still does not prove field coordinate accuracy. Revisit only if the integration test exposes a production defect.
+
 ## D-207-01: Refresh RC/PWM display time when telemetry state changes
 
 - Date: 2026-11-19. The operator reported blank RC/PWM values during stick checks. Baseline `0994c2f`, clean `main`; model/version unavailable.
