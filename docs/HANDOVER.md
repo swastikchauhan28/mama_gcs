@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-21 — Phase 215 exact GeoJSON coordinate exchange
+
+- Done: a focused codec check and the real DocumentsUI export/import workflow now use high-precision route and outline coordinates with exact comparisons. Both fresh API 31 emulator checks passed `OK (1 test)` with healthy Android. The software build gate passed in 2m 18s; 10 tasks executed and 87 were up-to-date, including the existing 533-test JVM result. Lint XML reports zero errors / 27 warnings. No production code changed. See [Phase 215](phase-215-report.md) and D-215-01.
+- In progress: owner diff review remains a release gate. The earlier 2026-11-21 demo media under `output/` remain separate untracked deliverables.
+- Broken or risky: exact local file preservation does not prove physical field accuracy, mission upload or rover behavior. The picker test uses synthetic data, an emulator Downloads provider and the configured map provider.
+- Next: review the Phase 215 diff and evidence before any release. Keep RC work paused.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-21 — Phase 214 saved route precision round trip
 
 - Done: a real-activity Android test now verifies a precise waypoint through UI edit, explicit local save, app reopen and no-change edit, with exact stored values and emulator draft restoration. Full software gate passed: 533 JVM tests in 84 suites, both debug APKs, lint zero errors / 27 warnings. The focused API 31 emulator test passed `OK (1 test)` with a healthy post-run gate. See [Phase 214](phase-214-report.md) and D-214-01.

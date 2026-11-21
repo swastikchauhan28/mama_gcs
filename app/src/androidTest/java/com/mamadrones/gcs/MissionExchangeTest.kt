@@ -15,6 +15,25 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MissionExchangeTest {
+    @Test fun geoJsonRetainsPreciseRouteAndOutlineCoordinatesExactly() {
+        val source = MissionDraft("Precise field", listOf(
+            DraftWaypoint("first", -0.000000123456789, 149.16523456789),
+            DraftWaypoint("second", -35.36330098765432, 149.16527012345679),
+        ), listOf(
+            DraftWaypoint("f1", -35.36335012345678, 149.16520098765432),
+            DraftWaypoint("f2", -35.36335098765432, 149.16535012345678),
+            DraftWaypoint("f3", -35.36320012345678, 149.16535098765432),
+        ))
+        val codec = MissionDraftGeoJsonCodec()
+        val restored = codec.decode(codec.encode(source))
+
+        // Pair equality requires the same Double values, unlike a map-distance tolerance.
+        assertEquals(source.waypoints.map { it.latitude to it.longitude },
+            restored.waypoints.map { it.latitude to it.longitude })
+        assertEquals(source.keepInFence.map { it.latitude to it.longitude },
+            restored.keepInFence.map { it.latitude to it.longitude })
+    }
+
     @Test fun gpxRoundTripsOrderedRoutePointsAndEscapedName() {
         val codec = MissionDraftRouteCodec(MissionDraftGeoJsonCodec(), MissionDraftGpxCodec())
         val source = MissionDraft("North & south <field>", listOf(

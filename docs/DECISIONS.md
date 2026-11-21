@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-215-01: Verify exact GeoJSON coordinates through file exchange
+
+- Date: 2026-11-21. User approved Phase 215. Baseline `328cdd8`, with the earlier demo media untracked; model/version unavailable.
+- Context: Phase 214 proved exact local route save/reopen. Existing GeoJSON codec and system-picker tests compare coordinates exactly but use only short decimal fixtures, so they do not exercise the precision at issue.
+- Choice: add a focused codec round trip with high-precision route and outline coordinates, and strengthen the existing disposable-emulator DocumentsUI export/import fixture with precise route and outline points. Compare numeric values exactly after local save, exported-file decode and reimport. Keep the existing unique temporary file cleanup and draft restoration.
+- Alternatives: test GPX, which intentionally omits the outline; add a new exchange workflow, which would duplicate the existing system-picker coverage. Neither closes the GeoJSON precision gap as directly.
+- Risk and revisit: the picker test uses a disposable emulator's Downloads provider and the configured map; it may fail for environmental reasons. A precise file round trip is not proof of surveyed field accuracy, rover motion or mission upload. Change production code only if the checks find a defect.
+
 ## D-214-01: Verify precise waypoint persistence through the real editor
 
 - Date: 2026-11-21. User approved Phase 214. Baseline `17f5ac2`; demo media are untracked. Model/version unavailable.

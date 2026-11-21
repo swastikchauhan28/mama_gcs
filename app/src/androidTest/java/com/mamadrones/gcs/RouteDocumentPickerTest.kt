@@ -39,8 +39,13 @@ class RouteDocumentPickerTest {
         val recovery = runBlocking { repository.loadRecovery() }
         val name = "qa_route_" + UUID.randomUUID().toString().replace("-", "")
         val file = "$name.geojson"
-        val points = listOf(-35.36326 to 149.16523, -35.36330 to 149.16527)
-        val outline = listOf(-35.36335 to 149.16520, -35.36335 to 149.16535, -35.36320 to 149.16535)
+        // Keep precision beyond seven decimals through UI save, DocumentsUI export and reimport.
+        val points = listOf(-35.36326012345679 to 149.16523098765432, -35.36330098765432 to 149.16527012345679)
+        val outline = listOf(
+            -35.36335012345678 to 149.16520098765432,
+            -35.36335098765432 to 149.16535012345678,
+            -35.36320012345678 to 149.16535098765432,
+        )
         assertEquals("", shell("test -e ${path(file)} && echo exists"))
         var scenario: ActivityScenario<MainActivity>? = null
         try {
