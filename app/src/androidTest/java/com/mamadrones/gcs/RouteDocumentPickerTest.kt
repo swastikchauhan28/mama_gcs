@@ -548,6 +548,15 @@ class RouteDocumentPickerTest {
             files.forEach { file ->
                 val committedBeforeImport = runBlocking { repository.load() }
                 importFile(file)
+                val expectedOutline = if (file.endsWith("geojson")) "Field outline: 3 vertices" else "No field outline"
+                compose.onNodeWithText(expectedOutline, substring = true).assertIsDisplayed()
+                val preview = compose.awaitSystemScreenshot()
+                try {
+                    val imageName = if (file.endsWith("geojson")) "phase221-geojson-preview.png" else "phase221-gpx-preview.png"
+                    File(requireNotNull(instrumentation.targetContext.getExternalFilesDir(null)), imageName).outputStream().use {
+                        assertTrue(preview.compress(Bitmap.CompressFormat.PNG, 100, it))
+                    }
+                } finally { preview.recycle() }
                 compose.onNodeWithText("Replace working draft").performClick()
                 // Imports remain local working copies until an explicit Save draft.
                 assertEquals(committedBeforeImport, runBlocking { repository.load() })

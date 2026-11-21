@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-21 — Phase 221 import preview outline status
+
+- Done: import confirmation now shows `Field outline: N vertices` for GeoJSON outlines or `No field outline` for routes without one. The existing disposable-emulator DocumentsUI test passed for both formats, including save behavior and restoration. Visually reviewed both small-screen dialog screenshots. Fresh build succeeded; 533 unit tests passed; lint zero errors / 27 warnings. See [Phase 221](phase-221-report.md) and D-221-01.
+- In progress: owner diff review is still a release gate. Phase 221 is uncommitted and unpushed; the earlier APK and demo outputs remain separate untracked deliverables.
+- Broken or risky: one emulator size and synthetic routes do not prove accessibility scaling, arbitrary providers, field accuracy or physical operation.
+- Next: review the Phase 221 diff and focused evidence before release. Keep RC work paused.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-21 — Phase 220 oversized route file rejection
 
 - Done: a disposable-emulator DocumentsUI test rejects 256,001-character GeoJSON and GPX files at the shared 256,000-character reader limit, shows the size error, opens no preview, and preserves saved and unsaved route state. The focused test passed `OK (1 test)` with a healthy post-run gate. Build passed; 533 JVM tests were up-to-date, lint zero errors / 27 warnings. No production code changed. See [Phase 220](phase-220-report.md) and D-220-01.

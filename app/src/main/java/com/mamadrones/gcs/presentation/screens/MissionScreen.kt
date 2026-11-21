@@ -784,11 +784,16 @@ fun MissionScreen(
         )
     }
     plan.pendingImport?.let { imported ->
+        val outlineSummary = if (imported.keepInFence.isEmpty()) {
+            "No field outline"
+        } else {
+            "Field outline: ${imported.keepInFence.size} vertices"
+        }
         AlertDialog(
             onDismissRequest = { onAction(MissionPlanAction.CancelImport) },
             title = { Text("Import route preview") },
             text = {
-                Text("${imported.name}\n${imported.waypoints.size} waypoints · ${String.format(Locale.US, "%.0f", imported.distanceMeters)} m straight-line estimate. Confirming replaces the working draft; the saved route changes only after Save draft.")
+                Text("${imported.name}\n${imported.waypoints.size} waypoints · ${String.format(Locale.US, "%.0f", imported.distanceMeters)} m straight-line estimate.\n$outlineSummary\nConfirming replaces the working draft; the saved route changes only after Save draft.")
             },
             confirmButton = { TextButton(onClick = { onAction(MissionPlanAction.ConfirmImport) }) { Text("Replace working draft") } },
             dismissButton = { TextButton(onClick = { onAction(MissionPlanAction.CancelImport) }) { Text("Cancel") } }

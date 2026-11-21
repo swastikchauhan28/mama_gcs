@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-221-01: Show field outline presence before local route replacement
+
+- Date: 2026-11-21. User approved Phase 221. Tracked baseline `46fbe3d`; separate APK and demo outputs were untracked. Model/version unavailable.
+- Context: the local import preview shows waypoint count and distance but omits the imported field outline. The GeoJSON codec retains an outline, while GPX carries route points only. The preview is the last chance to see that difference before replacing the working draft.
+- Choice: show `Field outline: N vertices` for an imported outline and `No field outline` when none is present. Extend the existing disposable-emulator DocumentsUI test to check both formats at the preview, before confirmation. Capture the two synthetic previews for a small-screen visual review.
+- Alternatives: a separate details screen adds navigation for one fact; a codec-only test cannot verify what the user sees in the import dialog. Keep the current confirmation flow and saved-draft behavior.
+- Risk and revisit: more text may crowd the dialog on a small device. This outline is local planning data, not an enforced geofence or proof of field coverage. Revisit the layout if either preview is clipped.
+
 ## D-220-01: Verify oversized route files fail before draft replacement
 
 - Date: 2026-11-21. User approved Phase 220. Tracked baseline `4931846`; Phase 219 was already uncommitted, as were the separate debug APK and demo media under `output/`. Model/version unavailable.
