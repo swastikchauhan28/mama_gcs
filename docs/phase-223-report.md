@@ -1,0 +1,25 @@
+# Phase 223 — 2× text import preview check
+
+## Goal and baseline
+
+The user approved a disposable-emulator check of both GeoJSON and GPX import previews at 2× Android text, with a long synthetic route name. Baseline `0bd278f` on `main`; Phase 222 records and separate APK/demo outputs were already uncommitted or untracked. Model/version unavailable. See D-223-01. No operator phone or hardware was used. The user explicitly kept this check emulator-only after the emulator failures.
+
+## Attempt and evidence
+
+- The two existing AVDs named `MamaGcs_Phase209_API31` and `MamaGcs_Phase210_API34` both use the Android 34 Google APIs image. The available Android 31 directories contain no `system.img` or `package.xml`, so a genuine Android 31 AVD could not be created from the local SDK. The legacy `avdmanager.bat` also failed under the installed Java runtime with a missing `javax.xml.bind.annotation.XmlSchema` class.
+- Set the first disposable AVD to 2× text and attempted a clean preflight, then one no-wipe restart. Both preflights found an Android System UI ANR dialog before Mama GCS opened. Preserved window, crash and ANR logs in `app/build/phase223-emulator-preflight/` and `app/build/phase223-emulator-preflight-retry/`. The alternate existing AVD and a host-graphics launch also failed preflight; evidence is in `app/build/phase223-api34-preflight/` and `app/build/phase223-host-gpu-preflight/`. Host free physical memory was about 4.3 GB during inspection, so low memory was not established as the cause.
+- Created a fresh, isolated Android 34 AVD under ignored `app/build/phase223-avd-home/`, using the complete local image and a new data partition. Its initial 30-second health window logged Android startup ANRs, including System UI; the no-wipe restart again showed a System UI ANR dialog. Evidence is in `app/build/phase223-fresh-avd-initial-health/` and `app/build/phase223-fresh-avd-retry-health/`.
+- Closed those failed AVD attempts and restored the changed text settings to 1.0. At that point no app APK had been installed or test instrumentation run for Phase 223; Phase 222's 1.5× pass was not evidence for 2×. The subsequent recovery is recorded below.
+
+## 2026-11-21 recovery and fix
+
+After the failed attempts above, the user authorized installing SDK components and retrying on an emulator. The Android command-line tools archive from Google's Android Studio download page was checked against its published SHA-256 (`90ae805d20434428bffcb699c290860f19bb5f66a67e3de801fb04a`), and the Android 31 Google APIs x86_64 image was installed with `sdkmanager`. A new disposable AVD under ignored `app/build/phase223-avd-home/` reported API 31 and passed a 30-second boot/ANR preflight at both default and 2× text. The earlier Android 34 AVD remained unsuccessful; its failure evidence was retained.
+
+The first real-picker test on this AVD failed during DocumentsUI cancellation because `instrumentation.sendKeyDownUpSync` could not inject Back into another app on API 31 (`SecurityException: INJECT_EVENTS`). This was a test harness failure, not an import failure. The two picker Back actions now use the existing shell helper's `input keyevent` command. The rerun passed (`app/build/acceptance-20261121-150600-59f1ea70/`). Its 2× screenshots showed the long saved-route notice clipped in the GeoJSON preview, though GPX fit. The import preview now says “Saved route changes only after Save draft.” The existing “Replace working draft” action still states the replacement scope.
+
+## Verification and status
+
+- `.\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --no-daemon --max-workers=1 --console=plain`: build successful; 533 JVM tests, zero failures/errors; lint zero errors and 27 warnings. Some Gradle tasks were up-to-date; this is not a full instrumentation suite.
+- At 2× text, `scripts/Test-AndroidAcceptance.ps1 -Serial emulator-5554 -TestClass 'com.mamadrones.gcs.RouteDocumentPickerTest#exportBothFormatsAndImportThroughSystemPickerWithCancellation'` passed `OK (1 test)` with a healthy Android post-run gate. Evidence: `app/build/acceptance-20261121-151753-253416bb/`. Visual review: `app/build/phase223-two-x-fixed-evidence/geojson-2x.png` and `gpx-2x.png` show the complete name, route and outline summaries, saved-route notice, and both actions.
+- After changing the disposable AVD to normal 1× text and passing another 30-second preflight, the same focused test passed `OK (1 test)` with a healthy post-run gate. Evidence: `app/build/acceptance-20261121-152023-a4a2200a/`. Visually reviewed `app/build/phase223-normal-evidence/geojson-normal.png` and `gpx-normal.png`; content and actions fit.
+- The test uses synthetic route files and restores the emulator's prior draft/recovery. The AVD was returned to 1× text and closed. No phone, rover command, mission upload or hardware link was used. 2× text on this one emulator size and language does not prove every accessibility setting or screen size. Owner diff review remains a release gate. This report was prepared before the later commit/push request.

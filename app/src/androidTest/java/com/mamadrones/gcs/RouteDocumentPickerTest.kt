@@ -510,7 +510,8 @@ class RouteDocumentPickerTest {
             // Cancellation must return to the same draft and permit another export.
             action("Export GeoJSON")
             awaitNative { it.className?.toString() == "android.widget.EditText" }
-            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            // DocumentsUI is another app; the shell-owned input command can send Back across packages on API 31.
+            shell("input keyevent ${KeyEvent.KEYCODE_BACK}")
             awaitApp()
             assertEquals(route, runBlocking { repository.load() })
 
@@ -534,7 +535,7 @@ class RouteDocumentPickerTest {
 
             action("Import route file")
             awaitNative { it.packageName?.toString()?.endsWith("documentsui") == true }
-            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            shell("input keyevent ${KeyEvent.KEYCODE_BACK}")
             awaitApp()
             compose.onNodeWithText("Import route preview").assertDoesNotExist()
             assertEquals(route, runBlocking { repository.load() })

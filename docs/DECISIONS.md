@@ -1,5 +1,24 @@
 # Decisions and alternatives
 
+## D-223-01: Stress the route import preview at 2× text
+
+- Date: 2026-11-21. User approved Phase 223. Tracked baseline `0bd278f`; Phase 222 records and separate APK/demo outputs were already uncommitted or untracked. Model/version unavailable.
+- Context: Phase 222 passed at 1.5× Android text, but both import dialogs occupied much of the phone-sized window. The existing synthetic route name is long enough to wrap at larger text.
+- Choice: run the real GeoJSON/GPX DocumentsUI test on the disposable API 31 emulator at 2× Android text, inspect both screenshots, and make only the layout change needed if required text or actions become unreachable. If app layout changes, rerun the picker check at normal text and the relevant build/test/lint gates. Restore the emulator display setting afterward.
+- Alternatives: a mock-only layout test cannot prove the picker-to-preview path; using a physical phone could disturb saved operator data. Keep local import and explicit-save behavior unchanged.
+- Risk and revisit: the test may fail in unrelated Android picker navigation at 2×; distinguish that from an app dialog defect. One emulator size and language do not establish all accessibility settings or physical rover safety.
+- 2026-11-21 outcome: Android startup ANRs blocked every emulator preflight before the app test, including a fresh AVD. The local Android 31 image was incomplete. No dialog behavior was inferred and no app layout was changed; revisit when a disposable emulator is healthy. The user declined a phone fallback.
+- 2026-11-21 correction after user-approved SDK installation: installed the complete Android 31 image and SDK tools, then a genuine API 31 AVD passed the 2× picker test. Visual review found the GeoJSON preview's final saved-route sentence clipped below the text viewport; the GPX preview fit. Shorten the repeated confirmation wording while retaining the explicit Save draft condition, then rerun both sizes. A scrolling dialog or smaller text would add interaction or reduce accessibility; concise copy preserves the existing flow. Revisit if a longer imported name still crowds the dialog.
+- 2026-11-21 final verification: shortened the notice to “Saved route changes only after Save draft.” The real picker flow passed on API 31 at 2× and normal text (`OK (1 test)` each) with healthy post-run gates; both formats were visually reviewed at each size. Build, 533 JVM tests and lint passed (27 warnings). This resolves the observed clipping for the tested size and synthetic name; revisit for smaller windows, longer names or other languages.
+
+## D-222-01: Check imported-outline preview at enlarged Android text
+
+- Date: 2026-11-21. User approved Phase 222. Tracked baseline `0bd278f`; separate APK and demo outputs were untracked. Model/version unavailable.
+- Context: Phase 221 showed the field-outline status in the import confirmation, but reviewed screenshots only at the emulator's normal font size. Enlarged Android text may crowd the file name, explanation or confirmation actions.
+- Choice: rerun the existing GeoJSON/GPX DocumentsUI path on the disposable emulator with larger system text, inspect both captured previews, and add a focused layout assertion or adjust the dialog only if a concrete clipping issue appears. Restore emulator display settings and rerun normal-size verification for any layout edit.
+- Alternatives: a mock-only dialog test misses real picker navigation and window sizing; a phone test would risk saved operator data without improving the synthetic layout check. Keep the local import and save semantics unchanged.
+- Risk and revisit: device text scale is one accessibility setting, not complete coverage of all screen sizes or assistive technologies. The field outline remains local planning data, not an enforced geofence.
+
 ## D-221-01: Show field outline presence before local route replacement
 
 - Date: 2026-11-21. User approved Phase 221. Tracked baseline `46fbe3d`; separate APK and demo outputs were untracked. Model/version unavailable.

@@ -1,9 +1,25 @@
 # Current handover
 
+## 2026-11-21 — Phase 223 2× import preview checked and clipped copy fixed
+
+- Done: installed the user-approved Android 31 image and current SDK tools, recovered a genuine API 31 disposable emulator, and fixed a test-only DocumentsUI Back injection failure. The 2× GeoJSON preview exposed clipped saved-route text; shortened that notice. The focused picker test passed at 2× and normal text, and all four screenshots show complete preview content and actions. Build succeeded; 533 JVM tests passed; lint zero errors / 27 warnings. Earlier Android 34 startup failures remain recorded. See [Phase 223](phase-223-report.md) and D-223-01.
+- In progress: owner diff review remains a release gate. Prior APK/demo outputs remain separate untracked deliverables; check Git history for the Phase 222/223 commit status.
+- Broken or risky: this is one screen size, language and synthetic route; other accessibility settings and physical operation remain unverified. The failed Android 34 AVDs were not used as acceptance evidence.
+- Next: review the small Phase 223 diff and evidence before any release. Keep RC work paused.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
+## 2026-11-21 — Phase 222 enlarged-text route import previews
+
+- Done: on a disposable API 31 emulator at 1.5× Android text, the existing real-picker GeoJSON/GPX test passed `OK (1 test)` with a healthy post-run gate. Both screenshots show complete outline messages and reachable Cancel/Replace actions; no app code change was needed. The emulator font setting was restored. See [Phase 222](phase-222-report.md) and D-222-01.
+- In progress: owner diff review remains a release gate. Phase 222 records are uncommitted; the earlier APK and demo outputs remain separate untracked deliverables.
+- Broken or risky: 2× text, other screens, translations, assistive technologies and physical navigation are unverified.
+- Next: review the Phase 222 evidence and record diff before release. Keep RC work paused.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-21 — Phase 221 import preview outline status
 
 - Done: import confirmation now shows `Field outline: N vertices` for GeoJSON outlines or `No field outline` for routes without one. The existing disposable-emulator DocumentsUI test passed for both formats, including save behavior and restoration. Visually reviewed both small-screen dialog screenshots. Fresh build succeeded; 533 unit tests passed; lint zero errors / 27 warnings. See [Phase 221](phase-221-report.md) and D-221-01.
-- In progress: owner diff review is still a release gate. Phase 221 is uncommitted and unpushed; the earlier APK and demo outputs remain separate untracked deliverables.
+- In progress: owner diff review is still a release gate. Phase 221 was committed and pushed as `0bd278f`; the earlier APK and demo outputs remain separate untracked deliverables.
 - Broken or risky: one emulator size and synthetic routes do not prove accessibility scaling, arbitrary providers, field accuracy or physical operation.
 - Next: review the Phase 221 diff and focused evidence before release. Keep RC work paused.
 - Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
