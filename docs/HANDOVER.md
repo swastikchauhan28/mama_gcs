@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-21 — Phase 224 small-screen import preview
+
+- Done: reproduced clipped GeoJSON/GPX import details on a disposable 320 × 640 dp API 31 emulator at 2× text. Made the preview details scrollable while keeping both actions available. The real picker test passed at 2× and normal text after the fix, with healthy Android gates and visual screenshots. Build succeeded; 533 JVM tests passed; lint zero errors / 27 warnings. See [Phase 224](phase-224-report.md) and D-224-01.
+- In progress: owner diff review remains a release gate. Earlier APK/demo outputs remain separate untracked deliverables; check Git history for the Phase 224 commit status.
+- Broken or risky: one synthetic route, screen size and language do not cover every accessibility setting or physical mission behavior. The first revised test had an ambiguous name selector; its failure and correction are recorded.
+- Next: review the Phase 224 diff and focused evidence before any release. Keep RC work paused.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-21 — Phase 223 2× import preview checked and clipped copy fixed
 
 - Done: installed the user-approved Android 31 image and current SDK tools, recovered a genuine API 31 disposable emulator, and fixed a test-only DocumentsUI Back injection failure. The 2× GeoJSON preview exposed clipped saved-route text; shortened that notice. The focused picker test passed at 2× and normal text, and all four screenshots show complete preview content and actions. Build succeeded; 533 JVM tests passed; lint zero errors / 27 warnings. Earlier Android 34 startup failures remain recorded. See [Phase 223](phase-223-report.md) and D-223-01.

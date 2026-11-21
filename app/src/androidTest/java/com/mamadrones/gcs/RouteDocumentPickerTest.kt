@@ -550,7 +550,7 @@ class RouteDocumentPickerTest {
                 val committedBeforeImport = runBlocking { repository.load() }
                 importFile(file)
                 val expectedOutline = if (file.endsWith("geojson")) "Field outline: 3 vertices" else "No field outline"
-                compose.onNodeWithText(expectedOutline, substring = true).assertIsDisplayed()
+                compose.onNode(hasText(name) and hasAnyAncestor(hasTestTag("import-preview-scroll"))).assertIsDisplayed()
                 val preview = compose.awaitSystemScreenshot()
                 try {
                     val imageName = if (file.endsWith("geojson")) "phase221-geojson-preview.png" else "phase221-gpx-preview.png"
@@ -558,6 +558,19 @@ class RouteDocumentPickerTest {
                         assertTrue(preview.compress(Bitmap.CompressFormat.PNG, 100, it))
                     }
                 } finally { preview.recycle() }
+                compose.onNodeWithTag("import-preview-scroll").performScrollToNode(hasText(expectedOutline))
+                compose.onNodeWithText(expectedOutline).assertIsDisplayed()
+                compose.onNodeWithTag("import-preview-scroll").performScrollToNode(hasText("Saved route changes only after Save draft."))
+                compose.onNodeWithText("Saved route changes only after Save draft.").assertIsDisplayed()
+                val details = compose.awaitSystemScreenshot()
+                try {
+                    val imageName = if (file.endsWith("geojson")) "phase224-geojson-details.png" else "phase224-gpx-details.png"
+                    File(requireNotNull(instrumentation.targetContext.getExternalFilesDir(null)), imageName).outputStream().use {
+                        assertTrue(details.compress(Bitmap.CompressFormat.PNG, 100, it))
+                    }
+                } finally { details.recycle() }
+                compose.onNodeWithText("Cancel").assertIsDisplayed()
+                compose.onNodeWithText("Replace working draft").assertIsDisplayed()
                 compose.onNodeWithText("Replace working draft").performClick()
                 // Imports remain local working copies until an explicit Save draft.
                 assertEquals(committedBeforeImport, runBlocking { repository.load() })

@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-224-01: Check route import on a smaller screen at 2× text
+
+- Date: 2026-11-21. User approved Phase 224 after the Phase 223 fix. Baseline `6c54704` on `main`; separate APK/demo outputs were already untracked. Model/version unavailable.
+- Context: the real GeoJSON/GPX picker flow fits the 1080 × 2220, 440 dpi API 31 emulator at 2× text, but that viewport is about 393 dp wide. A smaller Android viewport could hide the long imported name, field-outline summary, save notice or dialog actions.
+- Choice: use the same disposable API 31 AVD with a reversible 720 × 1440 pixel, 360 dpi display override (320 × 640 dp) and 2× Android text. Run the existing real-picker test with its synthetic long route name, inspect both screenshots, and change only the preview layout if clipping is observed. Rerun the focused flow at normal text after any change, then restore the AVD display and text settings.
+- Alternatives: a static screenshot mock would miss Android DocumentsUI and actual dialog constraints; a physical phone would risk operator data for this synthetic UI check. Do not open hardware links or alter route persistence/confirmation semantics.
+- Risk and revisit: smaller windows, accessibility services, other languages or exceptionally long imported names may still differ. A scrollable text area may be needed if short copy cannot fit while preserving both actions. Treat emulator ANR or picker failures as separate evidence, not a layout pass.
+- 2026-11-21 outcome: both dialogs clipped their lower details at 320 × 640 dp and 2× text despite a passing interaction test. A scrollable body with separate text nodes preserved both actions. After correcting an ambiguous test selector, the real picker test and visual review passed at both 2× and normal text. Revisit if a still smaller window or longer localized text makes the actions unreachable.
+
 ## D-223-01: Stress the route import preview at 2× text
 
 - Date: 2026-11-21. User approved Phase 223. Tracked baseline `0bd278f`; Phase 222 records and separate APK/demo outputs were already uncommitted or untracked. Model/version unavailable.

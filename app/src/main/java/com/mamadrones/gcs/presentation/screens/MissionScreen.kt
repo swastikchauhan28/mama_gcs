@@ -793,7 +793,13 @@ fun MissionScreen(
             onDismissRequest = { onAction(MissionPlanAction.CancelImport) },
             title = { Text("Import route preview") },
             text = {
-                Text("${imported.name}\n${imported.waypoints.size} waypoints · ${String.format(Locale.US, "%.0f", imported.distanceMeters)} m straight-line estimate.\n$outlineSummary\nSaved route changes only after Save draft.")
+                // Keep the preview details reachable when large text leaves little space above the actions.
+                Column(Modifier.verticalScroll(rememberScrollState()).testTag("import-preview-scroll")) {
+                    Text(imported.name)
+                    Text("${imported.waypoints.size} waypoints · ${String.format(Locale.US, "%.0f", imported.distanceMeters)} m straight-line estimate.")
+                    Text(outlineSummary)
+                    Text("Saved route changes only after Save draft.")
+                }
             },
             confirmButton = { TextButton(onClick = { onAction(MissionPlanAction.ConfirmImport) }) { Text("Replace working draft") } },
             dismissButton = { TextButton(onClick = { onAction(MissionPlanAction.CancelImport) }) { Text("Cancel") } }
