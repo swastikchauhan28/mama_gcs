@@ -413,6 +413,73 @@ class RouteDocumentPickerTest {
         assertEquals(recovery, runBlocking { repository.loadRecovery() })
     }
 
+    @Test fun oversizedRouteFilesPreserveSavedAndWorkingDraft() {
+        val repository = LocalMissionDraftRepository(instrumentation.targetContext)
+        val previous = runBlocking { repository.load() }
+        val recovery = runBlocking { repository.loadRecovery() }
+        val route = MissionDraft("Oversized import test", listOf(DraftWaypoint("p", -35.36, 149.16)))
+        val prefix = "qa_route_" + UUID.randomUUID().toString().replace("-", "")
+        fun paddedFile(start: String, end: String): String =
+            start + " ".repeat(256_001 - start.length - end.length) + end
+        val cases = listOf(
+            Triple("${prefix}a.geojson", "application/geo+json", paddedFile(
+                "{\"type\":\"FeatureCollection\",\"features\":[],\"padding\":\"", "\"}")),
+            Triple("${prefix}b.gpx", "application/gpx+xml", paddedFile(
+                "<gpx version=\"1.1\" xmlns=\"http://www.topografix.com/GPX/1/1\"><rte><!--",
+                "--></rte></gpx>")),
+        )
+        cases.forEach { (_, _, content) -> assertEquals(256_001, content.length) }
+        val resolver = instrumentation.targetContext.contentResolver
+        val fileUris = mutableListOf<android.net.Uri>()
+        var scenario: ActivityScenario<MainActivity>? = null
+        try {
+            cases.forEach { (file, mimeType, content) ->
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, file)
+                    put(MediaStore.Downloads.MIME_TYPE, mimeType)
+                }
+                val uri = requireNotNull(resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values))
+                fileUris += uri
+                requireNotNull(resolver.openOutputStream(uri)).bufferedWriter().use { it.write(content) }
+            }
+            runBlocking { repository.save(route) }
+            scenario = ActivityScenario.launch(MainActivity::class.java)
+            awaitApp()
+            compose.openWorkspace("mission")
+            compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("mission-add") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-edit-0"))
+            compose.onNodeWithTag("mission-edit-0").performClick()
+            compose.onNodeWithTag("mission-latitude").performTextReplacement("-35.365")
+            compose.onNodeWithTag("mission-confirm-waypoint").performClick()
+
+            cases.forEach { (file, _, _) ->
+                action("Import route file")
+                downloads()
+                clickNative { it.text?.toString() == file }
+                awaitApp()
+                val error = "Route file exceeds the import size limit"
+                compose.waitUntil(15_000) { compose.onAllNodesWithText(error).fetchSemanticsNodes().isNotEmpty() }
+                compose.onNodeWithTag("mission-editor").performScrollToNode(hasText(error))
+                compose.onNodeWithText(error).assertIsDisplayed()
+                compose.onNodeWithText("Import route preview").assertDoesNotExist()
+                assertEquals(route, runBlocking { repository.load() })
+                compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-edit-0"))
+                compose.onNodeWithTag("mission-edit-0").performClick()
+                compose.onNodeWithTag("mission-latitude").assertTextContains("-35.365", substring = true)
+                compose.onNodeWithText("Cancel").performClick()
+            }
+        } finally {
+            scenario?.close()
+            runBlocking {
+                repository.save(previous)
+                if (recovery == null) repository.clearRecovery() else repository.saveRecovery(recovery)
+            }
+            fileUris.forEach { resolver.delete(it, null, null) }
+        }
+        assertEquals(previous, runBlocking { repository.load() })
+        assertEquals(recovery, runBlocking { repository.loadRecovery() })
+    }
+
     @Test fun exportBothFormatsAndImportThroughSystemPickerWithCancellation() {
         val repository = LocalMissionDraftRepository(instrumentation.targetContext)
         val previous = runBlocking { repository.load() }

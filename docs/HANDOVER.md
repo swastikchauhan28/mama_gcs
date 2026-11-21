@@ -1,9 +1,17 @@
 # Current handover
 
+## 2026-11-21 — Phase 220 oversized route file rejection
+
+- Done: a disposable-emulator DocumentsUI test rejects 256,001-character GeoJSON and GPX files at the shared 256,000-character reader limit, shows the size error, opens no preview, and preserves saved and unsaved route state. The focused test passed `OK (1 test)` with a healthy post-run gate. Build passed; 533 JVM tests were up-to-date, lint zero errors / 27 warnings. No production code changed. See [Phase 220](phase-220-report.md) and D-220-01.
+- In progress: owner diff review remains a release gate. The user requested separate Phase 219 and 220 commits; the requested debug APK and demo media under `output/` remain separate untracked deliverables.
+- Broken or risky: API 31 and API 34 disposable emulators logged startup ANRs and System UI dialogs before a later clean API 31 launch passed. Synthetic file rejection does not establish arbitrary provider behavior or physical navigation accuracy.
+- Next: review the Phase 219 and 220 diffs/evidence before release. Keep RC work paused.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-21 — Phase 219 maximum accepted GeoJSON route
 
 - Done: a disposable-emulator DocumentsUI test imported and explicitly saved 250 ordered waypoints with a closed 64-vertex field outline. It verified the visible preview, unchanged saved draft before Save, and exact stored coordinates. The focused test passed `OK (1 test)` with a healthy post-run gate. Build passed; 533 JVM tests were up-to-date, lint zero errors / 27 warnings. No production code changed. See [Phase 219](phase-219-report.md) and D-219-01.
-- In progress: owner diff review remains a release gate. Phase 219 changes are uncommitted pending a specific request. Earlier demo media and the requested debug APK under `output/` remain separate untracked deliverables.
+- In progress: owner diff review remains a release gate. Phase 219 was committed as `bdd2bcd` after the user's request. Earlier demo media and the requested debug APK under `output/` remain separate untracked deliverables.
 - Broken or risky: a synthetic boundary-sized import on one emulator does not establish performance across phones, field navigation accuracy or mission execution.
 - Next: review the Phase 219 test and evidence before release. Keep RC work paused.
 - Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.

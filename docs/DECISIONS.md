@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-220-01: Verify oversized route files fail before draft replacement
+
+- Date: 2026-11-21. User approved Phase 220. Tracked baseline `4931846`; Phase 219 was already uncommitted, as were the separate debug APK and demo media under `output/`. Model/version unavailable.
+- Context: GeoJSON and GPX import share a 256,000-character screen reader bound before either codec sees file content. Previous phases checked parser point/outline limits and an accepted route at the maximum counts, but not the file-size boundary through DocumentsUI.
+- Choice: create otherwise valid GeoJSON and GPX documents of exactly 256,001 ASCII characters on the disposable emulator. Import each through the real picker against a saved route with a distinct unsaved edit; verify the visible size-limit error, no replacement preview, unchanged saved route and retained unsaved edit. Restore prior emulator draft/recovery and delete only test-created document URIs.
+- Alternatives: codec-only tests miss the screen reader's earlier bound; malformed padding could trigger an unrelated parse error. Use valid whitespace inside a JSON string and XML comment to isolate the size limit. Keep Phase 220's test and report distinct from the uncommitted Phase 219 change.
+- Risk and revisit: the picker or emulator may fail independently of size validation. A 256,001-character synthetic file does not prove arbitrary provider behavior or physical mission safety. Change production code only if the focused test exposes a defect.
+
 ## D-219-01: Verify maximum accepted GeoJSON route through local save
 
 - Date: 2026-11-21. User approved Phase 219. Baseline `4931846`; the earlier demo media and requested debug APK under `output/` were untracked. Model/version unavailable.
