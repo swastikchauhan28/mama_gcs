@@ -1,5 +1,15 @@
 # Decisions and alternatives
 
+## D-226-01: Make route Files controls reachable in short landscape
+
+- Date: 2026-11-21. User approved Phase 226. Baseline `f799757` on `main`; older APK/demo outputs were already untracked. Model/version unavailable.
+- Context: Phase 225's 640 × 320 dp, 2× text landscape attempt could not reach the GPX notice or export picker controls before the import preview. `MissionScreen` places the entire Files toolbar, seven actions and notice inside the first `LazyColumn` item, which can be taller than the short viewport. The existing test's `performScrollToNode` can bring only that oversized item into view, leaving lower controls clipped.
+- Choice: in the short enlarged-text layout, give the Files heading, each action and the GPX notice their own lazy-list items so each target can scroll into view. Preserve the existing grouped FlowRow at ordinary sizes. Add a real-picker test that keeps the Files panel and preview in landscape and checks actual screenshot orientation, export/import, cancellation and explicit save. No route codec or persistence change.
+- Alternatives: shrinking text would reduce accessibility; a nested scroll area inside the one oversized list item could create competing scroll gestures. Separate lazy-list items use the screen's existing scroll behavior and test semantics.
+- Risk and revisit: one viewport and language may not cover still shorter windows or other accessibility services. DocumentsUI can request its own orientation; only Mama GCS screenshots with verified wide dimensions count as landscape evidence. A successful local file path does not prove vehicle behavior.
+- 2026-11-21 correction and outcome: separate file rows alone did not restore a usable viewport. At 2× text the fixed route header filled the remaining height below the station bars. The final short-landscape layout moves that header into the editor list and gives each Files action and the GPX notice a separate row; normal layouts retain the fixed header and grouped actions. Adjusted waypoint/fence jump indices for the added rows. The real-picker flow passed at 2× and normal text in landscape, and the portrait 2× regression passed. A test-only cancellation helper handles DocumentsUI consuming the first Back to dismiss its keyboard. Revisit if smaller windows or localized labels expose a new space constraint.
+- Follow-up: all seven short-landscape Files actions were individually scrolled into view and checked enabled on the disposable 2× emulator; the complete picker flow passed in the same run after a healthy no-wipe restart. No additional app behavior changed.
+
 ## D-225-01: Check import preview in landscape at 2× text
 
 - Date: 2026-11-21. User approved Phase 225. Baseline `c97a8e0` on `main`; older APK/demo outputs were already untracked. Model/version unavailable.

@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-21 — Phase 226 short-landscape Files panel
+
+- Done: moved the route header into the scrollable editor only for a short landscape window at 2× text, and separated the Files actions and GPX note into reachable rows. A follow-up test confirmed all seven actions are visible and enabled; real DocumentsUI GeoJSON/GPX export, cancellation, import preview, replacement and explicit save passed on the disposable API 31 emulator at 2× and normal text; portrait 2× passed. Build succeeded, 533 JVM tests passed, lint zero errors / 27 warnings. See [Phase 226](phase-226-report.md) and D-226-01.
+- In progress: owner diff review remains a release gate. Earlier APK/demo outputs remain separate untracked deliverables; check Git history for Phase 226 commit status.
+- Broken or risky: initial layout and test failures, one DocumentsUI keyboard cancellation failure, and emulator startup ANRs are retained in the report. Clean retries passed. Other sizes, languages and physical mission behavior remain unverified.
+- Next: review the Phase 226 diff and targeted evidence before any release. Keep RC work paused.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-21 — Phase 225 landscape import preview
 
 - Done: found that a narrow landscape import dialog at 2× text had no visible detail area. Widened only the landscape AlertDialog, and added a test that rotates the preview after selecting a file through real DocumentsUI. GeoJSON/GPX passed at 2× and normal text in a 640 × 320 dp landscape viewport; portrait 2× also passed. All three focused runs had healthy Android gates. Build succeeded; 533 JVM tests passed; lint zero errors / 27 warnings. See [Phase 225](phase-225-report.md) and D-225-01.

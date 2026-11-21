@@ -208,10 +208,14 @@ fun MissionScreen(
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val wide = maxWidth >= 680.dp
+        val enlargedMobileHeader = !wide && androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.8f
+        val shortLandscape = enlargedMobileHeader && maxHeight < 400.dp &&
+            LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val fileItemCount = if (shortLandscape && showFileActions) 9 else 0
         // Route items follow one shared header, an optional mobile map, and the route introduction.
-        val firstWaypointItemIndex = if (wide) 2 else 3
-        val firstFenceItemIndex = if (wide) 2 else 3
-        LaunchedEffect(editorTab, pendingRouteFocusNumber, wide, waypointCount) {
+        val firstWaypointItemIndex = (if (wide) 2 else 3) + fileItemCount
+        val firstFenceItemIndex = (if (wide) 2 else 3) + fileItemCount
+        LaunchedEffect(editorTab, pendingRouteFocusNumber, wide, waypointCount, fileItemCount) {
             val number = pendingRouteFocusNumber
             if (editorTab == "Route" && number != null) {
                 // Wait for Route content to replace Review content before scrolling its keyed rows.
@@ -240,9 +244,8 @@ fun MissionScreen(
         }
         // Leave room for the local file toolbar and editor padding in a short landscape window.
         val coverageDiagramHeight = (maxHeight - 72.dp).coerceIn(80.dp, 260.dp)
-        val enlargedMobileHeader = !wide && androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.8f
         Column(Modifier.fillMaxSize()) {
-            Surface(color = MaterialTheme.colorScheme.surface) {
+            if (!shortLandscape) Surface(color = MaterialTheme.colorScheme.surface) {
                 if (enlargedMobileHeader) {
                     val draftSummary = "${plan.draft.waypoints.size} points · ${String.format(Locale.US, "%.0f", plan.draft.distanceMeters)} m · Local only"
                     Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
@@ -290,6 +293,22 @@ fun MissionScreen(
                 contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 item {
+                    if (shortLandscape) {
+                        // Keep the route controls reachable without consuming the entire short viewport.
+                        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { showFileActions = !showFileActions },
+                                modifier = Modifier.heightIn(min = 48.dp).testTag("mission-file-menu")) {
+                                Text(if (showFileActions) "Close files" else "File / Library")
+                            }
+                            Button(onClick = { onAction(MissionPlanAction.Save) },
+                                enabled = plan.editable && (plan.dirty || plan.recoveryCleanupFailed),
+                                modifier = Modifier.heightIn(min = 48.dp).testTag("mission-save")) { Text("Save draft") }
+                        }
+                        Text(plan.draft.name, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.titleSmall)
+                        Text("${plan.draft.waypoints.size} points · ${String.format(Locale.US, "%.0f", plan.draft.distanceMeters)} m · Local only",
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
+                    }
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf("Route", "Field outline", "Coverage", "Review").forEach { tab ->
                             FilterChip(selected = editorTab == tab, onClick = { editorTab = tab }, label = { Text(tab) },
@@ -305,7 +324,7 @@ fun MissionScreen(
                         plan.dirty -> "Unsaved changes · saving recovery copy…"
                         else -> "No unsaved changes"
                     }, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("mission-save-status"))
-                    if (showFileActions) {
+                    if (showFileActions && !shortLandscape) {
                     Text("LOCAL FILES & LIBRARY", style = MaterialTheme.typography.labelLarge)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         TextButton(onClick = { showRename = true }, enabled = plan.editable) { Text("Rename") }
@@ -324,6 +343,18 @@ fun MissionScreen(
                         Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("mission-library-error"))
                     }
                     if (plan.loadFailed) TextButton(onClick = { onAction(MissionPlanAction.RetryLoad) }) { Text("Retry loading") }
+                }
+                if (showFileActions && shortLandscape) {
+                    // Separate lazy rows let each control scroll fully into a short 2× landscape viewport.
+                    item(key = "files-heading") { Text("LOCAL FILES & LIBRARY", style = MaterialTheme.typography.labelLarge) }
+                    item(key = "files-rename") { TextButton(onClick = { showRename = true }, enabled = plan.editable) { Text("Rename") } }
+                    item(key = "files-save-library") { TextButton(onClick = { showSaveToLibrary = true }, enabled = plan.editable) { Text("Save to library") } }
+                    item(key = "files-library") { TextButton(onClick = { librarySearchQuery = ""; showLibrary = true }, enabled = plan.editable) { Text("Library · ${plan.library.size}") } }
+                    item(key = "files-new") { TextButton(onClick = { showNewConfirmation = true }, enabled = plan.editable) { Text("New draft") } }
+                    item(key = "files-import") { TextButton(onClick = { importLauncher.launch(arrayOf("application/geo+json", "application/json", "application/gpx+xml", "application/xml", "text/xml", "*/*")) }, enabled = plan.editable) { Text("Import route file") } }
+                    item(key = "files-geojson") { TextButton(onClick = { onAction(MissionPlanAction.Export(MissionDraftFileFormat.GEOJSON)) }, enabled = plan.editable) { Text("Export GeoJSON") } }
+                    item(key = "files-gpx") { TextButton(onClick = { onAction(MissionPlanAction.Export(MissionDraftFileFormat.GPX)) }, enabled = plan.editable) { Text("Export GPX") } }
+                    item(key = "files-notice") { Text("GPX carries route waypoints only. Use GeoJSON to preserve the local outline.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
                 if (!wide && (editorTab != "Coverage" || coverage.mapLines.isNotEmpty())) item(key = "planner-map") {
                     val compactCoverage = editorTab == "Coverage"

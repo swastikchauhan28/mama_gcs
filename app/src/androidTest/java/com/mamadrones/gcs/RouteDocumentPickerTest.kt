@@ -35,6 +35,7 @@ class RouteDocumentPickerTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val automation get() = instrumentation.uiAutomation
     private val codec = MissionDraftRouteCodec(MissionDraftGeoJsonCodec(), MissionDraftGpxCodec())
+    private var shortLandscapeFlow = false
 
     @Test fun createFieldPreviewSaveExportAndReimportLocalRoute() {
         val repository = LocalMissionDraftRepository(instrumentation.targetContext)
@@ -487,7 +488,13 @@ class RouteDocumentPickerTest {
     @Test fun exportBothFormatsAndImportThroughSystemPickerInLandscape() =
         exportBothFormatsAndImportThroughSystemPickerWithCancellation(landscape = true)
 
-    private fun exportBothFormatsAndImportThroughSystemPickerWithCancellation(landscape: Boolean) {
+    @Test fun exportAndImportFromShortLandscapeFilesPanel() =
+        exportBothFormatsAndImportThroughSystemPickerWithCancellation(landscape = true, landscapeWholeFlow = true)
+
+    private fun exportBothFormatsAndImportThroughSystemPickerWithCancellation(
+        landscape: Boolean, landscapeWholeFlow: Boolean = false,
+    ) {
+        shortLandscapeFlow = landscapeWholeFlow && instrumentation.targetContext.resources.configuration.fontScale >= 1.8f
         val repository = LocalMissionDraftRepository(instrumentation.targetContext)
         val previous = runBlocking { repository.load() }
         val recovery = runBlocking { repository.loadRecovery() }
@@ -505,21 +512,47 @@ class RouteDocumentPickerTest {
             runBlocking { repository.save(route) }
             scenario = ActivityScenario.launch(MainActivity::class.java)
             awaitApp()
+            if (landscapeWholeFlow) {
+                scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+                compose.waitUntil(10_000) {
+                    val screen = compose.awaitSystemScreenshot()
+                    try { screen.width > screen.height } finally { screen.recycle() }
+                }
+            }
             compose.openWorkspace("mission")
             compose.waitUntil(15_000) {
                 compose.onAllNodesWithText("No unsaved changes").fetchSemanticsNodes().isNotEmpty()
             }
             val gpxNotice = "GPX carries route waypoints only. Use GeoJSON to preserve the local outline."
             compose.openMissionFiles()
-            compose.onNodeWithTag("mission-editor").performScrollToNode(hasText(gpxNotice))
+            if (shortLandscapeFlow) {
+                listOf(
+                    2 to "Rename", 3 to "Save to library", 4 to "Library ·",
+                    5 to "New draft", 6 to "Import route file",
+                    7 to "Export GeoJSON", 8 to "Export GPX",
+                ).forEach { (row, label) ->
+                    compose.onNodeWithTag("mission-editor").performScrollToIndex(row)
+                    compose.onNodeWithText(label, substring = label == "Library ·")
+                        .assertIsDisplayed().assertIsEnabled()
+                }
+            }
+            if (shortLandscapeFlow) compose.onNodeWithTag("mission-editor").performScrollToIndex(9)
+            else compose.onNodeWithTag("mission-editor").performScrollToNode(hasText(gpxNotice))
+            if (landscapeWholeFlow) {
+                val filesScreen = compose.awaitSystemScreenshot()
+                try {
+                    assertTrue("Files panel must be landscape", filesScreen.width > filesScreen.height)
+                    File(requireNotNull(instrumentation.targetContext.getExternalFilesDir(null)), "phase226-files-notice.png").outputStream().use {
+                        assertTrue(filesScreen.compress(Bitmap.CompressFormat.PNG, 100, it))
+                    }
+                } finally { filesScreen.recycle() }
+            }
             compose.onNodeWithText(gpxNotice).assertIsDisplayed()
 
             // Cancellation must return to the same draft and permit another export.
             action("Export GeoJSON")
             awaitNative { it.className?.toString() == "android.widget.EditText" }
-            // DocumentsUI is another app; the shell-owned input command can send Back across packages on API 31.
-            shell("input keyevent ${KeyEvent.KEYCODE_BACK}")
-            awaitApp()
+            cancelNativePicker()
             assertEquals(route, runBlocking { repository.load() })
 
             listOf("Export GeoJSON", "Export GPX").zip(files).forEach { (label, file) ->
@@ -542,8 +575,7 @@ class RouteDocumentPickerTest {
 
             action("Import route file")
             awaitNative { it.packageName?.toString()?.endsWith("documentsui") == true }
-            shell("input keyevent ${KeyEvent.KEYCODE_BACK}")
-            awaitApp()
+            cancelNativePicker()
             compose.onNodeWithText("Import route preview").assertDoesNotExist()
             assertEquals(route, runBlocking { repository.load() })
 
@@ -589,7 +621,7 @@ class RouteDocumentPickerTest {
                 compose.onNodeWithText("Cancel").assertIsDisplayed()
                 compose.onNodeWithText("Replace working draft").assertIsDisplayed()
                 compose.onNodeWithText("Replace working draft").performClick()
-                if (landscape) {
+                if (landscape && !landscapeWholeFlow) {
                     scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
                     compose.waitUntil(10_000) {
                         val screen = compose.awaitSystemScreenshot()
@@ -598,6 +630,7 @@ class RouteDocumentPickerTest {
                 }
                 // Imports remain local working copies until an explicit Save draft.
                 assertEquals(committedBeforeImport, runBlocking { repository.load() })
+                if (landscapeWholeFlow) compose.onNodeWithTag("mission-editor").performScrollToIndex(0)
                 compose.onNodeWithTag("mission-save").assertIsEnabled().performClick()
                 compose.waitUntil(15_000) {
                     val saved = runBlocking { repository.load() }
@@ -609,6 +642,7 @@ class RouteDocumentPickerTest {
                     saved.waypoints.map { it.latitude to it.longitude })
             }
         } finally {
+            shortLandscapeFlow = false
             scenario?.close()
             runBlocking {
                 repository.save(previous)
@@ -619,8 +653,13 @@ class RouteDocumentPickerTest {
     }
 
     private fun action(text: String) {
+        if (shortLandscapeFlow) compose.onNodeWithTag("mission-editor").performScrollToIndex(0)
         compose.openMissionFiles()
-        if (text != "Save draft") compose.onNodeWithTag("mission-editor").performScrollToNode(hasText(text))
+        if (text != "Save draft") {
+            val fileRow = mapOf("Import route file" to 6, "Export GeoJSON" to 7, "Export GPX" to 8)[text]
+            if (shortLandscapeFlow && fileRow != null) compose.onNodeWithTag("mission-editor").performScrollToIndex(fileRow)
+            else compose.onNodeWithTag("mission-editor").performScrollToNode(hasText(text))
+        }
         compose.onNodeWithText(text).assertIsEnabled().performClick()
         // Export opens DocumentsUI from a LaunchedEffect on the next Compose frame.
         compose.waitForIdle()
@@ -644,6 +683,20 @@ class RouteDocumentPickerTest {
     private fun awaitApp() = awaitCondition("Mama GCS foreground") {
         acknowledgeFullscreenEducation()
         automation.rootInActiveWindow?.packageName?.toString() == "com.mamadrones.gcs"
+    }
+
+    private fun cancelNativePicker() {
+        // A first Back can dismiss the system keyboard instead of DocumentsUI.
+        repeat(2) {
+            shell("input keyevent ${KeyEvent.KEYCODE_BACK}")
+            val deadline = SystemClock.uptimeMillis() + 2_000
+            while (SystemClock.uptimeMillis() < deadline) {
+                acknowledgeFullscreenEducation()
+                if (automation.rootInActiveWindow?.packageName?.toString() == "com.mamadrones.gcs") return
+                SystemClock.sleep(100)
+            }
+        }
+        awaitApp()
     }
 
     private fun clickNative(predicate: (AccessibilityNodeInfo) -> Boolean) {
