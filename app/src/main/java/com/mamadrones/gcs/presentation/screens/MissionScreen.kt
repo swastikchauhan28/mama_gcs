@@ -212,10 +212,13 @@ fun MissionScreen(
         val shortLandscape = enlargedMobileHeader && maxHeight < 400.dp &&
             LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
         val fileItemCount = if (shortLandscape && showFileActions) 9 else 0
+        val shortTabItemCount = if (shortLandscape) 1 else 0
+        val routeJumpItemCount = if (shortLandscape && waypointCount > 0) 3 else 0
+        val fenceJumpItemCount = if (shortLandscape && fenceVertexCount > 0) 3 else 0
         // Route items follow one shared header, an optional mobile map, and the route introduction.
-        val firstWaypointItemIndex = (if (wide) 2 else 3) + fileItemCount
-        val firstFenceItemIndex = (if (wide) 2 else 3) + fileItemCount
-        LaunchedEffect(editorTab, pendingRouteFocusNumber, wide, waypointCount, fileItemCount) {
+        val firstWaypointItemIndex = (if (wide) 2 else 3) + shortTabItemCount + fileItemCount + routeJumpItemCount
+        val firstFenceItemIndex = (if (wide) 2 else 3) + shortTabItemCount + fileItemCount + fenceJumpItemCount
+        LaunchedEffect(editorTab, pendingRouteFocusNumber, wide, waypointCount, shortTabItemCount, fileItemCount, routeJumpItemCount) {
             val number = pendingRouteFocusNumber
             if (editorTab == "Route" && number != null) {
                 // Wait for Route content to replace Review content before scrolling its keyed rows.
@@ -309,7 +312,7 @@ fun MissionScreen(
                         Text("${plan.draft.waypoints.size} points · ${String.format(Locale.US, "%.0f", plan.draft.distanceMeters)} m · Local only",
                             maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
                     }
-                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (!shortLandscape) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf("Route", "Field outline", "Coverage", "Review").forEach { tab ->
                             FilterChip(selected = editorTab == tab, onClick = { editorTab = tab }, label = { Text(tab) },
                                 modifier = Modifier.heightIn(min = 48.dp).testTag("mission-tab-$tab"))
@@ -344,6 +347,15 @@ fun MissionScreen(
                     }
                     if (plan.loadFailed) TextButton(onClick = { onAction(MissionPlanAction.RetryLoad) }) { Text("Retry loading") }
                 }
+                if (shortLandscape) item(key = "planner-tabs") {
+                    // Keep navigation reachable even when the header exceeds the short viewport.
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("Route", "Field outline", "Coverage", "Review").forEach { tab ->
+                            FilterChip(selected = editorTab == tab, onClick = { editorTab = tab }, label = { Text(tab) },
+                                modifier = Modifier.heightIn(min = 48.dp).testTag("mission-tab-$tab"))
+                        }
+                    }
+                }
                 if (showFileActions && shortLandscape) {
                     // Separate lazy rows let each control scroll fully into a short 2× landscape viewport.
                     item(key = "files-heading") { Text("LOCAL FILES & LIBRARY", style = MaterialTheme.typography.labelLarge) }
@@ -376,7 +388,7 @@ fun MissionScreen(
                         style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick = { openEditor(null, null, null) }, enabled = canAdd,
                         modifier = Modifier.testTag("mission-add")) { Text("Add coordinates") }
-                    if (waypointCount > 0) {
+                    if (waypointCount > 0 && !shortLandscape) {
                         Text("Jump to waypoint", style = MaterialTheme.typography.titleSmall)
                         OutlinedTextField(
                             value = jumpWaypointInput,
@@ -400,6 +412,33 @@ fun MissionScreen(
                             enabled = canJumpToWaypoint,
                             modifier = Modifier.testTag("mission-jump-go"),
                         ) { Text("Go to waypoint") }
+                    }
+                }
+                if (editorTab == "Route" && shortLandscape && waypointCount > 0) {
+                    // Each control must be independently scrollable in the short 2× viewport.
+                    item(key = "route-jump-heading") { Text("Jump to waypoint", style = MaterialTheme.typography.titleSmall) }
+                    item(key = "route-jump-input") {
+                        OutlinedTextField(
+                            value = jumpWaypointInput,
+                            onValueChange = { jumpWaypointInput = it.take(MissionDraft.MAX_WAYPOINTS.toString().length) },
+                            label = { Text("Waypoint number") },
+                            singleLine = true,
+                            isError = jumpWaypointInput.isNotEmpty() && !canJumpToWaypoint,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { jumpToWaypoint() }),
+                            supportingText = {
+                                Text(
+                                    if (jumpWaypointInput.isNotEmpty() && !canJumpToWaypoint) "Enter a number from 1 to $waypointCount."
+                                    else "1 to $waypointCount · local draft only",
+                                    modifier = Modifier.testTag("mission-jump-help"),
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth().testTag("mission-jump-input"),
+                        )
+                    }
+                    item(key = "route-jump-go") {
+                        TextButton(onClick = { jumpToWaypoint() }, enabled = canJumpToWaypoint,
+                            modifier = Modifier.testTag("mission-jump-go")) { Text("Go to waypoint") }
                     }
                 }
                 if (editorTab == "Review") {
@@ -487,7 +526,7 @@ fun MissionScreen(
                             enabled = plan.editable && plan.draft.keepInFence.isNotEmpty(),
                             modifier = Modifier.testTag("mission-clear-fence")) { Text("Clear outline") }
                     }
-                    if (fenceVertexCount > 0) {
+                    if (fenceVertexCount > 0 && !shortLandscape) {
                         Text("Jump to outline vertex", style = MaterialTheme.typography.titleSmall)
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(
@@ -507,6 +546,29 @@ fun MissionScreen(
                             TextButton(onClick = { jumpToFenceVertex() }, enabled = canJumpToFence,
                                 modifier = Modifier.testTag("mission-fence-jump-go")) { Text("Go to vertex") }
                         }
+                    }
+                }
+                if (shortLandscape && fenceVertexCount > 0) {
+                    item(key = "fence-jump-heading") { Text("Jump to outline vertex", style = MaterialTheme.typography.titleSmall) }
+                    item(key = "fence-jump-input") {
+                        OutlinedTextField(
+                            value = jumpFenceInput,
+                            onValueChange = { jumpFenceInput = it.take(MissionDraft.MAX_FENCE_VERTICES.toString().length) },
+                            label = { Text("Vertex number") },
+                            singleLine = true,
+                            isError = jumpFenceInput.isNotEmpty() && !canJumpToFence,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { jumpToFenceVertex() }),
+                            supportingText = {
+                                Text(if (jumpFenceInput.isNotEmpty() && !canJumpToFence) "Enter a number from 1 to $fenceVertexCount."
+                                    else "1 to $fenceVertexCount · local outline only")
+                            },
+                            modifier = Modifier.fillMaxWidth().testTag("mission-fence-jump-input"),
+                        )
+                    }
+                    item(key = "fence-jump-go") {
+                        TextButton(onClick = { jumpToFenceVertex() }, enabled = canJumpToFence,
+                            modifier = Modifier.testTag("mission-fence-jump-go")) { Text("Go to vertex") }
                     }
                 }
                 itemsIndexed(plan.draft.keepInFence, key = { _, point -> "fence-${point.id}" }) { index, point ->

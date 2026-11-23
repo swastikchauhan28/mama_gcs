@@ -1,5 +1,21 @@
 # Current handover
 
+## 2026-11-23 — Phase 227 portrait follow-up
+
+- Done: closed the 2× portrait outline-test gap. The test now scrolls the lazy Route control and horizontal Review tab into view, verifies their visible/selected state, and uses keyboard Done for the vertex jump only at enlarged text while preserving the Go-button tap at normal text. Both full outline flows, the short-landscape jump, and real Files picker passed with healthy Android gates. Screenshots show vertices 4 and 2 highlighted. The test APK build and lint passed; JVM results were up to date at 533 passing tests. No app code or hardware behavior changed in this follow-up. See [Phase 227](phase-227-report.md) and D-227-01.
+- In progress: owner diff review remains a release gate. The user requested a scoped Phase 227 commit and push on 2026-11-23; check Git history for the result.
+- Broken or risky: two earlier 2× portrait assertions failed and one test attempt stalled with the keyboard open; all remain recorded. Other viewport sizes, languages and physical mission behavior remain unverified.
+- Next: verify the requested Phase 227 commit and push, then review the diff and targeted emulator evidence before any release. Keep RC work paused.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
+## 2026-11-21 — Phase 227 route jumps with Files open
+
+- Done: made waypoint and field-outline vertex jump controls and the tab strip independently scrollable in short landscape at 2× text. The focused jumps test and existing real Files picker test passed on the disposable API 31 emulator with healthy Android gates. The ordinary-layout outline test passed at normal text. Screenshots show the selected targets above the safety banner. Build succeeded; 533 JVM tests passed; lint had zero errors and 27 warnings. See [Phase 227](phase-227-report.md) and D-227-01.
+- In progress: owner diff review remains a release gate; Phase 227 changes are uncommitted and unpushed.
+- Broken or risky: the initial short-layout failures and an older outline test timeout at 2× portrait are recorded. Other sizes, languages and physical mission behavior remain unverified.
+- Next: review the scoped diff and targeted evidence, then decide on commit/push separately. Keep RC work paused.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-21 — Phase 226 short-landscape Files panel
 
 - Done: moved the route header into the scrollable editor only for a short landscape window at 2× text, and separated the Files actions and GPX note into reachable rows. A follow-up test confirmed all seven actions are visible and enabled; real DocumentsUI GeoJSON/GPX export, cancellation, import preview, replacement and explicit save passed on the disposable API 31 emulator at 2× and normal text; portrait 2× passed. Build succeeded, 533 JVM tests passed, lint zero errors / 27 warnings. See [Phase 226](phase-226-report.md) and D-226-01.

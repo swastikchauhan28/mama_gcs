@@ -306,8 +306,14 @@ class MissionPlanningTest {
             val scenario = androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java)
             try {
                 compose.openWorkspace("mission")
-                compose.waitUntil(10_000) { compose.onAllNodesWithTag("mission-add").fetchSemanticsNodes().isNotEmpty() }
-                scrollToTag("mission-fix-issue-0").performClick()
+                // The route introduction is lazy and follows the map; bring it on screen first.
+                compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-add"))
+                compose.onNodeWithTag("mission-add").assertIsDisplayed().assertIsEnabled()
+                compose.onNodeWithTag("mission-editor").performScrollToIndex(0)
+                compose.onNodeWithTag("mission-tab-Review").performScrollTo().assertIsDisplayed().performClick()
+                compose.onNodeWithTag("mission-tab-Review").assertIsSelected()
+                compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-fix-issue-0"))
+                compose.onNodeWithTag("mission-fix-issue-0").assertIsDisplayed().performClick()
                 compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-outline-issue"))
                 compose.onNodeWithTag("mission-outline-issue").assertIsDisplayed()
                 compose.onNodeWithText("Local outline issue: OUTLINE CROSSES ITSELF. Review the vertices; this check cannot identify one cause.")
@@ -319,7 +325,15 @@ class MissionPlanningTest {
                 compose.onNodeWithTag("mission-fence-jump-go").assertIsNotEnabled()
                 compose.onNodeWithTag("mission-fence-jump-input").performTextReplacement("4")
                 compose.onNodeWithTag("mission-fence-jump-go").assertIsEnabled()
-                compose.onNodeWithTag("mission-fence-jump-go").performClick()
+                var enlargedText = false
+                scenario.onActivity { enlargedText = it.resources.configuration.fontScale >= 1.8f }
+                if (enlargedText) {
+                    // At 2× portrait text the numeric IME covers the short editor; Done performs the same jump.
+                    compose.onNodeWithTag("mission-fence-jump-input").performImeAction()
+                } else {
+                    // Keep the original button path covered at ordinary text size.
+                    compose.onNodeWithTag("mission-fence-jump-go").performClick()
+                }
                 compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-fence-row-3"))
                 compose.onNodeWithTag("mission-fence-row-3").assertIsDisplayed()
                 capture("mission-outline-vertex-jump")
@@ -347,6 +361,82 @@ class MissionPlanningTest {
             runBlocking {
                 repository.save(previous)
                 previousRecovery?.let { repository.saveRecovery(it) }
+            }
+        }
+    }
+
+    @Test fun shortLandscapeFileRowsPreserveWaypointAndOutlineJumps() {
+        val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val previous = runBlocking { repository.load() }
+        val previousRecovery = runBlocking { repository.loadRecovery() }
+        val draft = MissionDraft(
+            name = "Phase 227 local jump route",
+            waypoints = listOf(
+                DraftWaypoint("w1", -35.3631, 149.1651),
+                DraftWaypoint("w2", -35.3632, 149.1652),
+                DraftWaypoint("w3", -35.3633, 149.1653),
+            ),
+            keepInFence = listOf(
+                DraftWaypoint("f1", -35.3640, 149.1640),
+                DraftWaypoint("f2", -35.3640, 149.1660),
+                DraftWaypoint("f3", -35.3620, 149.1660),
+                DraftWaypoint("f4", -35.3620, 149.1640),
+            ),
+        )
+        var scenario: androidx.test.core.app.ActivityScenario<MainActivity>? = null
+        try {
+            runBlocking { repository.save(draft) }
+            scenario = androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java)
+            scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+            compose.waitUntil(10_000) {
+                var ready = false
+                scenario.onActivity {
+                    ready = it.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE &&
+                        it.resources.configuration.fontScale >= 1.8f
+                }
+                ready
+            }
+            compose.openWorkspace("mission")
+            compose.openMissionFiles()
+            compose.onNodeWithText("Close files").assertIsDisplayed()
+            val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+            assertTrue("Phase 227 must run in landscape", root.width > root.height)
+
+            compose.onNodeWithTag("mission-editor").performScrollToIndex(14)
+            compose.onNodeWithTag("mission-jump-input").assertIsDisplayed().performTextReplacement("3")
+            compose.onNodeWithTag("mission-jump-input").performImeAction()
+            compose.waitUntil(10_000) {
+                compose.onAllNodesWithTag("mission-waypoint-row-2").fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithTag("mission-waypoint-row-2").assertIsDisplayed()
+            compose.onNode(hasTestTag("mission-jump-target") and
+                hasAnyAncestor(hasTestTag("mission-waypoint-row-2"))).assertIsDisplayed()
+            capture("phase227-waypoint-jump")
+
+            compose.onNodeWithTag("mission-editor").performScrollToIndex(1)
+            compose.onNodeWithTag("mission-tab-Field outline").assertIsDisplayed().performClick()
+            compose.onNodeWithTag("mission-tab-Field outline").assertIsSelected()
+            compose.onNodeWithTag("mission-editor").performScrollToIndex(0)
+            compose.onNodeWithText("Close files").assertIsDisplayed()
+            compose.onNodeWithTag("mission-editor").performScrollToIndex(12)
+            compose.onNodeWithText("Local keep-in outline", substring = true).assertIsDisplayed()
+            compose.onNodeWithTag("mission-editor").performScrollToIndex(14)
+            capture("phase227-outline-input-position")
+            compose.onNodeWithTag("mission-fence-jump-input").assertIsDisplayed().performTextReplacement("4")
+            compose.onNodeWithTag("mission-fence-jump-input").performImeAction()
+            compose.waitUntil(10_000) {
+                compose.onAllNodesWithTag("mission-fence-row-3").fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithTag("mission-fence-row-3").assertIsDisplayed()
+            compose.onNode(hasTestTag("mission-fence-jump-target") and
+                hasAnyAncestor(hasTestTag("mission-fence-row-3"))).assertIsDisplayed()
+            capture("phase227-outline-jump")
+            assertEquals(draft, runBlocking { repository.load() })
+        } finally {
+            scenario?.close()
+            runBlocking {
+                repository.save(previous)
+                if (previousRecovery == null) repository.clearRecovery() else repository.saveRecovery(previousRecovery)
             }
         }
     }

@@ -527,16 +527,16 @@ class RouteDocumentPickerTest {
             compose.openMissionFiles()
             if (shortLandscapeFlow) {
                 listOf(
-                    2 to "Rename", 3 to "Save to library", 4 to "Library ·",
-                    5 to "New draft", 6 to "Import route file",
-                    7 to "Export GeoJSON", 8 to "Export GPX",
+                    3 to "Rename", 4 to "Save to library", 5 to "Library ·",
+                    6 to "New draft", 7 to "Import route file",
+                    8 to "Export GeoJSON", 9 to "Export GPX",
                 ).forEach { (row, label) ->
                     compose.onNodeWithTag("mission-editor").performScrollToIndex(row)
                     compose.onNodeWithText(label, substring = label == "Library ·")
                         .assertIsDisplayed().assertIsEnabled()
                 }
             }
-            if (shortLandscapeFlow) compose.onNodeWithTag("mission-editor").performScrollToIndex(9)
+            if (shortLandscapeFlow) compose.onNodeWithTag("mission-editor").performScrollToIndex(10)
             else compose.onNodeWithTag("mission-editor").performScrollToNode(hasText(gpxNotice))
             if (landscapeWholeFlow) {
                 val filesScreen = compose.awaitSystemScreenshot()
@@ -656,7 +656,7 @@ class RouteDocumentPickerTest {
         if (shortLandscapeFlow) compose.onNodeWithTag("mission-editor").performScrollToIndex(0)
         compose.openMissionFiles()
         if (text != "Save draft") {
-            val fileRow = mapOf("Import route file" to 6, "Export GeoJSON" to 7, "Export GPX" to 8)[text]
+            val fileRow = mapOf("Import route file" to 7, "Export GeoJSON" to 8, "Export GPX" to 9)[text]
             if (shortLandscapeFlow && fileRow != null) compose.onNodeWithTag("mission-editor").performScrollToIndex(fileRow)
             else compose.onNodeWithTag("mission-editor").performScrollToNode(hasText(text))
         }
