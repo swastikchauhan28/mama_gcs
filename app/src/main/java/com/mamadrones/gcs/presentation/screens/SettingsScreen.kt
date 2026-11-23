@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.mamadrones.gcs.domain.model.ThemeMode
 import com.mamadrones.gcs.domain.model.BasemapStyle
+import com.mamadrones.gcs.BuildConfig
 import com.mamadrones.gcs.domain.model.TransportStatus
 import com.mamadrones.gcs.presentation.components.*
 import com.mamadrones.gcs.presentation.settings.ConnectionUiState
@@ -171,12 +172,15 @@ fun MapSettingsScreen(
             if (state.saving) Text("Saving…")
         }
     }
-    SubsystemCard(PanelSpec("Basemap", "MAPLIBRE · MAPTILER", listOf(
-        "Source" to "MapTiler ${state.preferences.basemap.label}", "Network" to "Internet required",
+    SubsystemCard(PanelSpec("Basemap", if (state.preferences.basemap.isGoogle) "GOOGLE MAPS" else "MAPLIBRE · MAPTILER", listOf(
+        "Source" to "${if (state.preferences.basemap.isGoogle) "Google" else "MapTiler"} ${state.preferences.basemap.label}", "Network" to "Internet required",
         "Vehicle position" to "Received MAVLink coordinates", "Track" to "Current session",
-    ), "Tile loading requires a valid build-time MapTiler key and network access. The map displays its own loading or error state."))
+    ), if (state.preferences.basemap.isGoogle) {
+        if (BuildConfig.GOOGLE_MAPS_CONFIGURED) "Google Maps requires Google Play services, a restricted build-time key, enabled billing and internet. MapLibre remains available above."
+        else "Google Maps key is missing from this build. Add GOOGLE_MAPS_API_KEY to ignored local.properties and rebuild, or select MapLibre."
+    } else "Tile loading requires a valid build-time MapTiler key and network access. The map displays its own loading or error state."))
     Button(onClick = onOpenMap, modifier = Modifier.heightIn(min = 48.dp)) { Text("Open map") }
-    Notice("IMAGERY LIMITATIONS", "Satellite imagery is not a live camera feed and may be outdated or offset. It cannot establish obstacle clearance, boundaries or a safe driving surface. Loading depends on your MapTiler account, key and network; a saved choice does not confirm coverage.")
+    Notice("IMAGERY LIMITATIONS", "Satellite imagery is not a live camera feed and may be outdated or offset. It cannot establish obstacle clearance, boundaries or a safe driving surface. Loading depends on the selected map provider, its key and network; a saved choice does not confirm coverage.")
     Notice("OFFLINE REGIONS", "Offline region downloads are not implemented. Do not rely on cached tiles for offline coverage.")
     Notice("PLANNING OVERLAYS", "Waypoints and keep-in outlines are local planning references. They are not uploaded geofences, obstacle detection, or proof that a route is safe to drive.")
 }

@@ -19,9 +19,12 @@ class MapStyleConfigTest {
 
     @Test fun eachChoiceUsesAllowlistedHttpsProviderStyle() {
         val ids = listOf("streets-v4", "satellite-v4", "hybrid-v4")
-        BasemapStyle.entries.zip(ids).forEach { (style, id) ->
+        BasemapStyle.entries.filterNot { it.isGoogle }.zip(ids).forEach { (style, id) ->
             assertEquals("https://api.maptiler.com/maps/$id/style.json?key=test-key",
                 MapStyleConfig.styleUrlOrNull(style, "test-key"))
+        }
+        BasemapStyle.entries.filter { it.isGoogle }.forEach { style ->
+            assertNull(MapStyleConfig.styleUrlOrNull(style, "test-key"))
         }
     }
 

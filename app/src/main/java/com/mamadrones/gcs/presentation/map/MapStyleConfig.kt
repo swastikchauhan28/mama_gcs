@@ -16,7 +16,6 @@ object MapStyleConfig {
         get() = styleUrlOrNull(BasemapStyle.STREETS)
 
     fun styleUrlOrNull(basemap: BasemapStyle, apiKey: String = BuildConfig.MAPTILER_API_KEY): String? =
-        apiKey
-            .takeIf(String::isNotBlank)
+        apiKey.takeIf { !basemap.isGoogle && it.isNotBlank() }
             ?.let { key -> "https://api.maptiler.com/maps/${basemap.mapTilerId}/style.json?key=${URLEncoder.encode(key, "UTF-8")}" }
 }

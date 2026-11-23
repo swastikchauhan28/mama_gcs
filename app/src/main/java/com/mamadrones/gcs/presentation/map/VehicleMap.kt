@@ -131,6 +131,12 @@ fun VehicleMap(
     compactPlanningControls: Boolean = false,
     coverageGapSamples: List<CoverageMapPoint>? = null,
 ) {
+    if (LocalBasemapStyle.current.isGoogle) {
+        GoogleVehicleMap(state, modifier, draftWaypoints, draftFence, planningMode,
+            onWaypointRequested, onWaypointSelected, coverageLines, compactPlanningControls,
+            coverageGapSamples, LocalBasemapStyle.current)
+        return
+    }
     val mapView = rememberMapViewWithLifecycle()
     val collapseForLargeText = planningMode && LocalDensity.current.fontScale >= 1.8f
     var controlsExpanded by remember(compactPlanningControls, collapseForLargeText) {

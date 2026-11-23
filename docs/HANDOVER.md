@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-23 — Phase 229 optional Google Maps
+
+- Done: added Google streets, satellite and hybrid as saved Maps choices beside MapLibre. The Google renderer shows existing fresh vehicle/home data and local route, fence and coverage preview without vehicle commands. A Google API key is supplied only through ignored local build configuration; Cloud restrictions have not been independently verified. The synthetic Google map test and three settings/persistence tests passed on a disposable API 31 emulator with healthy Android gates; a rendered screenshot was reviewed. See [Phase 229](phase-229-report.md) and D-229-01.
+- In progress: owner diff review and release signing restriction check. The final build, 533 JVM tests, 4 focused emulator tests, and lint (zero errors, 27 existing warnings) passed. No Phase 229 commit or push has been requested.
+- Broken or risky: the first Play services renderer run crashed without Google's documented optional legacy HTTP library; it is fixed in the manifest. The first post-fix test had an off-main-thread assertion; the corrected test passed. Google map loading depends on network, billing, Android key restrictions and Play services. Release signing restrictions and physical-device map behavior remain unverified.
+- Next: review the scoped diff and key handling, then have the owner verify release certificate restrictions before distributing a Google-enabled APK.
+- Do not touch: Cube/radio parameters, RC work, motor outputs, mission upload, operator phone data or rover commands.
+
 ## 2026-11-23 — Phase 228 portrait waypoint jump
 
 - Done: verified invalid and valid numbered waypoint jumps with a synthetic local route at 2× portrait and normal text. A visual check found the highlighted target card clipped at 2×; moving the large-text header into the scrollable editor made the complete card visible. The 2× Files import/save, outline jump and short-landscape Files regressions passed after the Files test scrolled back to the relocated Save action. Both jump screenshots were reviewed. Build, 533 JVM tests and lint passed. See [Phase 228](phase-228-report.md) and D-228-01.

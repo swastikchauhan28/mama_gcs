@@ -20,6 +20,11 @@
         android:label="Mama GCS"
         android:supportsRtl="true"
         android:theme="@style/Theme.MamaGcs">
+        <!-- Maps SDK 20.x can load an older Play services renderer that still uses this platform library. -->
+        <uses-library android:name="org.apache.http.legacy" android:required="false" />
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${GOOGLE_MAPS_API_KEY}" />
         <activity
             android:name=".MainActivity"
             android:windowSoftInputMode="adjustResize"

@@ -19,6 +19,10 @@ val mapTilerApiKey =
     providers.environmentVariable("MAPTILER_API_KEY").orNull
         ?: localProperties.getProperty("MAPTILER_API_KEY", "")
 
+val googleMapsApiKey =
+    providers.environmentVariable("GOOGLE_MAPS_API_KEY").orNull
+        ?: localProperties.getProperty("GOOGLE_MAPS_API_KEY", "")
+
 val escapedMapTilerApiKey = mapTilerApiKey
     .replace("\\", "\\\\")
     .replace("\"", "\\\"")
@@ -33,6 +37,8 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
+        buildConfigField("boolean", "GOOGLE_MAPS_CONFIGURED", googleMapsApiKey.isNotBlank().toString())
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField(
@@ -74,6 +80,7 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.maplibre.android)
+    implementation(libs.play.services.maps)
     implementation(libs.okhttp)
     kapt(libs.hilt.compiler)
     debugImplementation(libs.androidx.compose.ui.tooling)

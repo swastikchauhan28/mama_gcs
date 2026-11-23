@@ -19,7 +19,8 @@ class SettingsPersistenceTest {
     @Test fun basemapSurvivesRecreationAndDoesNotChangeEndpointOrTheme() {
         val repository = LocalSettingsRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         val previous = runBlocking { repository.preferences.first() }
-        val requested = if (previous.basemap == BasemapStyle.HYBRID) BasemapStyle.SATELLITE else BasemapStyle.HYBRID
+        val requested = if (previous.basemap == BasemapStyle.GOOGLE_SATELLITE) BasemapStyle.STREETS
+            else BasemapStyle.GOOGLE_SATELLITE
         try {
             compose.openWorkspace("map-settings")
             compose.waitUntil(10_000) {
