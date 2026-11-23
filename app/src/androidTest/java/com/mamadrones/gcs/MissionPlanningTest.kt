@@ -441,6 +441,73 @@ class MissionPlanningTest {
         }
     }
 
+    @Test fun portraitWaypointJumpRespectsTextScaleAndSavedDraft() {
+        val repository = LocalMissionDraftRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val previous = runBlocking { repository.load() }
+        val previousRecovery = runBlocking { repository.loadRecovery() }
+        val draft = MissionDraft(
+            name = "Phase 228 local jump route",
+            waypoints = listOf(
+                DraftWaypoint("w1", -35.3631, 149.1651),
+                DraftWaypoint("w2", -35.3632, 149.1652),
+                DraftWaypoint("w3", -35.3633, 149.1653),
+            ),
+        )
+        var scenario: androidx.test.core.app.ActivityScenario<MainActivity>? = null
+        try {
+            runBlocking { repository.save(draft) }
+            scenario = androidx.test.core.app.ActivityScenario.launch(MainActivity::class.java)
+            scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+            compose.waitUntil(10_000) {
+                var portrait = false
+                scenario.onActivity { portrait = it.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT }
+                portrait
+            }
+            var fontScale = 0f
+            scenario.onActivity { fontScale = it.resources.configuration.fontScale }
+            assertTrue("Run Phase 228 at normal or 2× text", fontScale in 0.9f..1.1f || fontScale >= 1.8f)
+            compose.openWorkspace("mission")
+            val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+            assertTrue("Phase 228 must run in portrait", root.height > root.width)
+
+            compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-jump-input"))
+            compose.onNodeWithTag("mission-jump-input").assertIsDisplayed().performTextReplacement("0")
+            compose.onNodeWithTag("mission-jump-go").assertIsNotEnabled()
+            compose.onNodeWithText("Enter a number from 1 to 3.").assertExists()
+            compose.onNodeWithTag("mission-jump-input").performTextReplacement("4")
+            compose.onNodeWithTag("mission-jump-go").assertIsNotEnabled()
+            compose.onNodeWithTag("mission-jump-input").performTextReplacement("2")
+            compose.onNodeWithTag("mission-jump-go").assertIsEnabled()
+            if (fontScale >= 1.8f) {
+                // The portrait numeric IME can cover the button at 2× text.
+                compose.onNodeWithTag("mission-jump-input").performImeAction()
+            } else {
+                compose.onNodeWithTag("mission-editor").performScrollToNode(hasTestTag("mission-jump-go"))
+                compose.onNodeWithTag("mission-jump-go").assertIsDisplayed().performClick()
+            }
+            compose.waitUntil(10_000) {
+                compose.onAllNodesWithTag("mission-waypoint-row-1").fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithTag("mission-waypoint-row-1").assertIsDisplayed()
+            compose.onNode(hasTestTag("mission-jump-target") and
+                hasAnyAncestor(hasTestTag("mission-waypoint-row-1"))).assertIsDisplayed()
+            compose.waitUntil(10_000) {
+                val editorBounds = compose.onNodeWithTag("mission-editor").fetchSemanticsNode().boundsInRoot
+                val targetBounds = compose.onNodeWithTag("mission-waypoint-row-1").fetchSemanticsNode().boundsInRoot
+                targetBounds.top < (editorBounds.top + editorBounds.bottom) / 2f &&
+                    targetBounds.bottom <= editorBounds.bottom + 2f
+            }
+            capture(if (fontScale >= 1.8f) "phase228-waypoint-portrait-2x" else "phase228-waypoint-portrait-normal")
+            assertEquals(draft, runBlocking { repository.load() })
+        } finally {
+            scenario?.close()
+            runBlocking {
+                repository.save(previous)
+                if (previousRecovery == null) repository.clearRecovery() else repository.saveRecovery(previousRecovery)
+            }
+        }
+    }
+
     @Test fun screenshotWindowGuardRejectsSystemOverlays() {
         val app = "com.mamadrones.gcs"
         assertTrue(appOwnsFocusedWindow("mCurrentFocus=Window{123 u0 $app/$app.MainActivity}", app))

@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-23 — Phase 228 portrait waypoint jump
+
+- Done: verified invalid and valid numbered waypoint jumps with a synthetic local route at 2× portrait and normal text. A visual check found the highlighted target card clipped at 2×; moving the large-text header into the scrollable editor made the complete card visible. The 2× Files import/save, outline jump and short-landscape Files regressions passed after the Files test scrolled back to the relocated Save action. Both jump screenshots were reviewed. Build, 533 JVM tests and lint passed. See [Phase 228](phase-228-report.md) and D-228-01.
+- In progress: owner diff review remains a release gate. The user separately requested a Phase 228 commit and push on 2026-11-23; check Git history for its result.
+- Broken or risky: the initial partial-card screenshot, one Android-health-rejected run and the first Files test timeout remain recorded. Other layouts, languages, assistive services and physical mission behavior are unverified.
+- Next: review the scoped diff and targeted evidence, then decide on commit/push separately. Keep RC work paused.
+- Do not touch: Cube/radio parameters, motor outputs, mission upload, saved operator phone data or rover commands.
+
 ## 2026-11-23 — Phase 227 portrait follow-up
 
 - Done: closed the 2× portrait outline-test gap. The test now scrolls the lazy Route control and horizontal Review tab into view, verifies their visible/selected state, and uses keyboard Done for the vertex jump only at enlarged text while preserving the Go-button tap at normal text. Both full outline flows, the short-landscape jump, and real Files picker passed with healthy Android gates. Screenshots show vertices 4 and 2 highlighted. The test APK build and lint passed; JVM results were up to date at 533 passing tests. No app code or hardware behavior changed in this follow-up. See [Phase 227](phase-227-report.md) and D-227-01.

@@ -630,7 +630,10 @@ class RouteDocumentPickerTest {
                 }
                 // Imports remain local working copies until an explicit Save draft.
                 assertEquals(committedBeforeImport, runBlocking { repository.load() })
-                if (landscapeWholeFlow) compose.onNodeWithTag("mission-editor").performScrollToIndex(0)
+                // At 2× portrait text the Save action lives in the scrollable editor header.
+                if (landscapeWholeFlow || instrumentation.targetContext.resources.configuration.fontScale >= 1.8f) {
+                    compose.onNodeWithTag("mission-editor").performScrollToIndex(0)
+                }
                 compose.onNodeWithTag("mission-save").assertIsEnabled().performClick()
                 compose.waitUntil(15_000) {
                     val saved = runBlocking { repository.load() }

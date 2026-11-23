@@ -211,6 +211,8 @@ fun MissionScreen(
         val enlargedMobileHeader = !wide && androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.8f
         val shortLandscape = enlargedMobileHeader && maxHeight < 400.dp &&
             LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val inlineLargeTextHeader = shortLandscape || (enlargedMobileHeader && maxHeight < 700.dp &&
+            LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT)
         val fileItemCount = if (shortLandscape && showFileActions) 9 else 0
         val shortTabItemCount = if (shortLandscape) 1 else 0
         val routeJumpItemCount = if (shortLandscape && waypointCount > 0) 3 else 0
@@ -248,7 +250,7 @@ fun MissionScreen(
         // Leave room for the local file toolbar and editor padding in a short landscape window.
         val coverageDiagramHeight = (maxHeight - 72.dp).coerceIn(80.dp, 260.dp)
         Column(Modifier.fillMaxSize()) {
-            if (!shortLandscape) Surface(color = MaterialTheme.colorScheme.surface) {
+            if (!inlineLargeTextHeader) Surface(color = MaterialTheme.colorScheme.surface) {
                 if (enlargedMobileHeader) {
                     val draftSummary = "${plan.draft.waypoints.size} points · ${String.format(Locale.US, "%.0f", plan.draft.distanceMeters)} m · Local only"
                     Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
@@ -296,7 +298,7 @@ fun MissionScreen(
                 contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 item {
-                    if (shortLandscape) {
+                    if (inlineLargeTextHeader) {
                         // Keep the route controls reachable without consuming the entire short viewport.
                         FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = { showFileActions = !showFileActions },
