@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-24 — Phase 235 saved map borders
+
+- Done: the Field map displays blue outlines for native-complete saved offline map packs and a ready-pack count. The orange planning outline remains separate. An incomplete synthetic pack was excluded; the final APK was reinstalled on a disposable emulator and its offline test passed with two adjacent pack borders, then one border and the coverage warning after removing a pack. Final screenshots were reviewed. Android networking was disabled during inspection and restored afterward. See [Phase 235](phase-235-report.md) and D-235-01.
+- In progress: owner diff review. The final gate passed (539 JVM tests, zero failures/skips; lint zero errors/27 warnings). The owner requested a Phase 235 commit and push after verification; check Git history for its revision.
+- Broken or risky: pack bounds and native complete status are only map-availability hints. The actual field coordinates are unavailable, so the operator-phone real-field check remains open.
+- Next: review the scoped diff, and later inspect the real field map on the phone when coordinates exist.
+- Do not touch: operator phone plans, Cube/radio parameters, RC work, motor outputs, mission upload or rover commands.
+
 ## 2026-11-24 — example outline follow-up
 
 - Done: on the disposable emulator, existing UI tests with example coordinates passed outline entry/recovery and outline Save draft/reload. The existing synthetic field-pack test passed separately. A new integrated test saved a four-corner example outline, downloaded its pack through Maps settings and displayed the Field map with MapLibre networking off and no coverage warning; its initial camera/notice timing failure was corrected, the final cleanup-wait rerun passed and the map screenshot was reviewed. The final standard gate passed (539 JVM tests, lint zero errors/27 warnings). See the dated follow-up in [Phase 234](phase-234-report.md).

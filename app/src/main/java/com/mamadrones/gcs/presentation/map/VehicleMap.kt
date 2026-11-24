@@ -106,6 +106,8 @@ private const val DRAFT_LINE_SOURCE_ID = "mama-draft-line"
 private const val DRAFT_FENCE_SOURCE_ID = "mama-draft-fence"
 private const val COVERAGE_SOURCE_ID = "mama-coverage-preview"
 private const val COVERAGE_GAPS_SOURCE_ID = "mama-coverage-gap-samples"
+private const val OFFLINE_PACK_BOUNDS_SOURCE_ID = "mama-offline-pack-bounds"
+private const val OFFLINE_PACK_BOUNDS_LAYER_ID = "mama-offline-pack-bounds-line"
 
 private const val VEHICLE_LAYER_ID = "mama-vehicle-layer"
 private const val TRACK_LAYER_ID = "mama-track-layer"
@@ -155,6 +157,8 @@ fun VehicleMap(
     var map by remember(mapView) { mutableStateOf<MapLibreMap?>(null) }
     var style by remember(mapView) { mutableStateOf<Style?>(null) }
     val savedFieldMaps by OfflineFieldMaps.state.collectAsState()
+    val completedPackRects = if (savedFieldMaps.loading) emptyList()
+        else completePackBoundaryRects(savedFieldMaps.packs)
     LaunchedEffect(styleUrl) {
         if (styleUrl == MapStyleConfig.OFFLINE_FIELD_STYLE_URL) {
             OfflineFieldMaps.refresh(mapView.context)
@@ -250,6 +254,9 @@ fun VehicleMap(
                 loadedMap.setStyle(styleUrl) { loadedStyle ->
                     if (!disposed) {
                         installVehicleLayers(loadedStyle)
+                        if (styleUrl == MapStyleConfig.OFFLINE_FIELD_STYLE_URL) {
+                            installOfflinePackBoundaryLayer(loadedStyle)
+                        }
                         if (planningMode) installDraftLayers(loadedStyle,
                             styleUrl == MapStyleConfig.OFFLINE_FIELD_STYLE_URL)
                         style = loadedStyle
@@ -282,6 +289,22 @@ fun VehicleMap(
                     Point.fromLngLat(it.longitude!!, it.latitude!!))))
             } ?: emptyFeatureCollection()
         )
+    }
+
+    LaunchedEffect(style, styleUrl, completedPackRects) {
+        if (styleUrl != MapStyleConfig.OFFLINE_FIELD_STYLE_URL) return@LaunchedEffect
+        val features = completedPackRects.map { rectangle ->
+            val ring = listOf(
+                Point.fromLngLat(rectangle.west, rectangle.south),
+                Point.fromLngLat(rectangle.east, rectangle.south),
+                Point.fromLngLat(rectangle.east, rectangle.north),
+                Point.fromLngLat(rectangle.west, rectangle.north),
+                Point.fromLngLat(rectangle.west, rectangle.south),
+            )
+            Feature.fromGeometry(LineString.fromLngLats(ring))
+        }
+        style?.getSourceAs<GeoJsonSource>(OFFLINE_PACK_BOUNDS_SOURCE_ID)
+            ?.setGeoJson(FeatureCollection.fromFeatures(features))
     }
 
     LaunchedEffect(
@@ -502,6 +525,18 @@ fun VehicleMap(
             Surface(modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = 40.dp),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f), shape = MaterialTheme.shapes.small) {
                 Text("© OpenStreetMap contributors · OpenFreeMap", Modifier.padding(4.dp),
+                    style = MaterialTheme.typography.labelSmall)
+            }
+        }
+
+        if (styleUrl == MapStyleConfig.OFFLINE_FIELD_STYLE_URL && style != null &&
+            completedPackRects.isNotEmpty()) {
+            Surface(modifier = Modifier.align(Alignment.BottomStart)
+                .padding(start = 8.dp, bottom = 80.dp).testTag("offline-pack-boundary-legend"),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                shape = MaterialTheme.shapes.small) {
+                Text("BLUE BORDER · Saved map area · ${completedPackRects.size} ready\n" +
+                    "Orange · planning outline (if shown)", Modifier.padding(8.dp),
                     style = MaterialTheme.typography.labelSmall)
             }
         }
@@ -744,6 +779,12 @@ private fun installVehicleLayers(style: Style) {
             ),
         )
     }
+}
+
+private fun installOfflinePackBoundaryLayer(style: Style) {
+    style.addSource(GeoJsonSource(OFFLINE_PACK_BOUNDS_SOURCE_ID, emptyFeatureCollection()))
+    style.addLayer(LineLayer(OFFLINE_PACK_BOUNDS_LAYER_ID, OFFLINE_PACK_BOUNDS_SOURCE_ID).withProperties(
+        lineColor(AndroidColor.rgb(25, 118, 210)), lineWidth(3.5f), lineOpacity(0.95f)))
 }
 
 private fun installDraftLayers(style: Style, offlineField: Boolean) {

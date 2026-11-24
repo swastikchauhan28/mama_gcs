@@ -18,10 +18,13 @@ import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.presentation.map.MapStyleConfig
 import com.mamadrones.gcs.presentation.map.OfflineFieldArea
 import com.mamadrones.gcs.presentation.map.OfflineFieldMaps
+import com.mamadrones.gcs.presentation.map.OfflineFieldPack
 import com.mamadrones.gcs.presentation.map.VehicleMap
+import com.mamadrones.gcs.presentation.map.completePackBoundaryRects
 import com.mamadrones.gcs.presentation.theme.MamaGcsTheme
 import java.io.File
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -37,6 +40,14 @@ class OfflineFieldUnionTest {
         DraftWaypoint("west one", 12.97, 77.59), DraftWaypoint("west two", 12.98, 77.60)))
     private val right = MissionDraft(name = "Phase 234 east", waypoints = listOf(
         DraftWaypoint("east one", 12.97, 77.60), DraftWaypoint("east two", 12.98, 77.61)))
+
+    @Test fun incompletePackIsExcludedFromSavedBoundaryProjection() {
+        val bounds = requireNotNull(OfflineFieldArea.fromDraft(left)).bounds
+        val ready = OfflineFieldPack(1, "ready", bounds, true, 1, 1, 1, true, false)
+        val incomplete = ready.copy(id = 2, complete = false, name = "incomplete")
+        assertEquals(1, completePackBoundaryRects(listOf(ready, incomplete)).size)
+        assertEquals(emptyList<Any>(), completePackBoundaryRects(listOf(incomplete)))
+    }
 
     @Test fun prepareTwoAdjacentPacksOnline() {
         for (draft in listOf(left, right)) {
@@ -75,6 +86,14 @@ class OfflineFieldUnionTest {
             val map = loadedMap()
             compose.waitUntil(10_000) { !OfflineFieldMaps.state.value.loading }
             compose.runOnIdle {
+                assertTrue(map.style?.getLayer("mama-offline-pack-bounds-line") != null)
+            }
+            compose.waitUntil(10_000) {
+                compose.onAllNodesWithText("Saved map area · 2 ready", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithTag("offline-pack-boundary-legend").assertIsDisplayed()
+            compose.runOnIdle {
                 map.cameraPosition = CameraPosition.Builder().target(LatLng(12.975, 77.60)).zoom(18.0).build()
             }
             Thread.sleep(4_000) // Let native visible bounds catch up to the camera property.
@@ -88,10 +107,15 @@ class OfflineFieldUnionTest {
             }
             compose.onNodeWithTag("offline-field-outside-notice").assertDoesNotExist()
             saveScreenshot("phase234-adjacent-covered.png")
+            saveScreenshot("phase235-two-ready-pack-borders.png")
 
             OfflineFieldMaps.delete(compose.activity, packs[1].id)
             compose.waitUntil(15_000) {
                 OfflineFieldMaps.state.value.packs.none { it.id == packs[1].id }
+            }
+            compose.waitUntil(10_000) {
+                compose.onAllNodesWithText("Saved map area · 1 ready", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty()
             }
             compose.waitUntil(10_000) {
                 compose.onAllNodesWithText("VIEW NOT FULLY SAVED OFFLINE", substring = true)
@@ -99,6 +123,7 @@ class OfflineFieldUnionTest {
             }
             compose.onNodeWithTag("offline-field-outside-notice").assertIsDisplayed()
             saveScreenshot("phase234-gap-warning.png")
+            saveScreenshot("phase235-one-ready-pack-border.png")
         } finally {
             packs.forEach { pack ->
                 if (OfflineFieldMaps.state.value.packs.any { it.id == pack.id }) {

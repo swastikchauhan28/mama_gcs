@@ -1,5 +1,14 @@
 # Decisions and alternatives
 
+## D-235-01: Draw completed offline pack bounds separately from the field outline
+
+- Date: 2026-11-24. The owner approved Phase 235 after Phase 233/234 were pushed as `c9328fd13443966f9949661a0f5f8bfbabb8e4e9`. The only starting untracked files were older `output/` demo deliverables. Model/version unavailable.
+- Context: the Field map warns when its viewport leaves complete saved coverage, but does not show where that coverage ends. The local planning outline is a different shape and must remain visually distinct. `OfflineFieldMaps.state` already reads MapLibre's persisted region bounds and native complete status.
+- Choice: on the Field map style only, project valid complete-pack bounds into a blue MapLibre line source, below the orange planning-outline layer. Show a short on-map legend stating that blue is saved map area, with a count of ready packs. Rebuild the source when the persisted pack list changes, and clear it when packs are removed. Incomplete packs contribute neither geometry nor count. Do not persist geometry separately or contact a new service.
+- Alternatives: a semi-opaque fill can obscure terrain detail; showing only a count in Maps settings cannot locate a coverage edge; using the orange field-outline layer for packs would confuse downloaded coverage with a planning reference. Revisit if pack counts make the overlay cluttered or native offline region shapes cease to be rectangles.
+- Risks and acceptance: native completion and rectangle bounds are an availability hint, not a tile audit, survey or safe rover area. Test two adjacent completed pack borders and count, removal of one border, and exclusion of an incomplete pack using synthetic data on the disposable emulator. Review a rendered screenshot and run the standard build/JVM/lint gate. No dependency, permission, credential, network destination, mission data or vehicle command change is intended.
+- Result: the incomplete-pack projection and two-pack emulator preparation each passed one test. A separate-process offline map test passed with two ready borders, then one ready border and the expected partial-coverage warning after deletion; both screenshots were reviewed. The final gate passed (539 JVM tests, zero failures/skips; lint zero errors/27 warnings). The emulator's map background was plain, so these screenshots verify the overlay and warning rather than the tile contents. The real field and operator phone remain unverified. See [Phase 235](phase-235-report.md).
+
 ## D-234-01: Evaluate the union of complete saved map regions
 
 - Date: 2026-11-24. The owner approved Phase 234 after the Phase 233 follow-up. Baseline `fec2cc5e4052d46a5f525f73cb564f12f528a5e5` with uncommitted Phase 233 source, test and records plus older untracked demo output. Model/version unavailable.
