@@ -6,8 +6,11 @@ import androidx.compose.runtime.compositionLocalOf
 import java.net.URLEncoder
 
 val LocalBasemapStyle = compositionLocalOf { BasemapStyle.STREETS }
+/** Navigation only: map failure UI must not silently change the saved provider. */
+val LocalMapSettingsNavigation = compositionLocalOf<(() -> Unit)?> { null }
 
 object MapStyleConfig {
+    const val OFFLINE_FIELD_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 
     val isConfigured: Boolean
         get() = BuildConfig.MAPTILER_API_KEY.isNotBlank()
@@ -16,6 +19,9 @@ object MapStyleConfig {
         get() = styleUrlOrNull(BasemapStyle.STREETS)
 
     fun styleUrlOrNull(basemap: BasemapStyle, apiKey: String = BuildConfig.MAPTILER_API_KEY): String? =
-        apiKey.takeIf { !basemap.isGoogle && it.isNotBlank() }
-            ?.let { key -> "https://api.maptiler.com/maps/${basemap.mapTilerId}/style.json?key=${URLEncoder.encode(key, "UTF-8")}" }
+        when (basemap) {
+            BasemapStyle.OFFLINE_FIELD -> OFFLINE_FIELD_STYLE_URL
+            else -> apiKey.takeIf { !basemap.isGoogle && it.isNotBlank() }
+                ?.let { key -> "https://api.maptiler.com/maps/${basemap.mapTilerId}/style.json?key=${URLEncoder.encode(key, "UTF-8")}" }
+        }
 }

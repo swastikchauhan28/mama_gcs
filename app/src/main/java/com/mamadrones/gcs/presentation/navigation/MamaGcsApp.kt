@@ -17,6 +17,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.mamadrones.gcs.domain.model.ThemeMode
 import com.mamadrones.gcs.domain.model.BasemapStyle
 import com.mamadrones.gcs.presentation.map.LocalBasemapStyle
+import com.mamadrones.gcs.presentation.map.LocalMapSettingsNavigation
 import com.mamadrones.gcs.domain.model.VehicleConnectionState
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.presentation.components.*
@@ -79,7 +80,10 @@ fun MamaGcsApp(
             launchSingleTop = true
         }
     }
-    CompositionLocalProvider(LocalBasemapStyle provides settings.preferences.basemap) {
+    CompositionLocalProvider(
+        LocalBasemapStyle provides settings.preferences.basemap,
+        LocalMapSettingsNavigation provides { navigate("map-settings") },
+    ) {
     // The warning entry is still the Diagnostics workspace; only its initial presentation differs.
     StationShell(vehicle, if (route == "diagnostics/warnings") "diagnostics" else route,
         navigate, onVehicleDetails = { showVehicles = true }) {
@@ -187,7 +191,7 @@ fun MamaGcsApp(
                             )
                         } }
                         composable("map-settings") {
-                            MapSettingsScreen(settings, onBasemapSelected) { navigate("map") }
+                            MapSettingsScreen(settings, onBasemapSelected, draft = missionPlan.draft) { navigate("map") }
                         }
                     }
     }

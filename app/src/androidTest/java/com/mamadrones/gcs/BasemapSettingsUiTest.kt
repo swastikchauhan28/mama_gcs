@@ -36,7 +36,7 @@ class BasemapSettingsUiTest {
         compose.onNodeWithText("Open map").performScrollTo().performClick()
         assertTrue(openMap)
         compose.onNodeWithText("IMAGERY LIMITATIONS").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("OFFLINE REGIONS").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("OFFLINE LIMIT").performScrollTo().assertIsDisplayed()
     }
 
     @Test fun loadingAndSavingDisableChoicesAndSaveErrorKeepsPreviousSelection() {

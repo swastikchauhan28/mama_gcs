@@ -1,9 +1,33 @@
 # Current handover
 
+## 2026-11-24 — Phase 232 offline download recovery
+
+- Done: added precise-resource progress, explicit Cancel and Resume, and reload of incomplete MapLibre regions after an app restart. A cancelled pack stays incomplete; a resumed pack is Ready only after MapLibre reports complete. The disposable Phase 209 emulator passed the cancel check, a separate-process interrupt/resume/offline-render sequence, and the Phase 231 offline-map and Maps settings regressions. Screenshots and failures are in [Phase 232](phase-232-report.md) and D-232-01.
+- In progress: owner diff review. The final JVM/build/lint gate passed (533 JVM tests, zero failures; lint zero errors and 27 warnings). Phase 230–232 changes are uncommitted/unpushed; older untracked demo outputs remain untouched.
+- Broken or risky: the first emulator boot logged a Google Play services ANR, then a no-wipe restart passed the health preflight. An early cancellation fixture completed too fast from cached tiles; an early resume test used Compose `setContent` twice. Both test issues were corrected and the final emulator path passed. Real field, phone-wide airplane mode, and physical rover use remain unverified.
+- Next: review the scoped diff; then download the operator's actual field on Wi-Fi and inspect it with phone connectivity off before relying on it.
+- Do not touch: saved mission data, Cube/radio parameters, RC work, motor outputs, mission upload or rover commands.
+
+## 2026-11-23 — Phase 231 offline field maps
+
+- Done: added a bounded, user-started OpenFreeMap field download to Maps settings, based on the current local outline or route. Saved regions use the pinned MapLibre offline database; the UI distinguishes complete from incomplete and offers confirmed removal. A separate Field map choice displays saved vector tiles with visible attribution. The user explicitly approved OpenFreeMap. See [Phase 231](phase-231-report.md) and D-231-01.
+- In progress: owner diff review remains. Phase 230 and Phase 231 changes are uncommitted/unpushed, and older untracked demo outputs remain untouched.
+- Broken or risky: earlier AVD startup checks failed, but the Phase 209 AVD later booted without a snapshot and passed two offline-map and two settings tests. Screenshot review caught a blank canvas despite that initial test pass; a stronger check showed downloaded vector geometry. The offline waypoint label used a missing font stack; switching only the field style to the provider's Noto Sans font produced a visible `1` in the emulator screenshot. The USB phone rerun also passed. Real field coverage, phone-wide airplane mode and physical rover use remain unverified.
+- Next: review the scoped diff, then have the operator download the actual field on Wi-Fi and check that exact area with phone connectivity off before field reliance.
+- Do not touch: saved mission data, Cube/radio parameters, RC work, motor outputs, mission upload or rover commands.
+
+## 2026-11-23 — Phase 230 Google map failure recovery
+
+- Done: added a navigation-only `Choose map provider` action for missing Google key, missing Play services and tile timeout. Timeout keeps Retry. The existing Maps settings owns the explicit choice; opening it does not change the saved provider. The synthetic recovery UI, online Google map regression, and full app-shell missing-key navigation passed on the existing Phase 209 disposable AVD with healthy Android gates. The timeout screen was visually reviewed. The app-shell test used a temporary keyless debug build without editing ignored local configuration; the normal keyed build was restored afterward. See [Phase 230](phase-230-report.md) and D-230-01.
+- In progress: owner diff review. The restored normal-build Gradle gate passed with 37 executed and 60 up-to-date tasks; JVM XML reports show 533 tests/zero failures and lint zero errors/27 warnings. Phase 230 is uncommitted and unpushed.
+- Broken or risky: other AVDs logged System UI or Play services ANRs, and a fresh AVD could not allocate its minimum userdata partition with current C: free space. Those failed preflights remain recorded. No real Google outage or physical device was tested.
+- Next: review the scoped diff and Google key restrictions before any distribution.
+- Do not touch: operator phone data, Cube/radio parameters, RC work, motor outputs, mission upload or rover commands.
+
 ## 2026-11-23 — Phase 229 optional Google Maps
 
 - Done: added Google streets, satellite and hybrid as saved Maps choices beside MapLibre. The Google renderer shows existing fresh vehicle/home data and local route, fence and coverage preview without vehicle commands. A Google API key is supplied only through ignored local build configuration; Cloud restrictions have not been independently verified. The synthetic Google map test and three settings/persistence tests passed on a disposable API 31 emulator with healthy Android gates; a rendered screenshot was reviewed. See [Phase 229](phase-229-report.md) and D-229-01.
-- In progress: owner diff review and release signing restriction check. The final build, 533 JVM tests, 4 focused emulator tests, and lint (zero errors, 27 existing warnings) passed. No Phase 229 commit or push has been requested.
+- In progress: owner diff review and release signing restriction check. The final build, 533 JVM tests, 4 focused emulator tests, and lint (zero errors, 27 existing warnings) passed. Phase 229 was committed and pushed as `de01a6e` at the user's request.
 - Broken or risky: the first Play services renderer run crashed without Google's documented optional legacy HTTP library; it is fixed in the manifest. The first post-fix test had an off-main-thread assertion; the corrected test passed. Google map loading depends on network, billing, Android key restrictions and Play services. Release signing restrictions and physical-device map behavior remain unverified.
 - Next: review the scoped diff and key handling, then have the owner verify release certificate restrictions before distributing a Google-enabled APK.
 - Do not touch: Cube/radio parameters, RC work, motor outputs, mission upload, operator phone data or rover commands.

@@ -90,13 +90,12 @@ internal fun GoogleVehicleMap(
     val playAvailable = remember(context) {
         GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
     }
+    val openMapSettings = LocalMapSettingsNavigation.current
     if (!BuildConfig.GOOGLE_MAPS_CONFIGURED || !playAvailable) {
-        GoogleMapNotice(
-            if (!BuildConfig.GOOGLE_MAPS_CONFIGURED) "GOOGLE MAPS KEY MISSING" else "GOOGLE PLAY SERVICES UNAVAILABLE",
-            if (!BuildConfig.GOOGLE_MAPS_CONFIGURED) "Add a restricted Google Maps key to the local build, or choose MapLibre in Maps settings."
-            else "Use a device with Google Play services, or choose MapLibre in Maps settings.",
-            modifier,
-        )
+        GoogleMapRecoveryNotice(
+            if (!BuildConfig.GOOGLE_MAPS_CONFIGURED) GoogleMapFailure.MISSING_KEY
+            else GoogleMapFailure.MISSING_PLAY_SERVICES,
+            modifier, openMapSettings)
         return
     }
 
@@ -297,13 +296,12 @@ internal fun GoogleVehicleMap(
                     Text(legend, Modifier.padding(8.dp), style = MaterialTheme.typography.labelMedium)
                 }
             }
-            if (!tilesLoaded) GoogleMapNotice(
-                if (loadFailed) "GOOGLE MAP UNAVAILABLE" else "LOADING GOOGLE MAP",
-                if (loadFailed) "Check network, billing and Android key restrictions; MapLibre remains available in Maps settings."
-                else "Waiting for Google map tiles.",
-                Modifier.align(Alignment.Center),
-                if (loadFailed) { { retry++ } } else null,
-            )
+            if (!tilesLoaded) {
+                if (loadFailed) GoogleMapRecoveryNotice(GoogleMapFailure.TILES_TIMED_OUT,
+                    Modifier.align(Alignment.Center), openMapSettings, onRetry = { retry++ })
+                else GoogleMapNotice("LOADING GOOGLE MAP", "Waiting for Google map tiles.",
+                    Modifier.align(Alignment.Center))
+            }
             Column(Modifier.align(Alignment.BottomEnd).padding(start = 8.dp, end = 8.dp, bottom = 32.dp)
                 .testTag("map-control-overlay"), verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalAlignment = Alignment.End) {
@@ -374,14 +372,32 @@ private class GoogleOverlayBag {
     }
 }
 
+enum class GoogleMapFailure(val title: String, val detail: String) {
+    MISSING_KEY("GOOGLE MAPS KEY MISSING", "This build has no Google Maps key. Choose a MapLibre map, or add a restricted key and rebuild."),
+    MISSING_PLAY_SERVICES("GOOGLE PLAY SERVICES UNAVAILABLE", "This device cannot load Google Maps. Choose a MapLibre map in Maps settings."),
+    TILES_TIMED_OUT("GOOGLE MAP TIMED OUT", "Map tiles did not finish loading. Check network, billing and Android key restrictions, or choose MapLibre."),
+}
+
 @Composable
-private fun GoogleMapNotice(title: String, detail: String, modifier: Modifier, retry: (() -> Unit)? = null) {
+fun GoogleMapRecoveryNotice(failure: GoogleMapFailure, modifier: Modifier = Modifier,
+                            onChooseProvider: (() -> Unit)?, onRetry: (() -> Unit)? = null) {
+    GoogleMapNotice(failure.title, failure.detail, modifier, onRetry, onChooseProvider)
+}
+
+@Composable
+private fun GoogleMapNotice(title: String, detail: String, modifier: Modifier,
+                            retry: (() -> Unit)? = null, onChooseProvider: (() -> Unit)? = null) {
     Surface(modifier.padding(24.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
         shape = MaterialTheme.shapes.medium, tonalElevation = 6.dp) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, style = MaterialTheme.typography.labelLarge)
             Text(detail, style = MaterialTheme.typography.bodyMedium)
-            retry?.let { TextButton(onClick = it) { Text("Retry map") } }
+            retry?.let { TextButton(onClick = it, modifier = Modifier.testTag("google-map-retry")) { Text("Retry map") } }
+            onChooseProvider?.let {
+                TextButton(onClick = it, modifier = Modifier.testTag("google-map-choose-provider")) {
+                    Text("Choose map provider")
+                }
+            }
         }
     }
 }

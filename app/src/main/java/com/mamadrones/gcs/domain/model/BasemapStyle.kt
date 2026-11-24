@@ -5,6 +5,7 @@ enum class BasemapStyle(val label: String, val description: String, val mapTiler
     STREETS("Streets", "Roads, places and geographic context", "streets-v4"),
     SATELLITE("Satellite", "Imagery without street labels", "satellite-v4"),
     HYBRID("Satellite with labels", "Imagery with roads and place labels", "hybrid-v4"),
+    OFFLINE_FIELD("Field map", "OpenFreeMap vector map · download the field area before going offline", ""),
     GOOGLE_STREETS("Google streets", "Google road map · internet required", "", true),
     GOOGLE_SATELLITE("Google satellite", "Google imagery · internet required", "", true),
     GOOGLE_HYBRID("Google satellite with labels", "Google imagery and roads · internet required", "", true);

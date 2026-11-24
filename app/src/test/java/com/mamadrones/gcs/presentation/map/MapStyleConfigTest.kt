@@ -19,17 +19,19 @@ class MapStyleConfigTest {
 
     @Test fun eachChoiceUsesAllowlistedHttpsProviderStyle() {
         val ids = listOf("streets-v4", "satellite-v4", "hybrid-v4")
-        BasemapStyle.entries.filterNot { it.isGoogle }.zip(ids).forEach { (style, id) ->
+        listOf(BasemapStyle.STREETS, BasemapStyle.SATELLITE, BasemapStyle.HYBRID).zip(ids).forEach { (style, id) ->
             assertEquals("https://api.maptiler.com/maps/$id/style.json?key=test-key",
                 MapStyleConfig.styleUrlOrNull(style, "test-key"))
         }
         BasemapStyle.entries.filter { it.isGoogle }.forEach { style ->
             assertNull(MapStyleConfig.styleUrlOrNull(style, "test-key"))
         }
+        assertEquals(MapStyleConfig.OFFLINE_FIELD_STYLE_URL,
+            MapStyleConfig.styleUrlOrNull(BasemapStyle.OFFLINE_FIELD, ""))
     }
 
     @Test fun blankKeyNeverCreatesAConfiguredSource() {
-        BasemapStyle.entries.forEach { style ->
+        BasemapStyle.entries.filterNot { it == BasemapStyle.OFFLINE_FIELD }.forEach { style ->
             assertNull(MapStyleConfig.styleUrlOrNull(style, ""))
             assertNull(MapStyleConfig.styleUrlOrNull(style, " \t"))
         }

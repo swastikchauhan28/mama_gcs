@@ -68,6 +68,7 @@ import org.maplibre.android.style.expressions.Expression.get
 import org.maplibre.android.style.layers.PropertyFactory.textField
 import org.maplibre.android.style.layers.PropertyFactory.textColor
 import org.maplibre.android.style.layers.PropertyFactory.textSize
+import org.maplibre.android.style.layers.PropertyFactory.textFont
 import org.maplibre.android.style.layers.PropertyFactory.textAllowOverlap
 import org.maplibre.android.style.layers.PropertyFactory.textIgnorePlacement
 import org.maplibre.android.style.layers.PropertyFactory.iconImage
@@ -242,7 +243,8 @@ fun VehicleMap(
                 loadedMap.setStyle(styleUrl) { loadedStyle ->
                     if (!disposed) {
                         installVehicleLayers(loadedStyle)
-                        if (planningMode) installDraftLayers(loadedStyle)
+                        if (planningMode) installDraftLayers(loadedStyle,
+                            styleUrl == MapStyleConfig.OFFLINE_FIELD_STYLE_URL)
                         style = loadedStyle
                         loadFailed = false
                     }
@@ -451,9 +453,19 @@ fun VehicleMap(
 
             style == null -> MapMessage(
                 title = "LOADING MAP",
-                detail = "Connecting to the configured MapTiler map style.",
+                detail = if (styleUrl == MapStyleConfig.OFFLINE_FIELD_STYLE_URL)
+                    "Opening the saved OpenFreeMap field map. Outside downloaded bounds, internet may be needed."
+                else "Connecting to the configured MapTiler map style.",
                 modifier = Modifier.align(Alignment.Center),
             )
+        }
+
+        if (styleUrl == MapStyleConfig.OFFLINE_FIELD_STYLE_URL) {
+            Surface(modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = 40.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f), shape = MaterialTheme.shapes.small) {
+                Text("© OpenStreetMap contributors · OpenFreeMap", Modifier.padding(4.dp),
+                    style = MaterialTheme.typography.labelSmall)
+            }
         }
 
         Column(
@@ -696,7 +708,7 @@ private fun installVehicleLayers(style: Style) {
     }
 }
 
-private fun installDraftLayers(style: Style) {
+private fun installDraftLayers(style: Style, offlineField: Boolean) {
     style.addSource(GeoJsonSource(DRAFT_LINE_SOURCE_ID, emptyFeatureCollection()))
     style.addSource(GeoJsonSource(DRAFT_FENCE_SOURCE_ID, emptyFeatureCollection()))
     style.addSource(GeoJsonSource(DRAFT_POINTS_SOURCE_ID, emptyFeatureCollection()))
@@ -717,6 +729,10 @@ private fun installDraftLayers(style: Style) {
         circleStrokeColor(AndroidColor.BLACK), circleStrokeWidth(2f)))
     style.addLayer(SymbolLayer("mama-draft-labels", DRAFT_LABELS_SOURCE_ID).withProperties(
         textField(get("label")), textColor(AndroidColor.BLACK), textSize(12f),
+        // OpenFreeMap's glyph endpoint has Noto Sans, but not MapLibre's default Open Sans stack.
+        // Keep the existing stack for other providers and use the downloaded font for field maps.
+        textFont(if (offlineField) arrayOf("Noto Sans Regular")
+            else arrayOf("Open Sans Regular", "Arial Unicode MS Regular")),
         textAllowOverlap(true), textIgnorePlacement(true)))
 }
 

@@ -7,7 +7,14 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
@@ -16,11 +23,14 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.mamadrones.gcs.domain.model.ThemeMode
 import com.mamadrones.gcs.domain.model.BasemapStyle
+import com.mamadrones.gcs.domain.model.MissionDraft
 import com.mamadrones.gcs.BuildConfig
 import com.mamadrones.gcs.domain.model.TransportStatus
 import com.mamadrones.gcs.presentation.components.*
 import com.mamadrones.gcs.presentation.settings.ConnectionUiState
 import com.mamadrones.gcs.presentation.settings.SettingsUiState
+import com.mamadrones.gcs.presentation.map.OfflineFieldArea
+import com.mamadrones.gcs.presentation.map.OfflineFieldMaps
 
 enum class SettingsSection { ALL, GENERAL, LINK }
 
@@ -146,8 +156,20 @@ fun SettingsScreen(
 fun MapSettingsScreen(
     state: SettingsUiState = SettingsUiState(),
     onBasemapSelected: (BasemapStyle) -> Unit = {},
+    draft: MissionDraft = MissionDraft(),
     onOpenMap: () -> Unit,
 ) = ScreenBody {
+    val context = LocalContext.current
+    val offline by OfflineFieldMaps.state.collectAsState()
+    LaunchedEffect(Unit) { OfflineFieldMaps.refresh(context) }
+    var pendingDelete by remember { mutableStateOf<Long?>(null) }
+    pendingDelete?.let { id ->
+        AlertDialog(onDismissRequest = { pendingDelete = null },
+            title = { Text("Remove field map?") },
+            text = { Text("This removes downloaded map tiles from this device. The mission draft stays saved.") },
+            confirmButton = { TextButton(onClick = { OfflineFieldMaps.delete(context, id); pendingDelete = null }) { Text("Remove map") } },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Cancel") } })
+    }
     ScreenHeader("Maps", "Geographic background and local route overlays")
     if (state.loading) Text("Loading preferences…")
     state.error?.let { Notice("PREFERENCES ERROR", it) }
@@ -172,16 +194,70 @@ fun MapSettingsScreen(
             if (state.saving) Text("Saving…")
         }
     }
-    SubsystemCard(PanelSpec("Basemap", if (state.preferences.basemap.isGoogle) "GOOGLE MAPS" else "MAPLIBRE · MAPTILER", listOf(
-        "Source" to "${if (state.preferences.basemap.isGoogle) "Google" else "MapTiler"} ${state.preferences.basemap.label}", "Network" to "Internet required",
+    val offlineSelected = state.preferences.basemap == BasemapStyle.OFFLINE_FIELD
+    SubsystemCard(PanelSpec("Basemap", when { state.preferences.basemap.isGoogle -> "GOOGLE MAPS"; offlineSelected -> "MAPLIBRE · OPENFREEMAP"; else -> "MAPLIBRE · MAPTILER" }, listOf(
+        "Source" to "${when { state.preferences.basemap.isGoogle -> "Google"; offlineSelected -> "OpenFreeMap"; else -> "MapTiler" }} ${state.preferences.basemap.label}", "Network" to if (offlineSelected) "Saved area works offline after download" else "Internet required",
         "Vehicle position" to "Received MAVLink coordinates", "Track" to "Current session",
     ), if (state.preferences.basemap.isGoogle) {
         if (BuildConfig.GOOGLE_MAPS_CONFIGURED) "Google Maps requires Google Play services, a restricted build-time key, enabled billing and internet. MapLibre remains available above."
         else "Google Maps key is missing from this build. Add GOOGLE_MAPS_API_KEY to ignored local.properties and rebuild, or select MapLibre."
-    } else "Tile loading requires a valid build-time MapTiler key and network access. The map displays its own loading or error state."))
+    } else if (offlineSelected) "Download the current plan area below before field use. Outside saved bounds or zoom levels, tiles may need internet."
+    else "Tile loading requires a valid build-time MapTiler key and network access. The map displays its own loading or error state."))
+    val area = OfflineFieldArea.fromDraft(draft)
+    val matchingPack = area?.let { field -> offline.packs.firstOrNull { it.bounds.contains(field.bounds) } }
+    val ready = matchingPack?.complete == true
+    Surface(shape = MaterialTheme.shapes.medium) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Offline field maps", style = MaterialTheme.typography.titleMedium)
+            Text("Uses the current Plan outline, or route if no outline exists. OpenFreeMap vector tiles, zoom 12–18. Download on Wi-Fi before field use; no Google tiles are saved.")
+            Text(when {
+                offline.loading -> "Checking saved field maps…"
+                area == null -> "Add a small outline or route in Plan first. Large areas cannot be downloaded."
+                ready -> "READY OFFLINE for this plan area at zoom 12–18. Check it in airplane mode before field use."
+                else -> "Current plan area: up to ${area.estimatedTiles} estimated tiles. Not ready offline."
+            }, modifier = Modifier.testTag("offline-field-readiness"))
+            Button(onClick = { OfflineFieldMaps.download(context, draft) },
+                enabled = area != null && !ready && !offline.downloading && !offline.loading,
+                modifier = Modifier.heightIn(min = 48.dp).testTag("offline-field-download")) {
+                Text(when {
+                    offline.downloading -> "Downloading…"
+                    matchingPack != null && !matchingPack.complete -> "Resume current plan area"
+                    else -> "Save current plan area"
+                })
+            }
+            if (offline.downloading) {
+                TextButton(onClick = { OfflineFieldMaps.cancel(context) }, enabled = !offline.cancelling,
+                    modifier = Modifier.testTag("offline-field-cancel")) {
+                    Text(if (offline.cancelling) "Cancelling…" else "Cancel download")
+                }
+            }
+            TextButton(onClick = { OfflineFieldMaps.refresh(context) }, enabled = !offline.downloading,
+                modifier = Modifier.testTag("offline-field-refresh")) { Text("Refresh saved maps") }
+            offline.message?.let { Text(it, modifier = Modifier.testTag("offline-field-message")) }
+            offline.packs.forEach { pack ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("${pack.name}: ${pack.progressLabel} · ${pack.bytes / 1_000_000} MB",
+                            modifier = Modifier.testTag("offline-field-pack-${pack.id}"))
+                        if (!pack.complete && pack.requiredPrecise && pack.requiredResources > 0) {
+                            LinearProgressIndicator(progress = {
+                                (pack.resources.toFloat() / pack.requiredResources).coerceIn(0f, 1f)
+                            }, modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                    if (!pack.complete) {
+                        TextButton(onClick = { OfflineFieldMaps.resume(context, pack.id) },
+                            enabled = !offline.downloading && !offline.loading,
+                            modifier = Modifier.testTag("offline-field-resume-${pack.id}")) { Text("Resume") }
+                    }
+                    TextButton(onClick = { pendingDelete = pack.id }, enabled = !offline.downloading) { Text("Remove") }
+                }
+            }
+        }
+    }
     Button(onClick = onOpenMap, modifier = Modifier.heightIn(min = 48.dp)) { Text("Open map") }
     Notice("IMAGERY LIMITATIONS", "Satellite imagery is not a live camera feed and may be outdated or offset. It cannot establish obstacle clearance, boundaries or a safe driving surface. Loading depends on the selected map provider, its key and network; a saved choice does not confirm coverage.")
-    Notice("OFFLINE REGIONS", "Offline region downloads are not implemented. Do not rely on cached tiles for offline coverage.")
+    Notice("OFFLINE LIMIT", "A saved field map covers only its downloaded bounds and zoom levels. Map content is geographic context, not a surveyed field boundary or proof of safe rover travel.")
     Notice("PLANNING OVERLAYS", "Waypoints and keep-in outlines are local planning references. They are not uploaded geofences, obstacle detection, or proof that a route is safe to drive.")
 }
 
