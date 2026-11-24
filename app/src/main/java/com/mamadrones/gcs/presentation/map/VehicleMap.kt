@@ -21,6 +21,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -153,6 +154,12 @@ fun VehicleMap(
 
     var map by remember(mapView) { mutableStateOf<MapLibreMap?>(null) }
     var style by remember(mapView) { mutableStateOf<Style?>(null) }
+    val savedFieldMaps by OfflineFieldMaps.state.collectAsState()
+    LaunchedEffect(styleUrl) {
+        if (styleUrl == MapStyleConfig.OFFLINE_FIELD_STYLE_URL) {
+            OfflineFieldMaps.refresh(mapView.context)
+        }
+    }
     var cameraInitialized by remember(mapView) { mutableStateOf(false) }
     var followVehicle by remember(mapView) { mutableStateOf(!planningMode) }
     var loadFailed by remember(mapView) { mutableStateOf(false) }
@@ -429,6 +436,37 @@ fun VehicleMap(
             factory = { mapView },
             modifier = Modifier.fillMaxSize().testTag("coverage-map-canvas"),
         )
+
+        if (styleUrl == MapStyleConfig.OFFLINE_FIELD_STYLE_URL && style != null && !savedFieldMaps.loading) {
+            // Use complete saved regions only; cached pixels are not proof of offline coverage.
+            val camera = map?.cameraPosition
+            val center = camera?.target
+            val visibleBounds = map?.projection?.visibleRegion?.latLngBounds
+            val outsideMessage = when {
+                center == null -> null
+                camera.zoom < OfflineFieldArea.MIN_ZOOM || camera.zoom > OfflineFieldArea.MAX_ZOOM ->
+                    "NOT SAVED OFFLINE · Field maps cover zoom 12–18 only."
+                savedFieldMaps.packs.none { it.complete && it.bounds.contains(center) } ->
+                    "NOT SAVED OFFLINE · Map center is outside saved field packs."
+                visibleBounds != null && !OfflineViewportCoverage.contains(
+                    OfflineMapRectangle(visibleBounds.latitudeSouth, visibleBounds.longitudeWest,
+                        visibleBounds.latitudeNorth, visibleBounds.longitudeEast),
+                    savedFieldMaps.packs.filter { it.complete }.map {
+                        OfflineMapRectangle(it.bounds.latitudeSouth, it.bounds.longitudeWest,
+                            it.bounds.latitudeNorth, it.bounds.longitudeEast)
+                    },
+                ) -> "VIEW NOT FULLY SAVED OFFLINE · Some map area may be unavailable."
+                else -> null
+            }
+            if (outsideMessage != null) {
+                Surface(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                    .testTag("offline-field-outside-notice"),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                    shape = MaterialTheme.shapes.small) {
+                    Text(outsideMessage, Modifier.padding(8.dp), style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
 
         if (!compactPlanningControls && planningMode && coverageLines.isNotEmpty() && style != null) {
             Surface(modifier = Modifier.align(Alignment.TopStart).padding(8.dp).testTag("coverage-map-legend"),

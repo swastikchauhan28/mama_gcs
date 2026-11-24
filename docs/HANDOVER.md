@@ -1,5 +1,41 @@
 # Current handover
 
+## 2026-11-24 — example outline follow-up
+
+- Done: on the disposable emulator, existing UI tests with example coordinates passed outline entry/recovery and outline Save draft/reload. The existing synthetic field-pack test passed separately. A new integrated test saved a four-corner example outline, downloaded its pack through Maps settings and displayed the Field map with MapLibre networking off and no coverage warning; its initial camera/notice timing failure was corrected, the final cleanup-wait rerun passed and the map screenshot was reviewed. The final standard gate passed (539 JVM tests, lint zero errors/27 warnings). See the dated follow-up in [Phase 234](phase-234-report.md).
+- In progress: owner diff review. The owner requested a Phase 233/234 commit and push after verification; inspect Git history for the resulting revision.
+- Broken or risky: manual emulator entry disconnected before confirming a point, so automated UI tests provide the entry evidence. Example coordinates do not validate the operator's real field, and the new integrated test disabled MapLibre network rather than Android-wide networking.
+- Next: review the scoped diff and keep the actual-field phone check open until real coordinates are available.
+- Do not touch: operator phone plans, Cube/radio parameters, RC work, motor outputs, mission upload or rover commands.
+
+## 2026-11-24 — Phase 234 adjacent offline packs
+
+- Done: changed the Field-map warning to consider the union of complete saved regions. Six JVM cases passed. The disposable emulator downloaded two synthetic adjacent packs, restarted with Android networking disabled, displayed the jointly covered map without a warning, and displayed `VIEW NOT FULLY SAVED OFFLINE` after one pack was removed. Both screenshots were reviewed; synthetic packs were cleaned up and emulator networking restored. See [Phase 234](phase-234-report.md) and D-234-01.
+- In progress: owner diff review. The final standard gate passed with 539 JVM tests and lint zero errors/27 warnings; the scoped diff review found no unexpected dependency, permission, destination or command change. The owner requested a commit and push after verification; older untracked demo output remains untouched.
+- Broken or risky: native complete status and region geometry do not audit individual assets or surveyed field boundaries. The owner does not yet have actual field coordinates; real-field phone acceptance remains open.
+- Next: owner reviews the Phase 233/234 diff. When actual field coordinates exist, save the outline, download that area and inspect it offline on the phone.
+- Do not touch: saved mission data, Cube/radio parameters, RC work, motor outputs, mission upload or rover commands.
+
+## 2026-11-24 — Phase 233 follow-up viewport check
+
+- Done: expanded the Field-map warning from camera center to visible viewport containment within one complete saved region. On the disposable emulator with Android airplane mode on and no active network, the saved viewport rendered, an edge-crossing viewport showed `VIEW NOT FULLY SAVED OFFLINE`, and an outside center showed `NOT SAVED OFFLINE` over a blank map. The three screenshots were reviewed, two existing offline-map tests passed, and the post-test Android health check passed. The connected phone was inspected read-only: current Plan had zero outline vertices and local Library had zero saved plans. See the dated follow-up in [Phase 233](phase-233-report.md).
+- In progress: owner diff review and real field outline once coordinates become available. The final follow-up gate passed (533 JVM tests, zero failures; lint zero errors and 27 warnings). Phase 233 remains uncommitted/unpushed; older untracked demo output remains untouched.
+- Broken or risky: two expanded-test attempts had fixture/notice timing failures before the final pass; the report retains them. A complete saved region is map availability, not a surveyed field or rover safety proof. Multiple adjacent packs may conservatively trigger a viewport warning. The real field/phone offline test is still open because the owner does not yet have field coordinates.
+- Next: review the scoped diff; when actual field coordinates become available, save the outline, download that area and inspect it on the phone offline without commanding hardware.
+- Do not touch: saved mission data, Cube/radio parameters, RC work, motor outputs, mission upload or rover commands.
+
+## 2026-11-24 — Phase 233 Android offline field-map inspection
+
+- Done: the separate Field map now labels a camera center or zoom outside complete saved packs as `NOT SAVED OFFLINE`. A synthetic pack survived app restart and rendered with emulator airplane mode on and no active default network; an unsaved location showed the notice and a blank map. The final screenshots were reviewed. Existing two offline-map regressions and pre/post Android health checks passed. See [Phase 233](phase-233-report.md) and D-233-01.
+- In progress: owner diff review. The final JVM/build/lint gate passed (533 JVM tests, zero failures; lint zero errors and 27 warnings). Phase 233 is uncommitted/unpushed; older untracked demo output remains untouched.
+- Broken or risky: initial test import and early-camera/screenshot timing failures were corrected and retained in the report. Center-only coverage is not viewport or field verification; real field and phone remain untested.
+- Next: review the scoped diff; then verify the actual field area and zooms on the operator phone offline before relying on them.
+- Do not touch: saved mission data, Cube/radio parameters, RC work, motor outputs, mission upload or rover commands.
+
+## 2026-11-24 — Phase 232 commit correction
+
+- Done: Phases 230–232 were committed and pushed as `fec2cc5` after the owner's separate request. The earlier Phase 232 entry below records its pre-commit handover state; old untracked `output/` deliverables were excluded.
+
 ## 2026-11-24 — Phase 232 offline download recovery
 
 - Done: added precise-resource progress, explicit Cancel and Resume, and reload of incomplete MapLibre regions after an app restart. A cancelled pack stays incomplete; a resumed pack is Ready only after MapLibre reports complete. The disposable Phase 209 emulator passed the cancel check, a separate-process interrupt/resume/offline-render sequence, and the Phase 231 offline-map and Maps settings regressions. Screenshots and failures are in [Phase 232](phase-232-report.md) and D-232-01.

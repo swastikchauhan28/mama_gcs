@@ -6,7 +6,9 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
@@ -27,12 +29,111 @@ import org.junit.Assert.assertTrue
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import android.graphics.Bitmap
+import android.view.View
+import android.view.ViewGroup
 import com.mamadrones.gcs.domain.model.VehicleState
+import com.mamadrones.gcs.data.local.datastore.LocalMissionDraftRepository
+import kotlinx.coroutines.runBlocking
+import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.MapLibreMap
 import org.junit.Rule
 import org.junit.Test
 
 class OfflineFieldMapTest {
     @get:Rule val compose = createAndroidComposeRule<FixtureTestActivity>()
+
+    @Test fun savedExampleOutlineDownloadsAndDisplaysOffline() {
+        val repository = LocalMissionDraftRepository(compose.activity)
+        val previous = runBlocking { repository.load() }
+        val previousRecovery = runBlocking { repository.loadRecovery() }
+        val example = MissionDraft(name = "Example field only", keepInFence = listOf(
+            DraftWaypoint("southwest", 12.9700, 77.5900),
+            DraftWaypoint("southeast", 12.9700, 77.6100),
+            DraftWaypoint("northeast", 12.9800, 77.6100),
+            DraftWaypoint("northwest", 12.9800, 77.5900)))
+        try {
+            runBlocking { repository.save(example) }
+            val saved = runBlocking { repository.load() }
+            assertEquals(example.keepInFence, saved.keepInFence)
+            assertNotNull(OfflineFieldArea.fromDraft(saved))
+            OfflineFieldMaps.refresh(compose.activity)
+            compose.waitUntil(15_000) { !OfflineFieldMaps.state.value.loading }
+            OfflineFieldMaps.state.value.packs.filter { it.name == example.name }.forEach {
+                OfflineFieldMaps.delete(compose.activity, it.id)
+            }
+            compose.waitUntil(15_000) {
+                OfflineFieldMaps.state.value.packs.none { it.name == example.name }
+            }
+            val showMap = mutableStateOf(false)
+            compose.setContent { MamaGcsTheme {
+                if (showMap.value) VehicleMap(VehicleState(), Modifier.fillMaxSize().testTag("example-field-map"),
+                    draftFence = saved.keepInFence, planningMode = true,
+                    styleUrl = MapStyleConfig.OFFLINE_FIELD_STYLE_URL)
+                else MapSettingsScreen(SettingsUiState(loading = false), draft = saved, onOpenMap = {})
+            } }
+            compose.onNodeWithTag("offline-field-download").performScrollTo().assertIsEnabled().performClick()
+            compose.waitUntil(180_000) {
+                val state = OfflineFieldMaps.state.value
+                state.packs.any { it.name == example.name && it.complete } ||
+                    (!state.downloading && !state.loading && state.message?.contains("ready offline") != true)
+            }
+            val pack = OfflineFieldMaps.state.value.packs.single { it.name == example.name && it.complete }
+            org.maplibre.android.MapLibre.setConnected(false)
+            compose.runOnIdle { showMap.value = true }
+            compose.onNodeWithTag("example-field-map").assertIsDisplayed()
+            val map = loadedMap()
+            compose.runOnIdle {
+                map.cameraPosition = CameraPosition.Builder().target(LatLng(12.975, 77.600)).zoom(18.0).build()
+            }
+            Thread.sleep(4_000) // Native viewport bounds may lag the cameraPosition property.
+            compose.waitUntil(10_000) { !OfflineFieldMaps.state.value.loading }
+            compose.runOnIdle {
+                assertTrue(pack.bounds.contains(map.projection.visibleRegion.latLngBounds))
+            }
+            compose.waitUntil(10_000) {
+                compose.onAllNodesWithTag("offline-field-outside-notice").fetchSemanticsNodes().isEmpty()
+            }
+            compose.onNodeWithTag("offline-field-outside-notice").assertDoesNotExist()
+            val screenshot = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+            File(compose.activity.getExternalFilesDir(null), "phase234-example-outline-offline.png")
+                .outputStream().use { assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+        } finally {
+            org.maplibre.android.MapLibre.setConnected(true)
+            OfflineFieldMaps.state.value.packs.filter { it.name == example.name }.forEach {
+                OfflineFieldMaps.delete(compose.activity, it.id)
+            }
+            compose.waitUntil(15_000) {
+                OfflineFieldMaps.state.value.packs.none { it.name == example.name }
+            }
+            runBlocking {
+                repository.save(previous)
+                previousRecovery?.let { repository.saveRecovery(it) }
+            }
+        }
+    }
+
+    private fun findMap(view: View): MapView? {
+        if (view is MapView) return view
+        if (view is ViewGroup) for (index in 0 until view.childCount) {
+            findMap(view.getChildAt(index))?.let { return it }
+        }
+        return null
+    }
+
+    private fun loadedMap(): MapLibreMap {
+        var map: MapLibreMap? = null
+        compose.runOnIdle {
+            requireNotNull(findMap(compose.activity.window.decorView)).getMapAsync { map = it }
+        }
+        compose.waitUntil(45_000) {
+            var ready = false
+            compose.runOnIdle { ready = map?.style?.isFullyLoaded == true }
+            ready
+        }
+        return requireNotNull(map)
+    }
 
     @Test fun fieldGeometryAndDownloadControlStayBounded() {
         assertNull(OfflineFieldArea.fromDraft(MissionDraft()))
