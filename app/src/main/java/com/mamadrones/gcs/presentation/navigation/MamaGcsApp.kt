@@ -12,6 +12,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.*
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mamadrones.gcs.domain.model.ThemeMode
@@ -90,6 +92,10 @@ fun MamaGcsApp(
                     NavHost(navController, startDestination = AppDestination.DASHBOARD.route, modifier = Modifier.fillMaxSize()) {
                         composable("dashboard") { DashboardScreen(vehicle, navigate) }
                         composable("map") { MapScreen(vehicle, onNavigate = navigate) }
+                        composable("map/saved/{packId}", arguments = listOf(navArgument("packId") { type = NavType.LongType })) { destination ->
+                            SavedPackMapScreen(vehicle, destination.arguments?.getLong("packId") ?: -1L,
+                                onBackToMaps = { navController.popBackStack() })
+                        }
                         composable("control") { ControlScreen(vehicle) }
                         composable("mission") { MissionScreen(vehicle, missionPlan, onMissionAction) }
                         composable("more") { MoreScreen(vehicle, onNavigate = navigate) }
@@ -191,7 +197,8 @@ fun MamaGcsApp(
                             )
                         } }
                         composable("map-settings") {
-                            MapSettingsScreen(settings, onBasemapSelected, draft = missionPlan.draft) { navigate("map") }
+                            MapSettingsScreen(settings, onBasemapSelected, draft = missionPlan.draft,
+                                onViewSavedArea = { navigate("map/saved/$it") }) { navigate("map") }
                         }
                     }
     }

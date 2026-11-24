@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-24 — Phase 236 view saved map area
+
+- Done: completed saved packs now have a View saved area action in Maps settings. A dedicated Field map route rechecks the pack ID and fits its bounds without changing the saved basemap preference. Missing or removed packs show one clear unavailable state. The synthetic API 34 emulator tests passed for incomplete-pack exclusion, selected-pack camera framing, expected partial-coverage warning and deletion; Android networking was off during the view test and restored afterward. The standard gate passed (539 JVM tests, zero failures/skips; lint zero errors/27 warnings), followed by a successful final APK rebuild. See [Phase 236](phase-236-report.md) and D-236-01.
+- In progress: owner diff review and visual map acceptance. Phase 236 changes are uncommitted and unpushed; older untracked `output/` demo deliverables remain untouched.
+- Broken or risky: the emulator repeatedly logged Android System UI ANRs, and native map captures stayed black even with software graphics. Camera and layer assertions passed, but the blue border and tiles were not visually proven in this phase. Native complete status remains a coverage hint, not a tile audit or surveyed field boundary.
+- Next: inspect the saved-area map on a healthy emulator or operator device. The real-field phone check also needs actual field coordinates.
+- Do not touch: operator phone plans, Cube/radio parameters, RC work, motor outputs, mission upload or rover commands.
+
 ## 2026-11-24 — Phase 235 saved map borders
 
 - Done: the Field map displays blue outlines for native-complete saved offline map packs and a ready-pack count. The orange planning outline remains separate. An incomplete synthetic pack was excluded; the final APK was reinstalled on a disposable emulator and its offline test passed with two adjacent pack borders, then one border and the coverage warning after removing a pack. Final screenshots were reviewed. Android networking was disabled during inspection and restored afterward. See [Phase 235](phase-235-report.md) and D-235-01.

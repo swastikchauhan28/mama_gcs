@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -134,8 +135,9 @@ fun VehicleMap(
     coverageLines: List<CoverageMapLine> = emptyList(),
     compactPlanningControls: Boolean = false,
     coverageGapSamples: List<CoverageMapPoint>? = null,
+    focusSavedPackId: Long? = null,
 ) {
-    if (LocalBasemapStyle.current.isGoogle) {
+    if (focusSavedPackId == null && LocalBasemapStyle.current.isGoogle) {
         GoogleVehicleMap(state, modifier, draftWaypoints, draftFence, planningMode,
             onWaypointRequested, onWaypointSelected, coverageLines, compactPlanningControls,
             coverageGapSamples, LocalBasemapStyle.current)
@@ -156,9 +158,11 @@ fun VehicleMap(
 
     var map by remember(mapView) { mutableStateOf<MapLibreMap?>(null) }
     var style by remember(mapView) { mutableStateOf<Style?>(null) }
+    var mapSize by remember(mapView) { mutableStateOf(IntSize.Zero) }
     val savedFieldMaps by OfflineFieldMaps.state.collectAsState()
     val completedPackRects = if (savedFieldMaps.loading) emptyList()
         else completePackBoundaryRects(savedFieldMaps.packs)
+    val focusedPackBounds = focusSavedPackId?.let { selectedCompletePackBounds(savedFieldMaps.packs, it) }
     LaunchedEffect(styleUrl) {
         if (styleUrl == MapStyleConfig.OFFLINE_FIELD_STYLE_URL) {
             OfflineFieldMaps.refresh(mapView.context)
@@ -305,6 +309,23 @@ fun VehicleMap(
         }
         style?.getSourceAs<GeoJsonSource>(OFFLINE_PACK_BOUNDS_SOURCE_ID)
             ?.setGeoJson(FeatureCollection.fromFeatures(features))
+    }
+
+    LaunchedEffect(style, focusSavedPackId, focusedPackBounds, mapSize) {
+        if (style == null || focusSavedPackId == null || savedFieldMaps.loading ||
+            mapSize.width <= 0 || mapSize.height <= 0) return@LaunchedEffect
+        val rectangle = focusedPackBounds ?: return@LaunchedEffect
+        val loadedMap = map ?: return@LaunchedEffect
+        val bounds = LatLngBounds.from(rectangle.north, rectangle.east, rectangle.south, rectangle.west)
+        val padding = minOf((48 * mapView.resources.displayMetrics.density).toInt(),
+            mapSize.width / 5, mapSize.height / 5).coerceAtLeast(1)
+        val fitted = loadedMap.getCameraForLatLngBounds(bounds,
+            intArrayOf(padding, padding, padding, padding)) ?: return@LaunchedEffect
+        // A requested saved area takes precedence over live-position following for this map view.
+        followVehicle = false
+        cameraInitialized = true
+        loadedMap.cameraPosition = CameraPosition.Builder().target(fitted.target)
+            .zoom(minOf(fitted.zoom, OfflineFieldArea.MAX_ZOOM)).bearing(0.0).tilt(0.0).build()
     }
 
     LaunchedEffect(
@@ -457,8 +478,15 @@ fun VehicleMap(
         Box(Modifier.weight(1f).fillMaxWidth()) {
         AndroidView(
             factory = { mapView },
-            modifier = Modifier.fillMaxSize().testTag("coverage-map-canvas"),
+            modifier = Modifier.fillMaxSize().onSizeChanged { mapSize = it }
+                .testTag("coverage-map-canvas"),
         )
+
+        if (focusSavedPackId != null && !savedFieldMaps.loading && focusedPackBounds == null) {
+            MapMessage(title = "SAVED MAP UNAVAILABLE",
+                detail = "This saved area was removed or is incomplete. Return to Maps settings.",
+                modifier = Modifier.align(Alignment.Center).testTag("offline-pack-unavailable"))
+        }
 
         if (styleUrl == MapStyleConfig.OFFLINE_FIELD_STYLE_URL && style != null && !savedFieldMaps.loading) {
             // Use complete saved regions only; cached pixels are not proof of offline coverage.

@@ -31,6 +31,7 @@ import com.mamadrones.gcs.presentation.settings.ConnectionUiState
 import com.mamadrones.gcs.presentation.settings.SettingsUiState
 import com.mamadrones.gcs.presentation.map.OfflineFieldArea
 import com.mamadrones.gcs.presentation.map.OfflineFieldMaps
+import com.mamadrones.gcs.presentation.map.completePackBoundaryRect
 
 enum class SettingsSection { ALL, GENERAL, LINK }
 
@@ -157,6 +158,7 @@ fun MapSettingsScreen(
     state: SettingsUiState = SettingsUiState(),
     onBasemapSelected: (BasemapStyle) -> Unit = {},
     draft: MissionDraft = MissionDraft(),
+    onViewSavedArea: (Long) -> Unit = {},
     onOpenMap: () -> Unit,
 ) = ScreenBody {
     val context = LocalContext.current
@@ -245,12 +247,18 @@ fun MapSettingsScreen(
                             }, modifier = Modifier.fillMaxWidth())
                         }
                     }
-                    if (!pack.complete) {
-                        TextButton(onClick = { OfflineFieldMaps.resume(context, pack.id) },
-                            enabled = !offline.downloading && !offline.loading,
-                            modifier = Modifier.testTag("offline-field-resume-${pack.id}")) { Text("Resume") }
+                    Column(horizontalAlignment = Alignment.End) {
+                        if (!pack.complete) {
+                            TextButton(onClick = { OfflineFieldMaps.resume(context, pack.id) },
+                                enabled = !offline.downloading && !offline.loading,
+                                modifier = Modifier.testTag("offline-field-resume-${pack.id}")) { Text("Resume") }
+                        }
+                        if (completePackBoundaryRect(pack) != null) {
+                            TextButton(onClick = { onViewSavedArea(pack.id) }, enabled = !offline.loading,
+                                modifier = Modifier.testTag("offline-field-view-${pack.id}")) { Text("View saved area") }
+                        }
+                        TextButton(onClick = { pendingDelete = pack.id }, enabled = !offline.downloading) { Text("Remove") }
                     }
-                    TextButton(onClick = { pendingDelete = pack.id }, enabled = !offline.downloading) { Text("Remove") }
                 }
             }
         }

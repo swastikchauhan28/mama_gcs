@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.ImeAction
@@ -27,11 +28,60 @@ import com.mamadrones.gcs.presentation.dashboard.forDisplay
 import com.mamadrones.gcs.presentation.dashboard.reading
 import com.mamadrones.gcs.presentation.dashboard.sampleAge
 import com.mamadrones.gcs.presentation.map.VehicleMap
+import com.mamadrones.gcs.presentation.map.MapStyleConfig
+import com.mamadrones.gcs.presentation.map.OfflineFieldMaps
+import com.mamadrones.gcs.presentation.map.selectedCompletePackBounds
 import com.mamadrones.gcs.presentation.settings.ConnectionUiState
 
 @Composable
 fun MapScreen(state: VehicleState, modifier: Modifier = Modifier, onNavigate: (String) -> Unit = {}) =
     DashboardScreen(state, onNavigate, modifier)
+
+@Composable
+fun SavedPackMapScreen(state: VehicleState, packId: Long, onBackToMaps: () -> Unit,
+    modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val savedMaps by OfflineFieldMaps.state.collectAsState()
+    var refreshRequested by remember(packId) { mutableStateOf(false) }
+    var initialLoadComplete by remember(packId) { mutableStateOf(false) }
+    LaunchedEffect(packId) {
+        OfflineFieldMaps.refresh(context)
+        refreshRequested = true
+    }
+    LaunchedEffect(refreshRequested, savedMaps.loading) {
+        if (refreshRequested && !savedMaps.loading) initialLoadComplete = true
+    }
+    val unavailable = initialLoadComplete && !savedMaps.loading &&
+        selectedCompletePackBounds(savedMaps.packs, packId) == null
+    Column(modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onBackToMaps,
+                modifier = Modifier.heightIn(min = 48.dp).testTag("saved-pack-back")) {
+                Text("‹ Maps")
+            }
+            Text("Saved area", Modifier.padding(start = 8.dp),
+                style = MaterialTheme.typography.titleMedium)
+        }
+        Text("Blue border: saved area. Outside it may need internet.",
+            Modifier.padding(horizontal = 12.dp), style = MaterialTheme.typography.bodySmall)
+        if (!initialLoadComplete) {
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Text("Loading saved map")
+            }
+        } else if (unavailable) {
+            Box(Modifier.weight(1f).fillMaxWidth().testTag("offline-pack-unavailable"),
+                contentAlignment = Alignment.Center) {
+                Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Saved map unavailable", style = MaterialTheme.typography.titleMedium)
+                    Text("This saved area was removed or is incomplete. Return to Maps settings.")
+                }
+            }
+        } else {
+            VehicleMap(state.forDisplay(), Modifier.weight(1f).fillMaxWidth(),
+                styleUrl = MapStyleConfig.OFFLINE_FIELD_STYLE_URL, focusSavedPackId = packId)
+        }
+    }
+}
 
 @Composable
 fun ControlScreen(state: VehicleState, modifier: Modifier = Modifier) {

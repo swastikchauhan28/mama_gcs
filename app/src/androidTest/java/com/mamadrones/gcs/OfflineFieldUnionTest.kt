@@ -1,9 +1,14 @@
 package com.mamadrones.gcs
 
 import android.graphics.Bitmap
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
+import android.view.PixelCopy
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
@@ -11,21 +16,36 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
 import com.mamadrones.gcs.domain.model.VehicleState
+import com.mamadrones.gcs.domain.model.BasemapStyle
+import com.mamadrones.gcs.presentation.map.LocalBasemapStyle
 import com.mamadrones.gcs.presentation.map.MapStyleConfig
 import com.mamadrones.gcs.presentation.map.OfflineFieldArea
 import com.mamadrones.gcs.presentation.map.OfflineFieldMaps
 import com.mamadrones.gcs.presentation.map.OfflineFieldPack
 import com.mamadrones.gcs.presentation.map.VehicleMap
 import com.mamadrones.gcs.presentation.map.completePackBoundaryRects
+import com.mamadrones.gcs.presentation.map.selectedCompletePackBounds
+import com.mamadrones.gcs.presentation.screens.SavedPackMapScreen
+import com.mamadrones.gcs.presentation.screens.MapSettingsScreen
+import com.mamadrones.gcs.presentation.settings.SettingsUiState
 import com.mamadrones.gcs.presentation.theme.MamaGcsTheme
 import java.io.File
+import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.maplibre.android.camera.CameraPosition
@@ -47,6 +67,69 @@ class OfflineFieldUnionTest {
         val incomplete = ready.copy(id = 2, complete = false, name = "incomplete")
         assertEquals(1, completePackBoundaryRects(listOf(ready, incomplete)).size)
         assertEquals(emptyList<Any>(), completePackBoundaryRects(listOf(incomplete)))
+        assertNull(selectedCompletePackBounds(listOf(incomplete), incomplete.id))
+        assertNull(selectedCompletePackBounds(listOf(ready), 99L))
+        assertEquals(completePackBoundaryRects(listOf(ready)).single(),
+            selectedCompletePackBounds(listOf(ready, incomplete), ready.id))
+    }
+
+    @Test fun viewSavedAreaFramesChosenReadyPackAndRejectsDeletionOffline() {
+        OfflineFieldMaps.refresh(compose.activity)
+        compose.waitUntil(15_000) { !OfflineFieldMaps.state.value.loading }
+        val packs = listOf(left.name, right.name).map { name ->
+            OfflineFieldMaps.state.value.packs.single { it.name == name && it.complete }
+        }
+        val selected = mutableStateOf<Long?>(null)
+        try {
+            compose.setContent { MamaGcsTheme {
+                CompositionLocalProvider(LocalBasemapStyle provides BasemapStyle.GOOGLE_STREETS) {
+                    val id = selected.value
+                    if (id == null) MapSettingsScreen(SettingsUiState(loading = false),
+                        onViewSavedArea = { selected.value = it }, onOpenMap = {})
+                    else SavedPackMapScreen(VehicleState(), id, onBackToMaps = {})
+                }
+            } }
+            compose.onNodeWithTag("offline-field-view-${packs[1].id}").performScrollTo()
+                .assertIsDisplayed().performClick()
+            compose.onNodeWithTag("saved-pack-back").assertIsDisplayed()
+            val map = loadedMap()
+            compose.waitUntil(15_000) {
+                var framed = false
+                compose.runOnIdle {
+                    framed = map.projection.visibleRegion.latLngBounds.contains(packs[1].bounds) &&
+                        (map.cameraPosition.target?.longitude ?: Double.NEGATIVE_INFINITY) >
+                            packs[0].bounds.longitudeEast &&
+                        map.cameraPosition.zoom >= OfflineFieldArea.MIN_ZOOM &&
+                        map.cameraPosition.zoom <= OfflineFieldArea.MAX_ZOOM &&
+                        map.style?.getLayer("mama-offline-pack-bounds-line") != null
+                }
+                framed
+            }
+            compose.onNodeWithTag("offline-pack-boundary-legend").assertIsDisplayed()
+            compose.waitUntil(10_000) {
+                compose.onAllNodesWithText("VIEW NOT FULLY SAVED OFFLINE", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            saveNativeMapSnapshot(map, "phase236-selected-pack-native-map.png")
+            saveAppView("phase236-selected-pack-app-view.png")
+            saveWindowPixels("phase236-selected-pack-window.png")
+            OfflineFieldMaps.delete(compose.activity, packs[1].id)
+            compose.waitUntil(15_000) {
+                OfflineFieldMaps.state.value.packs.none { it.id == packs[1].id }
+            }
+            compose.onNodeWithTag("offline-pack-unavailable").assertIsDisplayed()
+            saveAppView("phase236-removed-pack-app-view.png")
+            saveWindowPixels("phase236-removed-pack-window.png")
+        } finally {
+            packs.forEach { pack ->
+                if (OfflineFieldMaps.state.value.packs.any { it.id == pack.id }) {
+                    OfflineFieldMaps.delete(compose.activity, pack.id)
+                }
+            }
+            compose.waitUntil(15_000) {
+                packs.none { pack -> OfflineFieldMaps.state.value.packs.any { it.id == pack.id } }
+            }
+        }
     }
 
     @Test fun prepareTwoAdjacentPacksOnline() {
@@ -141,6 +224,38 @@ class OfflineFieldUnionTest {
         File(compose.activity.getExternalFilesDir(null), name).outputStream().use {
             assertTrue(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
                 .compress(Bitmap.CompressFormat.PNG, 100, it))
+        }
+    }
+
+    private fun saveNativeMapSnapshot(map: MapLibreMap, name: String) {
+        val capture = AtomicReference<Bitmap>()
+        compose.runOnIdle { map.snapshot { capture.set(it) } }
+        compose.waitUntil(15_000) { capture.get() != null }
+        File(compose.activity.getExternalFilesDir(null), name).outputStream().use {
+            assertTrue(requireNotNull(capture.get()).compress(Bitmap.CompressFormat.PNG, 100, it))
+        }
+    }
+
+    private fun saveAppView(name: String) {
+        File(compose.activity.getExternalFilesDir(null), name).outputStream().use {
+            assertTrue(compose.onRoot().captureToImage().asAndroidBitmap()
+                .compress(Bitmap.CompressFormat.PNG, 100, it))
+        }
+    }
+
+    private fun saveWindowPixels(name: String) {
+        val view = compose.activity.window.decorView
+        val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+        val done = CountDownLatch(1)
+        val result = AtomicReference<Int>()
+        PixelCopy.request(compose.activity.window, bitmap, { code ->
+            result.set(code)
+            done.countDown()
+        }, Handler(Looper.getMainLooper()))
+        assertTrue("Window capture timed out", done.await(15, TimeUnit.SECONDS))
+        assertEquals(PixelCopy.SUCCESS, result.get())
+        File(compose.activity.getExternalFilesDir(null), name).outputStream().use {
+            assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
         }
     }
 

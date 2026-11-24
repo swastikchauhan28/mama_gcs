@@ -54,6 +54,7 @@ class OfflineFieldRecoveryTest {
         val pack = OfflineFieldMaps.state.value.packs.single { it.name == cancelDraft.name }
         assertFalse(pack.complete)
         compose.onNodeWithTag("offline-field-resume-${pack.id}").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("offline-field-view-${pack.id}").assertDoesNotExist()
         File(compose.activity.getExternalFilesDir(null), "phase232-incomplete-settings.png").outputStream().use {
             assertTrue(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
                 .compress(Bitmap.CompressFormat.PNG, 100, it))
