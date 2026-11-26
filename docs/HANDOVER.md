@@ -1,9 +1,25 @@
 # Current handover
 
+## 2026-11-26 — Phase 238 saved-area warning follows the camera
+
+- Done: preserved the selected pack's whole-area fit and refreshed the offline zoom/viewport notice on camera idle/direct fit. The full software gate passed: 539 JVM tests with no failures/errors/skips, both debug APK builds, lint zero errors/27 warnings. The focused selected-area test passed online and offline on a healthy disposable AOSP API 31 emulator; screenshots show the supported opening zoom and the zoom-11 warning. The older framing/deletion test passed offline after its native snapshot capture was changed to an Android on-screen capture. Post-test Android health passed. See [Phase 238](phase-238-report.md) and D-238-01.
+- In progress: owner diff review. Phase 238 changes are uncommitted/unpushed; Phase 237's prior dirty test/docs and older untracked `output/` demo files remain preserved.
+- Broken or risky: multiple Google APIs emulators failed quiet preflight with System UI ANRs. The older MapLibre native snapshot test crashed twice on the AOSP renderer before its capture step was replaced; the corrected test passed, but this does not prove general renderer reliability. Real-field and phone checks still need actual field coordinates. A large saved area that cannot fit within zoom 12–18 has not been visually exercised.
+- Next: review the scoped diff and retain the conservative lower-zoom warning for a selected pack that cannot fit at zoom 12. Test a real field on the operator phone when its coordinates are available.
+- Do not touch: operator phone data, Cube/radio parameters, RC work, motor outputs, mission upload or rover commands; older untracked `output/` demo files.
+
+## 2026-11-25 — Phase 237 saved-map visual verification
+
+- Done: the owner explicitly approved deleting three exact, unregistered old `app/build` AVD homes; C: recovered enough space for a fresh disposable API 34 emulator. Its quiet preflight passed. The synthetic Maps settings → View saved area path passed and actual Android screen captures show street tiles and blue saved-pack borders both online and with `Active default network: none`. The revised screenshot test built and passed. See [Phase 237](phase-237-report.md); production app code did not change.
+- In progress: owner diff review. Phase 237 test and documentation changes are uncommitted/unpushed; older untracked `output/` demo files remain untouched.
+- Broken or risky: MapLibre's native snapshot returned black while the actual Android screen rendered correctly, so visual evidence uses screen captures. The selected synthetic view warns that its current zoom is outside the saved 12–18 range; visible cached tiles at that zoom do not prove the whole viewport is saved. The real field and operator phone remain unverified without field coordinates.
+- Next: review the scoped test/documentation diff. When actual field coordinates exist, download that area and inspect the exact field and required zooms offline on the operator phone before field reliance.
+- Do not touch: operator phone data, Cube/radio parameters, RC work, motor outputs, mission upload or rover commands; older untracked `output/` demo files.
+
 ## 2026-11-24 — Phase 236 view saved map area
 
 - Done: completed saved packs now have a View saved area action in Maps settings. A dedicated Field map route rechecks the pack ID and fits its bounds without changing the saved basemap preference. Missing or removed packs show one clear unavailable state. The synthetic API 34 emulator tests passed for incomplete-pack exclusion, selected-pack camera framing, expected partial-coverage warning and deletion; Android networking was off during the view test and restored afterward. The standard gate passed (539 JVM tests, zero failures/skips; lint zero errors/27 warnings), followed by a successful final APK rebuild. See [Phase 236](phase-236-report.md) and D-236-01.
-- In progress: owner diff review and visual map acceptance. Phase 236 changes are uncommitted and unpushed; older untracked `output/` demo deliverables remain untouched.
+- In progress: owner diff review and visual map acceptance. Phase 236 was committed and pushed as `0d6cafbeb971de894e5bec44d9abb10b4e39e790`; older untracked `output/` demo deliverables remain untouched.
 - Broken or risky: the emulator repeatedly logged Android System UI ANRs, and native map captures stayed black even with software graphics. Camera and layer assertions passed, but the blue border and tiles were not visually proven in this phase. Native complete status remains a coverage hint, not a tile audit or surveyed field boundary.
 - Next: inspect the saved-area map on a healthy emulator or operator device. The real-field phone check also needs actual field coordinates.
 - Do not touch: operator phone plans, Cube/radio parameters, RC work, motor outputs, mission upload or rover commands.

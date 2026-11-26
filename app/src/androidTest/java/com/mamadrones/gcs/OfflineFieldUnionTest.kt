@@ -110,7 +110,8 @@ class OfflineFieldUnionTest {
                 compose.onAllNodesWithText("VIEW NOT FULLY SAVED OFFLINE", substring = true)
                     .fetchSemanticsNodes().isNotEmpty()
             }
-            saveNativeMapSnapshot(map, "phase236-selected-pack-native-map.png")
+            // Capture the rendered SurfaceView; native MapLibre snapshots can crash the emulator renderer.
+            saveScreenshot("phase236-selected-pack-onscreen.png")
             saveAppView("phase236-selected-pack-app-view.png")
             saveWindowPixels("phase236-selected-pack-window.png")
             OfflineFieldMaps.delete(compose.activity, packs[1].id)
@@ -120,6 +121,68 @@ class OfflineFieldUnionTest {
             compose.onNodeWithTag("offline-pack-unavailable").assertIsDisplayed()
             saveAppView("phase236-removed-pack-app-view.png")
             saveWindowPixels("phase236-removed-pack-window.png")
+        } finally {
+            packs.forEach { pack ->
+                if (OfflineFieldMaps.state.value.packs.any { it.id == pack.id }) {
+                    OfflineFieldMaps.delete(compose.activity, pack.id)
+                }
+            }
+            compose.waitUntil(15_000) {
+                packs.none { pack -> OfflineFieldMaps.state.value.packs.any { it.id == pack.id } }
+            }
+        }
+    }
+
+    /** Run after prepareTwoAdjacentPacksOnline in a separate process; inspect the screen image. */
+    @Test fun selectedSavedAreaZoomWarningTracksCamera() {
+        OfflineFieldMaps.refresh(compose.activity)
+        compose.waitUntil(15_000) { !OfflineFieldMaps.state.value.loading }
+        val packs = listOf(left.name, right.name).map { name ->
+            OfflineFieldMaps.state.value.packs.single { it.name == name && it.complete }
+        }
+        val selected = mutableStateOf<Long?>(null)
+        try {
+            compose.setContent { MamaGcsTheme {
+                CompositionLocalProvider(LocalBasemapStyle provides BasemapStyle.GOOGLE_STREETS) {
+                    val id = selected.value
+                    if (id == null) MapSettingsScreen(SettingsUiState(loading = false),
+                        onViewSavedArea = { selected.value = it }, onOpenMap = {})
+                    else SavedPackMapScreen(VehicleState(), id, onBackToMaps = {})
+                }
+            } }
+            compose.onNodeWithTag("offline-field-view-${packs[1].id}").performScrollTo()
+                .assertIsDisplayed().performClick()
+            compose.onNodeWithTag("saved-pack-back").assertIsDisplayed()
+            val map = loadedMap()
+            compose.waitUntil(15_000) {
+                var framed = false
+                compose.runOnIdle {
+                    framed = map.projection.visibleRegion.latLngBounds.contains(packs[1].bounds) &&
+                        map.style?.getLayer("mama-offline-pack-bounds-line") != null
+                }
+                framed
+            }
+            compose.onNodeWithTag("offline-pack-boundary-legend").assertIsDisplayed()
+            // Style load and camera fit can precede vector-tile rendering on a cold emulator.
+            Thread.sleep(12_000)
+            var openingZoom = 0.0
+            compose.runOnIdle { openingZoom = map.cameraPosition.zoom }
+            org.junit.Assert.assertTrue("Selected pack opened at zoom $openingZoom, outside saved 12–18",
+                openingZoom in OfflineFieldArea.MIN_ZOOM..OfflineFieldArea.MAX_ZOOM)
+            compose.waitUntil(10_000) {
+                compose.onAllNodesWithText("Field maps cover zoom 12–18 only", substring = true)
+                    .fetchSemanticsNodes().isEmpty()
+            }
+            // Native MapLibre snapshots can be black while its SurfaceView is visible on screen.
+            saveScreenshot("phase238-selected-onscreen.png")
+            compose.runOnIdle { map.cameraPosition = CameraPosition.Builder()
+                .target(requireNotNull(map.cameraPosition.target))
+                .zoom(OfflineFieldArea.MIN_ZOOM - 1).build() }
+            compose.waitUntil(10_000) {
+                compose.onAllNodesWithText("Field maps cover zoom 12–18 only", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            saveScreenshot("phase238-outside-zoom-onscreen.png")
         } finally {
             packs.forEach { pack ->
                 if (OfflineFieldMaps.state.value.packs.any { it.id == pack.id }) {
@@ -224,15 +287,6 @@ class OfflineFieldUnionTest {
         File(compose.activity.getExternalFilesDir(null), name).outputStream().use {
             assertTrue(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
                 .compress(Bitmap.CompressFormat.PNG, 100, it))
-        }
-    }
-
-    private fun saveNativeMapSnapshot(map: MapLibreMap, name: String) {
-        val capture = AtomicReference<Bitmap>()
-        compose.runOnIdle { map.snapshot { capture.set(it) } }
-        compose.waitUntil(15_000) { capture.get() != null }
-        File(compose.activity.getExternalFilesDir(null), name).outputStream().use {
-            assertTrue(requireNotNull(capture.get()).compress(Bitmap.CompressFormat.PNG, 100, it))
         }
     }
 

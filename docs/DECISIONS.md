@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-238-01: Refresh saved-map coverage notice on camera movement
+
+- Date: 2026-11-26. Owner approved Phase 238's bounded saved-area zoom/notice follow-up; baseline `0d6cafb`, with Phase 237 test/docs already dirty. AI model/version unavailable.
+- Context: Phase 237's visible saved-area map showed a zoom-range notice while framing a small synthetic pack. The existing fit already uses the available camera fit and caps zoom at 18; a fit below 12 must remain below 12 to avoid clipping a large selected area.
+- Alternatives: force every selected pack to zoom 12 and risk clipping; leave the warning tied to unrelated Compose recompositions; or observe MapLibre camera idle and direct fit completion, then recompute the existing zoom/viewport notice. Choose the last option. The notice remains conservative when any visible area is not covered.
+- Cost and risk: a camera listener adds recompositions at idle and must be removed with the map. It does not change storage, network, commands or bounds. The full software gate and focused online/offline AOSP emulator test passed; the older regression also passed after replacing its crashing native snapshot with an on-screen capture. Google APIs emulator preflights failed, and real-field acceptance remains open. See [Phase 238](phase-238-report.md).
+- Revisit if a healthy device shows the fit outside 12–18 for a small pack, if warning timing is still stale, or if a real field exposes a different fit constraint.
+
 ## D-236-01: Open a completed saved pack without changing the chosen basemap
 
 - Date: 2026-11-24. The owner approved Phase 236 after Phase 235 was pushed as `05b35bd74c40f5df8963dd9bf742b2d79cd092e7`. The only starting untracked files were older `output/` demo deliverables. Model/version unavailable.

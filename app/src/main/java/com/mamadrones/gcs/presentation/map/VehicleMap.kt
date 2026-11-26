@@ -169,6 +169,7 @@ fun VehicleMap(
         }
     }
     var cameraInitialized by remember(mapView) { mutableStateOf(false) }
+    var cameraRevision by remember(mapView) { mutableIntStateOf(0) }
     var followVehicle by remember(mapView) { mutableStateOf(!planningMode) }
     var loadFailed by remember(mapView) { mutableStateOf(false) }
     var loadAttempt by remember(mapView) { mutableIntStateOf(0) }
@@ -222,8 +223,11 @@ fun VehicleMap(
             override fun onMoveEnd(detector: MoveGestureDetector) = Unit
         }
     }
+    val cameraIdleListener = remember(mapView) {
+        MapLibreMap.OnCameraIdleListener { cameraRevision++ }
+    }
 
-    DisposableEffect(mapView, styleUrl, moveListener, longClickListener, waypointClickListener, loadAttempt, planningMode) {
+    DisposableEffect(mapView, styleUrl, moveListener, cameraIdleListener, longClickListener, waypointClickListener, loadAttempt, planningMode) {
         var disposed = false
         var attachedMap: MapLibreMap? = null
         loadFailed = false
@@ -253,6 +257,7 @@ fun VehicleMap(
                     isTiltGesturesEnabled = true
                 }
                 loadedMap.addOnMoveListener(moveListener)
+                loadedMap.addOnCameraIdleListener(cameraIdleListener)
                 loadedMap.addOnMapLongClickListener(longClickListener)
                 loadedMap.addOnMapClickListener(waypointClickListener)
                 loadedMap.setStyle(styleUrl) { loadedStyle ->
@@ -273,6 +278,7 @@ fun VehicleMap(
         onDispose {
             disposed = true
             attachedMap?.removeOnMoveListener(moveListener)
+            attachedMap?.removeOnCameraIdleListener(cameraIdleListener)
             attachedMap?.removeOnMapLongClickListener(longClickListener)
             attachedMap?.removeOnMapClickListener(waypointClickListener)
             mapView.removeOnDidFailLoadingMapListener(failureListener)
@@ -326,6 +332,8 @@ fun VehicleMap(
         cameraInitialized = true
         loadedMap.cameraPosition = CameraPosition.Builder().target(fitted.target)
             .zoom(minOf(fitted.zoom, OfflineFieldArea.MAX_ZOOM)).bearing(0.0).tilt(0.0).build()
+        // A direct fit can finish before Compose observes the new camera; refresh the warning now.
+        cameraRevision++
     }
 
     LaunchedEffect(
@@ -490,7 +498,7 @@ fun VehicleMap(
 
         if (styleUrl == MapStyleConfig.OFFLINE_FIELD_STYLE_URL && style != null && !savedFieldMaps.loading) {
             // Use complete saved regions only; cached pixels are not proof of offline coverage.
-            val camera = map?.cameraPosition
+            val camera = remember(map, cameraRevision) { map?.cameraPosition }
             val center = camera?.target
             val visibleBounds = map?.projection?.visibleRegion?.latLngBounds
             val outsideMessage = when {
