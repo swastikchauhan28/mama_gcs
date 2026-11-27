@@ -92,7 +92,8 @@ class VehicleRepositoryImpl @Inject constructor() : VehicleRepository {
     fun onGlobalPositionInt(message: MavlinkMessage.GlobalPositionInt, receivedAtEpochMillis: Long, receivedAtElapsedMillis: Long? = null) {
         val latitude = message.latitudeE7 / DEGREES_E7
         val longitude = message.longitudeE7 / DEGREES_E7
-        val validCoordinates = latitude in -90.0..90.0 && longitude in -180.0..180.0
+        val validCoordinates = latitude in -90.0..90.0 && longitude in -180.0..180.0 &&
+            !MapPositionEvidence.isZeroPlaceholder(latitude, longitude, _vehicleState.value.gps.fix)
         val speed = kotlin.math.hypot(
             message.vxCentimetersPerSecond.toDouble(),
             message.vyCentimetersPerSecond.toDouble()

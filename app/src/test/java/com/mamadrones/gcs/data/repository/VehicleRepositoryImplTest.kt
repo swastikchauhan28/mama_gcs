@@ -88,6 +88,26 @@ class VehicleRepositoryImplTest {
     }
 
     @Test
+    fun `zero global position without GPS fix does not create a map point or track`() {
+        val repository = VehicleRepositoryImpl()
+        val zero = MavlinkMessage.GlobalPositionInt(1, 1, 0, 0, 0, 0, 0, 0, 0)
+
+        // Both arrival orders occur in a live stream.
+        repository.onGlobalPositionInt(zero, 1_000L, 1_000L)
+        assertNull(repository.vehicleState.value.position.latitude)
+        assertTrue(repository.vehicleState.value.positionTrack.isEmpty())
+        repository.onGpsRawInt(MavlinkMessage.GpsRawInt(1, 1, 1, 0, 0, 0, 65_535, 0), 1_100L)
+        repository.onGlobalPositionInt(zero, 1_200L, 1_200L)
+        assertNull(repository.vehicleState.value.position.longitude)
+        assertTrue(repository.vehicleState.value.positionTrack.isEmpty())
+
+        repository.onGpsRawInt(MavlinkMessage.GpsRawInt(1, 1, 3, 0, 0, 0, 100, 8), 1_300L)
+        repository.onGlobalPositionInt(zero, 1_400L, 1_400L)
+        assertEquals(0.0, repository.vehicleState.value.position.latitude!!, 0.0)
+        assertEquals(1, repository.vehicleState.value.positionTrack.size)
+    }
+
+    @Test
     fun `global position converts units and leaves invalid heading unknown`() {
         val repository = VehicleRepositoryImpl()
         repository.onGlobalPositionInt(

@@ -1,5 +1,12 @@
 # Decisions and alternatives
 
+## D-241-01: Hide a zero global position while Cube GPS has no fix
+
+- Date: 2026-11-27. The USB phone showed a live Classic Cube session with `GPS_RAW_INT` reporting NO FIX and zero satellites while `GLOBAL_POSITION_INT` reported 0,0. Mama GCS followed that coordinate into the ocean. The owner approved the scoped map/GPS fix. Baseline `711b8edb8400ab90601a58252ef07ffe7564efff`; only older untracked demo output was present. AI model/version unavailable.
+- Choice: when the reported GPS fix is UNKNOWN or NO FIX, treat the exact 0,0 global coordinate pair as unavailable and do not append it to the in-memory map track. Also hide an already received 0,0 marker as soon as GPS becomes NO FIX and label the map status clearly. Preserve nonzero `GLOBAL_POSITION_INT` values and 0,0 when a 2D-or-better fix is reported; neither case proves positioning accuracy.
+- Alternatives: showing raw 0,0 mislocates the rover; requiring a GPS fix for every global position could hide valid non-GPS positioning; using phone location would confuse phone and rover positions and needs separate permission/design review. The narrow placeholder rule avoids those changes but cannot repair a Cube GPS with no fix.
+- Acceptance: unit tests for both message arrival orders, track exclusion and valid-fix 0,0; build/lint and a synthetic UI check if a healthy disposable emulator is available. Live evidence already establishes the no-fix condition; installing an updated APK would interrupt the active phone session and needs a separate controlled step. No Cube, radio, RTK or motor settings change.
+
 ## D-240-01: Forward NTRIP corrections through the selected Bluetooth Classic session
 
 - Date: 2026-11-27. The owner clarified that the intended vehicle path is the paired T12 Bluetooth remote, not direct TCP, and explicitly approved a narrowly typed Bluetooth RTK write after review of the receive-only boundary. Baseline `224099c6bf137920be3682ce4c0d32c63ad78730`; only older untracked `output/` demo artifacts were present. AI model/version unavailable.

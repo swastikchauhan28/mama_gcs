@@ -32,4 +32,14 @@ class MapPositionEvidenceTest {
         assertEquals(MapPositionStatus.UNAVAILABLE, MapPositionEvidence.status(vehicle().copy(position = GlobalPositionState(Double.NaN, 34.0, lastUpdatedAtEpochMillis = 123_456L, lastUpdatedAtElapsedMillis = 10_000L)), 20_000L))
         assertEquals(MapPositionStatus.UNAVAILABLE, MapPositionEvidence.status(vehicle().copy(position = GlobalPositionState(91.0, 34.0, lastUpdatedAtEpochMillis = 123_456L, lastUpdatedAtElapsedMillis = 10_000L)), 20_000L))
     }
+
+    @Test fun zeroPositionWithoutGpsFixIsNotAVisibleVehicleLocation() {
+        val zero = vehicle().copy(position = GlobalPositionState(0.0, 0.0,
+            lastUpdatedAtEpochMillis = 123_456L, lastUpdatedAtElapsedMillis = 10_000L))
+        assertEquals(MapPositionStatus.UNAVAILABLE, MapPositionEvidence.status(zero, 10_000L))
+        assertEquals(MapPositionStatus.UNAVAILABLE, MapPositionEvidence.status(
+            zero.copy(gps = GpsState(fix = GpsFix.NO_FIX)), 10_000L))
+        assertEquals(MapPositionStatus.FRESH, MapPositionEvidence.status(
+            zero.copy(gps = GpsState(fix = GpsFix.FIX_3D)), 10_000L))
+    }
 }

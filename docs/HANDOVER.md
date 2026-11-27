@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-27 — Phase 241 no-fix map position
+
+- Done: read-only USB phone evidence showed Cube `GPS_RAW_INT` NO FIX, zero satellites and fresh `GLOBAL_POSITION_INT` at 0,0; the app followed that point into ocean tiles. With the owner's explicit approval, Mama GCS now treats 0,0 as unavailable while GPS fix is UNKNOWN or NO FIX, excludes it from the in-memory map track and labels the map status clearly. The full software gate passed: 557 JVM tests, zero failures/errors/skips, both debug APKs and lint zero errors/27 warnings. A data-preserving phone update succeeded; two subsequent live screenshots showed `GPS no fix · rover position unavailable`, no false rover dot and land map tiles. See [Phase 241](phase-241-report.md) and D-241-01.
+- In progress: owner diff review and a separately scoped check of actual Cube GPS fix and location once a usable antenna signal is available. No emulator Android suite was run in this phase.
+- Broken or risky: the Cube still reports no GPS fix and zero satellites; the app cannot determine its real location or prove RTK accuracy. This display fix does not change GPS hardware, Cube parameters or vehicle command behavior.
+- Next: obtain a real Cube GPS fix, then confirm nonzero field coordinates and a correctly placed rover marker in Mama GCS. If satellites remain zero outdoors, have the hardware team inspect GPS module power, antenna and Cube-side GPS status. Review the uncommitted diff before any commit or release.
+- Do not touch: Cube/radio parameters, motor outputs, mission commands, live caster credentials, unrelated `output/` artifacts or operator phone data.
+
 ## 2026-11-27 — Phase 240 Bluetooth Classic RTK injection
 
 - Done: owner approved the typed Bluetooth correction boundary. The selected T12/HC-05 Classic socket can now send only CRC-validated RTCM3 encoded as MAVLink `GPS_RTCM_DATA` (233); generic vehicle sends stay blocked. The existing single-URL NTRIP prompt, explicit HTTP opt-in, optional fresh Cube GGA, bounded caster stream and sent/rejected counters appear on the Classic settings screen. Start and every correction require a fresh selected-autopilot heartbeat from the same session; stop, disconnect and app background close NTRIP. The final-source full gate recorded 555 JVM tests with zero failures/errors/skips, both debug APKs and lint zero errors/27 warnings. A focused synthetic screen test passed twice on the data-preserved USB phone (`OK (1 test)` each run), and empty-prompt/RTK controls were visually inspected. The final APK was installed without clearing phone data. See [Phase 240](phase-240-report.md) and D-240-01.

@@ -26,6 +26,7 @@ import com.mamadrones.gcs.domain.model.BatteryFreshness
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.domain.model.MapPositionEvidence
 import com.mamadrones.gcs.domain.model.MapPositionStatus
+import com.mamadrones.gcs.domain.model.GpsFix
 import kotlinx.coroutines.delay
 import com.mamadrones.gcs.presentation.components.*
 import com.mamadrones.gcs.presentation.dashboard.ConsolePanels
@@ -246,7 +247,8 @@ fun MapWorkspace(
                 Text(when (positionStatus) {
                     MapPositionStatus.FRESH -> String.format(Locale.US, "%.7f, %.7f", position.latitude, position.longitude)
                     MapPositionStatus.STALE -> "Position stale · no update within 5 s"
-                    MapPositionStatus.UNAVAILABLE -> "Position unavailable"
+                    MapPositionStatus.UNAVAILABLE -> if (live.gps.fix == GpsFix.NO_FIX)
+                        "GPS no fix · rover position unavailable" else "Position unavailable"
                 }, modifier = Modifier.testTag("operation-position-status"),
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
