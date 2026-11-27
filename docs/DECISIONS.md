@@ -1,5 +1,21 @@
 # Decisions and alternatives
 
+## D-239-02: Mission Planner-style NTRIP URL and explicit HTTP exception
+
+- Date: 2026-11-26. After the HTTPS-only Phase 239 implementation, the owner requested a single remote-host URL prompt matching Mission Planner. The example endpoint is HTTP-only, and the owner explicitly chose an HTTP warning and per-session opt-in. The credential-bearing example is not copied into source, tests, logs or records; its password should be rotated. Baseline remains `998a9b6` with Phase 239 changes uncommitted. AI model/version unavailable.
+- Context: the current screen splits host, port, mountpoint and credentials; `NtripHttpsClient` rejects HTTP. The user wants a URL of the form `http://user:password@host:port/mount`. A VRS mount may need NMEA GGA to begin streaming; the owner separately approved an optional GGA checkbox after being told it shares the Cube's position with the caster.
+- Choice: parse a bounded session-only URL into components; mask its entry, clear the raw URL after submission, display only a credential-free destination, and never log it. Keep HTTPS as the default. If the operator chooses HTTP, require a conspicuous per-session plaintext-credential opt-in before opening the caster. Use a bounded NTRIP socket reader for HTTP/ICY responses and bidirectional GGA; retain the Android manifest's general cleartext-traffic prohibition instead of enabling ordinary app HTTP broadly. Verify TLS certificates and hostnames for HTTPS. Reject redirects and malformed authority, path or credentials. Optional GGA uses only fresh selected-source Cube GPS, stops when freshness is lost, and remains off by default. Preserve the TCP fresh-heartbeat gate and typed message-233-only write boundary. Show caster status codes without credential-bearing URLs.
+- Alternatives: continuing with separate fields would not meet the requested workflow; silently accepting embedded HTTP credentials would hide their exposure; persisting the URL would retain secrets. HTTP Basic auth is unencrypted on the wire even with a warning, so revisit when the provider offers TLS or an approved secure gateway. No live request will use the example credentials during software tests.
+- Acceptance: synthetic URL parsing, opt-in, GGA formatting/freshness and controlled loopback HTTP/ICY response tests, full build/JVM/lint gate and a visual UI check on a healthy device. Real caster delivery, Cube acceptance and RTK accuracy remain distinct live acceptance gates.
+
+## D-239-01: Limit RTK injection to HTTPS NTRIP and typed TCP corrections
+
+- Date: 2026-11-26. The owner explicitly approved a first RTK stage with an operator-entered HTTPS caster, existing direct TCP Cube link and only outbound `GPS_RTCM_DATA` (233). Baseline `998a9b6`; AI model/version unavailable.
+- Context: all existing vehicle transports reject generic sends. Mission Planner's example uses an NTRIP caster, but its supplied screenshot shows `404 Not Found` and no RTCM stream. The actual caster, RTK receiver and Cube acceptance remain unverified.
+- Choice: validate bounded RTCM3/CRC, fragment into MAVLink 2 message 233, and expose only a typed correction write on TCP after a fresh selected-autopilot heartbeat. Use platform HTTPS validation with no redirects, volatile credentials, explicit start/stop and app-background shutdown. Do not send GGA in this stage.
+- Alternatives: generic transport send, simultaneous Bluetooth/UDP forwarding, plaintext caster credentials and raw unvalidated RTCM would expand risk without acceptance evidence. The HTTPS-only choice may exclude casters lacking TLS; no GGA may exclude VRS mounts; bridge Wi-Fi may not provide an internet route. Revisit after a known caster and safe live bench test.
+- Verification: see [Phase 239](phase-239-report.md). Synthetic results do not prove RTK fix or physical accuracy.
+
 ## D-238-01: Refresh saved-map coverage notice on camera movement
 
 - Date: 2026-11-26. Owner approved Phase 238's bounded saved-area zoom/notice follow-up; baseline `0d6cafb`, with Phase 237 test/docs already dirty. AI model/version unavailable.

@@ -2,6 +2,8 @@ package com.mamadrones.gcs.data.transport.tcp
 
 import com.mamadrones.gcs.data.transport.TransportException
 import com.mamadrones.gcs.data.transport.VehicleTransport
+import com.mamadrones.gcs.data.rtk.MavlinkRtcmEncoder
+import com.mamadrones.gcs.data.rtk.Rtcm3Frame
 import com.mamadrones.gcs.domain.model.ConnectionState
 import com.mamadrones.gcs.domain.model.TelemetryLinkKind
 import com.mamadrones.gcs.domain.model.TransportStatus
@@ -10,8 +12,10 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
-/** One receive-only TCP byte stream. Closing the socket aborts both connect and read. */
+/** One TCP telemetry stream. Only the typed RTCM correction path may write to it. */
 class TcpTransport(
     private val address: String,
     private val port: Int,
@@ -24,6 +28,7 @@ class TcpTransport(
     override val connectionState = mutableConnection.asStateFlow()
     private val incoming = MutableSharedFlow<ByteArray>(extraBufferCapacity = 128)
     private val ready = CompletableDeferred<Unit>()
+    private val correctionWrite = Mutex()
     private var socket: Socket? = null
     private var started = false
     private var closed = false
@@ -78,6 +83,18 @@ class TcpTransport(
 
     override fun receive(): Flow<ByteArray> = incoming.asSharedFlow()
     override suspend fun send(data: ByteArray): Nothing = throw TransportException.UnsupportedTransport("TCP command transmission")
+
+    /** No generic MAVLink sender is exposed: only CRC-checked RTCM can become message 233. */
+    suspend fun sendCorrection(frame: Rtcm3Frame, encoder: MavlinkRtcmEncoder) = withContext(Dispatchers.IO) {
+        correctionWrite.withLock {
+            val output = synchronized(lock) {
+                check(!closed && mutableConnection.value.status == TransportStatus.OPEN) { "TCP link is closed." }
+                checkNotNull(socket).getOutputStream()
+            }
+            encoder.encode(frame).forEach { packet -> output.write(packet) }
+            output.flush()
+        }
+    }
     override suspend fun disconnect() = close()
     override fun close() = finish(null)
 

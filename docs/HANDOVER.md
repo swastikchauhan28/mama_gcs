@@ -1,5 +1,37 @@
 # Current handover
 
+## 2026-11-27 — Phase 239 phone UI acceptance
+
+- Done: installed the final Phase 239 app and Android test APKs on the USB phone with `adb install -r` (both succeeded, saved data retained). `NtripPromptUiTest` passed on the phone: `OK (1 test)` in 4.193 seconds (`app/build/phase239-phone-ui-test.txt`). Manual screen inspection confirmed the RTK section, masked single-URL prompt, readable HTTP warning, both opt-ins default-off, and cancellation returning to `NTRIP: Stopped`; screenshots are ignored under `app/build/phase239-phone-rtk.png`, `phase239-phone-ntrip-dialog.png`, `phase239-phone-http-warning.png`, and `phase239-phone-after-cancel.png`. Mama GCS remained resumed and a bounded log check found no matching app fatal exception or ANR.
+- In progress: owner review of the Phase 239 diff and a separately scoped live bench acceptance using rotated caster credentials.
+- Broken or risky: the phone UI test used only a dummy URL with TCP disconnected. No production caster, actual GGA exchange, RTCM delivery to the Cube, receiver RTK fix or field accuracy was proven. HTTP exposes credentials and optional rover position on the network path.
+- Next: on a secured bench with an RTK-capable receiver and an active direct TCP telemetry link, the operator can enter rotated caster credentials, explicitly opt into HTTP if necessary, optionally enable GGA, and compare caster/RTCM counters with Cube-reported GPS fix. Do not infer an RTK fix from a sent counter.
+- Do not touch: Cube parameters, motor outputs, mission commands, live caster credentials, unrelated `output/` artifacts or existing emulator data.
+
+## 2026-11-26 — Phase 239 final UI verification attempt
+
+- Done: added a disconnected NTRIP remote-host dialog UI regression test using only a dummy URL. `:app:compileDebugAndroidTestKotlin --no-daemon --max-workers=1 --console=plain` passed (37 tasks, 3 executed/34 up-to-date), and `:app:assembleDebugAndroidTest --no-daemon --max-workers=1 --console=plain` passed (60 tasks, 4 executed/56 up-to-date). The earlier final software gate remains 553 JVM tests, both debug builds and lint with zero errors/27 warnings.
+- In progress: run the new UI test and inspect the final dialog on a healthy Android device; changes remain uncommitted/unpushed.
+- Broken or risky: ADB still lists no phone. A new disposable 2047 MB emulator passed compatibility checks but stopped before boot because the emulator required 7372.8 MB free and C: had about 5.9 GB. No Android UI test or live caster/Cube correction check ran in this attempt.
+- Next: reconnect the USB phone or free enough C: space for the disposable emulator, then run the display-only dialog test. A separate live bench check still needs rotated caster credentials and a secure rover setup.
+- Do not touch: the live caster URL/password, Cube settings, motor outputs, mission commands, existing emulator data or unrelated `output/` artifacts.
+
+## 2026-11-26 — Phase 239 Mission Planner-style NTRIP follow-up
+
+- Done: the owner approved a single remote-host URL prompt, an explicit per-session HTTP opt-in for an HTTP-only caster, and optional VRS GGA sharing of fresh Cube GPS position. The app masks and discards the raw URL after the prompt closes, displays a credential-free target, supports bounded HTTP/ICY/chunked caster responses, retains TLS hostname checks for HTTPS, and forwards validated RTCM only as typed TCP MAVLink message 233. The input cap is 256 KiB/min. Stop/retry tokens and a closed-client guard prevent an old worker from reopening a caster or overwriting a newer session. A local loopback caster and synthetic GPS are the only sources used in tests. The final full gate passed: 553 JVM tests, zero failures/errors/skips, both debug APK builds and lint zero errors/27 warnings (`app/build/phase239-url-complete-gate.txt`). See D-239-02 and [Phase 239 follow-up](phase-239-report.md).
+- In progress: owner diff review and visual inspection of the new URL prompt. Changes remain uncommitted/unpushed; older untracked `output/` demo artifacts are unrelated.
+- Broken or risky: the phone's USB debugging dropped after the first Phase 239 build installed and the TCP screen rendered; the new URL-dialog build has not yet been installed or visually checked. C: has only about 5.3 GB free versus the existing emulator's roughly 7.3 GB startup requirement. The actual caster/bridge internet route, GGA behavior and Cube/GPS acceptance remain unverified. HTTP exposes credentials and optional GGA position to the network path despite the in-app warning. The credential-bearing example shared in chat must not be reused as test data; rotate its password.
+- Next: reconnect the phone for a display-only URL-dialog check, then conduct a separately scoped safe live bench test using rotated caster credentials. Confirm caster status, validated RTCM count, Cube-reported GPS fix progression and no movement or motor output.
+- Do not touch: Cube parameters, radio/RC wiring, motor outputs, mission upload, movement, the live caster credentials or unrelated `output/` artifacts.
+
+## 2026-11-26 — Phase 239 HTTPS NTRIP over direct TCP
+
+- Done: the owner explicitly approved a TCP-only, HTTPS-only RTCM correction path. The app now validates immutable RTCM3 frames and packs MAVLink 2 `GPS_RTCM_DATA` (233) only; generic TCP send stays blocked. The TCP screen has session-only caster fields, explicit start/stop, sent/rejected counters and Cube-reported GPS fix. The full software gate passed before one final defensive-copy test was added: 545 JVM tests with no failures/errors/skips, both debug builds and lint zero errors/27 warnings. The final six RTCM tests and two TCP transport tests plus debug APK build passed. See [Phase 239](phase-239-report.md).
+- In progress: owner diff review, visual UI acceptance and live caster/Cube acceptance. Changes are uncommitted/unpushed. Phase 237/238 were pushed as `998a9b6` in the prior turn; old untracked `output/` demo artifacts remain untouched.
+- Broken or risky: two no-wipe AOSP emulator starts hit Android System UI ANRs before Phase 239 app installation; no visual UI test passed. This first stage sends no NTRIP GGA, so mounts requiring a rover position will not work. A phone connected to bridge Wi-Fi without internet may not reach the caster. Sent bytes do not prove Cube acceptance or RTK accuracy. Credentials stay in memory only; TLS caster support and the actual Cube return path remain unverified.
+- Next: inspect the RTK UI on a healthy disposable emulator, then review source and records. A later live bench test needs a valid HTTPS caster, RTK-capable GPS and a safe Cube setup; do not command or move the rover during software validation.
+- Do not touch: Cube parameters, radio/RC wiring, motor outputs, mission upload, movement or older `output/` artifacts.
+
 ## 2026-11-26 — Phase 238 saved-area warning follows the camera
 
 - Done: preserved the selected pack's whole-area fit and refreshed the offline zoom/viewport notice on camera idle/direct fit. The full software gate passed: 539 JVM tests with no failures/errors/skips, both debug APK builds, lint zero errors/27 warnings. The focused selected-area test passed online and offline on a healthy disposable AOSP API 31 emulator; screenshots show the supported opening zoom and the zoom-11 warning. The older framing/deletion test passed offline after its native snapshot capture was changed to an Android on-screen capture. Post-test Android health passed. See [Phase 238](phase-238-report.md) and D-238-01.
