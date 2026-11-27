@@ -47,6 +47,7 @@ class ClassicBluetoothDevices @Inject constructor(@ApplicationContext private va
         object : ClassicSerialSocket {
             override fun connect() = socket.connect()
             override fun read(buffer: ByteArray): Int = socket.inputStream.read(buffer)
+            override fun write(data: ByteArray) = socket.outputStream.write(data)
             override fun close() = socket.close()
         }
     })

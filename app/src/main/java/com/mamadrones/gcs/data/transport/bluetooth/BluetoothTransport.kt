@@ -2,20 +2,25 @@ package com.mamadrones.gcs.data.transport.bluetooth
 
 import com.mamadrones.gcs.data.transport.TransportException
 import com.mamadrones.gcs.data.transport.VehicleTransport
+import com.mamadrones.gcs.data.rtk.MavlinkRtcmEncoder
+import com.mamadrones.gcs.data.rtk.Rtcm3Frame
 import com.mamadrones.gcs.domain.model.ConnectionState
 import com.mamadrones.gcs.domain.model.TelemetryLinkKind
 import com.mamadrones.gcs.domain.model.TransportStatus
 import java.io.IOException
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
-/** Blocking serial socket boundary. close() must unblock connect() and read(). No write API. */
+/** Blocking serial socket boundary. close() must unblock connect(), read() and write(). */
 interface ClassicSerialSocket : AutoCloseable {
     fun connect()
     fun read(buffer: ByteArray): Int
+    fun write(data: ByteArray)
 }
 
-/** One foreground RFCOMM receive session; create a new instance to reconnect. */
+/** One foreground RFCOMM session; only typed RTCM correction writes are permitted. */
 class BluetoothTransport(
     private val socketFactory: () -> ClassicSerialSocket,
     private val connectTimeoutMillis: Long = 20_000L,
@@ -23,6 +28,7 @@ class BluetoothTransport(
 ) : VehicleTransport, AutoCloseable {
     override val linkKind = TelemetryLinkKind.CLASSIC
     private val lock = Any()
+    private val correctionWrite = Mutex()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutableConnection = MutableStateFlow(ConnectionState())
     override val connectionState = mutableConnection.asStateFlow()
@@ -103,6 +109,17 @@ class BluetoothTransport(
     override fun receive(): Flow<ByteArray> = incoming.asSharedFlow()
     override suspend fun send(data: ByteArray): Nothing =
         throw TransportException.UnsupportedTransport("Bluetooth command transmission")
+
+    /** No generic MAVLink sender: validated RTCM becomes only GPS_RTCM_DATA (233). */
+    suspend fun sendCorrection(frame: Rtcm3Frame, encoder: MavlinkRtcmEncoder) = withContext(Dispatchers.IO) {
+        correctionWrite.withLock {
+            val active = synchronized(lock) {
+                check(!closed && mutableConnection.value.status == TransportStatus.OPEN) { "Bluetooth link is closed." }
+                checkNotNull(socket)
+            }
+            encoder.encode(frame).forEach { packet -> active.write(packet) }
+        }
+    }
     override suspend fun disconnect() = close()
     override fun close() = finish(null)
 

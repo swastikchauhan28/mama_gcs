@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-27 — Phase 240 Bluetooth Classic RTK injection
+
+- Done: owner approved the typed Bluetooth correction boundary. The selected T12/HC-05 Classic socket can now send only CRC-validated RTCM3 encoded as MAVLink `GPS_RTCM_DATA` (233); generic vehicle sends stay blocked. The existing single-URL NTRIP prompt, explicit HTTP opt-in, optional fresh Cube GGA, bounded caster stream and sent/rejected counters appear on the Classic settings screen. Start and every correction require a fresh selected-autopilot heartbeat from the same session; stop, disconnect and app background close NTRIP. The final-source full gate recorded 555 JVM tests with zero failures/errors/skips, both debug APKs and lint zero errors/27 warnings. A focused synthetic screen test passed twice on the data-preserved USB phone (`OK (1 test)` each run), and empty-prompt/RTK controls were visually inspected. The final APK was installed without clearing phone data. See [Phase 240](phase-240-report.md) and D-240-01.
+- In progress: owner diff review and a separately scoped live bench acceptance.
+- Broken or risky: no Cube or radio link was available for this phase. A phone-side correction write does not prove reverse T12/R12 forwarding, Cube acceptance, GPS RTK fix or field precision. HTTP discloses credentials and optional GGA position on the network path; use rotated credentials, never the URL shared in chat.
+- Next: review the diff. When hardware is available and motor/ESC outputs are physically disconnected, verify Classic heartbeat, caster connection, correction counters and Cube-reported GPS fix without changing Cube parameters or sending rover commands.
+- Do not touch: Cube/radio parameters, motor outputs, mission commands, live caster credentials, unrelated `output/` artifacts or operator phone data.
+
 ## 2026-11-27 — Phase 239 phone UI acceptance
 
 - Done: installed the final Phase 239 app and Android test APKs on the USB phone with `adb install -r` (both succeeded, saved data retained). `NtripPromptUiTest` passed on the phone: `OK (1 test)` in 4.193 seconds (`app/build/phase239-phone-ui-test.txt`). Manual screen inspection confirmed the RTK section, masked single-URL prompt, readable HTTP warning, both opt-ins default-off, and cancellation returning to `NTRIP: Stopped`; screenshots are ignored under `app/build/phase239-phone-rtk.png`, `phase239-phone-ntrip-dialog.png`, `phase239-phone-http-warning.png`, and `phase239-phone-after-cancel.png`. Mama GCS remained resumed and a bounded log check found no matching app fatal exception or ANR.

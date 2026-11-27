@@ -1,6 +1,9 @@
 package com.mamadrones.gcs.data.transport.bluetooth
 
 import com.mamadrones.gcs.data.transport.TransportException
+import com.mamadrones.gcs.data.mavlink.MavlinkChecksum
+import com.mamadrones.gcs.data.rtk.MavlinkRtcmEncoder
+import com.mamadrones.gcs.data.rtk.Rtcm3Framer
 import com.mamadrones.gcs.domain.model.TransportStatus
 import java.io.IOException
 import java.util.concurrent.CountDownLatch
@@ -13,6 +16,29 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class BluetoothTransportTest {
+    @Test fun `only validated RTCM can be written as MAVLink 233 on the selected socket`() = runBlocking {
+        val socket = FakeClassicSocket()
+        val transport = BluetoothTransport({ socket }, elapsedClock = { System.nanoTime() / 1_000_000 })
+        val raw = byteArrayOf(0xd3.toByte(), 0, 1, 0x55, 0, 0, 0)
+        val crc = Rtcm3Framer.crc24q(raw, 4)
+        raw[4] = (crc shr 16).toByte(); raw[5] = (crc shr 8).toByte(); raw[6] = crc.toByte()
+        val frame = Rtcm3Framer().feed(raw).single()
+        try {
+            transport.connect()
+            try { transport.send(byteArrayOf(1, 2)); fail("Generic write must remain blocked") }
+            catch (_: TransportException.UnsupportedTransport) { }
+            transport.sendCorrection(frame, MavlinkRtcmEncoder())
+            val packet = synchronized(socket.writes) { socket.writes.single() }
+            assertEquals(194, packet.size)
+            assertEquals(233, packet[7].toInt() and 0xff)
+            assertEquals(raw.size, packet[11].toInt() and 0xff)
+            assertEquals(MavlinkChecksum.calculate(packet.copyOfRange(1, 192), 35),
+                (packet[192].toInt() and 0xff) or ((packet[193].toInt() and 0xff) shl 8))
+        } finally { transport.close() }
+        try { transport.sendCorrection(frame, MavlinkRtcmEncoder()); fail("Closed link must reject correction") }
+        catch (_: IllegalStateException) { }
+        assertEquals(1, socket.closes.get())
+    }
     @Test fun `receives ordered independent chunks and counts reads without writing`() = runBlocking {
         val socket = FakeClassicSocket()
         val transport = BluetoothTransport({ socket }, elapsedClock = { System.nanoTime() / 1_000_000 })
@@ -116,6 +142,7 @@ internal class FakeClassicSocket(private val blockConnect: Boolean = false) : Cl
     val closes = AtomicInteger()
     private val connectLatch = CountDownLatch(1)
     private val input = LinkedBlockingQueue<ByteArray>()
+    val writes = mutableListOf<ByteArray>()
     override fun connect() {
         connects.incrementAndGet()
         if (blockConnect) connectLatch.await()
@@ -127,6 +154,7 @@ internal class FakeClassicSocket(private val blockConnect: Boolean = false) : Cl
         chunk.copyInto(buffer)
         return chunk.size
     }
+    override fun write(data: ByteArray) { synchronized(writes) { writes.add(data.copyOf()) } }
     fun offer(chunk: ByteArray) { input.put(chunk) }
     override fun close() {
         closes.incrementAndGet()

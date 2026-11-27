@@ -26,9 +26,14 @@ class ClassicTelemetryController(
     private var generation = 0L
     private var operation: Job? = null
     private var observer: Job? = null
-    private var transport: BluetoothTransport? = null
+    @Volatile private var transport: BluetoothTransport? = null
     private var session: VehicleMavlinkSession? = null
     private var lease: TelemetryLinkGate.Lease? = null
+
+    /** The sole selected, open socket; callers still validate current-session Cube evidence. */
+    fun currentCorrectionLink(): BluetoothTransport? = transport?.takeIf {
+        state.value.active && it.connectionState.value.status == TransportStatus.OPEN
+    }
 
     fun connect(peer: ClassicBluetoothPeer) {
         if (state.value.active) return

@@ -8,11 +8,16 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.mamadrones.gcs.data.transport.bluetooth.ClassicBluetoothPeer
@@ -44,11 +49,14 @@ fun ClassicBluetoothScreen(
     otherLinkOpen: Boolean,
     vehicle: VehicleState,
     evidenceControls: @Composable () -> Unit = {},
+    onNtripStart: (String, Boolean, Boolean) -> String? = { _, _, _ -> "NTRIP is unavailable." },
+    onNtripStop: () -> Unit = {},
 ) {
     val diagnostics = vehicle.mavlinkDiagnostics
     val context = LocalContext.current
     var selected by remember { mutableStateOf<ClassicBluetoothPeer?>(null) }
     var settingsError by remember { mutableStateOf<String?>(null) }
+    var showNtripPrompt by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) onRefresh() else onPermissionDenied()
     }
@@ -63,8 +71,8 @@ fun ClassicBluetoothScreen(
     val check = ClassicConnectionCheck.assess(state.link.active, state.link.connection, vehicle,
         now, classicChecklistElapsedNow(nowElapsed, android.os.SystemClock.elapsedRealtime()))
     ScreenBody {
-        ScreenHeader("Bluetooth Classic / HC-05", "Paired serial radio · MAVLink receive only")
-        Notice("CONNECT YOUR REMOTE", "Pair the identified HC-05 in Android Bluetooth settings, return here and refresh. Select its name and address. The Flipsky NRF51 module uses a separate BLE connection.")
+        ScreenHeader("Bluetooth Classic / HC-05", "Paired serial radio · MAVLink telemetry and optional RTK corrections")
+        Notice("CONNECT YOUR REMOTE", "Pair the identified T12 or HC-05 serial radio in Android Bluetooth settings, return here and refresh. Select its name and address. The Flipsky NRF51 module uses a separate BLE connection.")
         OutlinedButton(onClick = {
             settingsError = null
             try { context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) }
@@ -104,7 +112,7 @@ fun ClassicBluetoothScreen(
             SubsystemCard(PanelSpec("Classic serial link", state.link.connection.status.name,
                 listOf("Device" to peer.name, "Address" to peer.address,
                     "Received chunks" to state.link.connection.packetStatistics.receivedPackets.toString(),
-                    "Command transmit" to "DISABLED",
+                    "Vehicle commands" to "DISABLED",
                     "MAVLink heartbeat" to if (check.freshHeartbeat) "FRESH" else "NOT CONFIRMED"),
                 classicSerialLinkDetail(state.link.connection, check)))
         }
@@ -112,7 +120,23 @@ fun ClassicBluetoothScreen(
             SubsystemCard(ConsolePanels.mavlinkDiagnostics(diagnostics, now))
             Notice("DECODER GUIDANCE", ConsolePanels.mavlinkDiagnosticHints(diagnostics))
         }
-        Notice("RECEPTION ONLY", "A serial connection is not proof of rover telemetry. A supported MAVLink 1 or 2 autopilot heartbeat is required. This link sends no commands, heartbeat, baud-rate settings or motor values. It closes when the app goes into the background and does not reconnect automatically.")
+        HorizontalDivider()
+        Text("RTK / GPS inject · NTRIP", style = MaterialTheme.typography.titleMedium)
+        Notice("CORRECTIONS", "Enter one caster URL when prompted. Validated RTCM is sent only as MAVLink GPS_RTCM_DATA to this Bluetooth session after a fresh Cube heartbeat. Sent does not mean accepted or RTK fixed.")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { showNtripPrompt = true }, enabled = !state.ntrip.active,
+                modifier = Modifier.testTag("classic-ntrip-start")) { Text("Connect NTRIP") }
+            OutlinedButton(onClick = onNtripStop, enabled = state.ntrip.active,
+                modifier = Modifier.testTag("classic-ntrip-stop")) { Text("Stop") }
+        }
+        state.ntrip.target?.let { Text("Caster: $it", modifier = Modifier.testTag("classic-ntrip-target")) }
+        if (state.ntrip.active) Text(if (state.ntrip.sendsGga) "VRS GGA: on" else "VRS GGA: off")
+        Text("NTRIP: ${state.ntrip.status}", modifier = Modifier.testTag("classic-ntrip-status"))
+        Text("Validated RTCM sent: ${state.ntrip.sent} · Rejected: ${state.ntrip.rejected}",
+            modifier = Modifier.testTag("classic-ntrip-counters"))
+        Text("Cube-reported GPS fix: ${vehicle.gps.fix.name.replace('_', ' ')}",
+            modifier = Modifier.testTag("classic-ntrip-gps-fix"))
+        Notice("SESSION SAFETY", "A paired radio and heartbeat do not authenticate the Cube or prove a reverse radio path. Vehicle commands remain unavailable. NTRIP and Bluetooth close when the app goes into the background and do not reconnect automatically.")
     }
     selected?.let { peer ->
         AlertDialog(onDismissRequest = { selected = null }, title = { Text("Connect to this remote?") },
@@ -120,5 +144,41 @@ fun ClassicBluetoothScreen(
             confirmButton = { TextButton(onClick = { selected = null; onConnect(peer) },
                 enabled = !otherLinkOpen && !state.link.active) { Text("Start receive") } },
             dismissButton = { TextButton(onClick = { selected = null }) { Text("Cancel") } })
+    }
+    if (showNtripPrompt) {
+        var remoteUrl by remember { mutableStateOf("") }
+        var allowHttp by remember { mutableStateOf(false) }
+        var sendGga by remember { mutableStateOf(false) }
+        var promptError by remember { mutableStateOf<String?>(null) }
+        AlertDialog(
+            onDismissRequest = { showNtripPrompt = false },
+            title = { Text("NTRIP remote host") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Enter the caster URL, including username, password, host, port and mountpoint. The URL is used for this session only.")
+                    OutlinedTextField(remoteUrl, { if (it.length <= 512) { remoteUrl = it; promptError = null } },
+                        label = { Text("NTRIP URL") }, singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        modifier = Modifier.fillMaxWidth().testTag("classic-ntrip-url"))
+                    if (remoteUrl.startsWith("http://", ignoreCase = true)) {
+                        Text("HTTP is unencrypted. Anyone on the network path can read the caster password and any GGA position you choose to send.",
+                            color = MaterialTheme.colorScheme.error)
+                        Row { Checkbox(allowHttp, { allowHttp = it }, modifier = Modifier.testTag("classic-ntrip-http-opt-in"))
+                            Text("Allow unencrypted HTTP for this session") }
+                    }
+                    Row { Checkbox(sendGga, { sendGga = it }, modifier = Modifier.testTag("classic-ntrip-gga"))
+                        Text("Send fresh Cube GPS position as VRS GGA") }
+                    Text("GGA shares rover position with the caster. Requires a fresh 3D or better Cube GPS fix.")
+                    promptError?.let { Text(it, color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.testTag("classic-ntrip-prompt-error")) }
+                }
+            },
+            confirmButton = { TextButton(onClick = {
+                val error = onNtripStart(remoteUrl, allowHttp, sendGga)
+                if (error == null) showNtripPrompt = false else promptError = error
+            }, modifier = Modifier.testTag("classic-ntrip-confirm")) { Text("Connect") } },
+            dismissButton = { TextButton(onClick = { showNtripPrompt = false }) { Text("Cancel") } },
+        )
     }
 }

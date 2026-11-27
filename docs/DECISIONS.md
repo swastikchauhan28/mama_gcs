@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-240-01: Forward NTRIP corrections through the selected Bluetooth Classic session
+
+- Date: 2026-11-27. The owner clarified that the intended vehicle path is the paired T12 Bluetooth remote, not direct TCP, and explicitly approved a narrowly typed Bluetooth RTK write after review of the receive-only boundary. Baseline `224099c6bf137920be3682ce4c0d32c63ad78730`; only older untracked `output/` demo artifacts were present. AI model/version unavailable.
+- Context: the existing Classic RFCOMM socket receives MAVLink but exposes no write; the current NTRIP correction flow sends MAVLink `GPS_RTCM_DATA` (233) only through TCP. A phone-side heartbeat has previously been observed on T12_485, but no reverse T12/R12-to-Cube correction path or current Cube connection is verified.
+- Choice: reuse the session-only NTRIP URL, HTTP opt-in, optional fresh-position GGA, RTCM3 CRC/size bounds and MAVLink 233 encoder. Add only a typed correction write to the selected open Classic socket; keep generic transport send rejected. Require a fresh selected-autopilot heartbeat from that same Classic session before starting and before each write. Stop the caster on Classic disconnect, heartbeat loss, backgrounding or explicit Stop. Preserve one active telemetry link and no automatic reconnect.
+- Alternatives: continuing TCP-only does not serve the owner's T12 path; generic Bluetooth writes would expose the vehicle command boundary; opening a second Bluetooth session could write to the wrong peer. Sharing the existing selected socket and message-specific API limits scope, but cannot prove that the radio forwards bytes to Cube TELEM1.
+- Acceptance: fake-socket tests for valid 233-only output, generic-send rejection, closed-session behavior and stop/race cases; a local synthetic NTRIP path; build, JVM tests, lint and focused Android UI inspection. Live caster, reverse radio path, Cube GPS acceptance and RTK fix require a separately secured hardware bench check. No Cube parameter or motor/mission operation is authorized by this decision.
+
 ## D-239-02: Mission Planner-style NTRIP URL and explicit HTTP exception
 
 - Date: 2026-11-26. After the HTTPS-only Phase 239 implementation, the owner requested a single remote-host URL prompt matching Mission Planner. The example endpoint is HTTP-only, and the owner explicitly chose an HTTP warning and per-session opt-in. The credential-bearing example is not copied into source, tests, logs or records; its password should be rotated. Baseline remains `998a9b6` with Phase 239 changes uncommitted. AI model/version unavailable.

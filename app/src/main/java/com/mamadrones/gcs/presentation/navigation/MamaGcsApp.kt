@@ -70,6 +70,8 @@ fun MamaGcsApp(
     onClassicPermissionDenied: () -> Unit = {},
     onClassicConnect: (ClassicBluetoothPeer) -> Unit = {},
     onClassicDisconnect: () -> Unit = {},
+    onClassicNtripStart: (String, Boolean, Boolean) -> String? = { _, _, _ -> "NTRIP is unavailable." },
+    onClassicNtripStop: () -> Unit = {},
     onBasemapSelected: (BasemapStyle) -> Unit = {},
 ) {
     val navController = rememberNavController()
@@ -141,6 +143,8 @@ fun MamaGcsApp(
                                 onDisconnect = onClassicDisconnect,
                                 otherLinkOpen = classicOtherLinkOpen,
                                 vehicle = vehicle,
+                                onNtripStart = onClassicNtripStart,
+                                onNtripStop = onClassicNtripStop,
                                 evidenceControls = {
                                     ClassicLinkEvidenceControls(
                                         linkActive = classicBluetooth.link.active,

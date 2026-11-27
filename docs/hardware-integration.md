@@ -1,5 +1,9 @@
 # Hardware integration gates
 
+## 27 November 2026 — Bluetooth RTK reverse path remains unverified
+
+The operator clarified that the intended Cube telemetry link for RTK is phone → paired T12 Bluetooth Classic remote → R12 → Cube TELEM1, rather than the app's direct TCP link. Phase 240 adds software-only MAVLink `GPS_RTCM_DATA` (233) forwarding over the selected Classic socket. The Cube/bridge was unavailable for the current check. Prior phone-side T12 heartbeats show a receive path for those sessions, but do not prove that outbound RTCM passes from T12 through R12 UART to Cube TELEM1 or reaches the RTK-capable GPS. A separate secured bench check must compare phone sent counts with Cube-reported GPS fix and, if needed, isolate the reverse hop without changing parameters or motor outputs. See [Phase 240](phase-240-report.md).
+
 ## 20 November 2026 — RC2/RC3 option readback and low-side throttle input
 
 Connected Mission Planner screens show `RC2_OPTION=0`, `RC3_OPTION=0`, `RC2/RC3_MIN=1100`, `TRIM=1500`, `MAX=1900`, `REVERSED=0`; RC2 dead zone 0, RC3 dead zone 30. The operator-labelled forward stick capture showed RC2 1051 µs, below displayed RC2 minimum and below trim, while configured `RCMAP_THROTTLE=3` selects unchanged RC3. This remains an input mapping/direction/calibration diagnosis, not a confirmed rover movement or permission to change settings. A proposed mapping to RC2 must account for the current `RCMAP_PITCH=2` and be reviewed with the hardware owner. See [Phase 208](phase-208-report.md).

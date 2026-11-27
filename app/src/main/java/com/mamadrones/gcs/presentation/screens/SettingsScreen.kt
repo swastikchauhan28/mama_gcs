@@ -149,7 +149,7 @@ fun SettingsScreen(
     }
     connection.error?.let { Notice("UDP ENDPOINT ERROR", it) }
     Notice("MAVLINK SECURITY", "Only the configured UDP peer is accepted. A CRC-valid unsigned HEARTBEAT reports protocol liveness, not authenticated vehicle identity. Signed frames are rejected until signing-key verification is provisioned. This session sends no vehicle commands.")
-    Notice("BLUETOOTH AND SERIAL", "Use Bluetooth / HC-05 for a paired Classic serial radio, or Bluetooth / BLE for GATT notifications. Close the active Bluetooth link before opening UDP. These links receive MAVLink only; vehicle commands and live VESC telemetry remain unavailable.")
+    Notice("BLUETOOTH AND SERIAL", "Use Bluetooth / HC-05 for a paired Classic serial radio, or Bluetooth / BLE for GATT notifications. Close the active Bluetooth link before opening UDP. Classic can send only explicitly started RTCM corrections after a fresh Cube heartbeat; vehicle commands and live VESC telemetry remain unavailable.")
     }
 }
 

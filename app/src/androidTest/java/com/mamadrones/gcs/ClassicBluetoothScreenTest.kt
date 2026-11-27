@@ -55,13 +55,28 @@ class ClassicBluetoothScreenTest {
         compose.onNodeWithTag("classic-refresh").performScrollTo().assertIsEnabled()
     }
 
+    @Test fun classicNtripPromptKeepsHttpAndGgaOffUntilOperatorSelectsThem() {
+        var starts = 0
+        show(ClassicBluetoothUiState(), onNtripStart = { _, _, _ -> starts++; "No Cube heartbeat" })
+        compose.onNodeWithTag("classic-ntrip-start").performScrollTo().performClick()
+        compose.onNodeWithText("NTRIP remote host").assertIsDisplayed()
+        compose.onNodeWithTag("classic-ntrip-gga").assertIsOff()
+        compose.onNodeWithTag("classic-ntrip-url").performTextInput("http://example.test:2101/MOUNT")
+        compose.onNodeWithTag("classic-ntrip-http-opt-in").assertIsOff()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.runOnIdle { assertEquals(0, starts) }
+        compose.onNodeWithTag("classic-ntrip-status").performScrollTo().assertTextEquals("NTRIP: Stopped")
+    }
+
     private fun show(state: ClassicBluetoothUiState, otherLinkOpen: Boolean = false,
         vehicleConnection: VehicleConnectionState = VehicleConnectionState.DISCONNECTED,
-        onConnect: (ClassicBluetoothPeer) -> Unit = {}, onDisconnect: () -> Unit = {}) {
+        onConnect: (ClassicBluetoothPeer) -> Unit = {}, onDisconnect: () -> Unit = {},
+        onNtripStart: (String, Boolean, Boolean) -> String? = { _, _, _ -> "No Cube heartbeat" }) {
         compose.setContent {
             MaterialTheme {
                 ClassicBluetoothScreen(state, {}, {}, onConnect, onDisconnect,
-                    otherLinkOpen, VehicleState(connectionStatus = vehicleConnection))
+                    otherLinkOpen, VehicleState(connectionStatus = vehicleConnection),
+                    onNtripStart = onNtripStart)
             }
         }
     }

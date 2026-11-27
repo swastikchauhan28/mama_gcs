@@ -82,6 +82,8 @@ class MainActivity : ComponentActivity() {
                     onClassicPermissionDenied = classicBluetoothViewModel::permissionDenied,
                     onClassicConnect = classicBluetoothViewModel::connect,
                     onClassicDisconnect = classicBluetoothViewModel::disconnect,
+                    onClassicNtripStart = classicBluetoothViewModel::startNtrip,
+                    onClassicNtripStop = classicBluetoothViewModel::stopNtrip,
                 )
             }
         }
