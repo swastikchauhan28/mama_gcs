@@ -251,6 +251,10 @@ fun MapWorkspace(
                         "GPS no fix · rover position unavailable" else "Position unavailable"
                 }, modifier = Modifier.testTag("operation-position-status"),
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (showOperatorTools) TextButton(onClick = { onNavigate("map/browse") },
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("operation-browse-areas")) {
+                    Text("Browse planned areas")
+                }
             }
         }
     }

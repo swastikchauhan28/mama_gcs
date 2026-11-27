@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-27 — Phase 242 planned-area browsing
+
+- Done: added Operate → Browse planned areas for complete local saved field maps, the current plan and saved routes. Route selection opens a read-only, fitted map preview with no rover marker, mission upload or working-draft mutation; the screens distinguish planned geometry from rover position. The final app-source gate passed 557 JVM tests, both debug APK builds and lint with zero errors/27 warnings. Five focused synthetic Android UI tests passed on a healthy disposable AOSP emulator, including the Operate navigation path and visible numbered route markers. See [Phase 242](phase-242-report.md) and D-242-01.
+- In progress: owner review of the Phase 242 diff and a configured Google Maps visual check. Older untracked `output/` artifacts remain untouched.
+- Broken or risky: native MapLibre was visually tested, while the Google Maps fit path was only compiled. The focused saved-pack test checks eligible listing and selection; a real saved pack was not opened in this phase. No rover GPS fix, field coordinates or RTK accuracy is established by plan browsing.
+- Next: review the scoped diff. If using Google Maps, check a configured device; when real field coordinates exist, open a saved pack and planned route and confirm they match the intended field. Live rover location still requires a separate safe GPS fix check.
+- Do not touch: Cube or radio settings, motor outputs, mission commands, caster credentials, operator phone data or unrelated `output/` artifacts.
+
 ## 2026-11-27 — Phase 241 no-fix map position
 
 - Done: read-only USB phone evidence showed Cube `GPS_RAW_INT` NO FIX, zero satellites and fresh `GLOBAL_POSITION_INT` at 0,0; the app followed that point into ocean tiles. With the owner's explicit approval, Mama GCS now treats 0,0 as unavailable while GPS fix is UNKNOWN or NO FIX, excludes it from the in-memory map track and labels the map status clearly. The full software gate passed: 557 JVM tests, zero failures/errors/skips, both debug APKs and lint zero errors/27 warnings. A data-preserving phone update succeeded; two subsequent live screenshots showed `GPS no fix · rover position unavailable`, no false rover dot and land map tiles. See [Phase 241](phase-241-report.md) and D-241-01.

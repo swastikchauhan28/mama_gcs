@@ -62,7 +62,7 @@ fun SavedPackMapScreen(state: VehicleState, packId: Long, onBackToMaps: () -> Un
             Text("Saved area", Modifier.padding(start = 8.dp),
                 style = MaterialTheme.typography.titleMedium)
         }
-        Text("Blue border: saved area. Outside it may need internet.",
+        Text("Blue border: saved map area, not the rover's position. Outside it may need internet.",
             Modifier.padding(horizontal = 12.dp), style = MaterialTheme.typography.bodySmall)
         if (!initialLoadComplete) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {

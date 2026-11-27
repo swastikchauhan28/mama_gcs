@@ -31,6 +31,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -85,6 +87,8 @@ internal fun GoogleVehicleMap(
     compactPlanningControls: Boolean,
     coverageGapSamples: List<CoverageMapPoint>?,
     basemap: BasemapStyle,
+    initialFitDraft: Boolean,
+    readOnlyPlan: Boolean,
 ) {
     val context = LocalContext.current
     val playAvailable = remember(context) {
@@ -105,6 +109,8 @@ internal fun GoogleVehicleMap(
     var tilesLoaded by remember(mapView) { mutableStateOf(false) }
     var loadFailed by remember(mapView) { mutableStateOf(false) }
     var cameraInitialized by remember(mapView) { mutableStateOf(false) }
+    var initialDraftFitted by remember(mapView) { mutableStateOf(false) }
+    var mapSize by remember(mapView) { mutableStateOf(IntSize.Zero) }
     var followVehicle by remember(mapView) { mutableStateOf(!planningMode) }
     val collapseForLargeText = planningMode && LocalDensity.current.fontScale >= 1.8f
     var controlsExpanded by remember(compactPlanningControls, collapseForLargeText) {
@@ -276,6 +282,13 @@ internal fun GoogleVehicleMap(
             ready.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding))
         }
     }
+    LaunchedEffect(map, tilesLoaded, mapSize, draftWaypoints, draftFence, initialFitDraft, initialDraftFitted) {
+        if (initialFitDraft && !initialDraftFitted && tilesLoaded && map != null &&
+            mapSize.width > 0 && mapSize.height > 0 && (draftWaypoints.isNotEmpty() || draftFence.isNotEmpty())) {
+            fitDraft()
+            initialDraftFitted = true
+        }
+    }
     val legend = when {
         coverageGapSamples == null -> "Preview only · cyan: passes. Gap estimate unavailable. Gaps can be missed."
         coverageGapSamples.isEmpty() -> "Preview only · cyan: passes. No sampled gaps detected in main area. Gaps can be missed."
@@ -289,7 +302,8 @@ internal fun GoogleVehicleMap(
             Text(legend, Modifier.padding(8.dp).testTag("coverage-map-legend"), style = MaterialTheme.typography.labelMedium)
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize().testTag("coverage-map-canvas"))
+            AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize()
+                .onSizeChanged { mapSize = it }.testTag("coverage-map-canvas"))
             if (!compactPlanningControls && planningMode && coverageLines.isNotEmpty() && tilesLoaded) {
                 Surface(Modifier.align(Alignment.TopStart).padding(8.dp).testTag("coverage-map-legend"),
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
@@ -308,7 +322,9 @@ internal fun GoogleVehicleMap(
                 if (controlsExpanded) {
                     if (planningMode) FilledTonalButton(onClick = ::fitDraft,
                         enabled = tilesLoaded && (draftWaypoints.isNotEmpty() || draftFence.size >= 3),
-                        colors = buttonColors, modifier = Modifier.heightIn(min = 48.dp).testTag("mission-fit")) { Text("Fit draft") }
+                        colors = buttonColors, modifier = Modifier.heightIn(min = 48.dp).testTag("mission-fit")) {
+                        Text(if (readOnlyPlan) "Fit area" else "Fit draft")
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         FilledTonalButton(onClick = { map?.animateCamera(CameraUpdateFactory.zoomIn()) },
                             enabled = tilesLoaded, colors = buttonColors,

@@ -1,5 +1,6 @@
 package com.mamadrones.gcs.presentation.navigation
 
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
@@ -8,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -20,6 +22,7 @@ import com.mamadrones.gcs.domain.model.ThemeMode
 import com.mamadrones.gcs.domain.model.BasemapStyle
 import com.mamadrones.gcs.presentation.map.LocalBasemapStyle
 import com.mamadrones.gcs.presentation.map.LocalMapSettingsNavigation
+import com.mamadrones.gcs.presentation.map.OfflineFieldMaps
 import com.mamadrones.gcs.domain.model.VehicleConnectionState
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.presentation.components.*
@@ -94,6 +97,32 @@ fun MamaGcsApp(
                     NavHost(navController, startDestination = AppDestination.DASHBOARD.route, modifier = Modifier.fillMaxSize()) {
                         composable("dashboard") { DashboardScreen(vehicle, navigate) }
                         composable("map") { MapScreen(vehicle, onNavigate = navigate) }
+                        composable("map/browse") {
+                            val context = LocalContext.current
+                            val savedMaps by OfflineFieldMaps.state.collectAsState()
+                            LaunchedEffect(context) { OfflineFieldMaps.refresh(context) }
+                            MapAreaBrowserScreen(missionPlan, savedMaps,
+                                onBack = { navController.popBackStack() },
+                                onViewCurrentPlan = { navController.navigate("map/plan/current") },
+                                onViewLibraryRoute = { id ->
+                                    navController.navigate("map/plan/library/${Uri.encode(id)}")
+                                },
+                                onViewSavedPack = { id -> navController.navigate("map/saved/$id") },
+                                onRefreshSavedPacks = { OfflineFieldMaps.refresh(context) },
+                                onMapSettings = { navigate("map-settings") })
+                        }
+                        composable("map/plan/current") {
+                            RouteAreaPreviewScreen(missionPlan.draft, "Current working plan",
+                                onBack = { navController.popBackStack() })
+                        }
+                        composable("map/plan/library/{id}",
+                            arguments = listOf(navArgument("id") { type = NavType.StringType })) { destination ->
+                            val selected = missionPlan.library.firstOrNull {
+                                it.id == destination.arguments?.getString("id")
+                            }
+                            RouteAreaPreviewScreen(selected?.draft, selected?.draft?.name ?: "Saved route",
+                                onBack = { navController.popBackStack() })
+                        }
                         composable("map/saved/{packId}", arguments = listOf(navArgument("packId") { type = NavType.LongType })) { destination ->
                             SavedPackMapScreen(vehicle, destination.arguments?.getLong("packId") ?: -1L,
                                 onBackToMaps = { navController.popBackStack() })

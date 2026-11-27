@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-242-01: Browse local plan areas without a rover GPS fix
+
+- Date: 2026-11-27. After Phase 241 hid a false 0,0 rover marker, the owner requested a software-only next phase and approved a direct Operate entry to saved field maps or planned routes. Baseline `6b555cfe324ca44918d44adca34bef4867adaf3b`; only older untracked `output/` artifacts were present. AI model/version unavailable.
+- Choice: add a read-only Browse areas entry on Operate. List complete locally saved field map packs using the existing completion rule, plus the current working plan and geometrically nonempty library routes from the existing mission state. Open packs through the existing saved-area viewer; open route geometry in a separate read-only preview and fit its waypoints/outline. Keep the live rover position out of the route preview and label plan geometry as a reference, not a vehicle location. Library selection reads by stable ID and never calls a mission mutation action.
+- Alternatives: using the existing Plan button requires navigating the editor and opening a library route as a draft, which can replace unsaved work. Using phone location needs a new permission and could conflate phone and rover. Adding a new map provider or storage format is unnecessary. Reusing the current map renderers adds small camera-fit and preview UI logic, but map tiles still depend on the selected provider unless a completed offline pack is opened.
+- Data and limits: the browser reads at most 25 local library entries, a draft of at most 250 waypoints and 64 outline vertices, and at most five saved map packs. Selection is transient navigation state; existing local storage retains ownership. No new permissions, external destinations, persistence schema, authentication rule or vehicle command path are added.
+- Acceptance: empty/loading states, current/library route selection without draft mutation, complete-pack-only listing, read-only preview labels and camera fitting on both map providers where configured. Run build, JVM tests, lint and focused synthetic Android emulator checks with visual inspection. Missing map assets or Android ANR remain test failures/blocks, not a pass. Physical position and field coverage are outside this phase.
+
 ## D-241-01: Hide a zero global position while Cube GPS has no fix
 
 - Date: 2026-11-27. The USB phone showed a live Classic Cube session with `GPS_RAW_INT` reporting NO FIX and zero satellites while `GLOBAL_POSITION_INT` reported 0,0. Mama GCS followed that coordinate into the ocean. The owner approved the scoped map/GPS fix. Baseline `711b8edb8400ab90601a58252ef07ffe7564efff`; only older untracked demo output was present. AI model/version unavailable.

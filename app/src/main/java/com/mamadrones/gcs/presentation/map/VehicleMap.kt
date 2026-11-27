@@ -136,11 +136,13 @@ fun VehicleMap(
     compactPlanningControls: Boolean = false,
     coverageGapSamples: List<CoverageMapPoint>? = null,
     focusSavedPackId: Long? = null,
+    initialFitDraft: Boolean = false,
+    readOnlyPlan: Boolean = false,
 ) {
     if (focusSavedPackId == null && LocalBasemapStyle.current.isGoogle) {
         GoogleVehicleMap(state, modifier, draftWaypoints, draftFence, planningMode,
             onWaypointRequested, onWaypointSelected, coverageLines, compactPlanningControls,
-            coverageGapSamples, LocalBasemapStyle.current)
+            coverageGapSamples, LocalBasemapStyle.current, initialFitDraft, readOnlyPlan)
         return
     }
     val mapView = rememberMapViewWithLifecycle()
@@ -169,6 +171,7 @@ fun VehicleMap(
         }
     }
     var cameraInitialized by remember(mapView) { mutableStateOf(false) }
+    var initialDraftFitted by remember(mapView) { mutableStateOf(false) }
     var cameraRevision by remember(mapView) { mutableIntStateOf(0) }
     var followVehicle by remember(mapView) { mutableStateOf(!planningMode) }
     var loadFailed by remember(mapView) { mutableStateOf(false) }
@@ -457,6 +460,14 @@ fun VehicleMap(
         loadedMap.animateCamera(update, CAMERA_ANIMATION_MILLIS)
     }
 
+    LaunchedEffect(style, mapSize, draftWaypoints, draftFence, initialFitDraft, initialDraftFitted) {
+        if (initialFitDraft && !initialDraftFitted && style != null &&
+            mapSize.width > 0 && mapSize.height > 0 && (draftWaypoints.isNotEmpty() || draftFence.isNotEmpty())) {
+            fitDraft()
+            initialDraftFitted = true
+        }
+    }
+
     fun centerOnVehicle(enableFollow: Boolean) {
         val loadedMap = map ?: return
         val target = vehicleTarget ?: return
@@ -589,7 +600,9 @@ fun VehicleMap(
             if (controlsExpanded) {
             if (planningMode) FilledTonalButton(onClick = ::fitDraft,
                 enabled = (draftWaypoints.isNotEmpty() || draftFence.size >= 3) && style != null, colors = mapButtonColors,
-                modifier = Modifier.heightIn(min = 48.dp).testTag("mission-fit")) { Text("Fit draft") }
+                modifier = Modifier.heightIn(min = 48.dp).testTag("mission-fit")) {
+                Text(if (readOnlyPlan) "Fit area" else "Fit draft")
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 FilledTonalButton(onClick = { map?.animateCamera(CameraUpdateFactory.zoomIn()) }, enabled = style != null, colors = mapButtonColors,
                     modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Zoom in" }) { Text("+") }
