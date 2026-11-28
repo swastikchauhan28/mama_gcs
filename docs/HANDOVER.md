@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-28 — Phase 249 portable encrypted route backup
+
+- Done: added a versioned AES-GCM backup codec, bounded route snapshot, atomic repository restore, create/restore controls using the Storage Access Framework, passphrase dialogs, restore preview and explicit replace confirmation. Backup covers saved draft, current unsaved editor state as recovery, and all library entries. Added codec and repository synthetic tests plus an instrumentation workflow test for preview/cancel/failure/retry/confirm. See [Phase 249](phase-249-report.md), [D-249-01](DECISIONS.md#d-249-01-passphrase-encrypted-portable-mission-backup), and [security boundaries](security.md).
+- Done: final software gate passed 570 JVM tests (0 failures/errors/skips), Android-test compilation, both debug APK builds, and lint (0 errors/28 warnings). The retained Pixel 3a AVD passed the read-only 30-second preflight. See [Phase 249](phase-249-report.md) for evidence and the blocked runtime attempt.
+- In progress: owner review of the focused Phase 249 diff. No phone, document-provider operation, Cube or hardware was used.
+- Broken or risky: the connected instrumentation runner installed APKs but ADB timed out before a test result appeared; runtime UI acceptance is blocked. Forgotten passphrase means no recovery; Compose passphrases and existing route-codec plaintext intermediates briefly exist as immutable `String` values; interrupted document-provider writes can leave partial files. Backup is version 1 with no cross-version migration path; on-device KDF time and real SAF export/import are unverified.
+- Next: review the Phase 249 source, then run the focused workflow test and a dummy route backup export/import on a healthy disposable emulator. Keep another recovery copy until the imported backup is verified.
+- Do not touch: Phase 247 changes, `output/`, operator phone/app data, Cube/radio/RTK settings, motor outputs, mission commands, caster credentials or map keys.
+
 ## 2026-11-28 — Phase 248 encrypt mission routes at rest
 
 - Done: owner approved AES-GCM encryption for the working draft, recovery copy and saved-route library, including legacy migration and preservation on failure. Added a versioned Android Keystore cipher with package/slot AAD and integrated encrypted new writes plus atomic lazy migration in `LocalMissionDraftRepository`. Added synthetic repository migration/failure tests and an isolated-key Android Keystore instrumentation test. See [Phase 248](phase-248-report.md), [D-248-01](DECISIONS.md#d-248-01-encrypt-device-local-mission-route-storage) and [security boundaries](security.md).

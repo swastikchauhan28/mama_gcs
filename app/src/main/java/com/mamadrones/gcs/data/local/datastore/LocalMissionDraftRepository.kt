@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.mamadrones.gcs.domain.model.MissionDraft
 import com.mamadrones.gcs.domain.model.MissionLibraryEntry
+import com.mamadrones.gcs.domain.model.MissionRouteBackup
 import com.mamadrones.gcs.domain.repository.MissionDraftRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.UUID
@@ -95,6 +96,35 @@ class LocalMissionDraftRepository internal constructor(
                 preferences[libraryKey] = cipher.encrypt(SLOT_LIBRARY,
                     MissionLibraryCodec.encode(entries.filterNot { it.id == id }))
             }
+        }
+    }
+
+    override suspend fun createBackupSnapshot(currentWorkingDraft: MissionDraft): MissionRouteBackup {
+        var snapshot: MissionRouteBackup? = null
+        store.edit { preferences ->
+            val saved = readStored(preferences, draftKey, SLOT_DRAFT, MissionDraftCodec::decode) ?: MissionDraft()
+            val library = readStored(preferences, libraryKey, SLOT_LIBRARY, MissionLibraryCodec::decode) ?: emptyList()
+            snapshot = MissionRouteBackup(
+                savedDraft = saved,
+                recoveryDraft = currentWorkingDraft.takeIf { it != saved },
+                library = library,
+            )
+        }
+        return checkNotNull(snapshot)
+    }
+
+    override suspend fun restoreBackup(backup: MissionRouteBackup) {
+        // Validate and encrypt before entering the transaction; a failed encode/encryption writes nothing.
+        val encryptedDraft = cipher.encrypt(SLOT_DRAFT, MissionDraftCodec.encode(backup.savedDraft))
+        val encryptedRecovery = backup.recoveryDraft?.let {
+            cipher.encrypt(SLOT_RECOVERY, MissionDraftCodec.encode(it))
+        }
+        val encryptedLibrary = cipher.encrypt(SLOT_LIBRARY, MissionLibraryCodec.encode(backup.library))
+        store.edit { preferences ->
+            preferences[draftKey] = encryptedDraft
+            if (encryptedRecovery == null) preferences.remove(recoveryKey)
+            else preferences[recoveryKey] = encryptedRecovery
+            preferences[libraryKey] = encryptedLibrary
         }
     }
 

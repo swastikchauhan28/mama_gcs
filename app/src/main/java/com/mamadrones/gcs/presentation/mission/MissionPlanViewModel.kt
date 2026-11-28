@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
 import com.mamadrones.gcs.domain.model.MissionLibraryEntry
+import com.mamadrones.gcs.domain.model.MissionRouteBackup
+import com.mamadrones.gcs.data.local.backup.EncryptedMissionBackupCodec
 import com.mamadrones.gcs.domain.repository.MissionDraftFileCodec
 import com.mamadrones.gcs.domain.repository.MissionDraftFileFormat
 import com.mamadrones.gcs.domain.repository.MissionDraftRepository
@@ -13,10 +15,12 @@ import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -33,11 +37,17 @@ data class MissionPlanUiState(
     val exportContent: String? = null,
     val exportFileName: String? = null,
     val exportFormat: MissionDraftFileFormat? = null,
+    val backupExportBytes: ByteArray? = null,
+    val backupExportPickerLaunched: Boolean = false,
+    val backupImportInProgress: Boolean = false,
+    val pendingBackupRestore: MissionRouteBackup? = null,
+    val backupError: String? = null,
     val library: List<MissionLibraryEntry> = emptyList(),
     val libraryError: String? = null,
     val error: String? = null
 ) {
-    val editable: Boolean get() = !loading && !saving && !loadFailed
+    val editable: Boolean get() = !loading && !saving && !loadFailed &&
+        backupExportBytes == null && !backupImportInProgress && pendingBackupRestore == null
 }
 
 sealed interface MissionPlanAction {
@@ -62,14 +72,22 @@ sealed interface MissionPlanAction {
     data object ConfirmImport : MissionPlanAction
     data object CancelImport : MissionPlanAction
     data class ImportFailed(val message: String) : MissionPlanAction
+    data class CreateEncryptedBackup(val passphrase: CharArray) : MissionPlanAction
+    data object BackupPickerLaunched : MissionPlanAction
+    data class BackupExportFinished(val error: String? = null) : MissionPlanAction
+    data class PreviewEncryptedBackup(val bytes: ByteArray, val passphrase: CharArray) : MissionPlanAction
+    data class BackupImportFailed(val message: String) : MissionPlanAction
+    data object CancelBackupRestore : MissionPlanAction
+    data object ConfirmBackupRestore : MissionPlanAction
     data object RetryLoad : MissionPlanAction
 }
 
 @HiltViewModel
 class MissionPlanViewModel @Inject constructor(
     private val repository: MissionDraftRepository,
-    private val fileCodec: MissionDraftFileCodec
+    private val fileCodec: MissionDraftFileCodec,
 ) : ViewModel() {
+    private val backupCodec = EncryptedMissionBackupCodec()
     private val mutableState = MutableStateFlow(MissionPlanUiState())
     val state = mutableState.asStateFlow()
     private var savedDraft = MissionDraft()
@@ -93,6 +111,39 @@ class MissionPlanViewModel @Inject constructor(
         }
         if (action is MissionPlanAction.ImportFailed) {
             mutableState.value = state.value.copy(error = action.message)
+            return
+        }
+        if (action is MissionPlanAction.CreateEncryptedBackup) {
+            createEncryptedBackup(action.passphrase)
+            return
+        }
+        if (action == MissionPlanAction.BackupPickerLaunched) {
+            mutableState.value = state.value.copy(backupExportPickerLaunched = true)
+            return
+        }
+        if (action is MissionPlanAction.BackupExportFinished) {
+            state.value.backupExportBytes?.fill(0)
+            mutableState.value = state.value.copy(
+                backupExportBytes = null,
+                backupExportPickerLaunched = false,
+                backupError = action.error,
+            )
+            return
+        }
+        if (action is MissionPlanAction.PreviewEncryptedBackup) {
+            previewEncryptedBackup(action.bytes, action.passphrase)
+            return
+        }
+        if (action is MissionPlanAction.BackupImportFailed) {
+            mutableState.value = state.value.copy(backupError = action.message)
+            return
+        }
+        if (action == MissionPlanAction.CancelBackupRestore) {
+            mutableState.value = state.value.copy(pendingBackupRestore = null, backupError = null)
+            return
+        }
+        if (action == MissionPlanAction.ConfirmBackupRestore) {
+            restoreBackup()
             return
         }
         if (action == MissionPlanAction.CancelImport) {
@@ -204,6 +255,102 @@ class MissionPlanViewModel @Inject constructor(
             )
         } catch (_: Exception) {
             mutableState.value = current.copy(error = "Route could not be exported.")
+        }
+    }
+
+    private fun createEncryptedBackup(passphrase: CharArray) {
+        val current = state.value
+        if (!current.editable) {
+            passphrase.fill('\u0000')
+            return
+        }
+        mutableState.value = current.copy(saving = true, backupError = null, error = null)
+        viewModelScope.launch {
+            try {
+                val snapshot = withContext(Dispatchers.IO) {
+                    persistenceMutex.withLock { repository.createBackupSnapshot(current.draft) }
+                }
+                val encrypted = withContext(Dispatchers.Default) { backupCodec.encode(snapshot, passphrase) }
+                mutableState.value = state.value.copy(
+                    saving = false,
+                    backupExportBytes = encrypted,
+                    backupExportPickerLaunched = false,
+                    backupError = null,
+                )
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                mutableState.value = state.value.copy(saving = false, backupError = "Encrypted route backup could not be created.")
+            } finally {
+                passphrase.fill('\u0000')
+            }
+        }
+    }
+
+    private fun previewEncryptedBackup(bytes: ByteArray, passphrase: CharArray) {
+        val current = state.value
+        if (!current.editable) {
+            bytes.fill(0)
+            passphrase.fill('\u0000')
+            return
+        }
+        mutableState.value = current.copy(backupImportInProgress = true, backupError = null, error = null)
+        viewModelScope.launch {
+            try {
+                val snapshot = withContext(Dispatchers.Default) { backupCodec.decode(bytes, passphrase) }
+                mutableState.value = state.value.copy(
+                    backupImportInProgress = false,
+                    pendingBackupRestore = snapshot,
+                    backupError = null,
+                )
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                mutableState.value = state.value.copy(
+                    backupImportInProgress = false,
+                    backupError = "Backup could not be opened. Check the passphrase and file; your routes are unchanged.",
+                )
+            } finally {
+                bytes.fill(0)
+                passphrase.fill('\u0000')
+            }
+        }
+    }
+
+    private fun restoreBackup() {
+        val current = state.value
+        val backup = current.pendingBackupRestore ?: return
+        if (current.backupImportInProgress || current.saving || current.loading || current.loadFailed) return
+        recoveryJob?.cancel()
+        recoveryJob = null
+        mutableState.value = current.copy(saving = true, backupError = null, error = null)
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    persistenceMutex.withLock { repository.restoreBackup(backup) }
+                }
+                savedDraft = backup.savedDraft
+                val workingDraft = backup.recoveryDraft ?: backup.savedDraft
+                mutableState.value = state.value.copy(
+                    draft = workingDraft,
+                    loading = false,
+                    saving = false,
+                    loadFailed = false,
+                    dirty = workingDraft != backup.savedDraft,
+                    recovered = workingDraft != backup.savedDraft,
+                    recoverySaved = workingDraft != backup.savedDraft,
+                    recoveryCleanupFailed = false,
+                    library = backup.library.sortedByDescending { it.savedAtEpochMillis },
+                    pendingBackupRestore = null,
+                    backupError = null,
+                    error = null,
+                )
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                mutableState.value = state.value.copy(saving = false, backupError =
+                    "Backup restore failed. Existing saved routes were kept; you can retry or cancel.")
+            }
         }
     }
 

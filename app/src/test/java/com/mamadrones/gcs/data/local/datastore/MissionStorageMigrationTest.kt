@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
 import com.mamadrones.gcs.domain.model.MissionLibraryEntry
+import com.mamadrones.gcs.domain.model.MissionRouteBackup
 import java.util.Base64
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -110,6 +111,50 @@ class MissionStorageMigrationTest {
         }
         assertEquals(invalidLegacy, store.data.first()[key])
     }
+
+    @Test fun `backup snapshot includes the current editor copy and library`() = runBlocking {
+        val store = MemoryPreferencesDataStore(mutablePreferencesOf())
+        val repository = LocalMissionDraftRepository(store, TestMissionPayloadCipher())
+        val saved = MissionDraft("Saved route", listOf(DraftWaypoint("saved", 1.0, 2.0)))
+        val working = MissionDraft("Unsaved edit", listOf(DraftWaypoint("working", 3.0, 4.0)))
+        repository.save(saved)
+        repository.saveRecovery(MissionDraft("Older autosave", listOf(DraftWaypoint("old", 5.0, 6.0))))
+        repository.saveToLibrary(MissionDraft("Library route"))
+
+        val snapshot = repository.createBackupSnapshot(working)
+
+        assertEquals(saved, snapshot.savedDraft)
+        assertEquals(working, snapshot.recoveryDraft)
+        assertEquals(listOf("Library route"), snapshot.library.map { it.draft.name })
+    }
+
+    @Test fun `restore replaces draft recovery and library atomically`() = runBlocking {
+        val store = MemoryPreferencesDataStore(mutablePreferencesOf())
+        val cipher = TestMissionPayloadCipher()
+        val repository = LocalMissionDraftRepository(store, cipher)
+        val old = MissionDraft("Old route", listOf(DraftWaypoint("old", 1.0, 2.0)))
+        repository.save(old)
+        repository.saveRecovery(old.copy(name = "Old recovery"))
+        repository.saveToLibrary(old.copy(name = "Old library"))
+        val replacement = MissionRouteBackup(
+            savedDraft = MissionDraft("Restored route", listOf(DraftWaypoint("new", 3.0, 4.0))),
+            recoveryDraft = MissionDraft("Restored recovery", listOf(DraftWaypoint("edit", 5.0, 6.0))),
+            library = listOf(MissionLibraryEntry("restored-entry", MissionDraft("Restored library"), 10L)),
+        )
+
+        repository.restoreBackup(replacement)
+
+        assertEquals(replacement.savedDraft, repository.load())
+        assertEquals(replacement.recoveryDraft, repository.loadRecovery())
+        assertEquals(replacement.library, repository.loadLibrary())
+
+        val beforeFailure = store.data.first()
+        store.failNextUpdate = true
+        assertThrows(IllegalStateException::class.java) {
+            runBlocking { repository.restoreBackup(replacement.copy(savedDraft = old)) }
+        }
+        assertEquals(beforeFailure, store.data.first())
+    }
 }
 
 private class TestMissionPayloadCipher : MissionPayloadCipher {
@@ -129,9 +174,14 @@ private class TestMissionPayloadCipher : MissionPayloadCipher {
 private class MemoryPreferencesDataStore(initial: Preferences) : DataStore<Preferences> {
     private val current = MutableStateFlow(initial)
     private val mutex = Mutex()
+    var failNextUpdate = false
     override val data: Flow<Preferences> = current
 
     override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences = mutex.withLock {
+        if (failNextUpdate) {
+            failNextUpdate = false
+            error("simulated atomic transaction failure")
+        }
         transform(current.value).also { current.value = it }
     }
 }

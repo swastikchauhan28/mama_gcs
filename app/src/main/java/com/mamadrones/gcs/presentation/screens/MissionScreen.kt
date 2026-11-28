@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.platform.LocalConfiguration
@@ -38,6 +39,7 @@ import android.content.res.Configuration
 import com.mamadrones.gcs.domain.model.DraftWaypoint
 import com.mamadrones.gcs.domain.model.MissionDraft
 import com.mamadrones.gcs.domain.model.MissionLibraryEntry
+import com.mamadrones.gcs.data.local.backup.EncryptedMissionBackupCodec
 import com.mamadrones.gcs.domain.model.MissionDraftReview
 import com.mamadrones.gcs.domain.model.MissionReviewDestination
 import com.mamadrones.gcs.domain.model.MissionReviewIssue
@@ -92,6 +94,35 @@ fun MissionScreen(
             }
         }
     }
+    var selectedBackupBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var backupPassphrase by remember { mutableStateOf("") }
+    var backupPassphraseConfirmation by remember { mutableStateOf("") }
+    var showCreateBackupDialog by remember { mutableStateOf(false) }
+    val latestBackupExportPending = rememberUpdatedState(plan.backupExportBytes != null)
+    val latestBackupRestorePending = rememberUpdatedState(plan.pendingBackupRestore != null)
+    val latestOnAction = rememberUpdatedState(onAction)
+    DisposableEffect(Unit) {
+        onDispose {
+            selectedBackupBytes?.fill(0)
+            if (latestBackupExportPending.value) latestOnAction.value(MissionPlanAction.BackupExportFinished())
+            if (latestBackupRestorePending.value) latestOnAction.value(MissionPlanAction.CancelBackupRestore)
+        }
+    }
+    val backupImportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            try {
+                val bytes = withContext(Dispatchers.IO) {
+                    val stream = context.contentResolver.openInputStream(uri) ?: error("Could not open the selected backup")
+                    stream.use { it.readBoundedBytes(EncryptedMissionBackupCodec.MAX_BACKUP_BYTES) }
+                }
+                selectedBackupBytes?.fill(0)
+                selectedBackupBytes = bytes
+                backupPassphrase = ""
+            } catch (_: Exception) {
+                onAction(MissionPlanAction.BackupImportFailed("Backup file could not be read. Your routes are unchanged."))
+            }
+        }
+    }
     val finishExport: (android.net.Uri?) -> Unit = { uri ->
         val content = plan.exportContent
         if (uri == null || content == null) {
@@ -115,12 +146,43 @@ fun MissionScreen(
     val gpxExportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/gpx+xml"), onResult = finishExport
     )
+    val backupExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/vnd.mama-gcs.route-backup")
+    ) { uri ->
+        val bytes = plan.backupExportBytes
+        if (uri == null || bytes == null) onAction(MissionPlanAction.BackupExportFinished())
+        else scope.launch {
+            val error = try {
+                withContext(Dispatchers.IO) {
+                    val stream = context.contentResolver.openOutputStream(uri) ?: error("Could not create the selected backup")
+                    stream.use { it.write(bytes) }
+                }
+                null
+            } catch (_: Exception) {
+                "Encrypted route backup could not be written. Try another storage location."
+            }
+            onAction(MissionPlanAction.BackupExportFinished(error))
+        }
+    }
     LaunchedEffect(plan.exportContent, plan.exportFileName, plan.exportFormat) {
         val fileName = plan.exportFileName ?: "route.${plan.exportFormat?.extension ?: "geojson"}"
         when (plan.exportFormat) {
             MissionDraftFileFormat.GEOJSON -> exportLauncher.launch(fileName)
             MissionDraftFileFormat.GPX -> gpxExportLauncher.launch(fileName)
             null -> Unit
+        }
+    }
+    LaunchedEffect(plan.backupExportBytes, plan.backupExportPickerLaunched) {
+        if (plan.backupExportBytes != null && !plan.backupExportPickerLaunched) {
+            onAction(MissionPlanAction.BackupPickerLaunched)
+            backupExportLauncher.launch(EncryptedMissionBackupCodec.FILE_NAME)
+        }
+    }
+    LaunchedEffect(plan.pendingBackupRestore) {
+        if (plan.pendingBackupRestore != null) {
+            selectedBackupBytes?.fill(0)
+            selectedBackupBytes = null
+            backupPassphrase = ""
         }
     }
     var showEditor by rememberSaveable { mutableStateOf(false) }
@@ -340,10 +402,15 @@ fun MissionScreen(
                             enabled = plan.editable) { Text("Import route file") }
                         TextButton(onClick = { onAction(MissionPlanAction.Export(MissionDraftFileFormat.GEOJSON)) }, enabled = plan.editable) { Text("Export GeoJSON") }
                         TextButton(onClick = { onAction(MissionPlanAction.Export(MissionDraftFileFormat.GPX)) }, enabled = plan.editable) { Text("Export GPX") }
+                        TextButton(onClick = { showCreateBackupDialog = true }, enabled = plan.editable,
+                            modifier = Modifier.testTag("mission-create-encrypted-backup")) { Text("Create encrypted backup") }
+                        TextButton(onClick = { backupImportLauncher.launch(arrayOf("application/vnd.mama-gcs.route-backup", "application/octet-stream", "*/*")) },
+                            enabled = plan.editable, modifier = Modifier.testTag("mission-restore-encrypted-backup")) { Text("Restore encrypted backup") }
                     }
                     Text("GPX carries route waypoints only. Use GeoJSON to preserve the local outline.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     plan.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    plan.backupError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("mission-backup-error")) }
                     plan.libraryError?.let {
                         Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("mission-library-error"))
                     }
@@ -368,6 +435,10 @@ fun MissionScreen(
                     item(key = "files-import") { TextButton(onClick = { importLauncher.launch(arrayOf("application/geo+json", "application/json", "application/gpx+xml", "application/xml", "text/xml", "*/*")) }, enabled = plan.editable) { Text("Import route file") } }
                     item(key = "files-geojson") { TextButton(onClick = { onAction(MissionPlanAction.Export(MissionDraftFileFormat.GEOJSON)) }, enabled = plan.editable) { Text("Export GeoJSON") } }
                     item(key = "files-gpx") { TextButton(onClick = { onAction(MissionPlanAction.Export(MissionDraftFileFormat.GPX)) }, enabled = plan.editable) { Text("Export GPX") } }
+                    item(key = "files-backup-create") { TextButton(onClick = { showCreateBackupDialog = true }, enabled = plan.editable,
+                        modifier = Modifier.testTag("mission-create-encrypted-backup")) { Text("Create encrypted backup") } }
+                    item(key = "files-backup-restore") { TextButton(onClick = { backupImportLauncher.launch(arrayOf("application/vnd.mama-gcs.route-backup", "application/octet-stream", "*/*")) },
+                        enabled = plan.editable, modifier = Modifier.testTag("mission-restore-encrypted-backup")) { Text("Restore encrypted backup") } }
                     item(key = "files-notice") { Text("GPX carries route waypoints only. Use GeoJSON to preserve the local outline.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
                 if (!wide && (editorTab != "Coverage" || coverage.mapLines.isNotEmpty())) item(key = "planner-map") {
@@ -907,9 +978,95 @@ fun MissionScreen(
             dismissButton = { TextButton(onClick = { onAction(MissionPlanAction.CancelImport) }) { Text("Cancel") } }
         )
     }
+    if (showCreateBackupDialog) {
+        AlertDialog(
+            onDismissRequest = { showCreateBackupDialog = false; backupPassphrase = ""; backupPassphraseConfirmation = "" },
+            title = { Text("Create encrypted route backup") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("The backup includes the saved draft, current unsaved working copy when different, and the full route library. You will need this passphrase to restore it. Mama GCS cannot recover a forgotten passphrase.")
+                    OutlinedTextField(value = backupPassphrase, onValueChange = { backupPassphrase = it.take(EncryptedMissionBackupCodec.MAX_PASSPHRASE_CHARS) },
+                        label = { Text("Backup passphrase") }, singleLine = true, visualTransformation = PasswordVisualTransformation(),
+                        supportingText = { Text("${EncryptedMissionBackupCodec.MIN_PASSPHRASE_CHARS}–${EncryptedMissionBackupCodec.MAX_PASSPHRASE_CHARS} characters") })
+                    OutlinedTextField(value = backupPassphraseConfirmation, onValueChange = { backupPassphraseConfirmation = it.take(EncryptedMissionBackupCodec.MAX_PASSPHRASE_CHARS) },
+                        label = { Text("Confirm passphrase") }, singleLine = true, visualTransformation = PasswordVisualTransformation())
+                    if (backupPassphraseConfirmation.isNotEmpty() && backupPassphrase != backupPassphraseConfirmation) {
+                        Text("Passphrases do not match.", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val secret = backupPassphrase.toCharArray()
+                    backupPassphrase = ""
+                    backupPassphraseConfirmation = ""
+                    showCreateBackupDialog = false
+                    onAction(MissionPlanAction.CreateEncryptedBackup(secret))
+                }, enabled = plan.editable && backupPassphrase.length in EncryptedMissionBackupCodec.MIN_PASSPHRASE_CHARS..EncryptedMissionBackupCodec.MAX_PASSPHRASE_CHARS && backupPassphrase == backupPassphraseConfirmation,
+                    modifier = Modifier.testTag("mission-backup-create-confirm")) { Text("Encrypt backup") }
+            },
+            dismissButton = { TextButton(onClick = { showCreateBackupDialog = false; backupPassphrase = ""; backupPassphraseConfirmation = "" }) { Text("Cancel") } }
+        )
+    }
+    selectedBackupBytes?.let { bytes ->
+        if (plan.pendingBackupRestore == null) AlertDialog(
+            onDismissRequest = { bytes.fill(0); selectedBackupBytes = null; backupPassphrase = "" },
+            title = { Text("Open encrypted route backup") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Enter the passphrase used when this backup was created. The file is checked before any saved route is changed.")
+                    OutlinedTextField(value = backupPassphrase, onValueChange = { backupPassphrase = it.take(EncryptedMissionBackupCodec.MAX_PASSPHRASE_CHARS) },
+                        label = { Text("Backup passphrase") }, singleLine = true, visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), modifier = Modifier.testTag("mission-backup-restore-passphrase"))
+                    if (plan.backupImportInProgress) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    plan.backupError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+            },
+            confirmButton = { TextButton(onClick = {
+                val secret = backupPassphrase.toCharArray()
+                backupPassphrase = ""
+                onAction(MissionPlanAction.PreviewEncryptedBackup(bytes.copyOf(), secret))
+            }, enabled = !plan.backupImportInProgress && backupPassphrase.length in EncryptedMissionBackupCodec.MIN_PASSPHRASE_CHARS..EncryptedMissionBackupCodec.MAX_PASSPHRASE_CHARS,
+                modifier = Modifier.testTag("mission-backup-open-confirm")) { Text("Check backup") } },
+            dismissButton = { TextButton(onClick = { bytes.fill(0); selectedBackupBytes = null; backupPassphrase = "" }) { Text("Cancel") } }
+        )
+    }
+    plan.pendingBackupRestore?.let { backup ->
+        AlertDialog(
+            onDismissRequest = { onAction(MissionPlanAction.CancelBackupRestore) },
+            title = { Text("Encrypted backup preview") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Saved draft: ${backup.savedDraft.name} · ${backup.savedDraft.waypoints.size} waypoints · ${backup.savedDraft.keepInFence.size} outline vertices")
+                    Text(backup.recoveryDraft?.let { "Working recovery: ${it.name} · ${it.waypoints.size} waypoints" } ?: "No separate unsaved recovery copy")
+                    Text("Route library: ${backup.library.size} routes")
+                    Text("Restore replaces the current saved draft, recovery copy and entire library. Current unsaved editor changes will be lost. No vehicle or mission transfer is performed.", color = MaterialTheme.colorScheme.error)
+                    plan.backupError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+            },
+            confirmButton = { TextButton(onClick = { onAction(MissionPlanAction.ConfirmBackupRestore) }, enabled = !plan.saving,
+                modifier = Modifier.testTag("mission-backup-restore-confirm")) { Text(if (plan.saving) "Restoring…" else "Restore all routes") } },
+            dismissButton = { TextButton(onClick = { onAction(MissionPlanAction.CancelBackupRestore) }, enabled = !plan.saving) { Text("Cancel") } }
+        )
+    }
 }
 
 private const val MAX_ROUTE_FILE_CHARS = 256_000
+private fun java.io.InputStream.readBoundedBytes(maxBytes: Int): ByteArray {
+    val output = java.io.ByteArrayOutputStream(minOf(maxBytes, 8192))
+    val buffer = ByteArray(8192)
+    try {
+        while (true) {
+            val count = read(buffer)
+            if (count < 0) break
+            require(output.size() + count <= maxBytes) { "Backup file exceeds the import size limit" }
+            output.write(buffer, 0, count)
+        }
+        return output.toByteArray()
+    } finally {
+        buffer.fill(0)
+    }
+}
 private const val MAX_COORDINATE_CHARS = 32
 
 private fun formatEditableCoordinate(value: Double): String {

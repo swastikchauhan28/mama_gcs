@@ -3,6 +3,7 @@ package com.mamadrones.gcs
 import androidx.lifecycle.ViewModelStore
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mamadrones.gcs.data.local.datastore.*
+import com.mamadrones.gcs.data.local.backup.EncryptedMissionBackupCodec
 import com.mamadrones.gcs.domain.model.*
 import com.mamadrones.gcs.domain.repository.*
 import com.mamadrones.gcs.presentation.mission.*
@@ -62,6 +63,56 @@ class MissionWorkflowTest {
         vm.act(MissionPlanAction.New)
         assertEquals(MissionDraft(), vm.state.value.draft)
         assertEquals("QA route", storage.saved.name)
+    }
+
+    @Test fun encryptedBackupIsPreviewOnlyUntilConfirmedAndCancelPreservesAllRoutes() {
+        val original = MissionDraft("Existing saved", listOf(DraftWaypoint("old", 1.0, 2.0)))
+        val originalRecovery = MissionDraft("Existing recovery", listOf(DraftWaypoint("edit", 3.0, 4.0)))
+        val originalLibrary = listOf(MissionLibraryEntry("old-copy", MissionDraft("Existing library"), 1L))
+        val storage = MemoryStore().apply {
+            saved = original
+            recovery = originalRecovery
+            entries = originalLibrary
+        }
+        val vm = model(storage)
+        await { !vm.state.value.loading }
+        val replacement = MissionRouteBackup(
+            savedDraft = MissionDraft("Backup saved", listOf(DraftWaypoint("new", 10.0, 20.0))),
+            recoveryDraft = MissionDraft("Backup working", listOf(DraftWaypoint("working", 11.0, 21.0))),
+            library = listOf(MissionLibraryEntry("new-copy", MissionDraft("Backup library"), 2L)),
+        )
+        val encrypted = EncryptedMissionBackupCodec().encode(replacement, "synthetic passphrase only".toCharArray())
+
+        vm.act(MissionPlanAction.PreviewEncryptedBackup(encrypted.copyOf(), "synthetic passphrase only".toCharArray()))
+        await { vm.state.value.pendingBackupRestore != null }
+        assertFalse(vm.state.value.editable)
+        assertEquals(original, storage.saved)
+        assertEquals(originalRecovery, storage.recovery)
+        assertEquals(originalLibrary, storage.entries)
+
+        vm.act(MissionPlanAction.CancelBackupRestore)
+        assertNull(vm.state.value.pendingBackupRestore)
+        assertEquals(original, storage.saved)
+        assertEquals(originalRecovery, storage.recovery)
+        assertEquals(originalLibrary, storage.entries)
+
+        vm.act(MissionPlanAction.PreviewEncryptedBackup(encrypted.copyOf(), "synthetic passphrase only".toCharArray()))
+        await { vm.state.value.pendingBackupRestore != null }
+        storage.failRestore = true
+        vm.act(MissionPlanAction.ConfirmBackupRestore)
+        await { !vm.state.value.saving && vm.state.value.backupError != null }
+        assertEquals(original, storage.saved)
+        assertEquals(originalRecovery, storage.recovery)
+        assertEquals(originalLibrary, storage.entries)
+        assertNotNull(vm.state.value.pendingBackupRestore)
+
+        storage.failRestore = false
+        vm.act(MissionPlanAction.ConfirmBackupRestore)
+        await { !vm.state.value.saving && vm.state.value.pendingBackupRestore == null }
+        assertEquals(replacement.savedDraft, storage.saved)
+        assertEquals(replacement.recoveryDraft, storage.recovery)
+        assertEquals(replacement.library, storage.entries)
+        assertEquals(replacement.recoveryDraft, vm.state.value.draft)
     }
 
     @Test fun fieldVertexMoveUsesDraftRecoveryAndExplicitSave() {
@@ -300,6 +351,7 @@ class MissionWorkflowTest {
         var failRecoveryLoad = false
         var failLibrary = false
         var failClear = false
+        var failRestore = false
         var recoveryWriteDelay = 0L
         @Volatile var recoveryWriteStarted = false
         @Volatile var clearCalls = 0
@@ -318,5 +370,16 @@ class MissionWorkflowTest {
         override suspend fun saveToLibrary(draft: MissionDraft): MissionLibraryEntry =
             MissionLibraryEntry("copy-${entries.size}", draft, 1).also { entries = entries + it }
         override suspend fun deleteFromLibrary(id: String) { entries = entries.filterNot { it.id == id } }
+        override suspend fun createBackupSnapshot(currentWorkingDraft: MissionDraft): MissionRouteBackup = MissionRouteBackup(
+            savedDraft = saved,
+            recoveryDraft = currentWorkingDraft.takeIf { it != saved },
+            library = entries,
+        )
+        override suspend fun restoreBackup(backup: MissionRouteBackup) {
+            check(!failRestore)
+            saved = backup.savedDraft
+            recovery = backup.recoveryDraft
+            entries = backup.library
+        }
     }
 }
