@@ -1,5 +1,14 @@
 # Current handover
 
+## 2026-11-28 — Phase 248 encrypt mission routes at rest
+
+- Done: owner approved AES-GCM encryption for the working draft, recovery copy and saved-route library, including legacy migration and preservation on failure. Added a versioned Android Keystore cipher with package/slot AAD and integrated encrypted new writes plus atomic lazy migration in `LocalMissionDraftRepository`. Added synthetic repository migration/failure tests and an isolated-key Android Keystore instrumentation test. See [Phase 248](phase-248-report.md), [D-248-01](DECISIONS.md#d-248-01-encrypt-device-local-mission-route-storage) and [security boundaries](security.md).
+- Done: final focused repository migration tests passed 4/4; `:app:assembleDebug`, `:app:assembleDebugAndroidTest`, and `:app:lintDebug` succeeded (zero lint errors, 28 warnings). Evidence is under ignored `app/build/test-results/testDebugUnitTest/` and `app/build/reports/lint-results-debug.xml`; generated APKs are under `app/build/outputs/apk/`.
+- In progress: review the scoped diff. Keystore runtime test remains unrun because the existing Pixel 3a AVD never reported `sys.boot_completed=1`; the required preflight stopped before installation.
+- Broken or risky: uninstall/key loss can strand encrypted routes, and an older APK cannot read encrypted envelopes. This does not protect a rooted device or plaintext route exchange exports. Phase 247 demo changes and old untracked `output/` files predate this phase and remain untouched.
+- Next: rerun `MissionStorageKeystoreTest` only after the retained emulator passes Android health checks; require a tested route export/recovery and compatible rollback path before production release.
+- Do not touch: `output/`, operator phone/app data, Cube/radio/RTK settings, motor outputs, mission commands, caster credentials or map keys.
+
 ## 2026-11-28 — Phase 246 capability guide and README correction
 
 - Done: Systems → Capabilities & limits now gives a static, read-only overview of implemented software, live-proof requirements and unavailable rover controls. The Classic card correctly mentions optional RTK forwarding. README now acknowledges saved OpenFreeMap field packs and links to this handover. The final software gate passed 559 JVM tests, both debug APK builds and lint (zero errors/28 warnings). The focused guide walkthrough passed on the existing AOSP emulator in landscape and portrait after an Android first-use overlay was dismissed; final-source rerun passed `OK (1 test)` with clean pre/post Android health and clear screenshots. See [Phase 246](phase-246-report.md) and D-246-01.
