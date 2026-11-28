@@ -269,7 +269,7 @@ fun VehicleMap(
                         if (styleUrl == MapStyleConfig.OFFLINE_FIELD_STYLE_URL) {
                             installOfflinePackBoundaryLayer(loadedStyle)
                         }
-                        if (planningMode) installDraftLayers(loadedStyle,
+                        if (planningMode || focusSavedPackId != null) installDraftLayers(loadedStyle,
                             styleUrl == MapStyleConfig.OFFLINE_FIELD_STYLE_URL)
                         style = loadedStyle
                         loadFailed = false
@@ -384,7 +384,7 @@ fun VehicleMap(
 
     LaunchedEffect(style, draftWaypoints, draftFence) {
         val loadedStyle = style ?: return@LaunchedEffect
-        if (!planningMode) return@LaunchedEffect
+        if (!planningMode && focusSavedPackId == null) return@LaunchedEffect
         val points = draftWaypoints.map { Point.fromLngLat(it.longitude, it.latitude) }
         val waypointFeatures = FeatureCollection.fromFeatures(points.mapIndexed { index, point ->
             Feature.fromGeometry(point).apply { addStringProperty("label", (index + 1).toString()) }
@@ -403,7 +403,7 @@ fun VehicleMap(
         } else emptyFeatureCollection()
         loadedStyle.getSourceAs<GeoJsonSource>(DRAFT_FENCE_SOURCE_ID)?.setGeoJson(fenceFeature)
         val draftLocations = draftWaypoints.ifEmpty { draftFence }
-        if (!cameraInitialized && draftLocations.isNotEmpty()) {
+        if (focusSavedPackId == null && !cameraInitialized && draftLocations.isNotEmpty()) {
             val first = draftLocations.first()
             map?.cameraPosition = CameraPosition.Builder().target(LatLng(first.latitude, first.longitude))
                 .zoom(DEFAULT_MAP_ZOOM).build()
@@ -529,7 +529,10 @@ fun VehicleMap(
                 else -> null
             }
             if (outsideMessage != null) {
-                Surface(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                // A selected pack is fitted near the map center. Keep its warning below
+                // the route overlay so the planned points remain visible at large text sizes.
+                Surface(modifier = Modifier.align(if (focusSavedPackId != null) Alignment.BottomEnd else Alignment.TopEnd)
+                    .padding(8.dp)
                     .testTag("offline-field-outside-notice"),
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
                     shape = MaterialTheme.shapes.small) {
@@ -569,7 +572,8 @@ fun VehicleMap(
         }
 
         if (styleUrl == MapStyleConfig.OFFLINE_FIELD_STYLE_URL) {
-            Surface(modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = 40.dp),
+            Surface(modifier = Modifier.align(Alignment.BottomStart)
+                .padding(start = 8.dp, bottom = if (focusSavedPackId != null) 8.dp else 40.dp),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f), shape = MaterialTheme.shapes.small) {
                 Text("© OpenStreetMap contributors · OpenFreeMap", Modifier.padding(4.dp),
                     style = MaterialTheme.typography.labelSmall)
@@ -578,8 +582,12 @@ fun VehicleMap(
 
         if (styleUrl == MapStyleConfig.OFFLINE_FIELD_STYLE_URL && style != null &&
             completedPackRects.isNotEmpty()) {
-            Surface(modifier = Modifier.align(Alignment.BottomStart)
-                .padding(start = 8.dp, bottom = 80.dp).testTag("offline-pack-boundary-legend"),
+            // On the short selected-pack viewport, bottom anchoring clips this legend
+            // above the map. The upper-left corner is clear of the fitted pack.
+            Surface(modifier = Modifier.align(if (focusSavedPackId != null) Alignment.TopStart else Alignment.BottomStart)
+                .padding(start = 8.dp, top = if (focusSavedPackId != null) 8.dp else 0.dp,
+                    bottom = if (focusSavedPackId != null) 0.dp else 80.dp)
+                .testTag("offline-pack-boundary-legend"),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
                 shape = MaterialTheme.shapes.small) {
                 Text("BLUE BORDER · Saved map area · ${completedPackRects.size} ready\n" +

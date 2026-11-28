@@ -15,9 +15,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.verticalScroll
 import com.mamadrones.gcs.core.security.DriveSafetyGate
 import com.mamadrones.gcs.domain.model.VehicleState
+import com.mamadrones.gcs.domain.model.MissionDraft
 import com.mamadrones.gcs.domain.model.AccessState
 import com.mamadrones.gcs.domain.model.AccessSetupState
 import com.mamadrones.gcs.domain.model.AuditRecord
@@ -31,6 +33,7 @@ import com.mamadrones.gcs.presentation.map.VehicleMap
 import com.mamadrones.gcs.presentation.map.MapStyleConfig
 import com.mamadrones.gcs.presentation.map.OfflineFieldMaps
 import com.mamadrones.gcs.presentation.map.selectedCompletePackBounds
+import com.mamadrones.gcs.presentation.map.findPlanOutsideSavedArea
 import com.mamadrones.gcs.presentation.settings.ConnectionUiState
 
 @Composable
@@ -39,11 +42,12 @@ fun MapScreen(state: VehicleState, modifier: Modifier = Modifier, onNavigate: (S
 
 @Composable
 fun SavedPackMapScreen(state: VehicleState, packId: Long, onBackToMaps: () -> Unit,
-    modifier: Modifier = Modifier) {
+    modifier: Modifier = Modifier, workingDraft: MissionDraft? = null) {
     val context = LocalContext.current
     val savedMaps by OfflineFieldMaps.state.collectAsState()
     var refreshRequested by remember(packId) { mutableStateOf(false) }
     var initialLoadComplete by remember(packId) { mutableStateOf(false) }
+    var showWorkingPlan by remember(packId) { mutableStateOf(false) }
     LaunchedEffect(packId) {
         OfflineFieldMaps.refresh(context)
         refreshRequested = true
@@ -51,8 +55,10 @@ fun SavedPackMapScreen(state: VehicleState, packId: Long, onBackToMaps: () -> Un
     LaunchedEffect(refreshRequested, savedMaps.loading) {
         if (refreshRequested && !savedMaps.loading) initialLoadComplete = true
     }
-    val unavailable = initialLoadComplete && !savedMaps.loading &&
-        selectedCompletePackBounds(savedMaps.packs, packId) == null
+    val selectedBounds = if (initialLoadComplete && !savedMaps.loading)
+        selectedCompletePackBounds(savedMaps.packs, packId) else null
+    val unavailable = initialLoadComplete && !savedMaps.loading && selectedBounds == null
+    val hasPlanGeometry = workingDraft?.let { it.waypoints.isNotEmpty() || it.keepInFence.size >= 3 } == true
     Column(modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBackToMaps,
@@ -64,6 +70,39 @@ fun SavedPackMapScreen(state: VehicleState, packId: Long, onBackToMaps: () -> Un
         }
         Text("Blue border: saved map area, not the rover's position. Outside it may need internet.",
             Modifier.padding(horizontal = 12.dp), style = MaterialTheme.typography.bodySmall)
+        if (selectedBounds != null && hasPlanGeometry) {
+            // Reserve one stable row so showing text cannot resize the map or trigger a new pack fit.
+            Row(Modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { showWorkingPlan = !showWorkingPlan },
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("saved-pack-plan-toggle")) {
+                    Text(if (showWorkingPlan) "Hide working plan" else "Show working plan")
+                }
+                if (showWorkingPlan) {
+                    val draft = requireNotNull(workingDraft)
+                    val outside = findPlanOutsideSavedArea(draft, selectedBounds)
+                    fun List<Int>.shortList(): String = take(4).joinToString(", ") +
+                        if (size > 4) " +${size - 4} more" else ""
+                    Column(Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text("Preview only · no upload · orange route/outline: ${draft.name}",
+                            Modifier.testTag("saved-pack-plan-legend"),
+                            style = MaterialTheme.typography.bodySmall, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis)
+                        if (outside.total > 0) {
+                            Text("Outside selected saved map: route points ${outside.routePointNumbers.shortList().ifEmpty { "none" }}; " +
+                                "outline vertices ${outside.outlineVertexNumbers.shortList().ifEmpty { "none" }}. May need internet.",
+                                Modifier.testTag("saved-pack-plan-outside"),
+                                style = MaterialTheme.typography.bodySmall, maxLines = 2,
+                                overflow = TextOverflow.Ellipsis)
+                        } else {
+                            Text("All shown plan points are inside this saved map rectangle; field and route safety remain unverified.",
+                                Modifier.testTag("saved-pack-plan-inside"),
+                                style = MaterialTheme.typography.bodySmall, maxLines = 2,
+                                overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+        }
         if (!initialLoadComplete) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text("Loading saved map")
@@ -77,12 +116,16 @@ fun SavedPackMapScreen(state: VehicleState, packId: Long, onBackToMaps: () -> Un
                 }
             }
         } else {
+            // Only display sources change; no editor callback or draft write is supplied.
             VehicleMap(state.forDisplay(), Modifier.weight(1f).fillMaxWidth(),
+                draftWaypoints = if (showWorkingPlan) workingDraft?.waypoints.orEmpty() else emptyList(),
+                draftFence = if (showWorkingPlan) workingDraft?.keepInFence.orEmpty() else emptyList(),
+                // Keep controls and map height stable when the preview is toggled.
+                compactPlanningControls = true,
                 styleUrl = MapStyleConfig.OFFLINE_FIELD_STYLE_URL, focusSavedPackId = packId)
         }
     }
 }
-
 @Composable
 fun ControlScreen(state: VehicleState, modifier: Modifier = Modifier) {
     val assessment = DriveSafetyGate.assess()

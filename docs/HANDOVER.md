@@ -1,5 +1,29 @@
 # Current handover
 
+## 2026-11-28 — Phase 245 working plan on selected saved field map
+
+- Done: Operate → Browse areas → a complete saved map now offers a default-hidden, read-only working-plan overlay. Orange route/outline geometry is distinguished from the blue saved-map boundary, and the screen identifies route points and valid outline vertices outside that selected pack. The map camera and mission draft remain unchanged by the toggle; no edit or upload callback is supplied. The final software gate passed 559 JVM tests, both debug APK builds and lint (zero errors/28 warnings). Final synthetic online pack preparation and separate offline emulator UI test each passed `OK (1 test)` with clean Android health; screenshot shows visible orange markers, blue border and nonoverlapping notices. See [Phase 245](phase-245-report.md) and D-245-01.
+- In progress: owner diff review. The owner requested commit and push after verification; check Git for the resulting status. Earlier Phase 243/244 records and older `output/` artifacts remain preserved.
+- Broken or risky: early camera/visual attempts failed and are retained in the report. The comparison uses a cached-map rectangle, not a surveyed field or safe route boundary; only a synthetic map was exercised. No live rover or phone verification was performed.
+- Next: review the focused production/test diff and final screenshot. When real field coordinates and a safe hardware scope are available, compare the actual planned route against the operator's saved field on the phone without issuing mission or motor commands.
+- Do not touch: operator phone/data, Cube/radio/RTK settings, motor outputs, mission commands, caster credentials, Google key or unrelated `output/` artifacts.
+
+## 2026-11-28 — Phase 244 Operate saved field map offline check
+
+- Done: a focused synthetic test prepared a native-complete OpenFreeMap field pack, restarted the app with Android networking off, opened it from Operate → Browse areas, and verified camera framing, boundary layer, rendered tiles/border and unchanged working mission. Both final emulator methods passed `OK (1 test)` separately; Android health passed, the test pack was deleted and emulator networking restored. The scoped build/JVM/lint gate passed (557 existing JVM tests were UP-TO-DATE, lint zero errors/27 warnings). See [Phase 244](phase-244-report.md) and D-244-01.
+- In progress: owner diff review. Phase 244 is uncommitted and unpushed; earlier Phase 243 changes and older `output/` artifacts remain untouched.
+- Broken or risky: the first test compile, early legend assertion and premature blank screenshot failed before the corrected final run; all are retained in the report. The small offline pack does not cover the whole viewport, so the app correctly warns that some map area may be unavailable. Synthetic map rendering does not establish real field accuracy or rover position.
+- Next: review the scoped diff; later check a real saved field and actual GPS position under a separately authorized hardware scope.
+- Do not touch: operator phone/data, Cube/radio/RTK settings, motor outputs, mission commands, caster credentials, Google key or unrelated `output/` artifacts.
+
+## 2026-11-27 — Phase 243 Google planned-area preview verified on existing emulator
+
+- Done: the synthetic Google preview test passed OK (1 test) on a healthy registered Google APIs emulator using temporary 3 GB runtime RAM. Its automatic camera fit included both route points without tapping Fit; the screenshot visibly shows Google tiles, numbered markers and route line, with no rover marker. The synthetic unavailable-map recovery test passed separately on healthy AOSP (OK, 1 test). The final scoped Gradle gate passed, with 557 existing JVM tests, both debug APKs and lint. No production app behavior changed. See [Phase 243](phase-243-report.md), D-243-01 and D-243-02.
+- In progress: owner diff review. The Phase 243 test and documentation changes are uncommitted and unpushed; older untracked output artifacts remain untouched.
+- Broken or risky: earlier Google emulator ANRs, empty-AVD disk failures and two test-control timeouts remain in the phase report. The timeouts came from a test assumption about visible controls under 2× text; the final direct camera assertion passed. Google tiles still depend on the configured key, network and provider. Synthetic route geometry does not prove a real field position, GPS fix or RTK accuracy.
+- Next: review the scoped diff; later verify an actual saved field outline and rover GPS only under separate safe live conditions. No further Phase 243 emulator retry is needed.
+- Do not touch: operator phone or saved data, Cube/radio settings, motor outputs, mission commands, caster credentials, Google key value or unrelated output artifacts.
+
 ## 2026-11-27 — Phase 242 planned-area browsing
 
 - Done: added Operate → Browse planned areas for complete local saved field maps, the current plan and saved routes. Route selection opens a read-only, fitted map preview with no rover marker, mission upload or working-draft mutation; the screens distinguish planned geometry from rover position. The final app-source gate passed 557 JVM tests, both debug APK builds and lint with zero errors/27 warnings. Five focused synthetic Android UI tests passed on a healthy disposable AOSP emulator, including the Operate navigation path and visible numbered route markers. See [Phase 242](phase-242-report.md) and D-242-01.

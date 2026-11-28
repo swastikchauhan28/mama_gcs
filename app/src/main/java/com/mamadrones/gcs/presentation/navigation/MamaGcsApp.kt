@@ -125,7 +125,8 @@ fun MamaGcsApp(
                         }
                         composable("map/saved/{packId}", arguments = listOf(navArgument("packId") { type = NavType.LongType })) { destination ->
                             SavedPackMapScreen(vehicle, destination.arguments?.getLong("packId") ?: -1L,
-                                onBackToMaps = { navController.popBackStack() })
+                                onBackToMaps = { navController.popBackStack() },
+                                workingDraft = missionPlan.draft)
                         }
                         composable("control") { ControlScreen(vehicle) }
                         composable("mission") { MissionScreen(vehicle, missionPlan, onMissionAction) }
