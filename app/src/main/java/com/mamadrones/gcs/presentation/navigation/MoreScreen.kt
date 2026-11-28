@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.mamadrones.gcs.domain.model.VehicleState
 import com.mamadrones.gcs.presentation.components.ScreenBody
@@ -43,11 +44,12 @@ fun MoreScreen(vehicle: VehicleState, onNavigate: (String) -> Unit, modifier: Mo
             if (vehicle.motors.isEmpty()) "VESC LINK PENDING" else "${vehicle.motors.size} REPORTED",
         ),
         SystemsDestination("vesc-discovery", "BLE MAVLink", "Inspect GATT and receive rover telemetry", "READ ONLY"),
-        SystemsDestination("classic-bluetooth", "HC-05 / Classic", "Receive MAVLink from a paired serial radio", "READ ONLY"),
+        SystemsDestination("classic-bluetooth", "HC-05 / Classic", "Receive MAVLink; optionally forward RTK corrections", "TELEMETRY + OPTIONAL RTK"),
         SystemsDestination("spray", "Spray", "Pump, nozzles, pressure, flow and fault evidence", "HARDWARE PENDING"),
         SystemsDestination("hydraulic", "Hydraulic", "Pump, valves, pressure and temperature evidence", "HARDWARE PENDING"),
     )
     val setup = listOf(
+        SystemsDestination("capabilities", "Capabilities & limits", "Available software and remaining validation", "READ-ONLY GUIDE"),
         SystemsDestination("admin", "Accounts & audit", "Local sign-in, roles, passwords and activity records", "LOCAL ACCESS"),
         SystemsDestination("general", "Application settings", "Display appearance, communication links and maps", "LOCAL SETTINGS"),
     )
@@ -80,7 +82,7 @@ private fun SystemsGroup(
                 rowItems.forEach { destination ->
                     ElevatedCard(
                         onClick = { onNavigate(destination.route) },
-                        modifier = Modifier.weight(1f).heightIn(min = 104.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 104.dp).testTag("systems-${destination.route}"),
                     ) {
                         Column(
                             Modifier.fillMaxWidth().padding(12.dp),

@@ -1,0 +1,24 @@
+# Phase 246 — software capability guide
+
+## Goal and boundary
+
+The owner approved a software-only, read-only guide under Systems and correction of stale offline-map README claims. Baseline HEAD was `ce32f5aaccd90f3df06b6c36135755d7f9ad7c32`; three older untracked `output/` artifacts were preserved. No phone, Cube, radio, caster, saved plan, account or live vehicle setting was used. See D-246-01.
+
+## Implementation and review path
+
+- `MoreScreen` presents a **Capabilities & limits** card. Its click uses the existing navigation callback; `MamaGcsApp` routes `capabilities` to `CapabilityGuideScreen`; `StationShell` includes it in the Rover configuration category tabs. The guide is static text, not a live health decision. The older Classic card now acknowledges its optional RTCM forwarding path.
+- `CapabilityGuideScreen` has three bounded sections: four implemented software capabilities, three live-proof requirements and two unavailable control areas. Entries are immutable in-process pairs read only by Compose, written only in source, with no user input, storage, retention, network call or vehicle send. `ScreenBody` provides vertical scrolling on short displays. Its review date and handover pointer make later copy maintenance explicit.
+- README now points readers to the current handover, distinguishes online basemaps from saved OpenFreeMap field packs, and removes the incorrect claim that all offline regions remain deferred. Google offline regions remain unavailable.
+- The only external input on this path is a user tap. Navigation stays inside the app. There is no new dependency, permission, credential, external destination, schema or command capability. A stale static guide could mislead an operator, so the text separates software availability from physical readiness and retains the persistent physical-safety banner.
+
+## Verification
+
+- `./gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --no-daemon --max-workers=1 --console=plain`: final source passed (97 tasks, 18 executed, 79 up-to-date). JUnit XML reports 90 suites, 559 tests, zero failures/errors/skips; lint reports zero errors and 28 warnings. Evidence: ignored `app/build/phase246-final-gate.txt`, `app/build/test-results/testDebugUnitTest/`, `app/build/reports/lint-results-debug.txt`. An earlier overlapping lint run was stopped under host-memory pressure; it is not counted as a pass.
+- `./gradlew.bat :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --max-workers=1 --console=plain`: passed on the route/card implementation (79 tasks, 14 executed, 65 up-to-date). The focused test APK rebuild with an overlay guard passed (60 tasks, 6 executed, 54 up-to-date).
+- Existing registered `MamaGcs_Phase238_AOSP31` emulator, no wipe: 30-second and 15-second preflight checks passed. `adb shell am instrument -w -e class com.mamadrones.gcs.CapabilityGuideUiTest com.mamadrones.gcs.test/androidx.test.runner.AndroidJUnitRunner` passed `OK (1 test)` after the Android fullscreen tip was dismissed. It opened the guide from Systems, read sections in landscape/portrait, confirmed the persistent safety notice and navigated back. A post-test 10-second Android health check passed. Evidence: ignored `app/build/phase246-emulator-ui-final.txt`, `app/build/phase246-capability-guide-landscape.png`, `app/build/phase246-capability-guide-portrait-limits.png`.
+- The first UI run also returned `OK (1 test)` but its screenshots were covered by Android's one-time fullscreen tutorial. That run is **not** visual acceptance. The test now checks that the active accessibility window belongs to Mama GCS before saving screenshots; the clear rerun was inspected.
+- After the final route/export wording correction, the final APKs were reinstalled on the same existing emulator without wiping it. A fresh 15-second preflight passed, the focused test passed `OK (1 test)` in 22.06 seconds, and the post-test 10-second Android health check passed. Evidence: ignored `app/build/phase246-emulator-ui-final-source.txt` and the two refreshed screenshots above. Screenshot review found readable guide cards, visible category navigation and the persistent safety banner in both orientations, with no Android overlay or apparent clipping of the asserted text. This is a focused synthetic check, not the full connected Android suite.
+
+## Limits and recovery
+
+The guide does not prove a real GPS/RTK fix, authenticated vehicle identity, physical stop, failsafe, mission transfer or safe rover operation. It is not a defense brief or owner acceptance for release. If the copy is wrong, remove the card/route/screen and restore the scoped README wording; no data migration is needed. Revisit the static entries whenever a capability or safety gate changes. No commit or push was authorized in this phase.

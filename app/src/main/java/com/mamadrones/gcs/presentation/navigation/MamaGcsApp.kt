@@ -131,6 +131,7 @@ fun MamaGcsApp(
                         composable("control") { ControlScreen(vehicle) }
                         composable("mission") { MissionScreen(vehicle, missionPlan, onMissionAction) }
                         composable("more") { MoreScreen(vehicle, onNavigate = navigate) }
+                        composable("capabilities") { CapabilityGuideScreen() }
                         composable("telemetry") { TelemetryScreen(vehicle) }
                         composable("rc-pwm") { RcPwmScreen(vehicle) }
                         composable("message-inspector") { MavlinkInspectorScreen(vehicle.mavlinkDiagnostics) }

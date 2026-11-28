@@ -1,5 +1,13 @@
 # Current handover
 
+## 2026-11-28 — Phase 246 capability guide and README correction
+
+- Done: Systems → Capabilities & limits now gives a static, read-only overview of implemented software, live-proof requirements and unavailable rover controls. The Classic card correctly mentions optional RTK forwarding. README now acknowledges saved OpenFreeMap field packs and links to this handover. The final software gate passed 559 JVM tests, both debug APK builds and lint (zero errors/28 warnings). The focused guide walkthrough passed on the existing AOSP emulator in landscape and portrait after an Android first-use overlay was dismissed; final-source rerun passed `OK (1 test)` with clean pre/post Android health and clear screenshots. See [Phase 246](phase-246-report.md) and D-246-01.
+- In progress: owner review of the focused diff. Phase 246 changes are uncommitted and unpushed; older untracked `output/` artifacts remain preserved.
+- Broken or risky: the first screenshots were obscured by Android's fullscreen tutorial and are not visual acceptance; the guarded rerun produced clear evidence. Static capability wording can become stale as features change. Synthetic UI checks do not prove Cube GPS/RTK accuracy, authenticated vehicle identity or operational safety.
+- Next: review the Phase 246 source/documentation diff and maintain the guide when capabilities change. A real GPS/RTK and field-position check still needs a separately safe live setup; no hardware work was done here.
+- Do not touch: operator phone/data, Cube/radio/RTK settings, motor outputs, mission commands, caster credentials, Google key or unrelated `output/` artifacts.
+
 ## 2026-11-28 — Phase 245 working plan on selected saved field map
 
 - Done: Operate → Browse areas → a complete saved map now offers a default-hidden, read-only working-plan overlay. Orange route/outline geometry is distinguished from the blue saved-map boundary, and the screen identifies route points and valid outline vertices outside that selected pack. The map camera and mission draft remain unchanged by the toggle; no edit or upload callback is supplied. The final software gate passed 559 JVM tests, both debug APK builds and lint (zero errors/28 warnings). Final synthetic online pack preparation and separate offline emulator UI test each passed `OK (1 test)` with clean Android health; screenshot shows visible orange markers, blue border and nonoverlapping notices. See [Phase 245](phase-245-report.md) and D-245-01.

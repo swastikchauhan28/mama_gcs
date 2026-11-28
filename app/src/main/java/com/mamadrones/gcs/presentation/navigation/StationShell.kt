@@ -22,7 +22,8 @@ import com.mamadrones.gcs.presentation.components.MamaIcon
 
 private data class WorkspacePage(val route: String, val title: String)
 private val vehiclePages = listOf(
-    WorkspacePage("more", "Summary"), WorkspacePage("control", "Drive & safety"),
+    WorkspacePage("more", "Summary"), WorkspacePage("capabilities", "Capabilities"),
+    WorkspacePage("control", "Drive & safety"),
     WorkspacePage("health", "Health"), WorkspacePage("motors", "Drive motors"),
     WorkspacePage("parameter-review", "Parameter file"),
     WorkspacePage("autopilot-info", "Autopilot info"),

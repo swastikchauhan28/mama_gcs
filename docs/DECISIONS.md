@@ -1,5 +1,13 @@
 # Decisions and alternatives
 
+## D-246-01: Show a read-only capability guide in Systems
+
+- Date: 2026-11-28. The owner approved a bounded software-only guide and README correction. Baseline HEAD `ce32f5aaccd90f3df06b6c36135755d7f9ad7c32`; only three older untracked `output/` artifacts were present. AI model/version unavailable.
+- Context: the app has grown from telemetry monitoring into local planning, offline OpenFreeMap packs and optional RTCM forwarding, while several hardware paths and all rover controls remain unvalidated or unavailable. Operators need a concise in-app explanation. README still says licensed offline regions are deferred, which is stale.
+- Choice: add a static, scrollable Systems guide with available software, live-proof requirements and unavailable control functions. Add it to the existing Rover configuration navigation and correct only the stale offline-map README claims. The guide reads no vehicle data, stores nothing and has no send or network callbacks.
+- Alternatives: a dynamic hardware readiness verdict would imply checks that do not exist; a separate settings flow would obscure the guide; documentation alone would not help an app user. A static guide must be maintained when capabilities change.
+- Risks and verification: stale text could overstate readiness, so wording separates software capability from hardware proof and directs release decisions to the project handover. Run a focused synthetic emulator navigation/readability test, inspect a screenshot, and run the existing JVM/build/lint gate. Android startup failure is a blocked test, not acceptance. No dependencies, permissions, schema changes, new destinations or vehicle commands. Recovery is to remove the route/card/screen and restore the scoped README text; no data migration is needed.
+
 ## D-245-01: Compare the working plan with a selected saved map on demand
 
 - Date: 2026-11-28. The owner approved Phase 245 after a bounded proposal: an opt-in, read-only working-plan overlay on the saved offline field map, with distinct labels and an outside-area warning. Baseline HEAD `33d1e797b4890e65e99fecf3491c165029f68edd`; uncommitted Phase 243/244 test and documentation changes plus older `output/` artifacts must be preserved. AI model/version unavailable.
